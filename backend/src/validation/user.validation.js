@@ -11,6 +11,7 @@ const userSchema = joi
     email: joi
       .string()
       .trim()
+      .lowercase()
       .email()
       .pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com)$/)
       .required()

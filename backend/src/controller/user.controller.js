@@ -76,7 +76,8 @@ exports.registerUser = asynchandeler(async (req, res) => {
 
 // user login and send a refresh token and access token
 exports.login = asynchandeler(async (req, res) => {
-  const { email, password, phone } = req.body;
+  const { password, phone } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
 
   const user = await User.findOne({ $or: [{ email }, { phone }] })
     .populate("roles")
