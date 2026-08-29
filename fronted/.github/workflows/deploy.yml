@@ -1,0 +1,41 @@
+name: Deploy Dashboard
+
+on:
+  push:
+    branches:
+      - tauik-dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_PRIVATE_KEY }}
+          script: |
+            cd ~
+
+            if [ ! -d "dashboard/.git" ]; then
+              rm -rf dashboard
+              git clone -b tauik-dev git@github.com:taufik69/Z-ecommerce.git dashboard
+            else
+              git -C dashboard pull origin tauik-dev
+            fi
+
+            cd ~/dashboard
+
+            echo ">>> Installing dependencies..."
+            npm install
+
+            echo ">>> Building project..."
+            npm run build
+
+            echo ">>> Updating PM2 process..."
+            pm2 delete dashboard 2>/dev/null || true
+            pm2 start "npx vite preview --host 127.0.0.1 --port 4173" --name dashboard
+
+            echo ">>> Deployment complete for Dashboard!"

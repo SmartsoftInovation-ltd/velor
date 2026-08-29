@@ -1,0 +1,126 @@
+import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import ComponentCard from "../../components/common/ComponentCard";
+import PageBreadcrumb from "../../components/common/PageBreadCrumb";
+import PageMeta from "../../components/common/PageMeta";
+import ProductTable from "../../components/tables/PrdouctTables/ProductTable";
+import axiosSecure from "../../hooks/useAxiosSecure";
+import { Link } from "react-router";
+import { usePermission } from "../../hooks/usePermission";
+import Button from "../ui/button/Button";
+import { FaSync } from "react-icons/fa";
+
+const COLS = 10;
+
+const ProductSkeleton = () => (
+  <div className="w-full animate-pulse">
+    <div className="h-12 bg-gray-100 dark:bg-gray-800 rounded-xl mb-4 w-full max-w-md" />
+    <div className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
+      <div className="h-11 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800" />
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
+          <div className="w-20 h-3.5 bg-gray-200 dark:bg-gray-700 rounded shrink-0" />
+          <div className="w-20 h-3.5 bg-gray-200 dark:bg-gray-700 rounded shrink-0" />
+          <div className="size-10 bg-gray-200 dark:bg-gray-700 rounded-lg shrink-0" />
+          <div className="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded" />
+          {Array.from({ length: COLS - 4 }).map((_, j) => (
+            <div key={j} className="w-16 h-3.5 bg-gray-200 dark:bg-gray-700 rounded shrink-0" />
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const ProductList = () => {
+  const canAdd = usePermission("product", "add");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 1000);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const { data: products = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ["products", debouncedSearch],
+    queryFn: async () => {
+      let endpoint = "/product/getproduct";
+      if (debouncedSearch) {
+        const isBarcode = /^\d{13}$/.test(debouncedSearch.trim());
+        const params = new URLSearchParams();
+        if (isBarcode) {
+          params.append("barCode", debouncedSearch.trim());
+        } else {
+          params.append("name", debouncedSearch.trim());
+        }
+        endpoint = `/product/search-product?${params.toString()}`;
+      }
+      const { data } = await axiosSecure.get(endpoint);
+      return data?.data?.products || [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const handleSearch = (query?: string) => {
+    const val = query || "";
+    setSearchTerm(val);
+    setDebouncedSearch(val);
+  };
+
+  return (
+    <>
+      <PageMeta title="Baig Ecommerce Admin Dashboard" description="Product management" />
+      {/* Header row is just the trail and the page actions — the card carries no
+          heading of its own. */}
+      <PageBreadcrumb
+        pageTitle="Product List"
+        className="mb-3"
+        hideTitle
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => refetch()}
+              size="sm"
+              variant="outline"
+              className="size-9 p-0 rounded-md !bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] transition-all active:scale-90"
+              title="Refresh Products"
+            >
+              <FaSync className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            </Button>
+            {canAdd && (
+              <Link to="/create-product">
+                <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+                  Create Product
+                </Button>
+              </Link>
+            )}
+          </div>
+        }
+      />
+      <div className="space-y-6">
+        <ComponentCard>
+          {isLoading ? (
+            <ProductSkeleton />
+          ) : isError ? (
+            <div className="text-center py-20 min-h-100">
+              <p className="text-red-500 font-bold mb-4">Error fetching products!</p>
+              <button onClick={() => refetch()} className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold shadow-lg">
+                Try Again
+              </button>
+            </div>
+          ) : (
+            <ProductTable
+              products={products}
+              fetchProducts={handleSearch}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+            />
+          )}
+        </ComponentCard>
+      </div>
+    </>
+  );
+};
+
+export default ProductList;

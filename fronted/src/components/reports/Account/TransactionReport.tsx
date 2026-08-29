@@ -1,0 +1,170 @@
+import { useState, useEffect } from "react";
+import Button from "../../ui/button/Button";
+import DatePicker from "../../form/date-picker";
+import Label from "../../form/Label";
+import Select from "../../form/Select";
+import ComponentCard from "../../common/ComponentCard";
+import PageBreadcrumb from "../../common/PageBreadCrumb";
+import PageMeta from "../../common/PageMeta";
+import MobileActionBar from "../../common/MobileActionBar";
+import axiosSecure from "../../../hooks/useAxiosSecure";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router";
+
+const TransactionReport = () => {
+  const navigate = useNavigate();
+  const [selectedSupplier, setSelectedSupplier] = useState("");
+  const [supplierOptions, setSupplierOptions] = useState([
+    { value: "", label: "Select Supplier" },
+  ]);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+
+  // Error state
+  const [errors, setErrors] = useState({
+    startDate: "",
+    endDate: "",
+    supplier: "",
+  });
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axiosSecure.get(`/invoice/transaction-category`);
+        console.log(response);
+
+        const options = response?.data?.data.map((category: any) => ({
+          value: category?.transactionCategory._id,
+          label: category?.transactionCategory.name,
+        }));
+        setSupplierOptions([
+          { value: "", label: "Select Category" },
+          ...options,
+        ]);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const validate = () => {
+    let valid = true;
+    const newErrors = { startDate: "", endDate: "", supplier: "" };
+
+    if (!startDate) {
+      newErrors.startDate = "Start date is required";
+      valid = false;
+    }
+
+    if (!endDate) {
+      newErrors.endDate = "End date is required";
+      valid = false;
+    }
+
+    setErrors(newErrors);
+    return valid;
+  };
+
+  const handleGenerateReport = async () => {
+    if (!validate()) return;
+
+    try {
+      //@ts-ignore
+      const formatDate = (date) => {
+        if (date instanceof Date) return date.toISOString().split("T")[0];
+        return new Date(date).toISOString().split("T")[0];
+      };
+
+      const payload = {
+        startDate: formatDate(startDate),
+        endDate: formatDate(endDate),
+        transactionCategory: selectedSupplier,
+      };
+
+      const response = await axiosSecure.post(
+        "/invoice/transaction-report",
+        payload
+      );
+      console.log("Transaction Report Response:", response.data);
+      toast.success("Report generated successfully!");
+      navigate("/transaction-report/view", { state: response.data });
+    } catch (error) {
+      console.error("Error generating transaction report:", error);
+      toast.error("Error generating report. Check console.");
+    }
+  };
+
+  return (
+    <div>
+      <PageMeta
+        title="Baig Ecommerce Admin Dashboard"
+        description="This is React.js Ecommerce Dashboard page for Baig Digital"
+      />
+      <PageBreadcrumb pageTitle="Transaction Report" />
+
+      <div className="space-y-6">
+        <ComponentCard
+          title={
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Transaction Report</h2>
+            </div>
+          }
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-end">
+            <div className="flex-1">
+              <DatePicker
+                id="date-picker-to"
+                label="Start Date"
+                placeholder="Select start date"
+                //@ts-ignore
+                value={startDate}
+                //@ts-ignore
+                onChange={(date) => setStartDate(date)}
+              />
+              {errors.startDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>
+              )}
+            </div>
+
+            <div className="flex-1">
+              <DatePicker
+                id="date-picker-from"
+                label="End Date"
+                placeholder="Select end date"
+                //@ts-ignore
+                value={endDate}
+                //@ts-ignore
+                onChange={(date) => setEndDate(date)}
+              />
+              {errors.endDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.endDate}</p>
+              )}
+            </div>
+
+            <div className="flex-1">
+              <Label>Transaction Category</Label>
+              <Select
+                options={supplierOptions}
+                value={selectedSupplier}
+                onChange={(value) => setSelectedSupplier(value)} // <-- fix here
+              />
+              {errors.supplier && (
+                <p className="text-red-500 text-sm mt-1">{errors.supplier}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-10">
+            <MobileActionBar>
+              <Button onClick={handleGenerateReport}>Generate Report</Button>
+            </MobileActionBar>
+          </div>
+        </ComponentCard>
+      </div>
+    </div>
+  );
+};
+
+export default TransactionReport;

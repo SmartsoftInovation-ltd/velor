@@ -1,0 +1,681 @@
+const User = require("../models/user.model");
+const Role = require("../models/role.model");
+const Permission = require("../models/permisson.model");
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const { apiResponse } = require("../utils/apiResponse");
+const { customError } = require("../lib/CustomError");
+const { validateUser } = require("../validation/user.validation");
+const { asynchandeler } = require("../lib/asyncHandeler");
+const {
+  cloudinaryFileUpload,
+  deleteCloudinaryFile,
+} = require("../helpers/cloudinary");
+const { statusCodes } = require("../constant/constant");
+const { imageQueue } = require("@/queues/image.queue");
+const { logAudit } = require("@/service/audit.service");
+const {
+  getCache,
+  setCache,
+  bumpNsVersion,
+  buildCacheKey,
+} = require("@/utils/cache.util");
+
+const CACHE_TTL = 60 * 60; // 1 hour
+
+const NS = "user";
+// user registraion/ or add user
+exports.registerUser = asynchandeler(async (req, res) => {
+  // Validate input
+  const value = await validateUser(req);
+  const { name, email, password, phone, image } = value;
+
+  // Check if user already exists
+  const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+  if (existingUser) {
+    throw new customError(
+      "Email or phone already in use",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
+  // Create user
+  const user = new User({
+    name,
+    email,
+    password,
+    phone,
+    image: image || null,
+    roles: [],
+    permissions: [],
+  });
+
+  await user.save();
+
+  // again find user
+  const userObj = await User.findById(user._id)
+    .populate({
+      path: "roles",
+      select: "-__v -createdAt -updatedAt",
+    })
+    .populate("permissions")
+    .select(
+      "-password -__v -resetPasswordToken -resetPasswordExpires -updatedAt -wishList -cart -newsLetterSubscribe -lastlogin -lastLogout -createdAt -refreshToken -twoFactorEnabled -newsLetterSubscribe -isEmailVerified -isPhoneVerified",
+    );
+  userObj.isEmailVerified = false;
+  userObj.isPhoneVerified = false;
+  await userObj.save();
+  return apiResponse.sendSuccess(
+    res,
+    statusCodes.CREATED,
+    "Registration successful",
+    userObj,
+  );
+});
+
+// user login and send a refresh token and access token
+exports.login = asynchandeler(async (req, res) => {
+  const { email, password, phone } = req.body;
+
+  const user = await User.findOne({ $or: [{ email }, { phone }] })
+    .populate("roles")
+    .populate("permissions.permission")
+    .select(
+      "-__v -wishList -cart -newsLetterSubscribe  -lastLogout -createdAt  -twoFactorEnabled -newsLetterSubscribe -isEmailVerified -isPhoneVerified -roles -permission",
+    );
+  if (!user) {
+    throw new customError("User not found", statusCodes.NOT_FOUND);
+  }
+  //check password
+  const isPasswordMatch = await user.comparePassword(password);
+  if (!isPasswordMatch) {
+    logAudit({
+      req,
+      user,
+      action: "LOGIN_FAILED",
+      entityType: "user",
+      entityId: user._id,
+      entityLabel: user.email || user.phone,
+    });
+    throw new customError("Invalid credentials", statusCodes.BAD_REQUEST);
+  }
+
+  // generate access token and refresh token
+  const accessToken = await user.generateJwtAccessToken();
+  const refreshToken = await user.generateJwtRefreshToken();
+
+  // save refresh Token into Database
+  user.refreshToken = refreshToken;
+  user.lastlogin = Date.now();
+  await user.save();
+
+  logAudit({
+    req,
+    user,
+    action: "LOGIN",
+    entityType: "user",
+    entityId: user._id,
+    entityLabel: user.email || user.phone,
+  });
+
+  // now remove password from response
+  const {
+    password: userPassword,
+    refreshToken: userRefreshToken,
+    ...userData
+  } = user.toObject();
+  delete userData.userPassword;
+  delete userData.userRefreshToken;
+
+  // set refresh token in cookie
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days — matches REFRESH_TOKEN_EXPIRY
+  });
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Login successful", {
+    accessToken,
+    user: userData,
+  });
+});
+
+// make a refresh token using cookie data or headers data
+exports.refreshToken = asynchandeler(async (req, res) => {
+  const refreshToken =
+    (req.cookies?.refreshToken?.trim()) ||
+    (req.headers["x-refresh-token"]?.trim());
+  if (!refreshToken) {
+    throw new customError("Refresh token not found", statusCodes.UNAUTHORIZED);
+  }
+
+  // check refresh token in database — ensures token was not revoked on logout
+  const user = await User.findOne({ refreshToken });
+  if (!user) {
+    throw new customError("Invalid refresh token", statusCodes.UNAUTHORIZED);
+  }
+
+  // verify signature + expiry
+  jwt.verify(user.refreshToken, process.env.REFRESH_TOKEN_SCCERET);
+
+  const accessToken = await user.generateJwtAccessToken();
+
+  return apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Refresh token send successful",
+    { accessToken },
+  );
+});
+
+//logout user
+exports.logout = asynchandeler(async (req, res) => {
+  const refreshToken =
+    (req.cookies?.refreshToken?.trim()) ||
+    (req.headers["x-refresh-token"]?.trim());
+
+  if (refreshToken) {
+    // Revoke the token in DB so it cannot be used for refresh
+    const user = await User.findOne({ refreshToken });
+    if (user) {
+      user.refreshToken = null;
+      await user.save();
+    }
+  }
+
+  // remove refresh token from cookie
+  const isProduction = process.env.NODE_ENV === "production";
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+  });
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Logout successful");
+});
+
+// send email verification
+exports.sendEmailVerification = asynchandeler(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  // Generate token
+  const token = crypto.randomBytes(32).toString("hex");
+  user.resetPasswordToken = token;
+  user.resetPasswordExpires = Date.now() + 1000 * 60 * 60; // 1 hour
+  await user.save();
+
+  // Send email (replace with your mail config)
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    // secure: true,
+    auth: {
+      user: process.env.HOST_MAIL,
+      pass: process.env.HOST_APP_PASSWORD,
+    },
+  });
+  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}&email=${user.email}`;
+  await transporter.sendMail({
+    to: user.email,
+    subject: "Verify your email",
+    html: `<a href="${verifyUrl}">Click to verify your email</a>`,
+  });
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Verification email sent");
+});
+
+// verify email
+exports.verifyEmail = asynchandeler(async (req, res) => {
+  const { token, email } = req.query;
+  const user = await User.findOne({
+    email,
+    resetPasswordToken: token,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+  if (!user)
+    throw new customError("Invalid or expired token", statusCodes.BAD_REQUEST);
+
+  user.isEmailVerified = true;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Email verified successfully");
+});
+
+//forgot password
+exports.forgotPassword = asynchandeler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  const token = crypto.randomBytes(32).toString("hex");
+  user.resetPasswordToken = token;
+  user.resetPasswordExpires = Date.now() + 1000 * 60 * 60; // 1 hour
+  await user.save();
+
+  // Send reset email
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    // secure: true,
+    auth: {
+      user: process.env.HOST_MAIL,
+      pass: process.env.HOST_APP_PASSWORD,
+    },
+  });
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}&email=${user.email}`;
+  await transporter.sendMail({
+    to: user.email,
+    subject: "Reset your password",
+    html: `<a href="${resetUrl}">Click to reset your password</a>`,
+  });
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Password reset email sent");
+});
+
+// reset password
+exports.resetPassword = asynchandeler(async (req, res) => {
+  const { token, email, newPassword } = req.body;
+  const user = await User.findOne({
+    email,
+    resetPasswordToken: token,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+  if (!user)
+    throw new customError("Invalid or expired token", statusCodes.BAD_REQUEST);
+
+  user.password = newPassword;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Password reset successful");
+});
+
+//change paassword
+exports.changePassword = asynchandeler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  const { oldPassword, newPassword } = req.body;
+
+  //check password have number and text and minimunm 8 character using regex
+  if (!/^(?=.*\d)(?=.*[a-zA-Z]).{8,}$/.test(newPassword)) {
+    throw new customError(
+      "Password must contain at least 8 characters, including at least one letter and one number",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
+  if (!(await user.comparePassword(oldPassword))) {
+    throw new customError("Old password is incorrect", statusCodes.BAD_REQUEST);
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  return apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Password changed successfully",
+  );
+});
+
+// get all user
+exports.getAllUser = asynchandeler(async (_, res) => {
+  const users = await User.find()
+    .select(
+      "-__v -password -refreshToken  -createdAt  -twoFactorEnabled -newsLetterSubscribe ",
+    )
+    .populate([{ path: "roles" }])
+    .populate("wishList")
+    .populate("permissions")
+    .lean()
+    .sort({ createdAt: -1 });
+  if (!users || users.length === 0)
+    throw new customError("User not found", statusCodes.NOT_FOUND);
+  return apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User fetched successfully",
+    users,
+  );
+});
+
+// get single user using email or phone
+exports.getUserbyEmailOrPhone = asynchandeler(async (req, res) => {
+  const { email, phone } = req.query;
+  const user = await User.findOne({ $or: [{ email }, { phone }] })
+    .select(
+      "-__v -password -refreshToken  -createdAt  -twoFactorEnabled -newsLetterSubscribe ",
+    )
+    .populate([
+      { path: "roles" },
+      // { path: "permission" },
+      { path: "wishList" },
+      { path: "cart" },
+    ]);
+  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User fetched successfully",
+    user,
+  );
+});
+
+//get me routes
+exports.getMe = asynchandeler(async (req, res) => {
+  if (!req.user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  // Re-fetch with deep populate so roles → permissions → permission doc
+  // and user.permissions → permission doc are both fully resolved.
+  const user = await User.findById(req.user._id)
+    .populate({
+      path: "roles",
+      select: "-__v -createdAt -updatedAt",
+      populate: {
+        path: "permissions.permission",
+        model: "Permission",
+        select: "permissionName slug isActive",
+      },
+    })
+    .populate({
+      path: "permissions.permission",
+      model: "Permission",
+      select: "permissionName slug isActive",
+    })
+    .select(
+      "-password -__v -resetPasswordToken -resetPasswordExpires -refreshToken -twoFactorEnabled",
+    );
+
+  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User fetched successfully",
+    user,
+  );
+});
+
+// search a user andd add permissin in  permission array
+exports.addPermissionToUser = asynchandeler(async (req, res) => {
+  const { userId, permissionId } = req.body;
+
+  // Check if user exists
+  const user = await User.findById(userId);
+  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  // Check if permission exists
+  const permission = await Permission.findById(permissionId);
+  if (!permission)
+    throw new customError("Permission not found", statusCodes.NOT_FOUND);
+
+  // Add permission to user's permissions array
+  user.permissions.push(permission._id);
+  await user.save();
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Permission added successfully",
+    {
+      user,
+      permission,
+    },
+  );
+});
+// remove permission from user
+exports.removePermissionFromUser = asynchandeler(async (req, res) => {
+  const { userId, permissionId } = req.body;
+
+  // Check if user exists
+  const user = await User.findById(userId);
+  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  // Check if permission exists
+  const permission = await Permission.findById(permissionId);
+  if (!permission)
+    throw new customError("Permission not found", statusCodes.NOT_FOUND);
+
+  // Remove permission from user's permissions array
+  user.permissions = user.permissions.filter(
+    (perm) => perm.toString() !== permission._id.toString(),
+  );
+  await user.save();
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Permission removed successfully",
+    {
+      user,
+      permission,
+    },
+  );
+});
+
+// is SuperAdmin
+exports.isSuperAdmin = asynchandeler(async (req, res) => {
+  const { email, password, phone } = req.body;
+  if (!email && !phone) {
+    throw new customError(
+      "Email or phone is required",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+  const user = await User.findOne({ $or: [{ email }, { phone }] });
+  if (!user) {
+    throw new customError("User not found", statusCodes.NOT_FOUND);
+  }
+
+  const isSuperAdmin = user?.roles?.some((role) => role.slug === "superadmin");
+  return apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User fetched successfully",
+    {
+      isSuperAdmin,
+    },
+  );
+});
+
+// add user
+exports.addUser = asynchandeler(async (req, res) => {
+  const value = await validateUser(req);
+  const { image: imageFile, ...rest } = value;
+
+  // Create user first with pending image status if image provided
+  const user = await User.create({
+    ...rest,
+    image: imageFile
+      ? {
+          status: "pending",
+          localPath: imageFile.path,
+        }
+      : undefined,
+    roles: value.role ? [value.role] : [],
+    createdBy: req.user?._id || null,
+  });
+
+  if (!user) {
+    throw new customError("User creation failed", statusCodes.SERVER_ERROR);
+  }
+
+  // Enqueue image upload if provided
+  if (imageFile && imageFile.path) {
+    await imageQueue.add("create-user-image", {
+      modelName: NS,
+      documentId: user._id,
+      localPath: imageFile.path,
+    });
+  }
+
+  // Invalidate cache
+  await bumpNsVersion(NS);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.CREATED,
+    "User created successfully (image uploading in background)",
+    {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+    },
+  );
+});
+
+// get user added by admin
+exports.getUserAddedByAdmin = asynchandeler(async (req, res) => {
+  const cacheKey = await buildCacheKey(NS, "added-by-admin");
+  const cached = await getCache(cacheKey);
+
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Users fetched successfully (from cache)",
+      cached,
+    );
+  }
+
+  const users = await User.find({ "roles.0": { $exists: true } })
+    .select(
+      "-__v -password -refreshToken -createdAt -twoFactorEnabled -newsLetterSubscribe",
+    )
+    .populate("roles");
+
+  if (users.length > 0) {
+    await setCache(cacheKey, users, CACHE_TTL);
+  }
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Users fetched successfully",
+    users,
+  );
+});
+
+// user update
+exports.updateUser = asynchandeler(async (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+
+  //  Manual basic field validation
+  const requiredFields = ["name", "email", "phone"];
+  for (const field of requiredFields) {
+    if (!data[field] || data[field].toString().trim() === "") {
+      throw new customError(`${field} is required`, statusCodes.BAD_REQUEST);
+    }
+  }
+
+  if (data.discountLimit !== undefined) {
+    const limit = Number(data.discountLimit);
+    if (isNaN(limit) || limit < 0 || limit > 100) {
+      throw new customError(
+        "Discount limit must be a number between 0 and 100",
+        statusCodes.BAD_REQUEST,
+      );
+    }
+  }
+
+  //  Prepare update object
+  const updateData = {
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    discountLimit: data.discountLimit,
+  };
+
+  //  Add password only if given
+  if (data.password && data.password.trim() !== "") {
+    updateData.password = data.password;
+  }
+
+  //  Replace roles array if new role given
+  if (data.role) {
+    updateData.roles = [data.role];
+  }
+
+  //  Handle image upload & old image deletion (handled by queue after findByIdAndUpdate)
+
+  //  Update user in DB
+  const updatedUser = await User.findByIdAndUpdate(id, updateData, {
+    new: true,
+    runValidators: true,
+  })
+    .populate("roles")
+    .populate("permissions")
+    .select(
+      "-password -__v -resetPasswordToken -resetPasswordExpires -updatedAt -wishList -cart -newsLetterSubscribe -lastlogin -lastLogout -createdAt -refreshToken -twoFactorEnabled -isEmailVerified -isPhoneVerified",
+    );
+
+  if (!updatedUser) {
+    throw new customError("User not found", statusCodes.NOT_FOUND);
+  }
+
+  // Handle image update via queue if file present
+  if (req.file) {
+    const oldPublicId = updatedUser.image?.publicId || null;
+
+    // Update status to pending
+    updatedUser.image.status = "pending";
+    updatedUser.image.localPath = req.file.path;
+    updatedUser.image.tries = 0;
+    updatedUser.image.lastError = "";
+    await updatedUser.save();
+
+    await imageQueue.add("update-user-image", {
+      modelName: NS,
+      documentId: updatedUser._id,
+      localPath: req.file.path,
+      oldPublicId,
+    });
+  }
+
+  // Invalidate cache
+  await bumpNsVersion(NS);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User updated successfully",
+    updatedUser,
+  );
+});
+
+// delte user
+exports.deleteUser = asynchandeler(async (req, res) => {
+  const { id } = req.params;
+
+  // Find user first
+  const user = await User.findById(id);
+  if (!user) {
+    throw new customError("User not found", statusCodes.NOT_FOUND);
+  }
+
+  // Delete image from Cloudinary via queue
+  const publicId = user.image?.publicId;
+  if (publicId) {
+    await imageQueue.add("delete-cloudinary-image", { publicId });
+  }
+
+  // Delete user from DB
+  await User.findByIdAndDelete(id);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User deleted successfully",
+    user,
+  );
+});

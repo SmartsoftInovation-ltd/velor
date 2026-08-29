@@ -1,0 +1,44 @@
+import ComponentCard from "../../components/common/ComponentCard";
+import PageBreadcrumb from "../../components/common/PageBreadCrumb";
+import PageMeta from "../../components/common/PageMeta";
+import { Link } from "react-router";
+import { usePermission } from "../../hooks/usePermission";
+import Button from "../ui/button/Button";
+import SalesHistoryTable from "../tables/SalesTable/SalesHistoryTable";
+
+// Draft order list — same table as the sales history, but restricted to sales
+// whose invoiceStatus is "draft". The backend filters via ?invoiceStatus=draft.
+const DraftOrderList = () => {
+  const canAdd = usePermission("retail-sales", "add");
+  return (
+    <>
+      <PageMeta
+        title="Baig Ecommerce Admin Dashboard"
+        description="This is React.js Ecommerce Dashboard page for Baig Digital"
+      />
+      {/* Header row is just the trail and the page action — the card carries no
+          heading of its own. */}
+      <PageBreadcrumb
+        pageTitle="Draft Order List"
+        className="mb-3"
+        hideTitle
+        actions={
+          canAdd && (
+            <Link to="/create-retail-sales" className="w-full sm:w-auto">
+              <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded w-full sm:w-auto">
+                Create Retail Sales
+              </Button>
+            </Link>
+          )
+        }
+      />
+      <div className="space-y-6">
+        <ComponentCard>
+          <SalesHistoryTable invoiceStatus="draft" />
+        </ComponentCard>
+      </div>
+    </>
+  );
+};
+
+export default DraftOrderList;

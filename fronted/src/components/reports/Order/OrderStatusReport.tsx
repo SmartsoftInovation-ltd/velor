@@ -1,0 +1,101 @@
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import Button from "../../ui/button/Button";
+import DatePicker from "../../form/date-picker";
+import ComponentCard from "../../common/ComponentCard";
+import PageBreadcrumb from "../../common/PageBreadCrumb";
+import PageMeta from "../../common/PageMeta";
+import MobileActionBar from "../../common/MobileActionBar";
+import axiosSecure from "../../../hooks/useAxiosSecure";
+import toast from "react-hot-toast";
+
+const formatDate = (date: Date | string | null): string => {
+  if (!date) return "";
+  const d = date instanceof Date ? date : new Date(date);
+  return d.toISOString().split("T")[0];
+};
+
+const OrderStatusReport = () => {
+  const navigate = useNavigate();
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({ startDate: "", endDate: "" });
+
+  const validate = () => {
+    const newErrors = { startDate: "", endDate: "" };
+    let valid = true;
+    if (!startDate) { newErrors.startDate = "Start date is required"; valid = false; }
+    if (!endDate) { newErrors.endDate = "End date is required"; valid = false; }
+    setErrors(newErrors);
+    return valid;
+  };
+
+  const handleGenerateReport = async () => {
+    if (!validate()) return;
+    setIsLoading(true);
+    try {
+      const res = await axiosSecure.post("/invoice/order-status", {
+        startDate: formatDate(startDate),
+        endDate: formatDate(endDate),
+      });
+      navigate("/order-status-report/view", { state: res.data });
+    } catch {
+      toast.error("Failed to generate report.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <PageMeta title="Order Status Report - Baig Ecommerce" description="Order status report" />
+      <PageBreadcrumb pageTitle="Order Status Report" />
+      <div className="space-y-6">
+        <ComponentCard
+          title={
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Order Status Report</h2>
+            </div>
+          }
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
+            <div className="flex-1 md:min-w-[160px]">
+              <DatePicker
+                id="os-start"
+                label="Start Date"
+                placeholder="Select start date"
+                //@ts-ignore
+                value={startDate}
+                //@ts-ignore
+                onChange={(d) => { setStartDate(d); setErrors((e) => ({ ...e, startDate: "" })); }}
+              />
+              {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
+            </div>
+            <div className="flex-1 md:min-w-[160px]">
+              <DatePicker
+                id="os-end"
+                label="End Date"
+                placeholder="Select end date"
+                //@ts-ignore
+                value={endDate}
+                //@ts-ignore
+                onChange={(d) => { setEndDate(d); setErrors((e) => ({ ...e, endDate: "" })); }}
+              />
+              {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
+            </div>
+          </div>
+          <div className="mt-6">
+            <MobileActionBar>
+              <Button onClick={handleGenerateReport} disabled={isLoading}>
+              {isLoading ? "Generating..." : "Generate Report"}
+            </Button>
+            </MobileActionBar>
+          </div>
+        </ComponentCard>
+      </div>
+    </div>
+  );
+};
+
+export default OrderStatusReport;

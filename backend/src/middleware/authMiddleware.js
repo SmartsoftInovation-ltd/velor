@@ -1,0 +1,39 @@
+const jwt = require("jsonwebtoken");
+const User = require("../models/user.model");
+require("../models/permisson.model");
+const { customError } = require("../lib/CustomError");
+const { apiResponse } = require("../utils/apiResponse");
+const { asynchandeler } = require("../lib/asyncHandeler");
+
+exports.authGuard = asynchandeler(async (req, res, next) => {
+  let token =
+    req.headers?.authorization?.replace("Bearer ", "") || req.body?.token;
+
+  if (!token || token === "null" || token === "undefined") {
+    throw new customError("Token not found or Invalid / Token Required", 401);
+  }
+
+  const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+  if (!decoded) {
+    throw new customError("Invalid token", 401);
+  }
+  const user = await User.findOne({
+    $or: [{ email: decoded.email }, { phone: decoded.phone }],
+  })
+    .populate({
+      path: "roles",
+      populate: { path: "permissions.permission" },
+    })
+    .populate("permissions.permission")
+    .populate("createdBy")
+    .select(
+      "-__v -wishList -cart -newsLetterSubscribe -refreshToken -password -twoFactorEnabled"
+    );
+
+  if (!user) {
+    throw new customError("User not found", 401);
+  }
+  req.user = user;
+  next();
+});

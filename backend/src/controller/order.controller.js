@@ -1,0 +1,885 @@
+// required modules
+const Order = require("../models/order.model");
+const DeliveryCharge = require("../models/delivery.model");
+const Product = require("../models/product.model");
+const Coupon = require("../models/coupon.model");
+// Import the new Invoice model
+const Invoice = require("../models/invoice.model");
+const { apiResponse } = require("../utils/apiResponse");
+const { asynchandeler } = require("../lib/asyncHandeler");
+const { customError } = require("../lib/CustomError");
+const { v4: uuidv4 } = require("uuid");
+const SSLCommerzPayment = require("sslcommerz-lts");
+const cartModel = require("../models/cart.model");
+const Variant = require("../models/variant.model");
+const { sendEmail } = require("../helpers/nodemailer");
+const { orderTemplate } = require("../emailTemplate/orderTemplate");
+
+const { sendSMS } = require("../helpers/sms");
+const { getIO } = require("../socket/socket");
+const { statusCodes } = require("../constant/constant");
+const { logAudit } = require("@/service/audit.service");
+const { env } = require("@/config/env.config");
+
+// applyDeliveryCharge
+const applyDeliveryCharge = async (deliveryChargeID) => {
+  if (!deliveryChargeID) return 0;
+  const dlc = await DeliveryCharge.findOne({ _id: deliveryChargeID });
+  return dlc;
+};
+
+// testing command
+// Coupon utility
+// Coupon utility
+const applyCouponDiscount = async (code, subtotal, items = []) => {
+  if (!code)
+    return { discountedAmount: subtotal, discountAmount: 0, coupon: null };
+
+  const coupon = await Coupon.findOne({
+    code: code.toUpperCase(),
+    isActive: true,
+  });
+  if (!coupon)
+    throw new customError("Invalid coupon code", statusCodes.BAD_REQUEST);
+
+  const now = new Date();
+  if (now < coupon.couponStartAt) {
+    throw new customError(
+      "This coupon is not active yet",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+  if (now > coupon.expireAt) {
+    throw new customError("Coupon expired", statusCodes.BAD_REQUEST);
+  }
+
+  if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+    throw new customError(
+      "Coupon usage limit exceeded",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
+  if (subtotal < coupon.minOrderAmount) {
+    throw new customError(
+      `Minimum order amount for this coupon is ${coupon.minOrderAmount}`,
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
+  // Check scope constraints
+  const hasRestrictedScope =
+    (coupon.applicableProducts?.length > 0) ||
+    (coupon.applicableCategories?.length > 0) ||
+    (coupon.applicableSubCategories?.length > 0) ||
+    (coupon.applicableBrands?.length > 0) ||
+    (coupon.applicableVariants?.length > 0);
+
+  if (hasRestrictedScope && items.length > 0) {
+    const isApplicable = items.some((item) => {
+      const productId = item.product?._id?.toString() || item.product?.toString();
+      const variantId = item.variant?._id?.toString() || item.variant?.toString();
+      const categoryId = item.product?.category?._id?.toString() || item.product?.category?.toString();
+      const subCategoryId = item.product?.subcategory?._id?.toString() || item.product?.subcategory?.toString();
+      const brandId = item.product?.brand?._id?.toString() || item.product?.brand?.toString();
+
+      return (
+        (coupon.applicableProducts?.map(id => id.toString()).includes(productId)) ||
+        (coupon.applicableCategories?.map(id => id.toString()).includes(categoryId)) ||
+        (coupon.applicableSubCategories?.map(id => id.toString()).includes(subCategoryId)) ||
+        (coupon.applicableBrands?.map(id => id.toString()).includes(brandId)) ||
+        (coupon.applicableVariants?.map(id => id.toString()).includes(variantId))
+      );
+    });
+
+    if (!isApplicable) {
+      throw new customError(
+        "This coupon is not applicable to any items in your cart",
+        statusCodes.BAD_REQUEST,
+      );
+    }
+  }
+
+  let discountAmount = 0;
+  if (coupon.discountType === "percentage") {
+    discountAmount = Math.round((subtotal * coupon.discountValue) / 100);
+    if (coupon.maxDiscountAmount !== null && discountAmount > coupon.maxDiscountAmount) {
+      discountAmount = coupon.maxDiscountAmount;
+    }
+  } else if (coupon.discountType === "fixed") {
+    discountAmount = Math.round(coupon.discountValue);
+  }
+
+  // ensure the discounted amount is not negative
+  const discountedAmount = Math.max(0, subtotal - discountAmount);
+
+  return { discountedAmount, discountAmount, coupon };
+};
+
+// Main controller
+exports.createOrder = asynchandeler(async (req, res) => {
+  const userId = req.user?._id || req.body.user || null;
+  const {
+    guestId,
+    shippingInfo,
+    paymentMethod,
+    couponCode,
+    deliveryCharge,
+    orderType,
+    productWeight,
+    isAutoPlaced,
+  } = req.body;
+
+  // Step 1: Load Cart
+  const cart = await cartModel.findOne({
+    user: userId || null,
+    guestId: guestId || null,
+  });
+
+  if (!cart || !cart.items || cart.items.length === 0) {
+    throw new customError("No items in the cart", statusCodes.BAD_REQUEST);
+  }
+
+  // Step 2: Calculate subtotal & Check stock
+  let totalPriceofProducts = 0;
+  let totalProductInfo = [];
+  let totalQuantity = 0;
+
+  for (const item of cart.items) {
+    // if product exist
+    if (item.product) {
+      const product = await Product.findById(item.product).populate(
+        "category subcategory brand",
+      );
+      if (!product)
+        throw new customError(`Product not found`, statusCodes.NOT_FOUND);
+      if (product?.stock < item?.quantity) {
+        throw new customError(
+          `${product.name} does not have enough stock`,
+          statusCodes.BAD_REQUEST,
+        );
+      }
+      totalProductInfo.push({
+        product: product,
+        quantity: item.quantity,
+        totalPrice: item.totalPrice,
+        retailPrice: product.retailPrice,
+        purchasePrice: product.purchasePrice,
+        size: item.size,
+        color: item.color,
+        variant: item.variant || null,
+        orderType: "singlevariant",
+      });
+      totalPriceofProducts += item.totalPrice;
+      product.totalSales += item.quantity;
+      totalQuantity += item.quantity;
+    }
+
+    // if variant exist
+    if (item.variant) {
+      const variant = await Variant.findById(item.variant).populate("product");
+
+      if (!variant)
+        throw new customError(`Variant not found`, statusCodes.NOT_FOUND);
+
+      if (variant.stockVariant < item.quantity) {
+        throw new customError(
+          `${variant.variantName} does not have enough stock from variant`,
+          statusCodes.BAD_REQUEST,
+        );
+      }
+      totalProductInfo.push({
+        variant: variant,
+        quantity: item.quantity,
+        totalPrice: item.totalPrice,
+        retailPrice: variant.retailPrice,
+        purchasePrice: variant.purchasePrice,
+        size: item.size,
+        color: item.color,
+        product: item.product || null,
+        orderType: "multivariant",
+      });
+      totalPriceofProducts += item.totalPrice;
+      variant.totalSales += item.quantity;
+      totalQuantity += item.quantity;
+    }
+  }
+
+  // Step 3: Apply Coupon
+  const { discountedAmount, discountAmount, coupon } =
+    await applyCouponDiscount(
+      couponCode,
+      totalPriceofProducts,
+      totalProductInfo,
+    );
+
+  // Step 4: Delivery Charge
+  const deliveryChargeAmount = await applyDeliveryCharge(deliveryCharge);
+  if (!deliveryChargeAmount)
+    throw new customError("Invalid delivery type", statusCodes.BAD_REQUEST);
+
+  // Step 5: Final Total
+  const finalAmount = couponCode
+    ? discountedAmount + deliveryChargeAmount.deliveryCharge
+    : totalPriceofProducts + deliveryChargeAmount.deliveryCharge;
+
+  // Step 6: Create the Order
+  const invoiceId = `${env.INVOICE_PREFIX}-${uuidv4().slice(0, 8).toUpperCase()}`;
+
+  let order = null;
+  try {
+    order = await Order.create({
+      user: userId || null,
+      guestId: guestId || null,
+      items: totalProductInfo,
+      shippingInfo,
+      totalAmount: totalPriceofProducts,
+      discountAmount,
+      finalAmount,
+      deliveryCharge: deliveryChargeAmount._id,
+      paymentMethod,
+      invoiceId,
+      paymentStatus: paymentMethod === "cod" ? "Pending" : "Pending",
+      // paymentStatus: paymentMethod === "cod" ? "unpaid" : "pending",
+      orderStatus: "Pending",
+      coupon: coupon ? coupon._id : undefined,
+      totalQuantity,
+      orderType: orderType,
+      productWeight: 0,
+      isAutoPlaced: isAutoPlaced,
+    });
+
+    // Step 7: Update stock and coupon usage after successful order creation
+    // Step 7: Update stock and coupon usage after successful order creation
+    // The pre-check below reads the stock loaded with the cart, which is a
+    // stale snapshot by the time the write runs — two concurrent orders can
+    // both pass it and both decrement, driving stock negative. The $gte in the
+    // filter re-checks the same condition atomically at write time, so the
+    // update simply does not match once stock is short. A null result means
+    // that happened, and the order is rejected rather than overselling.
+    for (const item of cart.items) {
+      // Product stock update
+      if (item.product) {
+        if (item.product.stock < item.quantity) {
+          throw new customError(
+            `${item.product.name} does not have enough stock`,
+            400,
+          );
+        }
+        const updated = await Product.findOneAndUpdate(
+          { _id: item.product, stock: { $gte: item.quantity } },
+          {
+            $inc: { stock: -item.quantity, totalSales: item.quantity },
+          },
+        );
+        if (!updated) {
+          throw new customError(
+            `${item.product.name} does not have enough stock`,
+            400,
+          );
+        }
+      }
+      // Variant stock update
+      if (item.variant) {
+        if (item.variant.stockVariant < item.quantity) {
+          throw new customError(
+            `${item.variant.variantName} does not have enough stock from variant`,
+            400,
+          );
+        }
+        const updated = await Variant.findOneAndUpdate(
+          { _id: item.variant, stockVariant: { $gte: item.quantity } },
+          {
+            $inc: { stockVariant: -item.quantity, totalSales: item.quantity },
+          },
+        );
+        if (!updated) {
+          throw new customError(
+            `${item.variant.variantName} does not have enough stock from variant`,
+            400,
+          );
+        }
+      }
+    }
+
+    if (coupon) {
+      await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
+    }
+
+    // Step 8: Create the Invoice Document
+    const invoice = await Invoice.create({
+      order: order._id,
+      invoiceId: order.invoiceId,
+      customerDetails: shippingInfo,
+      totalAmount: totalPriceofProducts,
+      ProductInfo: totalProductInfo,
+      discountAmount,
+      deliveryChargeAmount: deliveryChargeAmount.deliveryCharge,
+      finalAmount,
+    });
+
+    // if email have then send a email
+    if (shippingInfo.email) {
+      const orderTemplateHtml = orderTemplate(
+        order,
+        shippingInfo,
+        invoice,
+        totalProductInfo,
+      );
+      const data = await sendEmail(
+        shippingInfo?.email,
+        "Order Confirmation",
+        orderTemplateHtml,
+      );
+      if (!data) {
+        throw new customError("Failed to send email", statusCodes.SERVER_ERROR);
+      }
+    }
+
+    if (shippingInfo.phone) {
+      const message = `🙋‍♂️ প্রিয় ${shippingInfo?.fullName},
+    📦 আপনার অর্ডার #${order?.invoiceId} সফলভাবে সম্পন্ন হয়েছে ✅
+    💰 মোট দাম: ৳ ${order?.finalAmount}
+    আমাদের সাথে থাকার জন্য ধন্যবাদ!
+    ☎ সহায়তার জন্য কল করুন: ${process.env.ORDER_HOT_LINE_NUMBER}`;
+
+      const data = await sendSMS(shippingInfo?.phone, message);
+      if (data.response_code == 202) {
+        console.log(" send sms sucessfully");
+      }
+    }
+
+    // // Step 10: Clear cart
+    await cartModel.deleteOne({
+      user: userId || null,
+      guestId: req.body.guestId || null,
+    });
+
+    logAudit({
+      req,
+      action: "CREATE",
+      entityType: "order",
+      entityId: order._id,
+      entityLabel: order.invoiceId,
+      after: order,
+    });
+
+    // Step 11: SSLCommerz or COD Success
+    if (paymentMethod === "sslcommerz") {
+      const data = {
+        total_amount: Math.round(finalAmount),
+        currency: "BDT",
+        tran_id: invoiceId, // required, must be unique per transaction
+        success_url: `${process.env.BACKEND_URL}/payment/success`,
+        fail_url: `${process.env.BACKEND_URL}/payment/fail`,
+        cancel_url: `${process.env.BACKEND_URL}/payment/cancel`,
+        ipn_url: `${process.env.BACKEND_URL}/payment/ipn`,
+        product_name:
+          (totalProductInfo && totalProductInfo?.map((item) => item.name)).join(
+            ",",
+          ) || "Computer.",
+        product_category: "Electronic",
+        product_profile: "general",
+        shipping_method: "Courier",
+        ship_name: "Customer Name",
+        ship_add1: shippingInfo.fullName,
+        ship_postcode: shippingInfo.postalCode || 1000,
+        ship_city: "Dhaka",
+        ship_country: "Bangladesh",
+        cus_name: shippingInfo.fullName, // required
+        cus_email: shippingInfo.email || "taufikislam172@gmail.com", // required
+        cus_add1: shippingInfo.address, // required
+        cus_phone: shippingInfo.phone, // required
+      };
+
+      const is_live = process.env.NODE_ENV === "production" ? true : false;
+      const sslcz = new SSLCommerzPayment(
+        process.env.SSLC_STORE_ID,
+        process.env.SSLC_STORE_PASSWORD,
+        is_live,
+      );
+      const response = await sslcz.init(data);
+      // Redirect the user to payment gateway
+
+      console.log("Redirecting to: ", response.GatewayPageURL);
+
+      // Emit order event
+      const io = getIO();
+      io.emit("orderPlaced", {
+        message: "🛒New Order added",
+        order: order,
+      });
+      // return res.status(301).redirect(response.GatewayPageURL);
+      apiResponse.sendSuccess(
+        res,
+        statusCodes.CREATED,
+        "Order placed successfully",
+        {
+          url: response.GatewayPageURL,
+          order,
+        },
+      );
+    } else {
+      // Final success response
+      apiResponse.sendSuccess(
+        res,
+        statusCodes.CREATED,
+        "Order placed successfully",
+        order,
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    // If order creation or any subsequent step fails, we must rollback stock and coupon usage
+    if (order && order._id) {
+      // Rollback stock — this must undo the forward deduction, so the signs
+      // are the inverse of the ones above: stock goes back up and totalSales
+      // comes back down. (This previously repeated the forward operation,
+      // deducting a second time and driving stock negative on every failure.)
+      const stockUpdatePromises = [];
+      for (const item of cart.items) {
+        // Product stock update
+        if (item.product) {
+          stockUpdatePromises.push(
+            Product.updateOne(
+              { _id: item.product },
+              {
+                $inc: { stock: item.quantity, totalSales: -item.quantity },
+              },
+            ),
+          );
+        }
+        // Variant stock update
+        if (item.variant) {
+          stockUpdatePromises.push(
+            Variant.updateOne(
+              { _id: item.variant },
+              {
+                $inc: {
+                  stockVariant: item.quantity,
+                  totalSales: -item.quantity,
+                },
+              },
+            ),
+          );
+        }
+      }
+      await Promise.all(stockUpdatePromises);
+      console.log("Stock rolled back due to error.");
+
+      // Rollback coupon usage
+      if (coupon) {
+        await Coupon.updateOne(
+          { _id: coupon._id },
+          { $inc: { usedCount: -1 } },
+        );
+        console.log("Coupon usage rolled back due to error.");
+      }
+
+      // Delete the incomplete order
+      await Order.deleteOne({ _id: order._id });
+      console.log("Incomplete order deleted.");
+    }
+    throw new customError(error.message, statusCodes.SERVER_ERROR);
+  }
+});
+
+// @desc Get all orders
+
+exports.getAllOrders = asynchandeler(async (req, res) => {
+  const orders = await Order.find()
+    .populate("user")
+    .populate("deliveryCharge")
+    .populate("coupon")
+    .sort({ createdAt: -1 })
+    .lean();
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Orders fetched successfully",
+    orders,
+  );
+});
+
+//@desc get single order
+exports.getSingleOrder = asynchandeler(async (req, res) => {
+  const { id } = req.params;
+  const singleOrder = await Order.findOne({ _id: id })
+    .populate("user")
+    .populate("deliveryCharge")
+    .populate("coupon")
+    .sort({ createdAt: -1 })
+    .lean();
+  if (!singleOrder) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Order fetched successfully",
+    singleOrder,
+  );
+});
+
+//@desc find oder by id and update orderStatus
+exports.updateOrder = asynchandeler(async (req, res) => {
+  const { id } = req.params;
+  const { orderStatus, shippingInfo } = req.body;
+
+  const singleOrder = await Order.findOne({ _id: id });
+  if (!singleOrder) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+
+  // if orderStatus is Cancelled then rollback stock
+  if (orderStatus === "Cancelled" || orderStatus === "Delivered") {
+    const stockUpdatePromises = [];
+
+    for (const item of singleOrder.items) {
+      // Product stock update
+      if (item.product) {
+        stockUpdatePromises.push(
+          Product.updateOne(
+            { _id: item.product._id },
+            { $inc: { stock: item.quantity, totalSales: -item.quantity } },
+            { new: true },
+          ),
+        );
+      }
+
+      // Variant stock update
+      if (item.variant) {
+        stockUpdatePromises.push(
+          Variant.updateOne(
+            { _id: item.variant._id },
+            {
+              $inc: { stockVariant: item.quantity, totalSales: -item.quantity },
+            },
+            { new: true },
+          ),
+        );
+      }
+    }
+
+    // Run all updates together
+    await Promise.all(stockUpdatePromises);
+  }
+
+  // Update order fields
+  const previousStatus = singleOrder.orderStatus;
+  singleOrder.orderStatus = orderStatus;
+  singleOrder.shippingInfo = shippingInfo || singleOrder.shippingInfo;
+  singleOrder.followUp = req.user?._id || null;
+  if (shippingInfo) {
+    singleOrder.orderType = "complete";
+    singleOrder.isAutoPlaced = false;
+  }
+
+  await singleOrder.save();
+
+  logAudit({
+    req,
+    action: "STATUS_CHANGE",
+    entityType: "order",
+    entityId: singleOrder._id,
+    entityLabel: singleOrder.invoiceId,
+    before: { orderStatus: previousStatus },
+    after: { orderStatus: singleOrder.orderStatus },
+  });
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Order updated successfully",
+    singleOrder,
+  );
+});
+
+// fiter order using datewise like today and yesterday last 7 days last month
+exports.filterOrderdatewise = asynchandeler(async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // convert to Date objects
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    const filter = {};
+    if (start && end) {
+      filter.createdAt = { $gte: start, $lt: end };
+    } else if (start) {
+      filter.createdAt = { $gte: start };
+    } else if (end) {
+      filter.createdAt = { $lt: end };
+    }
+
+    const orders = await Order.find(filter)
+      .populate("user")
+      .populate("deliveryCharge")
+      .populate("coupon")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Orders fetched successfully",
+      orders,
+    );
+  } catch (err) {
+    apiResponse.sendError(
+      res,
+      statusCodes.SERVER_ERROR,
+      "Error fetching orders",
+      err.message,
+    );
+  }
+});
+
+// track order by invoice id
+exports.trackOrder = asynchandeler(async (req, res) => {
+  const { invoiceid } = req.params;
+  const order = await Order.findOne({ invoiceId: invoiceid })
+    .populate("user")
+    .populate("deliveryCharge")
+    .populate("coupon")
+    .sort({ createdAt: -1 })
+    .lean();
+  if (!order) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Order fetched successfully",
+    order,
+  );
+});
+
+// delete order when delete order then rollback stock and coupon usage and also delete invoice
+// (This functionality is now integrated into the deleteOrder method above)
+exports.deleteOrder = asynchandeler(async (req, res) => {
+  const { id } = req.params;
+  const singleOrder = await Order.findOne({ _id: id });
+  if (!singleOrder) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+
+  // Rollback stock
+  const stockUpdatePromises = [];
+  for (const item of singleOrder.items) {
+    // Product stock update
+    if (item.product) {
+      stockUpdatePromises.push(
+        Product.updateOne(
+          { _id: item.product._id },
+          { $inc: { stock: item.quantity, totalSales: -item.quantity } },
+          { new: true },
+        ),
+      );
+    }
+    // Variant stock update
+    if (item.variant) {
+      stockUpdatePromises.push(
+        Variant.updateOne(
+          { _id: item.variant._id },
+          { $inc: { stockVariant: item.quantity, totalSales: -item.quantity } },
+          { new: true },
+        ),
+      );
+    }
+  }
+  await Promise.all(stockUpdatePromises);
+  // Rollback coupon usage
+  if (singleOrder.coupon) {
+    await Coupon.updateOne(
+      { _id: singleOrder.coupon },
+      { $inc: { usedCount: -1 } },
+    );
+  }
+  // Delete the order
+  await Order.deleteOne({ _id: id });
+  // Also delete associated invoice
+  await Invoice.deleteOne({ order: id });
+
+  logAudit({
+    req,
+    action: "DELETE",
+    entityType: "order",
+    entityId: singleOrder._id,
+    entityLabel: singleOrder.invoiceId,
+    before: singleOrder,
+  });
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Order deleted successfully",
+    null,
+  );
+});
+
+// get all pending courier
+exports.getAllPendingOrders = asynchandeler(async (req, res) => {
+  const orders = await Order.find({ orderStatus: "CourierPending" })
+    .populate("user")
+    .populate("deliveryCharge")
+    .populate("coupon")
+    .sort({ createdAt: -1 })
+    .lean();
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Orders fetched successfully",
+    orders,
+  );
+});
+
+// search order by invoiceId or orderid (_id)
+exports.searchOrder = asynchandeler(async (req, res) => {
+  const { search } = req.query;
+  const orders = await Order.findOne({
+    invoiceId: search,
+  })
+    .populate("user")
+    .populate("deliveryCharge")
+    .populate("coupon")
+    .lean();
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Orders fetched successfully",
+    orders,
+  );
+});
+
+// get total order count pending order  shipped order hold order  deliverd order canclled order courier pending order
+exports.getOrderStatusCount = asynchandeler(async (req, res) => {
+  const orderCount = await Order.aggregate([
+    {
+      $group: {
+        _id: "$orderStatus",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const totalOrder = await Order.countDocuments();
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    " Order Status Count fetched successfully",
+    { orderCount, totalOrder },
+  );
+});
+
+// get total order amount pending order  shipped order hold order  deliverd order canclled order courier pending order
+exports.getOrderCountAndAmount = asynchandeler(async (req, res) => {
+  const orderCountAndAmount = await Order.aggregate([
+    {
+      $group: {
+        _id: "$orderStatus",
+        count: { $sum: 1 },
+        amount: { $sum: "$finalAmount" },
+      },
+    },
+  ]);
+  if (!orderCountAndAmount) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+  const totalOrder = await Order.countDocuments();
+  if (!totalOrder) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Order count and amount fetched successfully",
+    { orderCountAndAmount, totalOrder },
+  );
+});
+
+// date wise totalOrder
+exports.getTodayOrderCountAndAmount = asynchandeler(async (req, res) => {
+  // 1️ Get today's date range
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0); // today 00:00:00
+
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999); // today 23:59:59
+
+  // 2️ Aggregate today's orders by status
+  const orderCountAndAmount = await Order.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startOfDay, $lte: endOfDay }, // filter today
+      },
+    },
+    {
+      $group: {
+        _id: "$orderStatus",
+        count: { $sum: 1 },
+        amount: { $sum: "$finalAmount" },
+      },
+    },
+  ]);
+
+  // 3️ Total orders today
+  const todaytotalOrder = await Order.countDocuments({
+    createdAt: { $gte: startOfDay, $lte: endOfDay },
+  });
+
+  // 4️ Send response
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Today's order count and amount fetched successfully",
+    { orderCountAndAmount, todaytotalOrder },
+  );
+});
+
+// get courier pathao name
+exports.getCourierInfo = asynchandeler(async (req, res) => {
+  const { search } = req.query;
+
+  let courierName = search === "pathao" ? "pathao" : "steadfast";
+
+  const orders = await Order.find({
+    "courier.name": { $regex: `^${courierName}$`, $options: "i" },
+  })
+    .populate("user")
+    .populate("deliveryCharge")
+    .populate("coupon")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!orders) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Orders fetched successfully",
+    orders,
+  );
+});
+
+// getDeliveryBoyOrders
+exports.getDeliveryBoyOrders = asynchandeler(async (_, res) => {
+  const orders = await Order.find({ "courier.trackingId": { $ne: null } })
+    .populate("user")
+    .populate("deliveryCharge")
+    .populate("coupon")
+    .sort({ createdAt: -1 })
+    .lean();
+  if (!orders) {
+    throw new customError("Order not found", statusCodes.NOT_FOUND);
+  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Orders fetched successfully",
+    orders,
+  );
+});

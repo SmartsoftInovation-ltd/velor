@@ -1,0 +1,241 @@
+import { useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import axiosSecure from "../../../../hooks/useAxiosSecure";
+import Button from "../../../ui/button/Button";
+import PageBreadcrumb from "../../../common/PageBreadCrumb";
+import ComponentCard from "../../../common/ComponentCard";
+import { IoIosPrint } from "react-icons/io";
+import moment from "moment";
+
+interface Transaction {
+  _id: string;
+  transactionId?: string;
+  transactionCategory?: { name: string };
+  transactionDescription?: string;
+  voucherNumber?: string;
+  amount: number;
+  transactionType: string;
+  date: string;
+  account?: { name: string };
+}
+
+interface PageData {
+  totalCashReceived: number;
+  totalCashPayment: number;
+  balance: number;
+  transactions: Transaction[];
+  pagination: { total: number; page: number; limit: number; hasNextPage: boolean };
+}
+
+const LIMIT = 50;
+
+const CashLedgerView = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const printRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const filters = (location.state as { filters?: Record<string, string>; data?: PageData })?.filters
+    || (() => {
+      const raw = location.state as { data?: PageData } | undefined;
+      return raw?.data ? null : null;
+    })();
+
+  const legacyData = (location.state as { data?: PageData })?.data;
+
+  if (!filters && !legacyData) {
+    return (
+      <div className="text-center mt-20 space-y-4">
+        <p className="text-lg text-gray-600 dark:text-gray-400">No report data found.</p>
+        <Button onClick={() => navigate(-1)}>Go Back</Button>
+      </div>
+    );
+  }
+
+  const bodyFilters = filters ?? {
+    startDate: undefined,
+    endDate: undefined,
+  };
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
+    useInfiniteQuery<PageData>({
+      queryKey: ["cash-ledger-report", bodyFilters],
+      queryFn: async ({ pageParam = 1 }) => {
+        const res = await axiosSecure.post(
+          `/invoice/cash-ledger-report?page=${pageParam}&limit=${LIMIT}`,
+          bodyFilters,
+        );
+        return res.data.data as PageData;
+      },
+      getNextPageParam: (last) =>
+        last.pagination?.hasNextPage ? last.pagination.page + 1 : undefined,
+      initialPageParam: 1,
+      enabled: !!bodyFilters.startDate,
+    });
+
+  const allRows = data?.pages.flatMap((p) => p.transactions) ?? legacyData?.transactions ?? [];
+  const totals = data?.pages[0] ?? legacyData;
+  const totalCount = data?.pages[0]?.pagination?.total ?? allRows.length;
+
+  const rowVirtualizer = useVirtualizer({
+    count: allRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 48,
+    overscan: 15,
+  });
+
+  const handleScroll = useCallback(() => {
+    const el = parentRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    const win = window.open("", "", "height=600,width=900");
+    if (!win) return;
+    win.document.write(`<html><head><title>Cash Ledger Report</title><style>
+      body{font-family:Arial,sans-serif;padding:10px}
+      .header{text-align:center;margin-bottom:20px}
+      .company{font-size:22px;font-weight:bold}
+      table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #ddd;padding:7px;text-align:center;font-size:12px}
+      th{background:#4ade80;font-weight:bold}
+      .total{background:#f3f4f6;font-weight:bold}
+    </style></head><body>
+    <div class="header"><div class="company">Baig's Digital</div><div>Cash Ledger Report</div></div>`);
+    win.document.write(printRef.current.innerHTML);
+    win.document.write("</body></html>");
+    win.document.close();
+    win.print();
+  };
+
+  const cols = ["SL#", "Ref ID", "Date", "Category", "Description", "Cash Receive", "Cash Payment"];
+
+  return (
+    <div>
+      <PageBreadcrumb pageTitle="Cash Ledger View" />
+      <ComponentCard
+        title={
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-sm font-semibold">Cash Ledger Report</h2>
+              <p className="text-xs text-gray-500 mt-0.5">{totalCount} transactions</p>
+            </div>
+            <Button onClick={handlePrint} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm flex items-center gap-1">
+              <IoIosPrint /> Print
+            </Button>
+          </div>
+        }
+      >
+        {isLoading && (
+          <div className="flex justify-center py-20">
+            <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+          </div>
+        )}
+
+        {isError && (
+          <div className="text-center py-16 text-red-500 font-medium">Failed to load report.</div>
+        )}
+
+        {!isLoading && !isError && (
+          <div ref={printRef}>
+            {totals && (
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center border border-green-100 dark:border-green-800">
+                  <p className="text-xs text-green-600 dark:text-green-400">Cash Received</p>
+                  <p className="text-base font-bold text-green-700 dark:text-green-300">৳{(totals.totalCashReceived ?? 0).toLocaleString()}</p>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 text-center border border-red-100 dark:border-red-800">
+                  <p className="text-xs text-red-600 dark:text-red-400">Cash Payment</p>
+                  <p className="text-base font-bold text-red-700 dark:text-red-300">৳{(totals.totalCashPayment ?? 0).toLocaleString()}</p>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center border border-blue-100 dark:border-blue-800">
+                  <p className="text-xs text-blue-600 dark:text-blue-400">Balance</p>
+                  <p className={`text-base font-bold ${(totals.balance ?? 0) >= 0 ? "text-blue-700 dark:text-blue-300" : "text-red-700 dark:text-red-300"}`}>
+                    ৳{(totals.balance ?? 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Wide financial ledger: kept as a true table for column alignment.
+                Horizontal scroll only engages below md, where the fixed column
+                widths exceed the viewport — desktop layout is unaffected. */}
+            <div className="rounded-xl border border-gray-200 dark:border-white/[0.05] overflow-x-auto md:overflow-hidden">
+              <div className="min-w-[665px] md:min-w-0">
+                <div
+                  className="bg-green-100 dark:bg-green-900/20 grid border-b border-gray-300 dark:border-gray-600"
+                  style={{ gridTemplateColumns: "45px 110px 90px 130px 1fr 110px 110px" }}
+                >
+                  {cols.map((c) => (
+                    <div key={c} className="px-2 py-3 text-xs font-semibold uppercase text-gray-700 dark:text-gray-300 text-center border-r border-gray-300 dark:border-gray-600 last:border-r-0">
+                      {c}
+                    </div>
+                  ))}
+                </div>
+
+                {allRows.length === 0 ? (
+                  <div className="py-16 text-center text-gray-500 dark:text-gray-400">No transactions found.</div>
+                ) : (
+                  <div
+                    ref={parentRef}
+                    className="overflow-y-auto bg-white dark:bg-white/[0.03]"
+                    style={{ height: Math.min(allRows.length * 48 + 20, 600) }}
+                    onScroll={handleScroll}
+                  >
+                    <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
+                      {rowVirtualizer.getVirtualItems().map((vRow) => {
+                        const row = allRows[vRow.index];
+                        const isReceive = row.transactionType === "cash recived";
+                        return (
+                          <div
+                            key={vRow.key}
+                            data-index={vRow.index}
+                            ref={rowVirtualizer.measureElement}
+                            className={`grid border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-white/[0.02] ${vRow.index % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              transform: `translateY(${vRow.start}px)`,
+                              gridTemplateColumns: "45px 110px 90px 130px 1fr 110px 110px",
+                            }}
+                          >
+                            <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{vRow.index + 1}</div>
+                            <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{row.transactionId || row._id?.slice(-8)}</div>
+                            <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{moment(row.date).format("DD-MM-YY")}</div>
+                            <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{row.transactionCategory?.name || "N/A"}</div>
+                            <div className="px-2 py-3 text-xs text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{row.transactionDescription || "N/A"}</div>
+                            <div className={`px-2 py-3 text-xs text-center border-r border-gray-200 dark:border-gray-700 font-medium ${isReceive ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
+                              {isReceive ? `৳${row.amount.toLocaleString()}` : "-"}
+                            </div>
+                            <div className={`px-2 py-3 text-xs text-center font-medium ${!isReceive ? "text-red-600 dark:text-red-400" : "text-gray-400"}`}>
+                              {!isReceive ? `৳${row.amount.toLocaleString()}` : "-"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {isFetchingNextPage && (
+                      <div className="flex justify-center py-4">
+                        <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </ComponentCard>
+    </div>
+  );
+};
+
+export default CashLedgerView;

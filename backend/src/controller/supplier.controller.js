@@ -1,0 +1,640 @@
+const { customError } = require("../lib/CustomError");
+const {
+  SupplierModel,
+  SupplierDuePayment,
+} = require("../models/supplier.model");
+const productModel = require("../models/product.model");
+const VariantModel = require("../models/variant.model");
+const Account = require("../models/account.model");
+const CrateTransaction = require("../models/crateTransaction.model");
+const TransitionCategory = require("../models/transitionCategory.model");
+const { apiResponse } = require("../utils/apiResponse");
+const { asynchandeler } = require("../lib/asyncHandeler");
+const {
+  supplierDTO,
+  supplierListDTO,
+  supplierDuePaymentDTO,
+} = require("../dtos/all.dto");
+const { statusCodes } = require("../constant/constant");
+const { bumpNsVersion } = require("@/utils/cache.util");
+
+const SUPPLIER_PAYMENT_CATEGORY_NAME = "Supplier Payment";
+
+// Supplier payments are always money going out — reuse (or lazily create) one
+// fixed "Supplier Payment" category locked to "cash payment" so every
+// supplier payment lands in the same audit-trail bucket without asking the user.
+const getSupplierPaymentCategory = async () => {
+  let category = await TransitionCategory.findOne({
+    name: SUPPLIER_PAYMENT_CATEGORY_NAME,
+  });
+
+  if (!category) {
+    category = await TransitionCategory.create({
+      name: SUPPLIER_PAYMENT_CATEGORY_NAME,
+      allowedType: "cash payment",
+    });
+  }
+
+  return category;
+};
+
+// Net amount actually leaving the account = paid - less/discount.
+const netPaymentAmount = (paidAmount, lessAmount) =>
+  Math.max(0, Number(paidAmount || 0) - Number(lessAmount || 0));
+
+// Subtract the net amount from the chosen account and record a matching
+// "cash payment" transaction (tagged with supplierPaymentReference).
+const applySupplierPayment = async (paymentDoc) => {
+  const net = netPaymentAmount(paymentDoc.paidAmount, paymentDoc.lessAmount);
+  if (net <= 0 || !paymentDoc.paymentMode) return;
+
+  const category = await getSupplierPaymentCategory();
+
+  const updatedAccount = await Account.findByIdAndUpdate(
+    paymentDoc.paymentMode,
+    { $inc: { balance: -net } },
+    { new: true },
+  );
+  if (!updatedAccount) {
+    throw new customError("Payment account not found", statusCodes.NOT_FOUND);
+  }
+
+  await CrateTransaction.create({
+    date: paymentDoc.date || new Date(),
+    transactionCategory: category._id,
+    account: paymentDoc.paymentMode,
+    transactionDescription: `Supplier payment — ${paymentDoc.supplierPaymentSerialId || paymentDoc._id}`,
+    transactionType: "cash payment",
+    amount: net,
+    balanceAfter: updatedAccount.balance,
+    supplierPaymentReference: paymentDoc._id,
+  });
+
+  await bumpNsVersion("account");
+};
+
+// Undo whatever this supplier payment subtracted from an account — add the
+// net amount back and delete the audit record(s) tied to this payment.
+const reverseSupplierPayment = async (paymentId) => {
+  const transactions = await CrateTransaction.find({ supplierPaymentReference: paymentId });
+  if (!transactions.length) return;
+
+  for (const t of transactions) {
+    await Account.findByIdAndUpdate(t.account, { $inc: { balance: t.amount } });
+  }
+
+  await CrateTransaction.deleteMany({ supplierPaymentReference: paymentId });
+  await bumpNsVersion("account");
+};
+
+// @desc create a new supplier
+exports.createSupplier = asynchandeler(async (req, res) => {
+  const { mobile } = req.body;
+  const supplier = new SupplierModel({
+    ...req.body,
+    supplierId: mobile,
+  });
+  await supplier.save();
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.CREATED,
+    "Supplier created successfully",
+    supplierDTO(supplier),
+  );
+});
+
+// get all supplier data
+
+exports.getAllSupplier = asynchandeler(async (req, res) => {
+  const { supplierId, supplierSerialId } = req.query;
+  let query = {};
+  if (supplierId) {
+    query.supplierId = supplierId;
+  } else if (supplierSerialId) {
+    query.supplierSerialId = supplierSerialId;
+  } else {
+    query.isActive = true;
+  }
+  const suppliers = await SupplierModel.aggregate([
+    { $match: query },
+
+    { $sort: { createdAt: -1 } },
+
+    {
+      $lookup: {
+        from: "purchases",
+        localField: "_id",
+        foreignField: "supplierId",
+        as: "purchases",
+      },
+    },
+
+    {
+      $addFields: {
+        totalPurchaseDue: {
+          $add: [
+            { $ifNull: ["$openingDues", 0] },
+            { $ifNull: [{ $sum: "$purchases.dueamount" }, 0] },
+          ],
+        },
+      },
+    },
+
+    // purchases array remove
+    {
+      $project: {
+        purchases: 0,
+        __v: 0,
+        deletedAt: 0,
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    },
+  ]);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier data fetched successfully",
+    suppliers,
+  );
+});
+
+// update supplier module
+exports.updateSupplier = asynchandeler(async (req, res) => {
+  const supplier = await SupplierModel.findOneAndUpdate(
+    { supplierId: req.params.supplierId },
+    req.body,
+    {
+      new: true,
+    },
+  );
+  if (!supplier)
+    apiResponse.sendError(res, statusCodes.NOT_FOUND, "Supplier not found");
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier updated successfully",
+    supplierDTO(supplier),
+  );
+});
+
+// delete supplier module
+exports.deleteSupplier = asynchandeler(async (req, res) => {
+  const supplier = await SupplierModel.findOneAndDelete({
+    supplierId: req.params.supplierId,
+  });
+  if (!supplier)
+    apiResponse.sendError(res, statusCodes.NOT_FOUND, "Supplier not found");
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier deleted successfully",
+    supplierDTO(supplier),
+  );
+});
+
+// soft delete
+exports.softDeleteSupplier = asynchandeler(async (req, res) => {
+  const { deleteSupplier } = req.query;
+  if (deleteSupplier === "true") {
+    const supplier = await SupplierModel.findOneAndUpdate(
+      { supplierId: req.params.supplierId },
+      { isActive: false, deletedAt: Date.now() },
+      {
+        new: true,
+      },
+    );
+    if (!supplier)
+      apiResponse.sendError(res, statusCodes.NOT_FOUND, "Supplier not found");
+    apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier deleted successfully",
+      supplierDTO(supplier),
+    );
+  } else {
+    const supplier = await SupplierModel.findOneAndUpdate(
+      { supplierId: req.params.supplierId },
+      { isActive: true, deletedAt: null },
+      {
+        new: true,
+      },
+    );
+    if (!supplier)
+      apiResponse.sendError(res, statusCodes.NOT_FOUND, "Supplier not found");
+    apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier deleted successfully",
+      supplierDTO(supplier),
+    );
+  }
+});
+
+// createSupplierDuePayment
+exports.createSupplierDuePayment = asynchandeler(async (req, res) => {
+  const {
+    supplierId,
+    paidAmount = 0,
+    lessAmount = 0,
+    paymentMode,
+    remarks,
+    date,
+  } = req.body;
+
+  const paid = Number(paidAmount);
+  const less = Number(lessAmount);
+  const totalReduce = paid + less;
+
+  if (paid <= 0) {
+    return apiResponse.sendError(
+      res,
+      statusCodes.BAD_REQUEST,
+      "Paid amount must be greater than 0",
+    );
+  }
+
+  // Find supplier by supplierId (phone number)
+  const supplier = await SupplierModel.findOne({
+    supplierId,
+    isActive: true,
+  });
+  if (!supplier) {
+    return apiResponse.sendError(
+      res,
+      statusCodes.NOT_FOUND,
+      "Supplier not found",
+    );
+  }
+
+  const currentDue = Number(supplier.openingDues || 0);
+
+  if (totalReduce > currentDue) {
+    return apiResponse.sendError(
+      res,
+      statusCodes.BAD_REQUEST,
+      `Payment of ৳${totalReduce} exceeds current due of ৳${currentDue}`,
+    );
+  }
+
+  // Deduct from supplier opening dues
+  supplier.openingDues = currentDue - totalReduce;
+  await supplier.save();
+
+  // Create a new payment record for every transaction
+  const paymentDoc = new SupplierDuePayment({
+    supplierId,
+    date: date || new Date(),
+    paidAmount: paid,
+    lessAmount: less,
+    paymentMode,
+    remarks: remarks || "",
+    remainingDue: supplier.openingDues,
+  });
+  await paymentDoc.save();
+
+  // Net (paid - less) leaves the selected account's balance.
+  await applySupplierPayment(paymentDoc);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.CREATED,
+    "Supplier payment recorded successfully",
+    {
+      supplier: supplierDTO(supplier),
+      payment: supplierDuePaymentDTO(paymentDoc),
+    },
+  );
+});
+
+// get single supplier due payment by _id
+exports.getSupplierDuePaymentById = asynchandeler(async (req, res) => {
+  const mongoose = require("mongoose");
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return apiResponse.sendError(res, statusCodes.BAD_REQUEST, "Invalid payment ID");
+  }
+
+  const payments = await SupplierDuePayment.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(id) } },
+    {
+      $lookup: {
+        from: "suppliers",
+        localField: "supplierId",
+        foreignField: "supplierId",
+        as: "supplier",
+      },
+    },
+    { $unwind: { path: "$supplier", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "accounts",
+        localField: "paymentMode",
+        foreignField: "_id",
+        as: "paymentMethod",
+      },
+    },
+    {
+      $project: {
+        supplierPaymentSerialId: 1,
+        transactionId: 1,
+        date: 1,
+        paidAmount: 1,
+        lessAmount: 1,
+        paymentMode: 1,
+        remarks: 1,
+        paymentMethod: { name: 1, isActive: 1, createdAt: 1, slug: 1, _id: 1 },
+        remainingDue: 1,
+        isActive: 1,
+        supplierId: 1,
+        supplier: {
+          supplierName: 1,
+          supplierId: 1,
+          mobile: 1,
+          supplierAddress: 1,
+          openingDues: 1,
+          isActive: 1,
+          contactPersonDesignation: 1,
+          contactPersonName: 1,
+        },
+      },
+    },
+  ]);
+
+  if (!payments.length) {
+    return apiResponse.sendError(res, statusCodes.NOT_FOUND, "Payment not found");
+  }
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Payment fetched successfully", payments[0]);
+});
+
+// get all supplier due payment or single supplier due amount
+exports.getAllSupplierDuePayment = asynchandeler(async (req, res) => {
+  const matchStage = {};
+
+  if (req.query.supplierId) {
+    matchStage.supplierId = req.query.supplierId;
+  }
+
+  if (req.query.serial) {
+    matchStage.supplierPaymentSerialId = req.query.serial;
+  }
+
+  const payments = await SupplierDuePayment.aggregate([
+    {
+      $match: matchStage,
+    },
+
+    { $sort: { createdAt: -1 } },
+
+    {
+      $lookup: {
+        from: "suppliers",
+        localField: "supplierId",
+        foreignField: "supplierId",
+        as: "supplier",
+      },
+    },
+
+    {
+      $unwind: {
+        path: "$supplier",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "accounts",
+        localField: "paymentMode",
+        foreignField: "_id",
+        as: "paymentMethod",
+      },
+    },
+
+    {
+      $project: {
+        supplierPaymentSerialId: 1,
+        transactionId: 1,
+        date: 1,
+        paidAmount: 1,
+        lessAmount: 1,
+        paymentMode: 1,
+        remarks: 1,
+        paymentMethod: {
+          name: 1,
+          isActive: 1,
+          createdAt: 1,
+          slug: 1,
+          _id: 1,
+        },
+        remainingDue: 1,
+        isActive: 1,
+        supplier: {
+          supplierName: 1,
+          supplierId: 1,
+          mobile: 1,
+          supplierAddress: 1,
+          openingDues: 1,
+          isActive: 1,
+          contactPersonDesignation: 1,
+          contactPersonName: 1,
+        },
+      },
+    },
+  ]);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier due payment fetched successfully",
+    payments,
+  );
+});
+
+exports.updateSupplierDuePayment = asynchandeler(async (req, res) => {
+  const { id } = req.params;
+
+  const { paidAmount, lessAmount, paymentMode, remarks, date } = req.body;
+
+  // 1) find payment doc
+  const paymentDoc = await SupplierDuePayment.findOne({ _id: id });
+  if (!paymentDoc) {
+    return apiResponse.sendError(
+      res,
+      statusCodes.NOT_FOUND,
+      "Supplier due payment not found",
+    );
+  }
+
+  // 2) find supplier — supplierId is a phone-number string, not an ObjectId
+  const supplier = await SupplierModel.findOne({
+    supplierId: paymentDoc.supplierId,
+    isActive: true,
+  });
+  if (!supplier) {
+    return apiResponse.sendError(
+      res,
+      statusCodes.NOT_FOUND,
+      "Supplier not found",
+    );
+  }
+
+  const currentDue = Number(supplier.openingDues || 0);
+
+  // old totals
+  const oldPaid = Number(paymentDoc.paidAmount || 0);
+  const oldLess = Number(paymentDoc.lessAmount || 0);
+  const oldTotal = oldPaid + oldLess;
+
+  // new totals (fallback to old if not provided)
+  const newPaid = paidAmount !== undefined ? Number(paidAmount) : oldPaid;
+  const newLess = lessAmount !== undefined ? Number(lessAmount) : oldLess;
+  const newTotal = newPaid + newLess;
+
+  if (newTotal <= 0) {
+    return apiResponse.sendError(
+      res,
+      statusCodes.BAD_REQUEST,
+      "Paid amount + less amount must be greater than 0",
+    );
+  }
+
+  // difference that impacts supplier due
+  const diff = newTotal - oldTotal;
+
+  // If diff > 0 => need to reduce due more
+  if (diff > 0 && diff > currentDue) {
+    return apiResponse.sendError(
+      res,
+      statusCodes.BAD_REQUEST,
+      `Update exceeds due. Current due: ${currentDue}, extra reduce needed: ${diff}`,
+    );
+  }
+
+  // 3) update supplier due
+  supplier.openingDues = currentDue - diff; // diff can be negative -> due increases
+  if (supplier.openingDues < 0) supplier.openingDues = 0; // safety
+  await supplier.save();
+
+  // 4) update payment doc
+  paymentDoc.paidAmount = newPaid;
+  paymentDoc.lessAmount = newLess;
+
+  if (paymentMode !== undefined) paymentDoc.paymentMode = paymentMode;
+  if (remarks !== undefined) paymentDoc.remarks = remarks;
+  if (date !== undefined) paymentDoc.date = date;
+
+  paymentDoc.remainingDue = supplier.openingDues;
+  paymentDoc.updatedAt = Date.now();
+
+  await paymentDoc.save();
+
+  // Re-sync the account balance/transaction with the new paid/less/paymentMode.
+  await reverseSupplierPayment(paymentDoc._id);
+  await applySupplierPayment(paymentDoc);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier due payment updated successfully",
+    {
+      ...supplierDTO(supplier),
+      payment: supplierDuePaymentDTO(paymentDoc),
+    },
+  );
+});
+
+// soft delete payment
+exports.softDeleteSupplierDuePayment = asynchandeler(async (req, res) => {
+  const { deleteSupplier } = req.query;
+  if (deleteSupplier === "true") {
+    const payment = await SupplierDuePayment.findOneAndUpdate(
+      { _id: req.params.supplierId },
+      { isActive: false, deletedAt: Date.now() },
+      {
+        new: true,
+      },
+    );
+    if (!payment)
+      apiResponse.sendError(
+        res,
+        statusCodes.NOT_FOUND,
+        "Supplier due payment not found",
+      );
+    apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier due payment deleted successfully",
+      supplierDuePaymentDTO(payment),
+    );
+  } else {
+    const payment = await SupplierDuePayment.findOneAndUpdate(
+      { _id: req.params.supplierId },
+      { isActive: true, updatedAt: Date.now() },
+      {
+        new: true,
+      },
+    );
+    if (!payment)
+      apiResponse.sendError(
+        res,
+        statusCodes.NOT_FOUND,
+        "Supplier due payment not found",
+      );
+    apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier due payment deleted successfully",
+      supplierDuePaymentDTO(payment),
+    );
+  }
+});
+
+// hard delete supplier due payment
+exports.deleteSupplierDuePayment = asynchandeler(async (req, res) => {
+  const payment = await SupplierDuePayment.findOneAndDelete({
+    _id: req.params.supplierId,
+  });
+  if (!payment)
+    return apiResponse.sendError(
+      res,
+      statusCodes.NOT_FOUND,
+      "Supplier due payment not found",
+    );
+
+  // Give the net amount back to the account this payment had subtracted from.
+  await reverseSupplierPayment(payment._id);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier due payment deleted successfully",
+    supplierDuePaymentDTO(payment),
+  );
+});
+
+// activate supplier due payment
+exports.activateSupplierDuePayment = asynchandeler(async (req, res) => {
+  const payment = await SupplierDuePayment.findByIdAndUpdate(
+    req.params.id,
+    { isActive: true, deletedAt: null },
+    { new: true },
+  );
+  if (!payment)
+    return apiResponse.sendError(res, statusCodes.NOT_FOUND, "Payment not found");
+  apiResponse.sendSuccess(res, statusCodes.OK, "Payment activated successfully", supplierDuePaymentDTO(payment));
+});
+
+// deactivate supplier due payment
+exports.deactivateSupplierDuePayment = asynchandeler(async (req, res) => {
+  const payment = await SupplierDuePayment.findByIdAndUpdate(
+    req.params.id,
+    { isActive: false, deletedAt: Date.now() },
+    { new: true },
+  );
+  if (!payment)
+    return apiResponse.sendError(res, statusCodes.NOT_FOUND, "Payment not found");
+  apiResponse.sendSuccess(res, statusCodes.OK, "Payment deactivated successfully", supplierDuePaymentDTO(payment));
+});

@@ -1,0 +1,47 @@
+const { string } = require("joi");
+const mongoose = require("mongoose");
+const slugify = require("slugify");
+const { customError } = require("../lib/CustomError");
+const { statusCodes } = require("../constant/constant");
+
+const roleSchema = new mongoose.Schema(
+  {
+    slug: { type: String, unique: true },
+    name: { type: String, required: true, unique: true, default: "user" },
+    isActive: { type: Boolean, default: true },
+    permissions: [
+      {
+        permission: { type: mongoose.Schema.Types.ObjectId, ref: "Permission" },
+        actions: [{ type: String }],
+      },
+    ],
+  },
+  { timestamps: true },
+);
+
+// make a slug using name
+roleSchema.pre("save", function (next) {
+  if (this.isModified("name")) {
+    this.slug = slugify(this.name, { lower: true, strict: true });
+  }
+  next();
+});
+
+// check this slug already exist or not
+roleSchema.pre("save", async function (next) {
+  try {
+    const existingRole = await this.constructor.findOne({ slug: this.slug });
+    if (existingRole && existingRole._id.toString() !== this._id.toString()) {
+      return next(
+        new customError(
+          `Role with slug ${this.slug} or name ${this.name} already exists`,
+          statusCodes.BAD_REQUEST,
+        ),
+      );
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+module.exports = mongoose.models.Role || mongoose.model("Role", roleSchema);
