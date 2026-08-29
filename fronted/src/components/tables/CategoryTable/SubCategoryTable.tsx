@@ -16,7 +16,7 @@ import { Modal } from "../../ui/modal";
 import toast from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { MdDelete } from "react-icons/md";
-import { FaEdit, FaToggleOn, FaToggleOff, FaSearch, FaTimes, FaEye } from "react-icons/fa";
+import { FaEdit, FaToggleOn, FaToggleOff, FaSearch, FaTimes, FaEye, FaLayerGroup } from "react-icons/fa";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
@@ -251,6 +251,32 @@ const SubCategoryTable = ({
         />
       ) : (
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden shadow-theme-sm">
+        {tableData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-center py-24 px-6">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 rounded-full bg-brand-500/10 blur-2xl" />
+              <div className="relative size-24 rounded-full bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/50 flex items-center justify-center ring-8 ring-gray-50 dark:ring-gray-800/40 animate-in zoom-in duration-300">
+                <FaLayerGroup className="size-9 text-gray-300 dark:text-gray-600" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">No Subcategories Found</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[380px] leading-relaxed">
+              {searchTerm ? (
+                <>We couldn't find any subcategories matching <span className="font-bold text-brand-500">"{searchTerm}"</span>. Try checking for typos or search for a different term.</>
+              ) : (
+                <>There are no subcategories yet. Once you add one, it will show up here.</>
+              )}
+            </p>
+            {searchTerm && (
+              <Button
+                onClick={handleClearSearch}
+                className="rounded-xl px-10 py-3 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
+              >
+                Go Back to All
+              </Button>
+            )}
+          </div>
+        ) : (
         <div
           ref={parentRef}
           className="no-scrollbar max-w-full overflow-auto max-h-[650px]"
@@ -292,29 +318,10 @@ const SubCategoryTable = ({
             <TableBody
               className="relative w-full"
               style={{
-                height: `${tableData.length === 0 ? "400px" : rowVirtualizer.getTotalSize()}px`,
+                height: `${rowVirtualizer.getTotalSize()}px`,
               }}
             >
-              {tableData.length === 0 ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center">
-                  <div className="size-20 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-6 animate-in zoom-in duration-300">
-                    <FaSearch className="size-8 text-gray-300 dark:text-gray-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">No Subcategories Found</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[350px] leading-relaxed">
-                    We couldn't find any subcategories matching <span className="font-bold text-brand-500">"{searchTerm}"</span>.
-                    Try checking for typos or search for a different term.
-                  </p>
-                  <Button
-                    onClick={handleClearSearch}
-                    variant="outline"
-                    className="rounded-xl px-10 py-3 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-95 font-semibold text-sm"
-                  >
-                    Go Back to All
-                  </Button>
-                </div>
-              ) : (
-                rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const subcategory = tableData[virtualRow.index];
                   if (!subcategory) return null;
 
@@ -424,11 +431,11 @@ const SubCategoryTable = ({
                       </TableCell>
                     </TableRow>
                   );
-                })
-              )}
+                })}
             </TableBody>
           </Table>
         </div>
+        )}
       </div>
       )}
 
