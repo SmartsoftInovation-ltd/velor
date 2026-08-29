@@ -23,10 +23,7 @@ const validateCategory = async (req) => {
   const value = await categorySchema.validateAsync(req.body);
 
   if (!req.files || req.files.length === 0) {
-    throw new customError(
-      "Please provide a category image",
-      statusCodes.BAD_REQUEST,
-    );
+    return { name: value.name, image: null };
   }
 
   if (req.files.length > 1) {

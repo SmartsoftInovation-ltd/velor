@@ -67,9 +67,6 @@ const CreateCategoryForm = () => {
     if (!name.trim()) {
       newErrors.name = "Category name is required.";
     }
-    if (!image) {
-      newErrors.image = "Category image is required.";
-    }
 
     setErrors(newErrors);
 

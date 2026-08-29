@@ -799,20 +799,6 @@ const CreateVariantForm = ({
       newErrors.retailPrice =
         "Retail Price is required and must be greater than 0";
     
-    const hasImages = (formData.image && formData.image.length > 0) || (isUpdate && existingGallery.length > 0);
-    if (!hasImages) newErrors.image = "At least one image is required";
-    
-    if (formData.weight === undefined || formData.weight === null || formData.weight <= 0)
-      newErrors.weight = "Weight is required and must be greater than 0";
-    
-    if (formData.alertVariantStock === undefined || formData.alertVariantStock === null || formData.alertVariantStock < 0)
-      newErrors.alertVariantStock = "Alert Stock is required";
-
-    const hasSpecText = formData.specifications && formData.specifications.replace(/<[^>]*>/g, "").trim().length > 0;
-    if (!hasSpecText) {
-      newErrors.specifications = "Specifications is required";
-    }
-
     return { errors: newErrors, isValid: Object.keys(newErrors).length === 0 };
   };
 
@@ -1276,7 +1262,7 @@ const CreateVariantForm = ({
         </div>
 
         <div className="md:col-span-4">
-          <Label>Specifications <span className="text-red-500">*</span></Label>
+          <Label>Specifications</Label>
           <div className="quill-container">
             <ReactQuill 
               theme="snow" 
@@ -1407,7 +1393,7 @@ const CreateVariantForm = ({
           {/* Inventory, Weight & Unit Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div>
-              <Label>Alert Variant Stock <span className="text-red-500">*</span></Label>
+              <Label>Alert Variant Stock</Label>
               <Input
                 type="number"
                 value={formData.formData.alertVariantStock === 0 ? "" : (formData.formData.alertVariantStock || "")}
@@ -1416,7 +1402,7 @@ const CreateVariantForm = ({
               />
             </div>
             <div>
-              <Label>Weight <span className="text-red-500">*</span></Label>
+              <Label>Weight</Label>
               <Input
                 type="number"
                 value={formData.formData.weight === 0 ? "" : (formData.formData.weight || "")}
@@ -1665,7 +1651,7 @@ const CreateVariantForm = ({
 
             {/* Thumbnail Upload */}
             <div className="flex flex-col">
-              <Label>Upload Thumbnail <span className="text-red-500">*</span></Label>
+              <Label>Upload Thumbnail</Label>
               <DropZone 
                 onDrop={(files: File[]) => {
                   if (files[0]) {

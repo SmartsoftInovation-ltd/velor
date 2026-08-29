@@ -41,18 +41,22 @@ class CategoryController {
 
     const category = await Category.create({
       name,
-      image: {
-        status: "pending",
-        localPath: image.path,
-      },
+      image: image
+        ? {
+            status: "pending",
+            localPath: image.path,
+          }
+        : undefined,
     });
 
     // Enqueue image upload — worker handles upload, DB update, and cache bump
-    await imageQueue.add("create-category-image", {
-      modelName: NS,
-      documentId: category._id,
-      localPath: image.path,
-    });
+    if (image) {
+      await imageQueue.add("create-category-image", {
+        modelName: NS,
+        documentId: category._id,
+        localPath: image.path,
+      });
+    }
 
     // Bump now so any stale "all" / "active" lists are invalidated immediately
     await bumpNsVersion(NS);
