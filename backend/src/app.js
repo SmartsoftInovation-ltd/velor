@@ -18,21 +18,7 @@ app.use(helmet());
 app.use(
   cors({
     origin: function (origin, callback) {
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
-        process.env.DASHBOARD_URL,
-        "http://localhost:3001",
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:5172",
-        "http://localhost:5174",
-        "http://165.99.165.19",
-      ];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: origin not allowed — ${origin}`));
-      }
+      callback(null, true);
     },
     credentials: true,
   }),
