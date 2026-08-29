@@ -3,6 +3,6 @@
 node_modules/
 
 .early.coverage
-public/temp/*
+
 
 .env*

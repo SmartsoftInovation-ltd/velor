@@ -50,6 +50,7 @@ exports.supplierDTO = (doc) => {
   };
 };
 
+// supplier list dto
 exports.supplierListDTO = (docs = []) => {
   return docs.map((doc) => ({
     id: doc._id?.toString(),
@@ -162,7 +163,10 @@ exports.customerPaymentListDTO = (docs = []) => {
     remainingDue: doc.remainingDue ?? 0,
     date: doc.date,
     paymentMode: doc.paymentMode
-      ? { _id: doc.paymentMode._id?.toString(), name: doc.paymentMode.name || "" }
+      ? {
+          _id: doc.paymentMode._id?.toString(),
+          name: doc.paymentMode.name || "",
+        }
       : null,
     remarks: doc.remarks || "",
     deletedAt: doc.deletedAt,
@@ -192,7 +196,10 @@ exports.customerPaymentDetailsDTO = (doc) => {
     remainingDue: doc.remainingDue ?? 0,
     date: doc.date,
     paymentMode: doc.paymentMode
-      ? { _id: doc.paymentMode._id?.toString(), name: doc.paymentMode.name || "" }
+      ? {
+          _id: doc.paymentMode._id?.toString(),
+          name: doc.paymentMode.name || "",
+        }
       : null,
     remarks: doc.remarks || "",
     deletedAt: doc.deletedAt,
@@ -220,7 +227,10 @@ exports.customerAdvancePaymentListDTO = (docs = []) => {
     advanceAmount: doc.advanceAmount ?? 0,
     advanceCashBack: doc.advanceCashBack ?? 0,
     paymentMode: doc.paymentMode
-      ? { _id: doc.paymentMode._id?.toString(), name: doc.paymentMode.name || "" }
+      ? {
+          _id: doc.paymentMode._id?.toString(),
+          name: doc.paymentMode.name || "",
+        }
       : null,
     date: doc.date,
     remarks: doc.remarks || "",
@@ -249,7 +259,10 @@ exports.customerAdvancePaymentDetailsDTO = (doc) => {
     advanceAmount: doc.advanceAmount ?? 0,
     advanceCashBack: doc.advanceCashBack ?? 0,
     paymentMode: doc.paymentMode
-      ? { _id: doc.paymentMode._id?.toString(), name: doc.paymentMode.name || "" }
+      ? {
+          _id: doc.paymentMode._id?.toString(),
+          name: doc.paymentMode.name || "",
+        }
       : null,
     date: doc.date,
     remarks: doc.remarks || "",
