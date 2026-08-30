@@ -46,7 +46,14 @@ const SaleOrderList = () => {
       />
       <div className="space-y-6">
         <ComponentCard>
-          <SalesHistoryTable salesType="retailsaleorder,wholesaleorder" />
+          {/* Orders open on the pending ones — those are the rows that still
+              need action. Every status stays in the fetch, so switching the
+              invoice filter (or clearing it) reveals the rest without a
+              second request. */}
+          <SalesHistoryTable
+            salesType="retailsaleorder,wholesaleorder"
+            defaultInvoiceStatus="pending"
+          />
         </ComponentCard>
       </div>
     </>

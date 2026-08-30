@@ -33,7 +33,11 @@ const WholeSaleOrderList = () => {
             </div>
           }
         >
-          <SalesHistoryTable salesType="wholesaleorder" />
+          {/* Opens on pending orders — see SaleOrderList for the reasoning. */}
+          <SalesHistoryTable
+            salesType="wholesaleorder"
+            defaultInvoiceStatus="pending"
+          />
         </ComponentCard>
       </div>
     </>

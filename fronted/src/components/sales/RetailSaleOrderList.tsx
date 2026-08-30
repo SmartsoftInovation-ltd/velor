@@ -33,7 +33,11 @@ const RetailSaleOrderList = () => {
             </div>
           }
         >
-          <SalesHistoryTable salesType="retailsaleorder" />
+          {/* Opens on pending orders — see SaleOrderList for the reasoning. */}
+          <SalesHistoryTable
+            salesType="retailsaleorder"
+            defaultInvoiceStatus="pending"
+          />
         </ComponentCard>
       </div>
     </>

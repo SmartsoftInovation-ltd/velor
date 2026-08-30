@@ -6,8 +6,9 @@ import { usePermission } from "../../hooks/usePermission";
 import Button from "../ui/button/Button";
 import SalesHistoryTable from "../tables/SalesTable/SalesHistoryTable";
 
-// Draft order list — same table as the sales history, but restricted to sales
-// whose invoiceStatus is "draft". The backend filters via ?invoiceStatus=draft.
+// Draft order list — same table as the sales history, opening on drafts. The
+// fetch also brings back the other statuses (?invoiceStatus=draft,pending,complete)
+// so switching the invoice filter works without another request.
 const DraftOrderList = () => {
   const canAdd = usePermission("retail-sales", "add");
   return (
@@ -34,7 +35,10 @@ const DraftOrderList = () => {
       />
       <div className="space-y-6">
         <ComponentCard>
-          <SalesHistoryTable invoiceStatus="draft" />
+          <SalesHistoryTable
+            invoiceStatus="draft,pending,complete"
+            defaultInvoiceStatus="draft"
+          />
         </ComponentCard>
       </div>
     </>
