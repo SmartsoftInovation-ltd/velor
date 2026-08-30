@@ -1263,6 +1263,22 @@ class ProductController {
             as: "discount",
           },
         },
+        // Callers render the subcategory name (stock list, POS lookup), so send
+        // the document rather than the bare ObjectId.
+        {
+          $lookup: {
+            from: "subcategories",
+            localField: "subcategory",
+            foreignField: "_id",
+            as: "subcategory",
+          },
+        },
+        {
+          $unwind: {
+            path: "$subcategory",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         { $match: { $or: productMatchConditions } },
         { $addFields: { resultType: "product" } },
       ]),
@@ -1287,6 +1303,22 @@ class ProductController {
             localField: "discount",
             foreignField: "_id",
             as: "discount",
+          },
+        },
+        // A variant has no subcategory of its own — it inherits the parent
+        // product's, which callers display alongside the variant row.
+        {
+          $lookup: {
+            from: "subcategories",
+            localField: "product.subcategory",
+            foreignField: "_id",
+            as: "subcategory",
+          },
+        },
+        {
+          $unwind: {
+            path: "$subcategory",
+            preserveNullAndEmptyArrays: true,
           },
         },
         { $match: { $or: variantMatchConditions } },

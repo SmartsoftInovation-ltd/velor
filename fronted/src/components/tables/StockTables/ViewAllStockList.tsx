@@ -49,6 +49,25 @@ interface Product {
   groupUnitQuantity?: number;
   groupUnit?: string;
   unit?: string;
+  // /product/search-product answers with two kinds of document: whole products
+  // and standalone variants (a barcode scan usually matches the variant, since
+  // that is where barcodes live). A variant row carries no `variantType` or
+  // `stock` — its quantity is `stockVariant` and its name sits on the embedded
+  // parent — so it has to be read differently or it renders as 0 stock.
+  resultType?: "product" | "variant";
+  variantName?: string;
+  stockVariant?: number;
+  product?: {
+    _id?: string;
+    name?: string;
+    subcategory?: Subcategory;
+    unit?: string;
+    groupUnit?: string;
+    groupUnitQuantity?: number;
+    purchasePrice?: number;
+    retailPrice?: number;
+    wholesalePrice?: number;
+  };
 }
 
 interface StockRow {
@@ -101,10 +120,56 @@ const formatGroupQty = (
   return parts.join(" ").trim() || "N/A";
 };
 
+// A scanned barcode goes to the dedicated `barCode` query so the backend can
+// match the field directly, the way ProductList already does.
+const searchEndpoint = (q: string): string => {
+  const term = q.trim();
+  const param = /^\d{8,14}$/.test(term) ? "barCode" : "name";
+  return `/product/search-product?${param}=${encodeURIComponent(term)}`;
+};
+
+// A search hit is a standalone variant, not a product, when it has no
+// variantType of its own but does carry variant-only fields.
+const isVariantResult = (item: Product): boolean =>
+  item.resultType === "variant" ||
+  (!item.variantType && (item.stockVariant !== undefined || !!item.variantName));
+
 const flattenProducts = (products: Product[]): StockRow[] => {
   const rows: StockRow[] = [];
+  const seen = new Set<string>();
+  const push = (row: StockRow) => {
+    // A name search can return the same variant twice — once nested in its
+    // parent product's `variant[]`, once as its own top-level hit.
+    if (seen.has(row.key)) return;
+    seen.add(row.key);
+    rows.push(row);
+  };
   for (const item of products) {
-    if (item.variantType === "multipleVariant") {
+    if (isVariantResult(item)) {
+      const parent = item.product;
+      // The variant's own unit/group fields win; the parent fills the gaps.
+      const vUnit = item.unit ?? parent?.unit;
+      const vGroupUnit = item.groupUnit ?? parent?.groupUnit;
+      const vGroupUnitQty = item.groupUnitQuantity ?? parent?.groupUnitQuantity;
+      push({
+        key: `${parent?._id ?? "variant"}-${item._id}`,
+        barcode: item.barCode || item.sku || "N/A",
+        subcategory: na(item.subcategory?.name ?? parent?.subcategory?.name),
+        productName: parent?.name || item.variantName || "N/A",
+        variant: item.variantName || "N/A",
+        variantType: "multi",
+        size: strVal(item.size),
+        color: strVal(item.color),
+        buyRate: na(item.purchasePrice ?? parent?.purchasePrice),
+        retailPrice: na(item.retailPrice ?? parent?.retailPrice),
+        wsPrice: na(item.wholesalePrice ?? parent?.wholesalePrice),
+        unit: na(vUnit),
+        groupUnit: na(vGroupUnit),
+        groupUnitQuantity: na(vGroupUnitQty),
+        groupQty: formatGroupQty(item.stockVariant, vGroupUnitQty, vGroupUnit, vUnit),
+        stock: item.stockVariant ?? 0,
+      });
+    } else if (item.variantType === "multipleVariant") {
       const variants = item.variant ?? [];
       if (variants.length === 0) continue;
       for (const v of variants) {
@@ -113,7 +178,7 @@ const flattenProducts = (products: Product[]): StockRow[] => {
         const vUnit = v.unit ?? item.unit;
         const vGroupUnit = v.groupUnit ?? item.groupUnit;
         const vGroupUnitQty = v.groupUnitQuantity ?? item.groupUnitQuantity;
-        rows.push({
+        push({
           key: `${item._id}-${v._id}`,
           barcode: v.barCode || v.sku || item.barCode || "N/A",
           subcategory: na(item.subcategory?.name),
@@ -133,7 +198,7 @@ const flattenProducts = (products: Product[]): StockRow[] => {
         });
       }
     } else {
-      rows.push({
+      push({
         key: item._id,
         barcode: item.barCode || item.sku || "N/A",
         subcategory: na(item.subcategory?.name),
@@ -293,7 +358,7 @@ const ViewAllStockList = () => {
 
       if (q) {
         // text search — no pagination from backend
-        endpoint = `/product/search-product?name=${encodeURIComponent(q)}`;
+        endpoint = searchEndpoint(q);
       } else if (cat || sub || brand) {
         // filter by category / subcategory / brand
         const params = new URLSearchParams();
@@ -331,7 +396,7 @@ const ViewAllStockList = () => {
       try {
         let endpoint: string;
         if (debSearch) {
-          endpoint = `/product/search-product?name=${encodeURIComponent(debSearch)}`;
+          endpoint = searchEndpoint(debSearch);
         } else {
           const params = new URLSearchParams();
           if (categoryId)    params.set("category",    categoryId);
