@@ -9,6 +9,7 @@ import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import DatePicker from "../form/date-picker";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 interface Account { _id: string; name: string; }
 interface TransactionCategory { _id: string; name: string; allowedType: "cash recived" | "cash payment"; }
@@ -256,8 +257,8 @@ const AddTransactionForm = () => {
   };
 
   useEffect(() => {
-    fetchAccounts().catch(() => toast.error("Failed to load accounts."));
-    fetchCategories().catch(() => toast.error("Failed to load categories."));
+    fetchAccounts().catch((error) => showApiError(error, "Failed to load accounts."));
+    fetchCategories().catch((error) => showApiError(error, "Failed to load categories."));
   }, []);
 
   const handleSaveCategory = async (name: string, allowedType: "cash recived" | "cash payment") => {

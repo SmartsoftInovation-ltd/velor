@@ -24,6 +24,7 @@ import {
   FaTags
 } from "react-icons/fa";
 import moment from "moment";
+import { showApiError } from "../../utils/apiError";
 
 // Portal-based Tooltip
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -90,8 +91,8 @@ const SubCategoryView = () => {
       );
       refetch();
       queryClient.invalidateQueries({ queryKey: ["subcategories"] });
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (error) {
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowConfirmModal(false);
     }

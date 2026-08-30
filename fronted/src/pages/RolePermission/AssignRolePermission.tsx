@@ -18,6 +18,7 @@ import {
 import { HiOutlineAdjustments } from "react-icons/hi";
 import { TbPackage } from "react-icons/tb";
 import { FaShield } from "react-icons/fa6";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 interface Role {
@@ -403,10 +404,10 @@ const AssignRolePermission = () => {
   useEffect(() => {
     axiosSecure.get("/all-role")
       .then((r) => setRoles(r.data.data || []))
-      .catch(() => toast.error("Failed to fetch roles"));
+      .catch((error) => showApiError(error, "Failed to fetch roles"));
     axiosSecure.get("/permission/allpermissions")
       .then((r) => setPerms(r.data.data || []))
-      .catch(() => toast.error("Failed to fetch permissions"));
+      .catch((error) => showApiError(error, "Failed to fetch permissions"));
   }, []);
 
   const handleRoleChange = async (slug: string) => {
@@ -439,8 +440,8 @@ const AssignRolePermission = () => {
       } else {
         setPermissions(initial);
       }
-    } catch {
-      toast.error("Failed to load role permissions");
+    } catch (error) {
+      showApiError(error, "Failed to load role permissions");
     } finally {
       setIsLoadingPerms(false);
     }

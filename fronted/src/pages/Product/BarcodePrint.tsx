@@ -22,6 +22,7 @@ import type {
   SourceTab,
 } from "../../components/product/barcodePrint/types";
 import { FaArrowLeftLong } from "react-icons/fa6";
+import { showApiError } from "../../utils/apiError";
 
 const SOURCE_TABS: { id: SourceTab; label: string }[] = [
   { id: "products", label: "Products" },
@@ -193,8 +194,8 @@ const BarcodePrint = () => {
         });
       }
       toast.success(`Added: ${match.name || match.variantName}`);
-    } catch {
-      toast.error("Failed to look up barcode");
+    } catch (error) {
+      showApiError(error, "Failed to look up barcode");
     } finally {
       setScanValue("");
       setIsScanning(false);

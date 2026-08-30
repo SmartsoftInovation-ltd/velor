@@ -12,6 +12,7 @@ import axiosSecure from "../../../hooks/useAxiosSecure";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 export interface Banner {
   _id: string;
@@ -106,8 +107,8 @@ export default function BannerTable({
       toast.success("Banner deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ["banners"] });
       fetchBanners();
-    } catch {
-      toast.error("Failed to delete banner.");
+    } catch (error) {
+      showApiError(error, "Failed to delete banner.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

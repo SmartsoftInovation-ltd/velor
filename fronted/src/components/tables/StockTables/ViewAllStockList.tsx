@@ -4,10 +4,10 @@ import { FaSync, FaChevronLeft, FaChevronRight, FaTimes, FaBoxOpen, FaLayerGroup
 import { MdOutlineQrCodeScanner } from "react-icons/md";
 import SearchableSelect from "../../form/SearchableSelect";
 import axiosSecure from "../../../hooks/useAxiosSecure";
-import toast from "react-hot-toast";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Types ----------
 
@@ -313,8 +313,8 @@ const ViewAllStockList = () => {
       setTotal(data?.total ?? products.length);
       setTotalPages(data?.totalPages ?? 1);
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
-    } catch {
-      toast.error("Failed to fetch products");
+    } catch (error) {
+      showApiError(error, "Failed to fetch products");
     } finally {
       setIsLoading(false);
     }

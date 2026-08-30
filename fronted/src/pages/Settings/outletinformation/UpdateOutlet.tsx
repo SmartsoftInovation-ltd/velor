@@ -8,6 +8,7 @@ import Label from "../../../components/form/Label";
 import Input from "../../../components/form/input/InputField";
 import Button from "../../../components/ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 interface OutletInfo {
   locationName: string;
@@ -53,8 +54,8 @@ const OutletInformationUpdate = () => {
             image: data.image || "",
           });
         }
-      } catch {
-        toast.error("Failed to load outlet information.");
+      } catch (error) {
+        showApiError(error, "Failed to load outlet information.");
       } finally {
         setFetching(false);
       }

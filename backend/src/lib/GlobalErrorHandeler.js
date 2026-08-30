@@ -25,11 +25,77 @@ const developementError = (error, res) => {
   });
 };
 
+// Mongo/Mongoose errors reach here with driver-level text ("E11000 duplicate key
+// error collection: test.accounts index: slug_1 dup key: { slug: "bank" }"),
+// which is what the client ends up showing the user. Rewrite the common ones
+// into a sentence a shop operator can act on. Models that already raise their
+// own customError for these cases are untouched — this only catches what slips
+// through (findOneAndUpdate, bulk writes, updates that skip save hooks).
+const normalizeDatabaseError = (error) => {
+  const raw = String(error.message || "");
+  const isDuplicate =
+    error.code === 11000 ||
+    error.code === 11001 ||
+    (error.codeName === "DuplicateKey") ||
+    raw.includes("E11000");
+
+  if (isDuplicate) {
+    let field =
+      (error.keyPattern && Object.keys(error.keyPattern)[0]) ||
+      (error.keyValue && Object.keys(error.keyValue)[0]);
+    let value = error.keyValue && field ? error.keyValue[field] : undefined;
+
+    // A duplicate raised inside an update pipeline arrives as a wrapped
+    // "Plan executor error" whose keyPattern/keyValue are missing, so read the
+    // field and value back out of the message text.
+    if (!field) {
+      const dupKey = raw.match(/dup key:\s*\{\s*([^:]+):\s*"?([^",}]*)"?/);
+      if (dupKey) {
+        field = dupKey[1].trim();
+        value = dupKey[2].trim();
+      }
+    }
+
+    // Index names are suffixed with the sort direction (slug_1) — drop it.
+    if (field) field = field.replace(/_-?1$/, "");
+
+    error.statusCode = 400;
+    error.isOperationalError = true;
+    error.message = value
+      ? `${field} "${value}" already exists`
+      : `${field || "This value"} already exists`;
+    return error;
+  }
+
+  if (error.name === "CastError") {
+    error.statusCode = 400;
+    error.isOperationalError = true;
+    error.message = `Invalid ${error.path}: ${error.value}`;
+    return error;
+  }
+
+  if (error.name === "ValidationError" && error.errors) {
+    error.statusCode = 400;
+    error.isOperationalError = true;
+    error.message = Object.values(error.errors)
+      .map((e) => e.message)
+      .join(", ");
+    return error;
+  }
+
+  return error;
+};
+
 exports.globalErrorHandeler = (error, req, res, next) => {
+  error = normalizeDatabaseError(error);
   error.statusCode = error.statusCode || 500;
   if (process.env.NODE_ENV == "developement") {
     developementError(error, res);
   } else if (process.env.NODE_ENV == "production") {
+    productionError(error, res);
+  } else {
+    // Any other NODE_ENV would otherwise leave the request hanging with no
+    // response at all, so fall back to the concise production shape.
     productionError(error, res);
   }
 };

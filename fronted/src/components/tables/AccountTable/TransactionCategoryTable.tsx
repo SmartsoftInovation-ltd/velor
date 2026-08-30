@@ -19,6 +19,7 @@ import {
 } from "../../ui/table";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 type AllowedType = "cash recived" | "cash payment";
 
@@ -197,8 +198,8 @@ const TransactionCategoryTable = () => {
       await axiosSecure.delete(`/transaction-category/delete-transition-category/${selectedCategory.slug}`);
       toast.success(`Deleted "${selectedCategory.name}"`);
       fetchCategories();
-    } catch {
-      toast.error("Failed to delete category.");
+    } catch (error) {
+      showApiError(error, "Failed to delete category.");
     } finally {
       setShowDeleteModal(false);
       setSelectedCategory(null);
@@ -215,8 +216,8 @@ const TransactionCategoryTable = () => {
       toast.success(`Updated to "${editedName.trim()}"`);
       setShowEditModal(false);
       fetchCategories();
-    } catch {
-      toast.error("Failed to update category.");
+    } catch (error) {
+      showApiError(error, "Failed to update category.");
     }
   };
 

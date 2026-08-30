@@ -426,7 +426,7 @@ export default function CreateRetailSalesForm({
         setCustomerAdvanceAmount(balance || 0);
       } catch (err) {
         console.error("CAA fetch error:", err);
-        toast.error("Failed to load advance payment.");
+        showApiError(err, "Failed to load advance payment.");
         setCustomerAdvanceAmount(0);
       }
     } else {

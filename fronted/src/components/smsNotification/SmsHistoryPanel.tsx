@@ -10,6 +10,7 @@ import {
 import SmsCampaignTable from "./SmsCampaignTable";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 type RecipientType = "logged" | "order" | "sales_walking" | "sales_listed" | "due" | "";
@@ -92,8 +93,8 @@ export default function SmsHistoryPanel() {
       window.URL.revokeObjectURL(url);
 
       toast.success(`Report downloaded as .${ext}`);
-    } catch {
-      toast.error("Failed to download report. Please try again.");
+    } catch (error) {
+      showApiError(error, "Failed to download report. Please try again.");
     } finally {
       setDownloading(false);
     }

@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -172,8 +173,8 @@ export default function SupplierPaymentTable({
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
       fetchPayments();
-    } catch {
-      toast.error("Failed to delete payment");
+    } catch (error) {
+      showApiError(error, "Failed to delete payment");
     } finally {
       setIsActioning(false);
       setShowDeleteModal(false);
@@ -196,8 +197,8 @@ export default function SupplierPaymentTable({
       );
       queryClient.invalidateQueries({ queryKey: ["supplier-payments"] });
       fetchPayments();
-    } catch {
-      toast.error("Failed to update status");
+    } catch (error) {
+      showApiError(error, "Failed to update status");
     } finally {
       setIsActioning(false);
       setShowToggleModal(false);

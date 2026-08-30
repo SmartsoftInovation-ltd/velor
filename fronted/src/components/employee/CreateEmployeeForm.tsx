@@ -12,6 +12,7 @@ import Button from "../ui/button/Button";
 import SearchableSelect from "../form/SearchableSelect";
 import DatePicker from "../form/date-picker";
 import QuickCreateModal from "./QuickCreateModal";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 interface Certification {
@@ -231,7 +232,7 @@ const CreateEmployeeForm = () => {
           })),
         );
       })
-      .catch(() => toast.error("Failed to load designations."));
+      .catch((error) => showApiError(error, "Failed to load designations."));
 
     axiosSecure
       .get("/employee/get-employee-department")
@@ -241,7 +242,7 @@ const CreateEmployeeForm = () => {
           list.map((d: any) => ({ label: d.name || d, value: d._id })),
         );
       })
-      .catch(() => toast.error("Failed to load departments."));
+      .catch((error) => showApiError(error, "Failed to load departments."));
 
     axiosSecure
       .get("/employee/get-employee-section")
@@ -251,7 +252,7 @@ const CreateEmployeeForm = () => {
           list.map((s: any) => ({ label: s.name || s, value: s._id })),
         );
       })
-      .catch(() => toast.error("Failed to load sections."));
+      .catch((error) => showApiError(error, "Failed to load sections."));
   }, []);
 
   const handleChange = (name: keyof EmployeeForm, value: string) => {

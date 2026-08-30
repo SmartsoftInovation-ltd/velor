@@ -19,6 +19,7 @@ import {
 } from "../../ui/table";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface FundHandover {
   _id: string;
@@ -143,8 +144,8 @@ const MoneyHandoverTable = () => {
       await axiosSecure.delete(`/fundhandover/delete-fundhandover/${selectedId}`);
       toast.success("Money handover deleted successfully.");
       fetchHandovers();
-    } catch {
-      toast.error("Failed to delete the money handover.");
+    } catch (error) {
+      showApiError(error, "Failed to delete the money handover.");
     } finally {
       closeModal();
     }

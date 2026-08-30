@@ -16,6 +16,7 @@ import { Modal } from "../../ui/modal";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface EmployeeInfo {
   _id: string;
@@ -60,7 +61,7 @@ const EmployeeAdvancePaymentTable = () => {
       setAdvancePaymentList(res.data.data || []);
     } catch (err) {
       console.error("Error fetching advance payments:", err);
-      toast.error("Failed to load advance payments.");
+      showApiError(err, "Failed to load advance payments.");
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +91,7 @@ const EmployeeAdvancePaymentTable = () => {
       // fetchAdvancePayments();
     } catch (error) {
       console.error("Error deleting advance payment:", error);
-      toast.error("Failed to delete.");
+      showApiError(error, "Failed to delete.");
       closeModal();
     }
   };

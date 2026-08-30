@@ -4,6 +4,7 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import { showApiError } from "../../utils/apiError";
 
 const CreatePermissionForm = () => {
   const [permissionName, setPermissionName] = useState("");
@@ -38,7 +39,7 @@ const CreatePermissionForm = () => {
       setActions("");
     } catch (error) {
       console.error("Error creating permission:", error);
-      toast.error("Failed to create permission.");
+      showApiError(error, "Failed to create permission.");
     } finally {
       setLoading(false);
     }

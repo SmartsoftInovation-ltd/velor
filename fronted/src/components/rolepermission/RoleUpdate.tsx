@@ -8,6 +8,7 @@ import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import { showApiError } from "../../utils/apiError";
 
 const RoleUpdate = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -21,7 +22,7 @@ const RoleUpdate = () => {
         const res = await axiosSecure.get(`/singlerole/${slug}`);
         setRoleName(res.data.data.name);
       } catch (error) {
-        toast.error("Failed to fetch role");
+        showApiError(error, "Failed to fetch role");
         console.error(error);
       }
     };
@@ -38,7 +39,7 @@ const RoleUpdate = () => {
       toast.success("Role updated successfully");
       navigate("/create-role");
     } catch (error) {
-      toast.error("Failed to update role");
+      showApiError(error, "Failed to update role");
       console.error("Update error:", error);
     } finally {
       setLoading(false);

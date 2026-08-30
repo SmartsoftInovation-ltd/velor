@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import type { Section } from "../../employee/SectionList";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Tooltip ----------
 const Tooltip = ({
@@ -133,8 +134,8 @@ export default function SectionTable({
       toast.success("Section deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["sections"] });
       fetchSections();
-    } catch {
-      toast.error("Failed to delete section.");
+    } catch (error) {
+      showApiError(error, "Failed to delete section.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

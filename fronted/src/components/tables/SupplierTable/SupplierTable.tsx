@@ -14,6 +14,7 @@ import type { Supplier } from "../../supplier/SupplierList";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
   const [visible, setVisible] = useState(false);
@@ -108,8 +109,8 @@ export default function SupplierTable({
       toast.success("Supplier deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       fetchSuppliers();
-    } catch {
-      toast.error("Failed to delete supplier.");
+    } catch (error) {
+      showApiError(error, "Failed to delete supplier.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

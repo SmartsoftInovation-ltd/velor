@@ -8,8 +8,8 @@ import ComponentCard from "../../common/ComponentCard";
 import PageBreadcrumb from "../../common/PageBreadCrumb";
 import PageMeta from "../../common/PageMeta";
 import MobileActionBar from "../../common/MobileActionBar";
-import toast from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 const formatDate = (date: Date | string | null): string => {
   if (!date) return "";
@@ -63,8 +63,8 @@ const PurchaseReturnInvoice = () => {
           },
         },
       });
-    } catch {
-      toast.error("Failed to generate report.");
+    } catch (error) {
+      showApiError(error, "Failed to generate report.");
     } finally {
       setIsLoading(false);
     }

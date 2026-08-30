@@ -9,6 +9,7 @@ import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import VariantTable from "../../components/tables/VariantTable/VariantTable";
 import Button from "../ui/button/Button";
+import { showApiError } from "../../utils/apiError";
 
 const VariantList = () => {
   const canAdd = usePermission("variant", "add");
@@ -21,7 +22,7 @@ const VariantList = () => {
       await queryClient.invalidateQueries({ queryKey: ["variants"] });
       toast.success("Variant list refreshed!");
     } catch (err) {
-      toast.error("Failed to refresh variants.");
+      showApiError(err, "Failed to refresh variants.");
     } finally {
       setIsRefreshing(false);
     }

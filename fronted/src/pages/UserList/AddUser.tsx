@@ -13,6 +13,7 @@ import Button from "../../components/ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import axios from "axios";
 import { FaUpload, FaTimes, FaEye, FaEyeSlash, FaPlus } from "react-icons/fa";
+import { showApiError } from "../../utils/apiError";
 
 interface Role {
   _id: string;
@@ -57,7 +58,7 @@ const AddUser = () => {
     axiosSecure
       .get("/all-role")
       .then((res) => setRoles(res.data?.data || []))
-      .catch(() => toast.error("Failed to fetch roles"));
+      .catch((error) => showApiError(error, "Failed to fetch roles"));
   }, []);
 
   const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {

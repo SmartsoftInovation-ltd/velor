@@ -24,6 +24,7 @@ import {
   FaTimesCircle,
 } from "react-icons/fa";
 import moment from "moment";
+import { showApiError } from "../../utils/apiError";
 
 // Portal-based Tooltip — renders into document.body to escape overflow/z-index constraints
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -90,8 +91,8 @@ const CategoryView = () => {
       );
       refetch();
       queryClient.invalidateQueries({ queryKey: ["categories"] });
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (error) {
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowConfirmModal(false);
     }

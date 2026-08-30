@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import type { Department } from "../../employee/DepartmentList";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Tooltip ----------
 const Tooltip = ({
@@ -135,8 +136,8 @@ export default function DepartmentTable({
       toast.success("Department deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       fetchDepartments();
-    } catch {
-      toast.error("Failed to delete department.");
+    } catch (error) {
+      showApiError(error, "Failed to delete department.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

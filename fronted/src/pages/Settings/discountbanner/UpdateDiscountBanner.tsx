@@ -12,6 +12,7 @@ import Input from "../../../components/form/input/InputField";
 import Button from "../../../components/ui/button/Button";
 import { TrashBinIcon } from "../../../icons";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 interface DiscountBannerForm {
   title: string;
@@ -59,8 +60,8 @@ const DiscountBannerUpdate = () => {
           const imgUrl = typeof data.image === "object" ? data.image?.url : data.image;
           if (imgUrl) setPreview(imgUrl);
         }
-      } catch {
-        toast.error("Failed to load discount banner.");
+      } catch (error) {
+        showApiError(error, "Failed to load discount banner.");
       } finally {
         setIsFetching(false);
       }

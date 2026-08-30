@@ -4,6 +4,7 @@ import Label from "../form/Label";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 const couriers = ["Pathao", "SteadFast", "RedX", "PaperFly", "eCourier"];
 
@@ -86,7 +87,7 @@ const CourierForm = () => {
         toast.success("Merchant created successfully!");
       }
     } catch (error: any) {
-      toast.error("Something went wrong!");
+      showApiError(error, "Something went wrong!");
     }
   };
 

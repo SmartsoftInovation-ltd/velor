@@ -1,12 +1,12 @@
 import Button from "../../../components/ui/button/Button";
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
 import { MdEmail, MdPhone, MdPlace } from "react-icons/md";
 import { Link, useParams } from "react-router";
 import ComponentCard from "../../../components/common/ComponentCard";
 import PageBreadcrumb from "../../../components/common/PageBreadCrumb";
 import PageMeta from "../../../components/common/PageMeta";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 interface OutletInfo {
   _id: string;
@@ -34,8 +34,8 @@ const OutletView = () => {
       try {
         const res = await axiosSecure.get(`/outletinformation/get-outletinformation/${slug}`);
         setOutlet(res.data?.data || null);
-      } catch {
-        toast.error("Failed to load outlet information.");
+      } catch (error) {
+        showApiError(error, "Failed to load outlet information.");
       } finally {
         setLoading(false);
       }

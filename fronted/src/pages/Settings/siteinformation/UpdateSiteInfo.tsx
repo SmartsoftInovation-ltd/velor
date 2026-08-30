@@ -8,6 +8,7 @@ import Label from "../../../components/form/Label";
 import Input from "../../../components/form/input/InputField";
 import Button from "../../../components/ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 interface SiteInfo {
   storeName: string;
@@ -81,8 +82,8 @@ const SiteInformationUpdate = () => {
             image: data.image?.url || data.image || "",
           });
         }
-      } catch {
-        toast.error("Failed to load site information.");
+      } catch (error) {
+        showApiError(error, "Failed to load site information.");
       } finally {
         setFetching(false);
       }

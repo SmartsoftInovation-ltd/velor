@@ -10,6 +10,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface OutletInfo {
   _id: string;
@@ -76,8 +77,8 @@ const OutletInfoTable = () => {
       const data: OutletInfo[] = res.data?.data || [];
       setOutletInfos(data);
       setFiltered(data);
-    } catch {
-      toast.error("Failed to load outlet information.");
+    } catch (error) {
+      showApiError(error, "Failed to load outlet information.");
     } finally {
       setLoading(false);
     }

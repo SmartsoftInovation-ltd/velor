@@ -14,6 +14,7 @@ import { IoIosPrint } from "react-icons/io";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 const Tooltip = ({
   text,
@@ -157,8 +158,8 @@ const CustomerPaymentReceiveTable = ({
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
       fetchPayments();
-    } catch {
-      toast.error("Failed to delete payment. Please try again.");
+    } catch (error) {
+      showApiError(error, "Failed to delete payment. Please try again.");
     }
   };
 

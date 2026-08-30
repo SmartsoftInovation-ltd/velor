@@ -22,6 +22,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 const Tooltip = ({
   text,
@@ -145,8 +146,8 @@ const CustomerTable = ({
       await axiosSecure.delete(`/customer/delete-customer/${deletingId}`);
       toast.success("Customer deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
-    } catch {
-      toast.error("Failed to delete customer. Please try again.");
+    } catch (error) {
+      showApiError(error, "Failed to delete customer. Please try again.");
       // Revert on failure
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       fetchCustomers();
@@ -175,8 +176,8 @@ const CustomerTable = ({
       );
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       fetchCustomers();
-    } catch {
-      toast.error("Failed to update customer status.");
+    } catch (error) {
+      showApiError(error, "Failed to update customer status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);

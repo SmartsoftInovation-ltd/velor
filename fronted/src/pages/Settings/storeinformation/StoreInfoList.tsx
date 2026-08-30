@@ -1,5 +1,4 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
-import toast from "react-hot-toast";
 import { FaEye, FaArrowLeft, FaSync } from "react-icons/fa";
 import { FiEdit2 } from "react-icons/fi";
 // import { MdDelete } from "react-icons/md";
@@ -12,6 +11,7 @@ import Button from "../../../components/ui/button/Button";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../../components/ui/table";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { usePermission } from "../../../hooks/usePermission";
+import { showApiError } from "../../../utils/apiError";
 
 interface StoreInfo {
   _id: string;
@@ -75,8 +75,8 @@ const StoreInfoList = () => {
         limit: d?.limit || LIMIT,
         totalPages: d?.totalPages || 0,
       });
-    } catch {
-      toast.error("Failed to load store information.");
+    } catch (error) {
+      showApiError(error, "Failed to load store information.");
     } finally {
       setLoading(false);
     }

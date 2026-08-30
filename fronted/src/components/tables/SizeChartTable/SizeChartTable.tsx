@@ -29,6 +29,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Types ----------
 type ApplicableLevel =
@@ -207,8 +208,8 @@ export default function SizeChartTable({
       await axiosSecure.delete(`/sizechart/delete-sizechart/${selectedChart}`);
       toast.success("Size chart deleted successfully.");
       fetchSizeCharts();
-    } catch {
-      toast.error("Failed to delete size chart. Please try again.");
+    } catch (error) {
+      showApiError(error, "Failed to delete size chart. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedChart(null);
@@ -233,8 +234,8 @@ export default function SizeChartTable({
         `Size chart ${!currentStatus ? "activated" : "deactivated"} successfully.`,
       );
       fetchSizeCharts();
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (error) {
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);

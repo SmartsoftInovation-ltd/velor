@@ -10,6 +10,7 @@ import MobileActionBar from "../../common/MobileActionBar";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router";
+import { showApiError } from "../../../utils/apiError";
 
 const TransactionReport = () => {
   const navigate = useNavigate();
@@ -92,7 +93,7 @@ const TransactionReport = () => {
       navigate("/transaction-report/view", { state: response.data });
     } catch (error) {
       console.error("Error generating transaction report:", error);
-      toast.error("Error generating report. Check console.");
+      showApiError(error, "Error generating report. Check console.");
     }
   };
 

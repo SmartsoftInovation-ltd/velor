@@ -8,6 +8,7 @@ import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 const couriers = ["Pathao", "SteadFast", "RedX", "PaperFly", "eCourier"];
 
@@ -56,7 +57,7 @@ const CourierUpdate = () => {
 
         setSelectedCourier(data.serviceProvider);
       } catch (error) {
-        toast.error("Failed to fetch merchant details!");
+        showApiError(error, "Failed to fetch merchant details!");
       }
     };
 
@@ -81,7 +82,7 @@ const CourierUpdate = () => {
 
       toast.success("Merchant updated successfully!");
     } catch (error) {
-      toast.error("Update failed!");
+      showApiError(error, "Update failed!");
     }
   };
 

@@ -114,6 +114,7 @@ import { useState } from "react";
 import Badge from "../../ui/badge/Badge";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { showApiError } from "../../../utils/apiError";
 
 type OrderStatusType =
   | "Pending"
@@ -182,7 +183,7 @@ const OrderStatus = ({ order }: OrderStatusProps) => {
       });
       toast.success("Order Status Updated");
     } catch (error) {
-      toast.error("Failed to update order status");
+      showApiError(error, "Failed to update order status");
       // roll back to original
       setStatus(order.orderStatus);
     }

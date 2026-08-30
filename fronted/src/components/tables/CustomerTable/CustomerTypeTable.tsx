@@ -10,6 +10,7 @@ import axiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Tooltip ----------
 const Tooltip = ({
@@ -161,8 +162,8 @@ const CustomerTypeTable = () => {
       toast.success("Customer type deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["customer-types"] });
       fetchTypes();
-    } catch {
-      toast.error("Failed to delete customer type.");
+    } catch (error) {
+      showApiError(error, "Failed to delete customer type.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

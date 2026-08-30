@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import type { Designation } from "../../employee/DesignationList";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Tooltip ----------
 const Tooltip = ({
@@ -135,8 +136,8 @@ export default function DesignationTable({
       toast.success("Designation deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["designations"] });
       fetchDesignations();
-    } catch {
-      toast.error("Failed to delete designation.");
+    } catch (error) {
+      showApiError(error, "Failed to delete designation.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

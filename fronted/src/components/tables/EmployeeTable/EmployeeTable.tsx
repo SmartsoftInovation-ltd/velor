@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Types ----------
 export interface EmployeeDesignation {
@@ -146,8 +147,8 @@ export default function EmployeeTable({
       toast.success("Employee deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       fetchEmployees();
-    } catch {
-      toast.error("Failed to delete employee.");
+    } catch (error) {
+      showApiError(error, "Failed to delete employee.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

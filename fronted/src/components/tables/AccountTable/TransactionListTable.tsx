@@ -20,6 +20,7 @@ import {
 } from "../../ui/table";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface Transaction {
   _id: string;
@@ -164,8 +165,8 @@ const TransactionListTable = () => {
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
       fetchTransactions();
-    } catch {
-      toast.error("Failed to delete transaction.");
+    } catch (error) {
+      showApiError(error, "Failed to delete transaction.");
     } finally {
       setShowDeleteModal(false);
       setSelectedTx(null);
@@ -189,8 +190,8 @@ const TransactionListTable = () => {
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
       fetchTransactions();
-    } catch {
-      toast.error("Failed to update transaction.");
+    } catch (error) {
+      showApiError(error, "Failed to update transaction.");
     }
   };
 

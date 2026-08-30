@@ -7,7 +7,7 @@ import PageBreadcrumb from "../../common/PageBreadCrumb";
 import PageMeta from "../../common/PageMeta";
 import MobileActionBar from "../../common/MobileActionBar";
 import axiosSecure from "../../../hooks/useAxiosSecure";
-import toast from "react-hot-toast";
+import { showApiError } from "../../../utils/apiError";
 
 const formatDate = (date: Date | string | null): string => {
   if (!date) return "";
@@ -40,8 +40,8 @@ const OrderStatusReport = () => {
         endDate: formatDate(endDate),
       });
       navigate("/order-status-report/view", { state: res.data });
-    } catch {
-      toast.error("Failed to generate report.");
+    } catch (error) {
+      showApiError(error, "Failed to generate report.");
     } finally {
       setIsLoading(false);
     }

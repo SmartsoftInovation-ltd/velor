@@ -17,6 +17,7 @@ import { Link } from "react-router";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 interface Merchant {
   _id: string;
   merchantID: string;
@@ -40,7 +41,7 @@ const CourierMerchantTable = () => {
       const res = await axiosSecure.get(`/merchant/get-all-merchants`);
       setMerchants(res.data.data);
     } catch (error) {
-      toast.error("Error fetching merchants");
+      showApiError(error, "Error fetching merchants");
     }
   };
   useEffect(() => {
@@ -64,7 +65,7 @@ const CourierMerchantTable = () => {
       fetchMerchants();
     } catch (error) {
       console.error("Error deleting merchant list:", error);
-      toast.error("Failed to delete the merchant list. Please try again.");
+      showApiError(error, "Failed to delete the merchant list. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedMerchantList(null);

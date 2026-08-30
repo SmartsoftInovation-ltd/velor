@@ -4,6 +4,7 @@ import Input from "../../form/input/InputField";
 import Button from "../../ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { showApiError } from "../../../utils/apiError";
 
 interface EditShippingInfoModalProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export default function EditShippingInfoModal({
       onClose();
     } catch (error) {
       console.error("Error updating order:", error);
-      toast.error("Failed to update order. Try again.");
+      showApiError(error, "Failed to update order. Try again.");
     }
   };
 

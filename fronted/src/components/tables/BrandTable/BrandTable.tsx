@@ -21,6 +21,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import { showApiError } from "../../../utils/apiError";
 
 // Simplified Tooltip without createPortal to avoid "removeChild" DOM errors
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -102,7 +103,7 @@ export default function BrandTable({
       toast.success("Brand deleted successfully.");
       fetchBrands();
     } catch (error) {
-      toast.error("Failed to delete the brand. Please try again.");
+      showApiError(error, "Failed to delete the brand. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedBrand(null);
@@ -123,7 +124,7 @@ export default function BrandTable({
       toast.success(`Brand ${!currentStatus ? "activated" : "deactivated"} successfully.`);
       fetchBrands();
     } catch (error) {
-      toast.error("Failed to update status.");
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);

@@ -21,6 +21,7 @@ import InputField from "../../form/input/InputField";
 import Label from "../../form/Label";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface Account {
   _id: string;
@@ -142,8 +143,8 @@ const AccountTable = () => {
       await axiosSecure.delete(`/account/delete-account/${selectedAccount.slug}`);
       toast.success(`Account "${selectedAccount.name}" deleted.`);
       fetchAccounts();
-    } catch {
-      toast.error("Failed to delete account.");
+    } catch (error) {
+      showApiError(error, "Failed to delete account.");
     } finally {
       setShowDeleteModal(false);
       setSelectedAccount(null);
@@ -157,8 +158,8 @@ const AccountTable = () => {
       toast.success(`Updated to "${editedName}"`);
       setShowEditModal(false);
       fetchAccounts();
-    } catch {
-      toast.error("Failed to update account.");
+    } catch (error) {
+      showApiError(error, "Failed to update account.");
     }
   };
 

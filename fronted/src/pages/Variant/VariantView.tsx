@@ -19,6 +19,7 @@ import {
   FaImage, FaCheckCircle, FaTimesCircle
 } from "react-icons/fa";
 import moment from "moment";
+import { showApiError } from "../../utils/apiError";
 
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
   const [visible, setVisible] = useState(false);
@@ -104,8 +105,8 @@ const VariantView = () => {
       toast.success(`Variant ${next ? "activated" : "deactivated"} successfully.`);
       refetch();
       queryClient.invalidateQueries({ queryKey: ["variants"] });
-    } catch {
-      toast.error("Failed to update variant status.");
+    } catch (error) {
+      showApiError(error, "Failed to update variant status.");
     } finally {
       setShowConfirmModal(false);
     }

@@ -400,7 +400,7 @@ export default function CreateWholeSalesForm({
                 setCustomerAdvanceAmount(balance || 0);
             } catch (err) {
                 console.error("CAA fetch error:", err);
-                toast.error("Failed to load advance payment.");
+                showApiError(err, "Failed to load advance payment.");
                 setCustomerAdvanceAmount(0);
             }
         } else {
@@ -690,8 +690,8 @@ export default function CreateWholeSalesForm({
                     icon: "⚠️",
                 });
             }
-        } catch {
-            toast.error("Barcode lookup failed. Please try again.");
+        } catch (error) {
+            showApiError(error, "Barcode lookup failed. Please try again.");
         } finally {
             setIsScanning(false);
             focusSearchInput();

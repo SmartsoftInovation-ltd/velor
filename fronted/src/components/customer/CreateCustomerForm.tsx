@@ -7,6 +7,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
+import { showApiError } from "../../utils/apiError";
 
 interface CustomerType {
   _id: string;
@@ -55,8 +56,8 @@ const CreateCustomerForm = () => {
     try {
       const res = await axiosSecure.get("/customer/get-customertypes");
       setCustomerTypes(res?.data?.data?.customerTypes || []);
-    } catch {
-      toast.error("Failed to load customer types");
+    } catch (error) {
+      showApiError(error, "Failed to load customer types");
     }
   }, []);
 

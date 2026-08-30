@@ -5,7 +5,7 @@ import { MdInventory } from "react-icons/md";
 import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import axiosSecure from "../../hooks/useAxiosSecure";
-import toast from "react-hot-toast";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 
@@ -96,8 +96,8 @@ const StockAdjustView = () => {
       try {
         const { data } = await axiosSecure.get(`/stock/stock-adjust/${id}`);
         setItem(data.data.stockAdjust);
-      } catch {
-        toast.error("Failed to load stock adjustment");
+      } catch (error) {
+        showApiError(error, "Failed to load stock adjustment");
         navigate("/stock-adjustment-list");
       } finally {
         setIsLoading(false);

@@ -7,6 +7,7 @@ import Label from "../form/Label";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 
@@ -110,8 +111,8 @@ const StockAdjustEdit = () => {
         );
         setReason(adj.adjustReason);
         setDate(adj.date ? adj.date.slice(0, 10) : "");
-      } catch {
-        toast.error("Failed to load stock adjustment");
+      } catch (error) {
+        showApiError(error, "Failed to load stock adjustment");
         navigate("/stock-adjustment-list");
       } finally {
         setIsLoading(false);

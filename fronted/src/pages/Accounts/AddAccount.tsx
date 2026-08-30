@@ -7,6 +7,7 @@ import ComponentCard from "../../components/common/ComponentCard";
 import { Link } from "react-router";
 import Button from "../../components/ui/button/Button";
 import Input from "../../components/form/input/InputField";
+import { showApiError } from "../../utils/apiError";
 
 const AddAccount = () => {
   const [accounts, setAccounts] = useState<string[]>([""]);
@@ -50,7 +51,7 @@ const AddAccount = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error("Failed to create account(s)");
+      showApiError(error, "Failed to create account(s)");
     }
   };
 

@@ -22,6 +22,7 @@ import { IoIosPrint } from "react-icons/io";
 import { TbSticker2 } from "react-icons/tb";
 import OrderStatus from "../OrderTable/OrderStatus";
 import ShippingInfo from "../OrderTable/ShippingInfo";
+import { showApiError } from "../../../utils/apiError";
 
 interface Order {
   createdAt: string;
@@ -62,7 +63,7 @@ export default function CourierReturnTable() {
       );
       setOrders(data.data);
     } catch (error) {
-      toast.error("Error fetching orders");
+      showApiError(error, "Error fetching orders");
     }
   };
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function CourierReturnTable() {
       fetchOrders();
     } catch (error) {
       console.error("Error deleting order:", error);
-      toast.error("Failed to delete the order. Please try again.");
+      showApiError(error, "Failed to delete the order. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedOrderId(null);

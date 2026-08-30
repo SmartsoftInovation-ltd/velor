@@ -12,6 +12,7 @@ import Button from "../../../components/ui/button/Button";
 import { TrashBinIcon } from "../../../icons";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { Link } from "react-router";
+import { showApiError } from "../../../utils/apiError";
 
 interface BannerForm {
   title: string;
@@ -58,8 +59,8 @@ const BannerUpdate = () => {
           const imgUrl = typeof data.image === "object" ? data.image?.url : data.image;
           if (imgUrl) setPreview(imgUrl);
         }
-      } catch {
-        toast.error("Failed to load banner details.");
+      } catch (error) {
+        showApiError(error, "Failed to load banner details.");
       } finally {
         setIsFetching(false);
       }

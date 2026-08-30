@@ -20,6 +20,7 @@ import ShippingInfo from "./ShippingInfo";
 import { initSocket } from "../../../socket/socket";
 import { Modal } from "../../ui/modal";
 import EditShippingInfoModal from "./EditShippingInfoModal";
+import { showApiError } from "../../../utils/apiError";
 
 interface Order {
   createdAt: string;
@@ -56,7 +57,7 @@ export default function IncompleteOrderTable() {
       const { data } = await axiosSecure.get(`/order/allorders`);
       setOrders(data.data);
     } catch (error) {
-      toast.error("Error fetching orders");
+      showApiError(error, "Error fetching orders");
     }
   };
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function IncompleteOrderTable() {
       fetchOrders();
     } catch (error) {
       console.error("Error deleting order:", error);
-      toast.error("Failed to delete the order. Please try again.");
+      showApiError(error, "Failed to delete the order. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedOrderId(null);

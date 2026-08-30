@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import type { Role } from "../../../pages/RolePermission/CreateRole";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Portal Tooltip ----------
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -89,8 +90,8 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
       toast.success("Role deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["roles"] });
       fetchRoles();
-    } catch {
-      toast.error("Failed to delete role. Please try again.");
+    } catch (error) {
+      showApiError(error, "Failed to delete role. Please try again.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

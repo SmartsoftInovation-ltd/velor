@@ -26,6 +26,7 @@ import {
   FaBoxes
 } from "react-icons/fa";
 import moment from "moment";
+import { showApiError } from "../../utils/apiError";
 
 // Portal-based Tooltip
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -100,8 +101,8 @@ const ProductView = () => {
       );
       refetch();
       queryClient.invalidateQueries({ queryKey: ["products"] });
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (error) {
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowConfirmModal(false);
     }

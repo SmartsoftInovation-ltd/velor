@@ -14,6 +14,7 @@ import Badge from "../../ui/badge/Badge";
 import Button from "../../ui/button/Button";
 import Input from "../../form/input/InputField";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Types ----------
 interface Role {
@@ -113,8 +114,8 @@ export default function UserTable({
       await axiosSecure.delete(`/auth/delete-user/${selectedUser._id}`);
       toast.success("User deleted successfully.");
       fetchUsers();
-    } catch {
-      toast.error("Failed to delete user. Please try again.");
+    } catch (error) {
+      showApiError(error, "Failed to delete user. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedUser(null);
@@ -135,8 +136,8 @@ export default function UserTable({
       await axiosSecure.put(endpoint);
       toast.success(`User ${pendingToggle.currentStatus ? "deactivated" : "activated"} successfully.`);
       fetchUsers();
-    } catch {
-      toast.error("Failed to update user status.");
+    } catch (error) {
+      showApiError(error, "Failed to update user status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);

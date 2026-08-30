@@ -13,6 +13,7 @@ import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import Loader from "../common/Loader";
+import { showApiError } from "../../utils/apiError";
 
 interface CustomerType {
   _id: string;
@@ -95,8 +96,8 @@ const CustomerEdit = () => {
     try {
       const res = await axiosSecure.get("/customer/get-customertypes");
       setCustomerTypes(res?.data?.data?.customerTypes || []);
-    } catch {
-      toast.error("Failed to load customer types");
+    } catch (error) {
+      showApiError(error, "Failed to load customer types");
     }
   }, []);
 

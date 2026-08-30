@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
 import {
   FaFacebook,
   FaInstagram,
@@ -16,6 +15,7 @@ import PageBreadcrumb from "../../../components/common/PageBreadCrumb";
 import PageMeta from "../../../components/common/PageMeta";
 import Button from "../../../components/ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 interface StoreInfo {
   _id: string;
@@ -54,8 +54,8 @@ const StoreInfoView = () => {
           `/storeinformation/store-information/${slug}`,
         );
         setStore(res.data?.data?.store || null);
-      } catch {
-        toast.error("Failed to load store information.");
+      } catch (error) {
+        showApiError(error, "Failed to load store information.");
       } finally {
         setLoading(false);
       }

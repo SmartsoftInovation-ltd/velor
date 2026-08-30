@@ -17,6 +17,7 @@ import {
 } from "react-icons/tb";
 import { HiOutlineAdjustments } from "react-icons/hi";
 import { TbPackage } from "react-icons/tb";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 interface Role {
@@ -461,13 +462,13 @@ const CreateUserPermission = () => {
   useEffect(() => {
     axiosSecure.get("/auth/get-user-added-by-admin")
       .then((r) => setUsers(r.data.data || []))
-      .catch(() => toast.error("Failed to fetch users"));
+      .catch((error) => showApiError(error, "Failed to fetch users"));
     axiosSecure.get("/permission/allpermissions")
       .then((r) => {
         const raw = r.data.data || [];
         setPerms(raw.map((p: Permission) => ({ ...p, _id: String(p._id) })));
       })
-      .catch(() => toast.error("Failed to fetch permissions"));
+      .catch((error) => showApiError(error, "Failed to fetch permissions"));
   }, []);
 
   const handleUserChange = async (id: string) => {

@@ -10,6 +10,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface SiteInfo {
   _id: string;
@@ -64,8 +65,8 @@ const SiteInfoTable = () => {
       const data: SiteInfo[] = res.data?.data || [];
       setSiteInfos(data);
       setFiltered(data);
-    } catch {
-      toast.error("Failed to load site information.");
+    } catch (error) {
+      showApiError(error, "Failed to load site information.");
     } finally {
       setLoading(false);
     }

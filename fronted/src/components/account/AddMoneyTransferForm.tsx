@@ -8,6 +8,7 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 interface AccountType { _id: string; name: string; }
 
@@ -158,7 +159,7 @@ const AddMoneyTransferForm = () => {
   };
 
   useEffect(() => {
-    fetchAccounts().catch(() => toast.error("Failed to load accounts."));
+    fetchAccounts().catch((error) => showApiError(error, "Failed to load accounts."));
   }, []);
 
   const handleSaveAccount = async (name: string) => {

@@ -8,6 +8,7 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 interface Account { _id: string; name: string; }
 
@@ -153,7 +154,7 @@ const MoneyHandoverForm = () => {
   };
 
   useEffect(() => {
-    fetchAccounts().catch(() => toast.error("Failed to load payment modes."));
+    fetchAccounts().catch((error) => showApiError(error, "Failed to load payment modes."));
   }, []);
 
   const handleSaveAccount = async (name: string) => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BoxIconLine } from "../../../icons";
-import toast from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 interface StatBoxProps {
   title: string;
@@ -66,7 +66,7 @@ const OrderHistory = () => {
         setStats(res.data.data.orderCountAndAmount);
         setTotalOrder(res.data.data.totalOrder);
       } catch (error) {
-        toast.error("Failed to fetch order stats!");
+        showApiError(error, "Failed to fetch order stats!");
       }
     };
     fetchStats();

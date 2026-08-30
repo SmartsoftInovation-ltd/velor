@@ -23,6 +23,7 @@ import {
   FaTimesCircle,
 } from "react-icons/fa";
 import moment from "moment";
+import { showApiError } from "../../utils/apiError";
 
 // Portal-based Tooltip component
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -89,8 +90,8 @@ const BrandView = () => {
       );
       refetch();
       queryClient.invalidateQueries({ queryKey: ["brands"] });
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (error) {
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowConfirmModal(false);
     }

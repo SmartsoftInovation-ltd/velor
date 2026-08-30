@@ -7,6 +7,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
+import { showApiError } from "../../utils/apiError";
 
 interface CustomerType {
   _id: string;
@@ -87,8 +88,8 @@ const QuickCreateCustomerModal = ({
         );
         if (match) setSelectedType(match);
       }
-    } catch {
-      toast.error("Failed to load customer types");
+    } catch (error) {
+      showApiError(error, "Failed to load customer types");
     }
   }, [defaultTypeName]);
 

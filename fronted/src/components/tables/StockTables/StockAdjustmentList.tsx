@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Types ----------
 
@@ -184,8 +185,8 @@ const StockAdjustmentList = () => {
       setTotal(data.data.total ?? 0);
       setTotalPages(data.data.totalPages ?? 1);
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
-    } catch {
-      toast.error("Failed to fetch stock adjustments");
+    } catch (error) {
+      showApiError(error, "Failed to fetch stock adjustments");
     } finally {
       setIsLoading(false);
     }

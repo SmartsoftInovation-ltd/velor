@@ -12,6 +12,7 @@ import Badge from "../../components/ui/badge/Badge";
 import { Modal } from "../../components/ui/modal";
 import toast from "react-hot-toast";
 import moment from "moment";
+import { showApiError } from "../../utils/apiError";
 import {
   FaEdit,
   FaToggleOn,
@@ -156,8 +157,8 @@ const SizeChartView = () => {
       toast.success(`Size chart ${sizeChart.isActive ? "deactivated" : "activated"} successfully.`);
       refetch();
       queryClient.invalidateQueries({ queryKey: ["sizeCharts"] });
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (error) {
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowConfirmModal(false);
     }

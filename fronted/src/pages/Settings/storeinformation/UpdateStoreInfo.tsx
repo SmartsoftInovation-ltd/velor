@@ -8,6 +8,7 @@ import PageMeta from "../../../components/common/PageMeta";
 import Label from "../../../components/form/Label";
 import Input from "../../../components/form/input/InputField";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { showApiError } from "../../../utils/apiError";
 
 interface StoreForm {
   storeName: string;
@@ -73,8 +74,8 @@ const UpdateStoreInfo = () => {
             image: data.image?.url || "",
           });
         }
-      } catch {
-        toast.error("Failed to load store information.");
+      } catch (error) {
+        showApiError(error, "Failed to load store information.");
       } finally {
         setFetching(false);
       }

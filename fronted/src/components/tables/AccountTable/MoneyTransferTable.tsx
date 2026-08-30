@@ -19,6 +19,7 @@ import {
 } from "../../ui/table";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface AccountInfo {
   _id: string;
@@ -165,8 +166,8 @@ const MoneyTransferTable = () => {
       await axiosSecure.delete(`/moneytransfer/delete-moneytransfer/${selectedTransfer._id}`);
       toast.success("Money transfer deleted successfully.");
       fetchTransfers();
-    } catch {
-      toast.error("Failed to delete money transfer.");
+    } catch (error) {
+      showApiError(error, "Failed to delete money transfer.");
     } finally {
       setShowDeleteModal(false);
       setSelectedTransfer(null);
@@ -187,8 +188,8 @@ const MoneyTransferTable = () => {
       toast.success("Money transfer updated successfully.");
       setShowEditModal(false);
       fetchTransfers();
-    } catch {
-      toast.error("Failed to update money transfer.");
+    } catch (error) {
+      showApiError(error, "Failed to update money transfer.");
     }
   };
 

@@ -12,6 +12,7 @@ import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 interface Account {
   _id: string;
@@ -42,7 +43,7 @@ const MoneyHandoverUpdate = () => {
     axiosSecure
       .get("/account/all-account")
       .then((res) => setAccounts(res.data.data.accounts || []))
-      .catch(() => toast.error("Failed to load payment modes."));
+      .catch((error) => showApiError(error, "Failed to load payment modes."));
 
     const fetchData = async () => {
       try {
@@ -63,7 +64,7 @@ const MoneyHandoverUpdate = () => {
           });
         }
       } catch (error) {
-        toast.error("Failed to load handover details.");
+        showApiError(error, "Failed to load handover details.");
       }
     };
 
