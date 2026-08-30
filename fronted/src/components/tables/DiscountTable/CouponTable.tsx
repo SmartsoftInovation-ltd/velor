@@ -20,6 +20,7 @@ import { Link, useNavigate } from "react-router";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // Portal-based Tooltip
 const Tooltip = ({ text, children }: { text: string; children: ReactNode }) => {
@@ -120,7 +121,7 @@ const CouponTable = ({ coupons, fetchCoupons }: CouponTableProps) => {
       queryClient.invalidateQueries({ queryKey: ["coupons"] });
       fetchCoupons();
     } catch (error) {
-      toast.error("Failed to update status. Check backend API route.");
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);
@@ -141,7 +142,7 @@ const CouponTable = ({ coupons, fetchCoupons }: CouponTableProps) => {
       queryClient.invalidateQueries({ queryKey: ["coupons"] });
       fetchCoupons();
     } catch (error) {
-      toast.error("Failed to delete the coupon. Please try again.");
+      showApiError(error, "Failed to delete the coupon. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedCouponSlug(null);

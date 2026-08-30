@@ -1722,10 +1722,10 @@ const CreateVariantForm = ({
       <div className="flex flex-col sm:flex-row gap-3">
         <Button
           onClick={handleSubmit}
-            className={`px-6 py-3 rounded-xl text-[#1D4ED8] font-bold transition-all uppercase tracking-wider text-xs shadow-lg ${
+            className={`px-6 py-3 rounded-xl text-[#1D4ED8] font-bold transition-all uppercase tracking-wider text-xs ${
             isUpdate && (gallery.length > 0 || selectedImages.length > 0)
-              ? "bg-gray-400 cursor-not-allowed opacity-70"
-              : "bg-blue-500 hover:bg-blue-600 active:scale-95 shadow-blue-500/20"
+              ? "bg-[#EEF4FF] text-[#9DB2E8] cursor-not-allowed"
+              : "bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-95"
           }`}
           disabled={isLoading || (isUpdate && (gallery.length > 0 || selectedImages.length > 0))}
         >

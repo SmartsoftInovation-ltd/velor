@@ -7,6 +7,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import DatePicker from "../form/date-picker";
+import { showApiError } from "../../utils/apiError";
 
 // Matches the backend's isLikelyCode check (sales.controller.js) — a scanned
 // barcode/SKU/QR value is a plain alphanumeric code, not a free-text name search.
@@ -270,8 +271,8 @@ const PurchaseReturnForm = () => {
           icon: "⚠️",
         });
       }
-    } catch {
-      toast.error("Barcode lookup failed. Please try again.");
+    } catch (error) {
+      showApiError(error, "Barcode lookup failed. Please try again.");
     } finally {
       setIsScanning(false);
       setShowProductDrop(false);
@@ -380,9 +381,7 @@ const PurchaseReturnForm = () => {
       setRemarks("");
       setErrors({});
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to create purchase return.",
-      );
+      showApiError(error, "Failed to create purchase return.");
     } finally {
       setIsLoading(false);
     }

@@ -9,6 +9,7 @@ import { FaSpinner, FaBoxOpen } from "react-icons/fa";
 import toast from "react-hot-toast";
 import Label from "../form/Label";
 import SearchableSelect from "../form/SearchableSelect";
+import { showApiError } from "../../utils/apiError";
 
 // Matches the backend's isLikelyCode check (sales.controller.js) — a scanned
 // barcode/SKU/QR value is a plain alphanumeric code, not a free-text name search.
@@ -327,8 +328,8 @@ const CreatePurchaseForm = () => {
           icon: "⚠️",
         });
       }
-    } catch {
-      toast.error("Barcode lookup failed. Please try again.");
+    } catch (error) {
+      showApiError(error, "Barcode lookup failed. Please try again.");
     } finally {
       setIsScanning(false);
       setShowDropdown(false);
@@ -457,9 +458,7 @@ const CreatePurchaseForm = () => {
       });
       setErrors({});
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to create purchase!",
-      );
+      showApiError(error, "Failed to create purchase!");
     } finally {
       setSubmitLoading(false);
     }

@@ -11,6 +11,7 @@ import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import { showApiError } from "../../utils/apiError";
 
 const DiscountUpdate = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -106,7 +107,7 @@ const DiscountUpdate = () => {
           }
         }
       } catch (error) {
-        toast.error("Failed to fetch discount details.");
+        showApiError(error, "Failed to fetch discount details.");
       }
     };
     if (slug) {

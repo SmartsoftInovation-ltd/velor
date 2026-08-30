@@ -16,6 +16,7 @@ import { Link } from "react-router";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface DeliveryCharge {
   _id: string;
@@ -39,7 +40,7 @@ const DeliveryChargeTable = () => {
       );
       setDeliveryChargeList(data.data);
     } catch (error) {
-      toast.error("Error fetching delivery charge list");
+      showApiError(error, "Error fetching delivery charge list");
     }
   };
 
@@ -61,7 +62,7 @@ const DeliveryChargeTable = () => {
       toast.success("Delivery charge deleted successfully.");
       fetchDeliveryChargeList();
     } catch (error) {
-      toast.error("Failed to delete the delivery charge.");
+      showApiError(error, "Failed to delete the delivery charge.");
     } finally {
       setShowDeleteModal(false);
       setSelectedDeliveryCharge(null);

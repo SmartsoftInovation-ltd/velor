@@ -51,9 +51,13 @@ const Button: React.FC<ButtonProps> = ({
       disabled={disabled}
       title={title}
     >
-      {startIcon && <span className="flex items-center">{startIcon}</span>}
-      {children}
-      {endIcon && <span className="flex items-center">{endIcon}</span>}
+      {startIcon ? <span className="flex items-center">{startIcon}</span> : null}
+      {/* Wrapped so React keeps a stable host node for the label. A bare string
+          child sitting between two conditional siblings could keep its old text
+          in the DOM when the label changed (e.g. "Creating..." staying put after
+          a failed submit reset the loading flag). */}
+      <span className="contents">{children}</span>
+      {endIcon ? <span className="flex items-center">{endIcon}</span> : null}
     </button>
   );
 };

@@ -29,6 +29,7 @@ import { toast } from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { invalidateStockQueries } from "../../../utils/invalidateStock";
 import { Modal } from "../../ui/modal";
+import { showApiError } from "../../../utils/apiError";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ListedCustomer {
@@ -414,7 +415,7 @@ const SalesHistoryTable = ({
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
     } catch (error) {
-      toast.error("Failed to delete.");
+      showApiError(error, "Failed to delete.");
     } finally {
       closeModal();
     }
@@ -437,9 +438,9 @@ const SalesHistoryTable = ({
       const endpoint = qs ? `/sales/get-sales?${qs}` : "/sales/get-sales";
       const res = await axiosSecure.get(endpoint);
       setSalesList(res?.data?.data || []);
-    } catch {
+    } catch (error) {
       setIsError(true);
-      toast.error("Failed to load sales.");
+      showApiError(error, "Failed to load sales.");
     } finally {
       setLoading(false);
     }

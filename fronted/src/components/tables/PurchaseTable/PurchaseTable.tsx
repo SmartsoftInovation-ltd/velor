@@ -15,6 +15,7 @@ import { Modal } from "../../ui/modal";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Tooltip ----------
 const Tooltip = ({
@@ -196,8 +197,8 @@ const PurchaseTable = () => {
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
       fetchPurchases();
-    } catch {
-      toast.error("Failed to delete the purchase.");
+    } catch (error) {
+      showApiError(error, "Failed to delete the purchase.");
     } finally {
       closeModal();
     }

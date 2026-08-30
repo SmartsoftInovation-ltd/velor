@@ -10,6 +10,7 @@ import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import Select from "../form/Select";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import { showApiError } from "../../utils/apiError";
 
 interface Coupon {
   code: string;
@@ -67,7 +68,7 @@ const CouponUpdate = () => {
         }
       } catch (err) {
         console.error("Failed to fetch coupon details.", err);
-        toast.error("Failed to fetch coupon details.");
+        showApiError(err, "Failed to fetch coupon details.");
       }
     };
     if (slug) {

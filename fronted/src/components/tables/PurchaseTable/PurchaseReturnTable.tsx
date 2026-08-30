@@ -13,6 +13,7 @@ import { Modal } from "../../ui/modal";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // ---------- Types ----------
 interface ReturnProduct {
@@ -108,9 +109,7 @@ const PurchaseReturnTable = () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       fetchReturns();
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to delete purchase return.",
-      );
+      showApiError(error, "Failed to delete purchase return.");
     } finally {
       setDeleteLoading(false);
       setShowDeleteModal(false);

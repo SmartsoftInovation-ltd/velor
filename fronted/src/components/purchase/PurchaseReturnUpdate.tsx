@@ -17,6 +17,7 @@ import DatePicker from "../form/date-picker";
 import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 interface Supplier {
@@ -322,9 +323,7 @@ const PurchaseReturnUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       setTimeout(() => navigate("/purchase-return-list"), 50);
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to update purchase return.",
-      );
+      showApiError(error, "Failed to update purchase return.");
     } finally {
       setIsLoading(false);
     }

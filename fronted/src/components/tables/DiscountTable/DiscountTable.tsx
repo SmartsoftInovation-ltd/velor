@@ -21,6 +21,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // Portal-based Tooltip
 const Tooltip = ({ text, children }: { text: string; children: ReactNode }) => {
@@ -130,7 +131,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
       queryClient.invalidateQueries({ queryKey: ["discounts"] });
       fetchDiscounts();
     } catch (error) {
-      toast.error("Failed to update status. Check backend API route.");
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);
@@ -157,7 +158,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
       );
       await queryClient.invalidateQueries({ queryKey: ["discounts"] });
     } catch (error) {
-      toast.error("Failed to delete the discount. Please try again.");
+      showApiError(error, "Failed to delete the discount. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedDiscountSlug(null);

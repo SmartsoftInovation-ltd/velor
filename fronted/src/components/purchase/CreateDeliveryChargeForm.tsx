@@ -4,6 +4,7 @@ import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import axiosInstance from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { showApiError } from "../../utils/apiError";
 
 interface FormData {
   name: string;
@@ -54,7 +55,7 @@ const CreateDeliveryChargeForm = () => {
       setFormData({ name: "", deliveryCharge: "" });
     } catch (error) {
       console.log(error);
-      toast.error("Failed to create delivery charge");
+      showApiError(error, "Failed to create delivery charge");
     }
   };
 

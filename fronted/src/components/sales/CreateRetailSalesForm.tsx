@@ -29,6 +29,7 @@ import AccountSelect from "./AccountSelect";
 import SalesEmptyState from "./SalesEmptyState";
 import PickerSelect from "./PickerSelect";
 import { useFormDraft, loadDraft, clearDraft } from "../../hooks/useFormDraft";
+import { showApiError } from "../../utils/apiError";
 
 // The subset of the form worth surviving a reload: what the user typed or
 // picked. Fetched lists and open/closed UI state are deliberately excluded.
@@ -267,7 +268,7 @@ export default function CreateRetailSalesForm({
     axiosSecure
       .get("/customer/get-customers")
       .then((res) => setCustomerList(res?.data?.data?.customers || []))
-      .catch(() => toast.error("Failed to load customers."));
+      .catch((error) => showApiError(error, "Failed to load customers."));
   }, []);
 
   // Load the logged-in seller's discount ceiling. getme returns the full user,
@@ -293,7 +294,7 @@ export default function CreateRetailSalesForm({
         );
         setEmployeeList(salesEmployees);
       })
-      .catch(() => toast.error("Failed to load employees."));
+      .catch((error) => showApiError(error, "Failed to load employees."));
     axiosSecure
       .get("/account/all-account")
       .then((res) => {
@@ -306,7 +307,7 @@ export default function CreateRetailSalesForm({
           setSinglePayment((prev) => ({ ...prev, paymentTo: cashAccount._id }));
         }
       })
-      .catch(() => toast.error("Failed to load accounts."));
+      .catch((error) => showApiError(error, "Failed to load accounts."));
   }, []);
 
   useEffect(() => {
@@ -682,8 +683,8 @@ export default function CreateRetailSalesForm({
           icon: "⚠️",
         });
       }
-    } catch {
-      toast.error("Barcode lookup failed. Please try again.");
+    } catch (error) {
+      showApiError(error, "Barcode lookup failed. Please try again.");
     } finally {
       setIsScanning(false);
       setSearchQuery("");
@@ -985,10 +986,7 @@ export default function CreateRetailSalesForm({
         }
       }
     } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message ||
-          (isEdit ? "Failed to update sale." : "Failed to create sale."),
-      );
+      showApiError(err, isEdit ? "Failed to update sale." : "Failed to create sale.");
     } finally {
       setIsSaving(false);
     }

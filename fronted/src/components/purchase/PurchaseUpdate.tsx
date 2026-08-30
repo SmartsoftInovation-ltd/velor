@@ -19,6 +19,7 @@ import SearchableSelect from "../form/SearchableSelect";
 import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
+import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
 interface Supplier {
@@ -188,7 +189,7 @@ const UpdatePurchase: React.FC = () => {
 
         setTableProducts(mappedProducts);
       } catch (error) {
-        toast.error("Failed to load purchase data");
+        showApiError(error, "Failed to load purchase data");
       } finally {
         setFetchLoading(false);
       }

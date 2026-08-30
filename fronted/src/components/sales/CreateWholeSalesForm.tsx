@@ -36,6 +36,7 @@ import {
     loadDraft,
     clearDraft as clearStoredDraft,
 } from "../../hooks/useFormDraft";
+import { showApiError } from "../../utils/apiError";
 
 // The subset of the form worth surviving a reload: what the user typed or
 // picked. Fetched lists, the draft item panel and open/closed UI state are
@@ -255,7 +256,7 @@ export default function CreateWholeSalesForm({
         axiosSecure
             .get("/customer/get-customers")
             .then((res) => setCustomerList(res?.data?.data?.customers || []))
-            .catch(() => toast.error("Failed to load customers."));
+            .catch((error) => showApiError(error, "Failed to load customers."));
     }, []);
 
     // Load the logged-in seller's discount ceiling. getme returns the full user,
@@ -281,7 +282,7 @@ export default function CreateWholeSalesForm({
                 );
                 setEmployeeList(salesEmployees);
             })
-            .catch(() => toast.error("Failed to load employees."));
+            .catch((error) => showApiError(error, "Failed to load employees."));
         axiosSecure
             .get("/account/all-account")
             .then((res) => {
@@ -293,7 +294,7 @@ export default function CreateWholeSalesForm({
                     setSinglePayment((prev) => ({ ...prev, paymentTo: cashAccount._id }));
                 }
             })
-            .catch(() => toast.error("Failed to load accounts."));
+            .catch((error) => showApiError(error, "Failed to load accounts."));
     }, []);
 
     useEffect(() => {
@@ -1014,10 +1015,7 @@ export default function CreateWholeSalesForm({
                 }
             }
         } catch (err: any) {
-            toast.error(
-                err?.response?.data?.message ||
-                    (isEdit ? "Failed to update sale." : "Failed to create sale."),
-            );
+            showApiError(err, isEdit ? "Failed to update sale." : "Failed to create sale.");
         } finally {
             setIsSaving(false);
         }

@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router";
 import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
+import { showApiError } from "../../utils/apiError";
 
 interface FormData {
   name: string;
@@ -41,7 +42,7 @@ const DeliveryChargeUpdate = () => {
           deliveryCharge: String(data?.data?.deliveryCharge || ""),
         });
       } catch (error) {
-        toast.error("Failed to load delivery charge data");
+        showApiError(error, "Failed to load delivery charge data");
       } finally {
         setLoading(false);
       }
@@ -82,7 +83,7 @@ const DeliveryChargeUpdate = () => {
       toast.success("Delivery Charge Updated Successfully");
     } catch (error) {
       console.log(error);
-      toast.error("Failed to update delivery charge");
+      showApiError(error, "Failed to update delivery charge");
     }
   };
 

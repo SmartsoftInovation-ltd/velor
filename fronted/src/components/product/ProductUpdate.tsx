@@ -737,10 +737,10 @@ const UpdateProductForm = () => {
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 p-5 shadow-theme-sm relative space-y-3">
             <Button 
-              className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg transition-all ${
+              className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${
                 (gallery.length > 0 || selectedImages.length > 0)
-                  ? "bg-gray-400 text-white cursor-not-allowed opacity-70" 
-                  : "bg-brand-500 text-white shadow-brand-500/25 active:scale-95 hover:bg-brand-600"
+                  ? "bg-[#EEF4FF] text-[#9DB2E8] cursor-not-allowed"
+                  : "bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] active:scale-95"
               }`} 
               onClick={handleSubmit} 
               disabled={updateProductMutation.isPending || gallery.length > 0 || selectedImages.length > 0}
