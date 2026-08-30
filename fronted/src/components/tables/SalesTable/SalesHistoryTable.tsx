@@ -376,7 +376,15 @@ function StatusBadge({ value }: { value: string }) {
 const SalesHistoryTable = ({
   salesType,
   invoiceStatus: invoiceStatusProp,
-}: { salesType?: string; invoiceStatus?: string } = {}) => {
+  defaultInvoiceStatus = "",
+}: {
+  salesType?: string;
+  invoiceStatus?: string;
+  // Which invoice status the status filter starts on. The fetch still brings
+  // back everything invoiceStatus allows, so clearing the filter reveals the
+  // rest instead of triggering another request.
+  defaultInvoiceStatus?: string;
+} = {}) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -387,6 +395,7 @@ const SalesHistoryTable = ({
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState(defaultInvoiceStatus);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -462,8 +471,16 @@ const SalesHistoryTable = ({
     const matchesStatus = !statusFilter || s.paymentStatus === statusFilter;
     const matchesType = !typeFilter || s.salesType === typeFilter;
     const matchesPayment = !paymentFilter || paymentAccounts(s).includes(paymentFilter);
+    const matchesInvoiceStatus =
+      !invoiceStatusFilter || s.invoiceStatus === invoiceStatusFilter;
 
-    return matchesSearch && matchesStatus && matchesType && matchesPayment;
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesType &&
+      matchesPayment &&
+      matchesInvoiceStatus
+    );
   });
 
   // Stats reflect the whole dataset, not the current filter — they're a summary
@@ -479,13 +496,29 @@ const SalesHistoryTable = ({
 
   // Only offer accounts that actually appear in the data.
   const accountOptions = [...new Set(salesList.flatMap(paymentAccounts))].sort();
+  // Include the default even when no loaded row carries it, so the filter can
+  // always be switched back to it.
+  const invoiceStatusOptions = [
+    ...new Set(
+      [...salesList.map((s) => s.invoiceStatus), defaultInvoiceStatus].filter(
+        Boolean,
+      ),
+    ),
+  ].sort();
 
-  const hasFilters = Boolean(search || statusFilter || typeFilter || paymentFilter);
+  const hasFilters = Boolean(
+    search ||
+      statusFilter ||
+      typeFilter ||
+      paymentFilter ||
+      invoiceStatusFilter !== defaultInvoiceStatus,
+  );
   const clearFilters = () => {
     setSearch("");
     setStatusFilter("");
     setTypeFilter("");
     setPaymentFilter("");
+    setInvoiceStatusFilter(defaultInvoiceStatus);
   };
 
   return (
@@ -563,6 +596,24 @@ const SalesHistoryTable = ({
             </option>
           ))}
         </FilterSelect>
+
+        {/* Shown when the page can hold more than one invoice status. A page
+            pinned to a single status (the draft list) needs no such filter, but
+            one that merely opens on a default still does — otherwise the rows
+            outside that default would be unreachable. */}
+        {(invoiceStatusOptions.length > 1 || Boolean(defaultInvoiceStatus)) && (
+          <FilterSelect
+            value={invoiceStatusFilter}
+            onChange={setInvoiceStatusFilter}
+            label="All Invoices"
+          >
+            {invoiceStatusOptions.map((st) => (
+              <option key={st} value={st}>
+                {st.charAt(0).toUpperCase() + st.slice(1)}
+              </option>
+            ))}
+          </FilterSelect>
+        )}
 
         {hasFilters && (
           <button
@@ -710,7 +761,9 @@ const SalesHistoryTable = ({
                       <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-8">
                         {search
                           ? <>No results for <span className="font-bold text-brand-500">"{search}"</span>. Try a different search term.</>
-                          : "No sales have been recorded yet."}
+                          : salesList.length > 0
+                            ? "No sales match the current filters."
+                            : "No sales have been recorded yet."}
                       </p>
                       {search && (
                         <Button

@@ -98,6 +98,13 @@ const DASHBOARD_MODULES = [
 
 const DASHBOARD_MODULE_SET = new Set(DASHBOARD_MODULES);
 
+// The parent "Dashboard" permission gates the page itself; the rest are the
+// individual widgets on it. Granting a widget without the page would hide the
+// widget anyway, so the parent is switched on alongside it.
+const DASHBOARD_PARENT = "Dashboard";
+const isDashboardWidget = (name: string): boolean =>
+  DASHBOARD_MODULE_SET.has(name) && name !== DASHBOARD_PARENT;
+
 const actionsForModule = (name: string): Action[] => {
   if (DASHBOARD_MODULE_SET.has(name)) return VIEW_ONLY_ACTIONS;
   if (REPORT_MODULES.has(name)) return REPORT_ACTIONS;
@@ -316,7 +323,13 @@ const ModuleCard = ({ name, permissions, onToggle, onToggleAll }: ModuleCardProp
  ?"bg-blue-50 dark:bg-[#DCE8FF]/10 text-[#1D4ED8] dark:text-[#1D4ED8] /30"
                 : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300"}`}
         >
-          {allOn ? <><FaCheckSquare className="size-3" /> All Selected</> : <><FaListUl className="size-3" /> Select All</>}
+          {/* One icon slot and one label slot, always in the same positions.
+              Swapping whole fragments here made React reuse the wrong DOM node
+              when several cards flipped in a single state update. */}
+          <span className="flex items-center">
+            {allOn ? <FaCheckSquare className="size-3" /> : <FaListUl className="size-3" />}
+          </span>
+          <span>{allOn ? "All Selected" : "Select All"}</span>
         </button>
       </div>
     </div>
@@ -447,6 +460,24 @@ const AssignRolePermission = () => {
     }
   };
 
+  // Switching on any dashboard widget also switches on the parent "Dashboard"
+  // permission, since a widget is unreachable without access to the page.
+  const withDashboardParent = (
+    state: PermissionState,
+    changedId: string,
+  ): PermissionState => {
+    const changed = perms.find((p) => p._id === changedId);
+    if (!changed || !isDashboardWidget(changed.permissionName)) return state;
+
+    const parent = perms.find((p) => p.permissionName === DASHBOARD_PARENT);
+    if (!parent || state[parent._id]?.view) return state;
+
+    return {
+      ...state,
+      [parent._id]: { ...emptyActions(), ...state[parent._id], view: true },
+    };
+  };
+
   // view is a prerequisite for add/edit/delete — you can't edit/delete what you can't see.
   // Turning on any of add/edit/delete auto-enables view; turning view off clears all others.
   const toggle = (id: string, action: Action) => {
@@ -459,7 +490,8 @@ const AssignRolePermission = () => {
       } else if (next) {
         cur.view = true;
       }
-      return { ...prev, [id]: cur };
+      const state = { ...prev, [id]: cur };
+      return cur.view ? withDashboardParent(state, id) : state;
     });
   };
 
@@ -469,7 +501,8 @@ const AssignRolePermission = () => {
     setPermissions((prev) => {
       const next: Actions = { ...emptyActions(), ...prev[id] };
       moduleActions.forEach((a) => { next[a] = !allChecked; });
-      return { ...prev, [id]: next };
+      const state = { ...prev, [id]: next };
+      return allChecked ? state : withDashboardParent(state, id);
     });
   };
 

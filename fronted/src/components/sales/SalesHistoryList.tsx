@@ -33,9 +33,14 @@ const SalesHistoryList = () => {
       />
       <div className="space-y-6">
         <ComponentCard>
-          {/* Sales history covers finished sales only — draft and pending
-              invoices live on the draft and order-list pages. */}
-          <SalesHistoryTable invoiceStatus="complete" />
+          {/* Pending invoices are fetched alongside completed ones — a pending
+              sale is a real sale awaiting fulfilment and no other page lists it
+              — but the view opens on completed only. Switching the invoice
+              filter reveals the pending rows. Drafts have their own page. */}
+          <SalesHistoryTable
+            invoiceStatus="complete,pending"
+            defaultInvoiceStatus="complete"
+          />
         </ComponentCard>
       </div>
     </>

@@ -464,8 +464,17 @@ exports.getAllSales = asynchandeler(async (req, res) => {
     if (types.length > 1) listFilter.salesType = { $in: types };
     else if (types.length === 1) listFilter.salesType = types[0];
   }
-  if (invoiceStatus && String(invoiceStatus).trim())
-    listFilter.invoiceStatus = String(invoiceStatus).trim();
+  // invoiceStatus also accepts a comma-separated list
+  // (e.g. ?invoiceStatus=complete,pending) so sales history can cover every
+  // finished-or-awaiting invoice while the draft page keeps its own view.
+  if (invoiceStatus && String(invoiceStatus).trim()) {
+    const statuses = String(invoiceStatus)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (statuses.length > 1) listFilter.invoiceStatus = { $in: statuses };
+    else if (statuses.length === 1) listFilter.invoiceStatus = statuses[0];
+  }
 
   // Exact invoice lookup — used by callers that need one specific invoice's full details
   if (invoiceNumber) {
@@ -509,15 +518,17 @@ exports.getAllSales = asynchandeler(async (req, res) => {
 
   // Backward-compatible unpaginated list — existing callers expect a flat array
   if (!req.query.page && !req.query.limit && !search) {
-    // salesType may be a string or a {$in:[...]} — serialise both so a
-    // multi-type query never shares a cache key with a single-type one.
-    const salesTypeKey = listFilter.salesType
-      ? Array.isArray(listFilter.salesType?.$in)
-        ? listFilter.salesType.$in.join("|")
-        : listFilter.salesType
-      : "*";
+    // salesType and invoiceStatus may each be a string or a {$in:[...]} —
+    // serialise both so a multi-value query never shares a cache key with a
+    // single-value one.
+    const filterKey = (value) =>
+      value
+        ? Array.isArray(value?.$in)
+          ? value.$in.join("|")
+          : value
+        : "*";
     const filterSuffix = Object.keys(listFilter).length
-      ? `all:${salesTypeKey}:${listFilter.invoiceStatus || "*"}`
+      ? `all:${filterKey(listFilter.salesType)}:${filterKey(listFilter.invoiceStatus)}`
       : "all";
     const cacheKey = await buildCacheKey(NS, filterSuffix);
     const cached = await getCache(cacheKey);
