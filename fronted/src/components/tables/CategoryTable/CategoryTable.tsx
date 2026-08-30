@@ -24,6 +24,7 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
+import ImageWithFallback from "../../common/ImageWithFallback";
 
 // Portal-based Tooltip — renders into document.body to escape overflow/z-index constraints
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -204,7 +205,11 @@ export default function CategoryTable({
             <div className="space-y-1">
               <div className="flex items-center gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="w-12 h-12 shrink-0 overflow-hidden rounded-xl border-2 border-white dark:border-gray-800 shadow-md bg-gray-100">
-                  <img src={category.image?.url} className="w-full h-full object-cover" alt={category.name} />
+                  <ImageWithFallback
+                    src={category.image?.url}
+                    alt={category.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{category.name}</p>
@@ -385,10 +390,10 @@ export default function CategoryTable({
                           onMouseMove={(e) => setHoveredImage(prev => prev ? ({ ...prev, x: e.clientX + 20, y: e.clientY - 150 }) : null)}
                           onMouseLeave={() => setHoveredImage(null)}
                         >
-                          <img
+                          <ImageWithFallback
                             src={category.image?.url}
-                            className="w-full h-full object-cover"
                             alt={category.name}
+                            className="w-full h-full object-cover"
                           />
                         </div>
                       </TableCell>
@@ -513,10 +518,12 @@ export default function CategoryTable({
           style={{ left: hoveredImage.x, top: hoveredImage.y }}
         >
           <div className="p-1 bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 animate-in zoom-in-75 duration-200">
-            <img
+            <ImageWithFallback
               src={hoveredImage.url}
+              alt={`${hoveredImage.name} preview`}
               className="max-w-[350px] max-h-[350px] rounded-[24px] object-contain shadow-inner"
-              alt="Preview"
+              fallbackClassName="size-[220px] rounded-[24px]"
+              iconClassName="size-20"
             />
             <div className="p-3 text-center">
               <span className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-[3px]">{hoveredImage.name}</span>
