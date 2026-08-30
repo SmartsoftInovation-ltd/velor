@@ -58,6 +58,8 @@ async function recordReturnTransaction({ sale, returnDoc, refundMethod, session 
         voucherNumber: sale?.invoiceNumber || "",
         transactionType: "cash payment",
         amount: returnDoc.totalReturnAmount,
+        // Marks the row as auto-generated so the manual transaction list skips it.
+        salesReturnReference: returnDoc._id,
       },
     ],
     { session },
@@ -447,13 +449,15 @@ exports.updateSalesReturn = asynchandeler(async (req, res) => {
           voucherNumber: newSale?.invoiceNumber || "",
           transactionType: "cash payment",
           amount: data.totalReturnAmount,
+          // Backfills the tag on rows created before it existed.
+          salesReturnReference: id,
         },
         { session },
       );
     } else {
       const transaction = await recordReturnTransaction({
         sale: newSale,
-        returnDoc: data,
+        returnDoc: { ...data, _id: id },
         refundMethod: data.refundMethod,
         session,
       });

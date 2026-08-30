@@ -13,6 +13,21 @@ const ACCOUNT_NS = "account";
 const balanceDelta = (transactionType, amount) =>
   transactionType === "cash recived" ? amount : -amount;
 
+// Sales, sales returns, purchases and customer/supplier payments all write into
+// this same collection, each tagging its row with the reference field that lets
+// the originating record reverse it later. The transaction list is the ledger
+// for entries typed by hand on /add-transaction, so it filters those auto-
+// generated rows out — they are already reported on the dashboard and in each
+// module's own list. Account balances still count every row.
+const MANUAL_ENTRY_ONLY = {
+  saleReference: { $eq: null },
+  supplierPaymentReference: { $eq: null },
+  customerPaymentReference: { $eq: null },
+  customerAdvancePaymentReference: { $eq: null },
+  purchaseReference: { $eq: null },
+  salesReturnReference: { $eq: null },
+};
+
 // create transaction controller
 exports.createTransaction = asynchandeler(async (req, res) => {
   const {
@@ -86,12 +101,12 @@ exports.getAllTransaction = asynchandeler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const [rawTransactions, total] = await Promise.all([
-    CreateTransaction.find()
+    CreateTransaction.find(MANUAL_ENTRY_ONLY)
       .populate("account transactionCategory")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
-    CreateTransaction.countDocuments(),
+    CreateTransaction.countDocuments(MANUAL_ENTRY_ONLY),
   ]);
 
   if (!rawTransactions.length && page === 1) {
@@ -132,7 +147,14 @@ exports.getSingleTransaction = asynchandeler(async (req, res) => {
 // delete transaction
 exports.deleteTransaction = asynchandeler(async (req, res) => {
   const { id } = req.params;
-  const transaction = await CreateTransaction.findOneAndDelete({ _id: id });
+  // Scoped to manual entries: an auto-generated row is owned by the sale,
+  // purchase or payment that created it and is reversed from there, so deleting
+  // it here would leave that record pointing at a transaction that no longer
+  // exists.
+  const transaction = await CreateTransaction.findOneAndDelete({
+    _id: id,
+    ...MANUAL_ENTRY_ONLY,
+  });
   if (!transaction) {
     throw new customError("Transaction not found", statusCodes.NOT_FOUND);
   }
@@ -154,7 +176,11 @@ exports.deleteTransaction = asynchandeler(async (req, res) => {
 // update transaction
 exports.updateTransaction = asynchandeler(async (req, res) => {
   const { id } = req.params;
-  const existing = await CreateTransaction.findOne({ _id: id });
+  // Manual entries only — see the note on deleteTransaction.
+  const existing = await CreateTransaction.findOne({
+    _id: id,
+    ...MANUAL_ENTRY_ONLY,
+  });
   if (!existing) {
     throw new customError("Transaction not found", statusCodes.NOT_FOUND);
   }

@@ -74,6 +74,13 @@ const crateTransactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Purchase",
     },
+    // set only for refund transactions auto-generated from a sales return. The
+    // return doc also stores the transaction id; this back-pointer is what marks
+    // the row as auto-generated so the manual transaction list can exclude it.
+    salesReturnReference: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SalesReturn",
+    },
   },
   { timestamps: true }
 );
@@ -83,6 +90,7 @@ crateTransactionSchema.index({ supplierPaymentReference: 1 });
 crateTransactionSchema.index({ customerPaymentReference: 1 });
 crateTransactionSchema.index({ customerAdvancePaymentReference: 1 });
 crateTransactionSchema.index({ purchaseReference: 1 });
+crateTransactionSchema.index({ salesReturnReference: 1 });
 
 crateTransactionSchema.index({ account: 1, createdAt: -1 });
 
