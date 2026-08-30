@@ -11,6 +11,7 @@ export interface LabelSize {
 
 export const LABEL_SIZES: LabelSize[] = [
   { id: "38x25", label: "38 x 25 mm", widthMm: 38, heightMm: 25 },
+  { id: "45x35", label: "45 x 35 mm", widthMm: 45, heightMm: 35 },
   { id: "50x25", label: "50 x 25 mm", widthMm: 50, heightMm: 25 },
   { id: "50x30", label: "50 x 30 mm", widthMm: 50, heightMm: 30 },
   { id: "50x38", label: "50 x 38 mm", widthMm: 50, heightMm: 38 },

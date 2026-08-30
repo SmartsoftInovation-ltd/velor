@@ -3,11 +3,11 @@ import { createPortal } from "react-dom";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
-import axios from "axios";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SearchableSelect from "../form/SearchableSelect";
+import { showApiError } from "../../utils/apiError";
 
 // Portal-based Tooltip component
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -108,11 +108,7 @@ const CreateSubCategoryForm = () => {
       setSelectedCategory("");
       setErrors({});
     } catch (error: any) {
-      if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || "Failed to create subcategory");
-      } else {
-        toast.error("An unexpected error occurred.");
-      }
+      showApiError(error, "Failed to create subcategory");
     } finally {
       setIsLoading(false);
     }

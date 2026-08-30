@@ -23,6 +23,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 // Portal-based Tooltip — renders into document.body to escape overflow/z-index constraints
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -136,7 +137,7 @@ export default function CategoryTable({
       toast.success("Category deleted successfully.");
       fetchCategories();
     } catch (error) {
-      toast.error("Failed to delete the category. Please try again.");
+      showApiError(error, "Failed to delete the category. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedCategory(null);
@@ -157,7 +158,7 @@ export default function CategoryTable({
       toast.success(`Category ${!currentStatus ? "activated" : "deactivated"} successfully.`);
       fetchCategories();
     } catch (error) {
-      toast.error("Failed to update status.");
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);

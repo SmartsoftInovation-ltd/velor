@@ -3,12 +3,12 @@ import { useDropzone } from "react-dropzone";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
-import axios from "axios";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { useQueryClient } from "@tanstack/react-query";
 import { TrashBinIcon } from "../../icons";
 import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 const CreateCategoryForm = () => {
   const queryClient = useQueryClient();
@@ -94,13 +94,7 @@ const CreateCategoryForm = () => {
       setPreview(null);
       setErrors({});
     } catch (error: any) {
-      if (axios.isAxiosError(error)) {
-        console.error("Error:", error.response?.data?.message || error.message);
-        toast.error(error.response?.data?.message || "Failed to create category");
-      } else {
-        console.error("Unexpected error:", error);
-        toast.error("An unexpected error occurred.");
-      }
+      showApiError(error, "Failed to create category");
     } finally {
       setIsLoading(false);
     }

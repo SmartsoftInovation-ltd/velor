@@ -55,7 +55,6 @@ const getVariantFile = (files = [], index, fieldName) => {
 
 const uniqueFieldLabels = {
   variantName: "Variant name",
-  size: "Size",
   sku: "SKU",
   barCode: "Barcode",
 };
@@ -98,7 +97,7 @@ const VariantSchema = Joi.object({
     "string.empty": "Variant name is required",
     "any.required": "Variant name is required",
   }),
-  size: Joi.string().trim().default("N/A"),
+  size: Joi.string().trim().allow("").default("N/A"),
   color: Joi.string().trim().required().messages({
     "string.empty": "Color is required",
     "any.required": "Color is required",

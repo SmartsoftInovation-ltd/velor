@@ -21,6 +21,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 
 // Portal-based Tooltip
 const Tooltip = ({ text, children }: { text: string; children: ReactNode }) => {
@@ -133,7 +134,7 @@ const VariantTable = () => {
     }, 150);
   };
 
-  const { data: rawVariants = [], isLoading, isError, refetch } = useQuery<Variant[]>({
+  const { data: rawVariants = [], isLoading, isError, error: variantsError, refetch } = useQuery<Variant[]>({
     queryKey: ["variants", debouncedSearch],
     queryFn: async () => {
       let endpoint = "/variant";
@@ -194,7 +195,7 @@ const VariantTable = () => {
       queryClient.invalidateQueries({ queryKey: ["variants"] });
       refetch();
     } catch (error) {
-      toast.error("Failed to update status.");
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);
@@ -208,7 +209,7 @@ const VariantTable = () => {
       queryClient.invalidateQueries({ queryKey: ["variants"] });
       refetch();
     } catch (error) {
-      toast.error("Failed to delete the variant. Please try again.");
+      showApiError(error, "Failed to delete the variant. Please try again.");
     } finally {
       setShowDeleteModal(false);
       setSelectedVariantSlug(null);
@@ -284,7 +285,7 @@ const VariantTable = () => {
         </div>
       ) : isError ? (
         <div className="text-center py-20 bg-white dark:bg-white/[0.03] rounded-xl border border-gray-200 dark:border-white/[0.05]">
-          <p className="text-red-500 font-bold mb-4">Error fetching variants!</p>
+          <p className="text-red-500 font-bold mb-4">{getApiErrorMessage(variantsError, "Error fetching variants!")}</p>
           <button onClick={() => refetch()} className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold shadow-lg">
             Try Again
           </button>

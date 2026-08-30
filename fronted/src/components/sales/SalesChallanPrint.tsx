@@ -14,7 +14,11 @@ import {
   FiX,
 } from "react-icons/fi";
 import axiosSecure from "../../hooks/useAxiosSecure";
-import { renderBarcodeToSvg } from "../../utils/barcodeRender";
+import {
+  renderBarcodeToSvg,
+  fitBarcodeSvgToWidth,
+  BARCODE_EDGE_INSET_PX,
+} from "../../utils/barcodeRender";
 
 interface StoreInformation {
   storeName: string;
@@ -175,6 +179,10 @@ const SalesChallanPrint = () => {
         height: 38,
         displayValue: false,
       });
+      // A long invoice number renders wider than the paper, which clips the
+      // right-hand bars on a POS printer; scale it down to the space it has,
+      // holding back a sliver on each side for the printer's edge tolerance.
+      fitBarcodeSvgToWidth(barcodeRef.current, 0, BARCODE_EDGE_INSET_PX);
     }
   }, [sale?.invoiceNumber]);
 

@@ -22,6 +22,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 interface Category {
   _id: string;
@@ -119,7 +120,7 @@ const SubCategoryTable = ({
       toast.success("Sub Category deleted successfully.");
       fetchSubCategories();
     } catch (error) {
-      toast.error("Failed to delete the subcategory.");
+      showApiError(error, "Failed to delete the subcategory.");
     } finally {
       setShowDeleteModal(false);
       setSelectedSubCategory(null);
@@ -135,7 +136,7 @@ const SubCategoryTable = ({
       toast.success(`Subcategory ${!currentStatus ? "activated" : "deactivated"} successfully.`);
       fetchSubCategories();
     } catch (error) {
-      toast.error("Failed to update status.");
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);

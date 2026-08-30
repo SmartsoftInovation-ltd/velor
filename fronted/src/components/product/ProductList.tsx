@@ -9,6 +9,7 @@ import { Link } from "react-router";
 import { usePermission } from "../../hooks/usePermission";
 import Button from "../ui/button/Button";
 import { FaSync } from "react-icons/fa";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 const COLS = 10;
 
@@ -42,7 +43,7 @@ const ProductList = () => {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  const { data: products = [], isLoading, isError, refetch } = useQuery({
+  const { data: products = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["products", debouncedSearch],
     queryFn: async () => {
       let endpoint = "/product/getproduct";
@@ -104,7 +105,7 @@ const ProductList = () => {
             <ProductSkeleton />
           ) : isError ? (
             <div className="text-center py-20 min-h-100">
-              <p className="text-red-500 font-bold mb-4">Error fetching products!</p>
+              <p className="text-red-500 font-bold mb-4">{getApiErrorMessage(error, "Error fetching products!")}</p>
               <button onClick={() => refetch()} className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold shadow-lg">
                 Try Again
               </button>

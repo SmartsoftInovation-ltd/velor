@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router"; // make sure you're using react-router-dom v6
 import PageMeta from "../common/PageMeta";
 import ComponentCard from "../common/ComponentCard";
-import toast from "react-hot-toast";
 import CreateVariantForm from "./CreateVariantForm";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { FaArrowLeft } from "react-icons/fa";
 import Button from "../ui/button/Button";
 import { Link } from "react-router";
+import { showApiError } from "../../utils/apiError";
 
 const UpdateVariant = () => {
   const { slug } = useParams();
@@ -20,7 +20,7 @@ const UpdateVariant = () => {
         const res = await axiosSecure.get(`/variant/${slug}`);
         setVariantData(res.data.data);
       } catch (error) {
-        toast.error("Failed to fetch variant");
+        showApiError(error, "Failed to fetch variant");
         console.error(error);
       }
     };

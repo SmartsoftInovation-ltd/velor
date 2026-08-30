@@ -14,7 +14,11 @@ import {
   FiX,
 } from "react-icons/fi";
 import axiosSecure from "../../hooks/useAxiosSecure";
-import { renderBarcodeToSvg } from "../../utils/barcodeRender";
+import {
+  renderBarcodeToSvg,
+  fitBarcodeSvgToWidth,
+  BARCODE_EDGE_INSET_PX,
+} from "../../utils/barcodeRender";
 
 interface StoreInformation {
   storeName: string;
@@ -186,8 +190,14 @@ const SalesReceiptPrint = () => {
         height: 45,
         displayValue: false,
       });
+      // A long invoice number renders wider than the paper, which clips the
+      // right-hand bars on a POS printer; scale it down to the space it has,
+      // holding back a sliver on each side for the printer's edge tolerance.
+      fitBarcodeSvgToWidth(barcodeRef.current, 0, BARCODE_EDGE_INSET_PX);
     }
-  }, [sale?.invoiceNumber, settings.showBarcode]);
+    // narrowPaper changes the receipt width, so the barcode has to be re-fitted
+    // to the new paper rather than keeping the previous size.
+  }, [sale?.invoiceNumber, settings.showBarcode, settings.narrowPaper]);
 
   // Auto-print once per load when the cashier has enabled it.
   useEffect(() => {

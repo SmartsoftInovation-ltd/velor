@@ -9,9 +9,9 @@ import ComponentCard from "../common/ComponentCard";
 import { useNavigate, useParams, Link } from "react-router";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
-import axios from "axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FaArrowLeft } from "react-icons/fa";
+import { showApiError } from "../../utils/apiError";
 
 // Portal-based Tooltip component
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -106,11 +106,7 @@ const SubCategoryUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       navigate("/subcategory-list");
     } catch (error: any) {
-      if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || "Failed to update subcategory");
-      } else {
-        toast.error("An unexpected error occurred.");
-      }
+      showApiError(error, "Failed to update subcategory");
     } finally {
       setIsLoading(false);
     }

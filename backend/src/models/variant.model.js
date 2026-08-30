@@ -183,7 +183,6 @@ variantSchema.index({ product: 1, isActive: 1 });
 
 const UNIQUE_VARIANT_FIELDS = {
   variantName: "Variant name",
-  size: "Size",
   sku: "SKU",
   barCode: "Barcode",
 };

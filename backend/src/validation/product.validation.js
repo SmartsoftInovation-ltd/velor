@@ -94,11 +94,7 @@ const productCreateSchema = joi
       .string()
       .valid("singleVariant", "multipleVariant")
       .required(),
-    size: joi.string().trim().when("variantType", {
-      is: "singleVariant",
-      then: joi.required(),
-      otherwise: joi.optional(),
-    }),
+    size: joi.string().trim().allow("").optional(),
     color: joi.string().trim().when("variantType", {
       is: "singleVariant",
       then: joi.required(),

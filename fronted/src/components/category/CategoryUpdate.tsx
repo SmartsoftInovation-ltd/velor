@@ -11,9 +11,9 @@ import { useNavigate, useParams, Link } from "react-router";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { TrashBinIcon } from "../../icons";
-import axios from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 import { FaArrowLeft } from "react-icons/fa";
+import { showApiError } from "../../utils/apiError";
 
 // Portal-based Tooltip component
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
@@ -66,7 +66,7 @@ const CategoryUpdate = () => {
         setName(category.name);
         setImagePreview(category.image?.url || null);
       } catch (error) {
-        toast.error("Error fetching category details");
+        showApiError(error, "Error fetching category details");
       } finally {
         setIsFetching(false);
       }
@@ -140,11 +140,7 @@ const CategoryUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       navigate("/category-list");
     } catch (error: any) {
-      if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || "Failed to update category");
-      } else {
-        toast.error("An unexpected error occurred.");
-      }
+      showApiError(error, "Failed to update category");
     } finally {
       setIsLoading(false);
     }

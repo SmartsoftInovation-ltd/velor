@@ -12,6 +12,7 @@ import Select from "../form/Select";
 import SearchableSelect from "../form/SearchableSelect";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+import { showApiError } from "../../utils/apiError";
 
 // Interfaces
 interface Category { _id: string; name: string; slug: string; }
@@ -273,8 +274,7 @@ const CreateProductForm = () => {
       clearProductDraftFiles();
     },
     onError: (error: any) => {
-      const msg = error.response?.data?.message || "Submission failed.";
-      toast.error(msg);
+      showApiError(error, "Submission failed.");
     },
   });
 
@@ -429,7 +429,7 @@ const CreateProductForm = () => {
         const [catRes, brandRes] = await Promise.all([axiosSecure.get("/categories"), axiosSecure.get("/brand")]);
         setCategories(catRes?.data?.data?.categories || []);
         setBrands(brandRes?.data?.data?.brands || []);
-      } catch { toast.error("Failed to load initial data."); }
+      } catch (error) { showApiError(error, "Failed to load initial data."); }
     };
     fetchData();
   }, []);
@@ -481,7 +481,7 @@ const CreateProductForm = () => {
     try {
       const res = await axiosSecure.get(`/categories/${selectedCategory.slug}`);
       setDynamicSubCategories(res?.data?.data?.category?.subcategories || []);
-    } catch { toast.error("Failed to load subcategories."); }
+    } catch (error) { showApiError(error, "Failed to load subcategories."); }
     finally { setIsFetchingSubCats(false); }
   };
 
@@ -760,7 +760,7 @@ const CreateProductForm = () => {
           <div className={blurClass}>
             <SectionCard icon={<FaRulerCombined />} title="Attributes & Logistics">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div><Label>Size<RequiredAsterisk /></Label><Input name="size" value={formData.size} onChange={handleInputChange} placeholder="XL, 42, etc" /><FieldError msg={errors.size} /></div>
+                <div><Label>Size</Label><Input name="size" value={formData.size} onChange={handleInputChange} placeholder="XL, 42, etc" /><FieldError msg={errors.size} /></div>
                 <div><Label>Color<RequiredAsterisk /></Label><Input name="color" value={formData.color} onChange={handleInputChange} placeholder="Red, Blue" /><FieldError msg={errors.color} /></div>
                 <div><Label>Product Weight<RequiredAsterisk /></Label><Input type="number" name="weight" value={formData.weight} onChange={handleInputChange} onKeyDown={(e) => !/[0-9.]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.preventDefault()} placeholder="e.g. 0.5 kg" /><FieldError msg={errors.weight} /></div>
                 <div><Label>Unit<RequiredAsterisk /></Label><Select options={[{value:"Piece", label:"Piece"}, {value:"Kg", label:"Kg"}, {value:"Gram", label:"Gram"}, {value:"Packet", label:"Packet"}]} value={formData.unit} onChange={(v)=>setFormData(p=>({...p, unit:v}))} onClear={()=>setFormData(p=>({...p, unit:""}))} /><FieldError msg={errors.unit} /></div>

@@ -10,6 +10,7 @@ import { Link } from "react-router";
 import { usePermission } from "../../hooks/usePermission";
 import Button from "../../components/ui/button/Button";
 import { FaSync } from "react-icons/fa";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
   const [visible, setVisible] = useState(false);
@@ -74,7 +75,7 @@ const SubCategoryList = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const { data: subcategories = [], isLoading, isFetching, isError, refetch } = useQuery({
+  const { data: subcategories = [], isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["subcategories", debouncedSearch],
     queryFn: async () => {
       const endpoint = debouncedSearch
@@ -123,7 +124,7 @@ const SubCategoryList = () => {
             <SubCategorySkeleton />
           ) : isError ? (
             <div className="text-center py-20 min-h-100">
-              <p className="text-red-500 font-bold mb-4">Error fetching subcategories!</p>
+              <p className="text-red-500 font-bold mb-4">{getApiErrorMessage(error, "Error fetching subcategories!")}</p>
               <Button size="sm" onClick={() => refetch()} className="bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-6">
                 Try Again
               </Button>

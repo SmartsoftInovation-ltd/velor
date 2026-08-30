@@ -16,6 +16,7 @@ import Select from "../form/Select";
 import SearchableSelect from "../form/SearchableSelect";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+import { showApiError } from "../../utils/apiError";
 
 // Interfaces
 interface Category { _id: string; name: string; slug: string; }
@@ -267,7 +268,7 @@ const UpdateProductForm = () => {
             }
           }
         }
-      } catch { toast.error("Failed to load product data."); }
+      } catch (error) { showApiError(error, "Failed to load product data."); }
       finally { setIsRefreshing(false); }
     };
     fetchData();
@@ -311,7 +312,7 @@ const UpdateProductForm = () => {
     try {
       const res = await axiosSecure.get(`/categories/${selectedCategory.slug}`);
       setDynamicSubCategories(res?.data?.data?.category?.subcategories || []);
-    } catch { toast.error("Failed to load subcategories."); }
+    } catch (error) { showApiError(error, "Failed to load subcategories."); }
     finally { setIsFetchingSubCats(false); }
   };
 
@@ -389,7 +390,7 @@ const UpdateProductForm = () => {
       const p = productRes?.data?.data?.product;
       if (p) setExistingGallery(p.image || []);
     } catch (error) {
-      toast.error("Failed to delete images.");
+      showApiError(error, "Failed to delete images.");
     } finally {
       setIsDeletingImages(false);
     }
@@ -411,7 +412,7 @@ const UpdateProductForm = () => {
       const p = productRes?.data?.data?.product;
       if (p) setExistingGallery(p.image || []);
     } catch (error) {
-      toast.error("Failed to add images.");
+      showApiError(error, "Failed to add images.");
     } finally {
       setIsUploadingImages(false);
     }
@@ -445,7 +446,7 @@ const UpdateProductForm = () => {
       navigate("/product-list");
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Update failed.");
+      showApiError(error, "Update failed.");
     },
   });
 
@@ -571,7 +572,7 @@ const UpdateProductForm = () => {
           <div className={blurClass}>
             <SectionCard icon={<FaRulerCombined />} title="Attributes & Logistics">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div><Label>Size<RequiredAsterisk /></Label><Input name="size" value={formData.size} onChange={handleInputChange} placeholder="XL, 42, etc" /><FieldError msg={errors.size} /></div>
+                <div><Label>Size</Label><Input name="size" value={formData.size} onChange={handleInputChange} placeholder="XL, 42, etc" /><FieldError msg={errors.size} /></div>
                 <div><Label>Color<RequiredAsterisk /></Label><Input name="color" value={formData.color} onChange={handleInputChange} placeholder="Red, Blue" /><FieldError msg={errors.color} /></div>
                 <div><Label>Product Weight<RequiredAsterisk /></Label><Input type="number" name="weight" value={formData.weight} onChange={handleInputChange} placeholder="e.g. 0.5 kg" /><FieldError msg={errors.weight} /></div>
                 <div><Label>Unit<RequiredAsterisk /></Label><Select options={[{value:"Piece", label:"Piece"}, {value:"Kg", label:"Kg"}, {value:"Gram", label:"Gram"}, {value:"Packet", label:"Packet"}]} value={formData.unit} onChange={(v)=>setFormData(p=>({...p, unit:v}))} onClear={()=>setFormData(p=>({...p, unit:""}))} /><FieldError msg={errors.unit} /></div>

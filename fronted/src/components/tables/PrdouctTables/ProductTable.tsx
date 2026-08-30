@@ -21,6 +21,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import { showApiError } from "../../../utils/apiError";
 
 
 // Portal-based Tooltip
@@ -169,7 +170,7 @@ export default function ProductTable({
       queryClient.invalidateQueries({ queryKey: ["products"] });
       fetchProducts(searchTerm);
     } catch (error) {
-      toast.error("Failed to update status.");
+      showApiError(error, "Failed to update status.");
     } finally {
       setShowToggleModal(false);
       setPendingToggle(null);
@@ -183,7 +184,7 @@ export default function ProductTable({
       queryClient.invalidateQueries({ queryKey: ["products"] });
       fetchProducts(searchTerm);
     } catch (error) {
-      toast.error("Failed to delete the product.");
+      showApiError(error, "Failed to delete the product.");
     } finally {
       setShowDeleteModal(false);
       setSelectedProduct(null);

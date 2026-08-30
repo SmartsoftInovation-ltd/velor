@@ -13,6 +13,7 @@ import { FaTrashAlt, FaCloudUploadAlt, FaGlobe, FaRulerCombined, FaBarcode, FaSy
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { MdDelete, MdOutlineQrCodeScanner } from "react-icons/md";
+import { showApiError } from "../../utils/apiError";
 
 type VariantFormData = {
   product?: string;
@@ -292,7 +293,7 @@ const CreateVariantForm = ({
         setExistingGallery(v.image || []);
       }
     } catch (error) {
-      toast.error("Failed to delete images.");
+      showApiError(error, "Failed to delete images.");
       console.error(error);
     } finally {
       setIsDeletingImages(false);
@@ -321,7 +322,7 @@ const CreateVariantForm = ({
         setExistingGallery(v.image || []);
       }
     } catch (error) {
-      toast.error("Failed to add images.");
+      showApiError(error, "Failed to add images.");
       console.error(error);
     } finally {
       setIsUploadingImages(false);
@@ -387,7 +388,7 @@ const CreateVariantForm = ({
         toast.success("Variant data refreshed successfully!");
       }
     } catch (error) {
-      toast.error("Failed to refresh variant data.");
+      showApiError(error, "Failed to refresh variant data.");
       console.error(error);
     } finally {
       setIsRefreshing(false);
@@ -788,8 +789,6 @@ const CreateVariantForm = ({
     if (!formData.product) newErrors.product = "Product is required";
     if (!formData.variantName)
       newErrors.variantName = "Variant Name is required";
-    if (!formData.size || formData.size.length === 0)
-      newErrors.size = "Size is required";
     if (!formData.color || formData.color.trim().length === 0)
       newErrors.color = "Color is required";
     if (!formData.purchasePrice || formData.purchasePrice <= 0)
@@ -1086,7 +1085,7 @@ const CreateVariantForm = ({
       }
     } catch (error) {
       console.error("Submit error:", error);
-      toast.error("Something went wrong!");
+      showApiError(error);
     } finally {
       setIsLoading(false);
     }
@@ -1163,7 +1162,7 @@ const CreateVariantForm = ({
 
         {/* Size */}
         <div className="flex flex-col">
-          <Label>Size <span className="text-red-500">*</span></Label>
+          <Label>Size</Label>
           <Input
             type="text"
             value={formData.formData.size || ""}
