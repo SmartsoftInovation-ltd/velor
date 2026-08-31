@@ -152,6 +152,11 @@ exports.createSalesReturn = asynchandeler(async (req, res) => {
     // Also bump product cache — this endpoint mutates stock/stockVariant and
     // salesReturnStock on Product/Variant, which /product/* endpoints cache.
     await bumpNsVersion("product");
+    // The sales reports (sales summary, sales history) cache under the "sales"
+    // namespace and read returns back out of this collection for their
+    // RETURN (-) line. Without this bump a return raised after a report was
+    // first viewed keeps showing 0 until the entry expires.
+    await bumpNsVersion("sales");
 
     apiResponse.sendSuccess(
       res,
@@ -318,6 +323,11 @@ exports.deleteSalesReturn = asynchandeler(async (req, res) => {
     // Also bump product cache — this endpoint mutates stock/stockVariant and
     // salesReturnStock on Product/Variant, which /product/* endpoints cache.
     await bumpNsVersion("product");
+    // The sales reports (sales summary, sales history) cache under the "sales"
+    // namespace and read returns back out of this collection for their
+    // RETURN (-) line. Without this bump a return raised after a report was
+    // first viewed keeps showing 0 until the entry expires.
+    await bumpNsVersion("sales");
 
     apiResponse.sendSuccess(
       res,
@@ -478,6 +488,11 @@ exports.updateSalesReturn = asynchandeler(async (req, res) => {
     // Also bump product cache — this endpoint mutates stock/stockVariant and
     // salesReturnStock on Product/Variant, which /product/* endpoints cache.
     await bumpNsVersion("product");
+    // The sales reports (sales summary, sales history) cache under the "sales"
+    // namespace and read returns back out of this collection for their
+    // RETURN (-) line. Without this bump a return raised after a report was
+    // first viewed keeps showing 0 until the entry expires.
+    await bumpNsVersion("sales");
 
     apiResponse.sendSuccess(
       res,

@@ -14,6 +14,7 @@ const {
 } = require("../models/customer.model");
 const Account = require("../models/account.model");
 const CrateTransaction = require("../models/crateTransaction.model");
+const SalesReturn = require("../models/salesReturn.model");
 const TransitionCategory = require("../models/transitionCategory.model");
 const StoreInformation = require("../models/storeInformation.model");
 const { smsQueue } = require("../queues/sms.queue");
@@ -1088,11 +1089,45 @@ exports.deleteSales = asynchandeler(async (req, res) => {
       const isComplete = sale.invoiceStatus === "complete";
       const items = sale.searchItem || [];
 
+      // Returns raised against this sale are cascaded below. They are loaded
+      // up-front because their restock has to be undone as part of the same
+      // stock revert — a return added +qty to stock and +qty to
+      // salesReturnStock, and deleting the sale must take both back out.
+      const relatedReturns = await SalesReturn.find({ invoiceNumber: saleId })
+        .session(session)
+        .lean();
+
+      // A returned line is rewritten to salesStatus "return" on the sale, even
+      // for a partial return. effectQty() would then read the whole line as a
+      // return and invert the revert sign, so the original direction is
+      // recovered here: any line this sale actually sold is treated as a sale.
+      const returnedQtyByKey = new Map();
+      for (const ret of relatedReturns) {
+        for (const line of ret.allproduct || []) {
+          const key = String(line.variant || line.product || "");
+          if (!key) continue;
+          returnedQtyByKey.set(
+            key,
+            (returnedQtyByKey.get(key) || 0) + Number(line.quantity || 0),
+          );
+        }
+      }
+
       // helper: effect
+      //
+      // salesStatus alone is not trustworthy at delete time: creating a return
+      // rewrites the matching sale line to "return" regardless of how much was
+      // returned, so a 1-of-2 return marks the whole 2-unit line. Reading that
+      // literally flipped the revert sign and pushed stock DOWN on delete
+      // instead of up. A line is only genuinely a return line when the sale
+      // itself recorded it that way and no SalesReturn explains it.
       const effectQty = (it) => {
         const qty = Number(it?.quantity || 0);
         if (qty <= 0) return 0;
-        return (it.salesStatus === "return" ? +1 : -1) * qty;
+        const key = String(it?.variantId || it?.productId || "");
+        const wasReturnedSeparately = returnedQtyByKey.has(key);
+        const isReturnLine = it.salesStatus === "return" && !wasReturnedSeparately;
+        return (isReturnLine ? +1 : -1) * qty;
       };
 
       // 2️ If complete → revert stock
@@ -1117,6 +1152,25 @@ exports.deleteSales = asynchandeler(async (req, res) => {
           addToMap(variantMap, it.variantId, revertDelta);
         }
 
+        // Undo the restock each cascaded return performed. Creating a return
+        // did `$inc { stock: +qty, salesReturnStock: +qty }`, and deleting the
+        // sale removes that return, so both increments have to come back off.
+        const productReturnMap = new Map();
+        const variantReturnMap = new Map();
+        for (const ret of relatedReturns) {
+          for (const line of ret.allproduct || []) {
+            const qty = Number(line.quantity || 0);
+            if (qty <= 0) continue;
+            if (line.variant) {
+              addToMap(variantMap, line.variant, -qty);
+              addToMap(variantReturnMap, line.variant, -qty);
+            } else if (line.product) {
+              addToMap(productMap, line.product, -qty);
+              addToMap(productReturnMap, line.product, -qty);
+            }
+          }
+        }
+
         // 3️⃣Build bulk ops
         // Deleting a completed sale undoes it: stock goes back up and posSold
         // comes back down by the same amount (a deleted sale sold nothing).
@@ -1124,23 +1178,28 @@ exports.deleteSales = asynchandeler(async (req, res) => {
         // undoing history, not selling, so it must never be refused. Guarding
         // it would leave the sale undeletable whenever a return line is
         // involved and stock had since been drawn down elsewhere.
+        // posSold tracks units sold, which a return never changed — so the
+        // return-driven part of the delta must not move it. Only the sale's
+        // own quantities do.
         const productOps = [];
         for (const [productId, d] of productMap.entries()) {
+          const returnPart = productReturnMap.get(productId) || 0;
+          const salePart = d - returnPart;
+          const inc = { stock: d, posSold: -salePart };
+          if (returnPart) inc.salesReturnStock = returnPart;
           productOps.push({
-            updateOne: {
-              filter: { _id: productId },
-              update: { $inc: { stock: d, posSold: -d } },
-            },
+            updateOne: { filter: { _id: productId }, update: { $inc: inc } },
           });
         }
 
         const variantOps = [];
         for (const [variantId, d] of variantMap.entries()) {
+          const returnPart = variantReturnMap.get(variantId) || 0;
+          const salePart = d - returnPart;
+          const inc = { stockVariant: d, posSold: -salePart };
+          if (returnPart) inc.salesReturnStock = returnPart;
           variantOps.push({
-            updateOne: {
-              filter: { _id: variantId },
-              update: { $inc: { stockVariant: d, posSold: -d } },
-            },
+            updateOne: { filter: { _id: variantId }, update: { $inc: inc } },
           });
         }
 
@@ -1168,7 +1227,33 @@ exports.deleteSales = asynchandeler(async (req, res) => {
         }
       }
 
-      // 5️ Delete sale
+      // 5️ Delete any sales returns raised against this sale, then the sale.
+      //
+      // A SalesReturn points at its parent sale by _id. Leaving them behind
+      // orphaned the rows: every report resolves returns by first collecting
+      // sale _ids in range and matching against those, so an orphan is counted
+      // nowhere and the RETURN (-) line silently reads 0 while the money has
+      // really moved.
+      //
+      // The restock these returns performed was already undone with the sale's
+      // own stock revert above (see returnedQtyByKey).
+      if (relatedReturns.length > 0) {
+        // Each return may have minted a refund transaction; remove those too so
+        // the account ledger does not keep a refund for a sale that is gone.
+        const refundTxnIds = relatedReturns
+          .map((r) => r.transaction)
+          .filter(Boolean);
+
+        if (refundTxnIds.length > 0) {
+          await CrateTransaction.deleteMany(
+            { _id: { $in: refundTxnIds } },
+            { session },
+          );
+        }
+
+        await SalesReturn.deleteMany({ invoiceNumber: saleId }, { session });
+      }
+
       await salesModel.findByIdAndDelete(saleId, { session });
 
       // 6️ Revert customer opening dues if listed
@@ -1206,6 +1291,9 @@ exports.deleteSales = asynchandeler(async (req, res) => {
     await bumpNsVersion("variant");
     // and the sales list/invoice caches, so sales history shows this change
     await bumpNsVersion(NS);
+    // Returns raised against this sale were cascaded above, so their own
+    // cached lists are stale too.
+    await bumpNsVersion("salesReturn");
     // the listed customer's opening dues were reverted above — bust the
     // cached customer list so it reflects the reverted due immediately
     if (wasListedCustomer) {
