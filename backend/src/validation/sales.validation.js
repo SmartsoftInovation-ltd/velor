@@ -147,7 +147,9 @@ const createSalesSchema = Joi.object({
  * ========================= */
 const updateSalesSchema = Joi.object({
   date: Joi.date().optional(),
-  deliveryDate: Joi.date().optional(),
+  // null clears a previously set delivery date — the edit form sends it when
+  // the picker is emptied, and `undefined` would be dropped from $set instead.
+  deliveryDate: Joi.date().optional().allow(null),
 
   invoiceNumber: Joi.string().trim().optional(),
 

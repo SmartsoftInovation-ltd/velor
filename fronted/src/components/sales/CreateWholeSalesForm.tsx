@@ -128,6 +128,7 @@ interface EditSale {
     _id: string;
     invoiceNumber?: string;
     date?: string;
+    deliveryDate?: string;
     customerType?: any;
     searchItem?: any[];
     salesMen?: { _id?: string } | string | null;
@@ -172,7 +173,7 @@ export default function CreateWholeSalesForm({
     const [date, setDate] = useState(
         () => draft?.date || new Date().toISOString().split("T")[0],
     );
-    const [deliveryDate] = useState("");
+    const [deliveryDate, setDeliveryDate] = useState("");
     const [customerList, setCustomerList] = useState<Customer[]>([]);
     const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(draft?.selectedCustomerId ?? null);
     const [customerName, setCustomerName] = useState(draft?.customerName || "");
@@ -417,6 +418,8 @@ export default function CreateWholeSalesForm({
         const s = editSale;
 
         if (s.date) setDate(new Date(s.date).toISOString().split("T")[0]);
+        if (s.deliveryDate)
+          setDeliveryDate(new Date(s.deliveryDate).toISOString().split("T")[0]);
 
         const ct = s.customerType;
         if (ct?.type === "listed") {
@@ -953,7 +956,10 @@ export default function CreateWholeSalesForm({
         // ── Full Payload ──
         const payload = {
             date,
-            deliveryDate: deliveryDate || undefined,
+            // On edit an empty picker means "clear it": send null so $set removes
+      // the stored date. undefined would be dropped from the payload and the
+      // old value would survive.
+      deliveryDate: deliveryDate || (isEdit ? null : undefined),
             customerType,
             searchItem,
             salesMen: salesman,
@@ -1045,13 +1051,18 @@ export default function CreateWholeSalesForm({
                                     }`}
                             />
                         </div>
-                        {/* <input
-              type="date"
-              value={deliveryDate}
-              onChange={(e) => setDeliveryDate(e.target.value)}
-              title="Delivery Date"
-              className="border border-gray-300 dark:border-gray-600 rounded text-xs h-8 px-2 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36"
-            /> */}
+                        {/* Delivery date is optional — the sale saves without it. */}
+                        <div className="w-36">
+                            <DatePicker
+                                id="delivery-date-picker-sales-whole"
+                                label=""
+                                placeholder="Delivery date"
+                                defaultDate={deliveryDate}
+                                onChange={(_selectedDates: Date[], dateStr: string) => setDeliveryDate(dateStr)}
+                                isStatic={false}
+                                inputClassName="border border-gray-300 dark:border-gray-600 rounded-md text-xs h-9 px-2.5 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36 transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                            />
+                        </div>
 
                         {/* Customer Grouped Dropdown */}
                         <div className="relative flex-1" ref={customerDropdownRef}>
