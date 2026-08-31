@@ -34,6 +34,14 @@ exports.authGuard = asynchandeler(async (req, res, next) => {
   if (!user) {
     throw new customError("User not found", 401);
   }
+
+  // Revoke live sessions the moment an account is deactivated or blocked.
+  // 401 (not 403) so the client's interceptor treats it as an auth failure:
+  // its refresh attempt is rejected too, which signs the user out.
+  if (user.isBlocked || !user.isActive) {
+    throw new customError("Your account is no longer active", 401);
+  }
+
   req.user = user;
   next();
 });

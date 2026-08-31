@@ -96,8 +96,8 @@ const AddUser = () => {
     }
     if (!password.trim()) {
       newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else if (password.length < 4) {
+      newErrors.password = "Password must be at least 4 characters";
     }
     if (!phone.trim()) newErrors.phone = "Phone number is required";
     if (!role) newErrors.role = "Role is required";

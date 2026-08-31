@@ -44,8 +44,8 @@ export default function SignInForm() {
       newErrors.email = "Email is invalid.";
 
     if (!formData.password) newErrors.password = "Password is required.";
-    else if (formData.password.length < 8)
-      newErrors.password = "Password must be at least 8 characters.";
+    else if (formData.password.length < 4)
+      newErrors.password = "Password must be at least 4 characters.";
 
     setErrors(newErrors);
 

@@ -1,5 +1,9 @@
 const joi = require("joi");
 const { customError } = require("../lib/CustomError");
+const {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MIN_MESSAGE,
+} = require("../constant/constant");
 
 const userSchema = joi
   .object({
@@ -21,11 +25,17 @@ const userSchema = joi
         "any.required": "Email is required.",
       }),
 
-    password: joi.string().trim().required().min(8).messages({
-      "string.empty": "Password is required.",
-      "string.min": "Password must be at least 8 characters long.",
-      "any.required": "Password is required.",
-    }),
+    // Any characters are allowed — only a minimum length is enforced.
+    password: joi
+      .string()
+      .trim()
+      .required()
+      .min(PASSWORD_MIN_LENGTH)
+      .messages({
+        "string.empty": "Password is required.",
+        "string.min": PASSWORD_MIN_MESSAGE + ".",
+        "any.required": "Password is required.",
+      }),
 
     phone: joi
       .string()

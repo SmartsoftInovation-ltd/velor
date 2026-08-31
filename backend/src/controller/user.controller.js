@@ -12,7 +12,11 @@ const {
   cloudinaryFileUpload,
   deleteCloudinaryFile,
 } = require("../helpers/cloudinary");
-const { statusCodes } = require("../constant/constant");
+const {
+  statusCodes,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MIN_MESSAGE,
+} = require("../constant/constant");
 const { imageQueue } = require("@/queues/image.queue");
 const { logAudit } = require("@/service/audit.service");
 const {
@@ -85,8 +89,10 @@ exports.login = asynchandeler(async (req, res) => {
     .select(
       "-__v -wishList -cart -newsLetterSubscribe  -lastLogout -createdAt  -twoFactorEnabled -newsLetterSubscribe -isEmailVerified -isPhoneVerified -roles -permission",
     );
+  // An unknown account and a wrong password must be indistinguishable to the
+  // caller, otherwise this endpoint reports which emails/phones are registered.
   if (!user) {
-    throw new customError("User not found", statusCodes.NOT_FOUND);
+    throw new customError("Invalid credentials", statusCodes.BAD_REQUEST);
   }
   //check password
   const isPasswordMatch = await user.comparePassword(password);
@@ -100,6 +106,20 @@ exports.login = asynchandeler(async (req, res) => {
       entityLabel: user.email || user.phone,
     });
     throw new customError("Invalid credentials", statusCodes.BAD_REQUEST);
+  }
+
+  // Deactivated / blocked accounts may not sign in
+  if (user.isBlocked) {
+    throw new customError(
+      "Your account has been blocked. Please contact an administrator.",
+      statusCodes.FORBIDDEN,
+    );
+  }
+  if (!user.isActive) {
+    throw new customError(
+      "Your account is deactivated. Please contact an administrator.",
+      statusCodes.FORBIDDEN,
+    );
   }
 
   // generate access token and refresh token
@@ -164,6 +184,14 @@ exports.refreshToken = asynchandeler(async (req, res) => {
   // verify signature + expiry
   jwt.verify(user.refreshToken, process.env.REFRESH_TOKEN_SCCERET);
 
+  // Deactivated / blocked accounts may not refresh into a new session
+  if (user.isBlocked || !user.isActive) {
+    throw new customError(
+      "Your account is no longer active. Please contact an administrator.",
+      statusCodes.FORBIDDEN,
+    );
+  }
+
   const accessToken = await user.generateJwtAccessToken();
 
   return apiResponse.sendSuccess(
@@ -203,13 +231,24 @@ exports.logout = asynchandeler(async (req, res) => {
 
 // send email verification
 exports.sendEmailVerification = asynchandeler(async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
-  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+  const email = req.body.email?.trim().toLowerCase();
+  const user = await User.findOne({ email });
 
-  // Generate token
+  // Always answer the same way so this endpoint cannot be used to discover
+  // which addresses have accounts.
+  if (!user) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "If that email has an account, a verification link has been sent",
+    );
+  }
+
+  // Generate token — kept separate from the password-reset token so the two
+  // flows cannot invalidate or substitute for one another.
   const token = crypto.randomBytes(32).toString("hex");
-  user.resetPasswordToken = token;
-  user.resetPasswordExpires = Date.now() + 1000 * 60 * 60; // 1 hour
+  user.emailVerificationToken = token;
+  user.emailVerificationExpires = Date.now() + 1000 * 60 * 60; // 1 hour
   await user.save();
 
   // Send email (replace with your mail config)
@@ -221,30 +260,45 @@ exports.sendEmailVerification = asynchandeler(async (req, res) => {
       pass: process.env.HOST_APP_PASSWORD,
     },
   });
-  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}&email=${user.email}`;
+  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
   await transporter.sendMail({
     to: user.email,
     subject: "Verify your email",
     html: `<a href="${verifyUrl}">Click to verify your email</a>`,
   });
 
-  apiResponse.sendSuccess(res, statusCodes.OK, "Verification email sent");
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "If that email has an account, a verification link has been sent",
+  );
 });
 
 // verify email
 exports.verifyEmail = asynchandeler(async (req, res) => {
-  const { token, email } = req.query;
+  // Accept either shape: the route is POST, but the emailed link lands on a
+  // frontend page that may forward the values as a query string.
+  const token = req.body?.token || req.query?.token;
+  const email = (req.body?.email || req.query?.email)?.trim().toLowerCase();
+
+  if (!token || !email) {
+    throw new customError(
+      "Verification token and email are required",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
   const user = await User.findOne({
     email,
-    resetPasswordToken: token,
-    resetPasswordExpires: { $gt: Date.now() },
+    emailVerificationToken: token,
+    emailVerificationExpires: { $gt: Date.now() },
   });
   if (!user)
     throw new customError("Invalid or expired token", statusCodes.BAD_REQUEST);
 
   user.isEmailVerified = true;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpires = undefined;
   await user.save();
 
   apiResponse.sendSuccess(res, statusCodes.OK, "Email verified successfully");
@@ -252,9 +306,18 @@ exports.verifyEmail = asynchandeler(async (req, res) => {
 
 //forgot password
 exports.forgotPassword = asynchandeler(async (req, res) => {
-  const { email } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
   const user = await User.findOne({ email });
-  if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
+
+  // Same response whether or not the account exists — otherwise this endpoint
+  // reports which addresses are registered.
+  if (!user) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "If that email has an account, a reset link has been sent",
+    );
+  }
 
   const token = crypto.randomBytes(32).toString("hex");
   user.resetPasswordToken = token;
@@ -270,19 +333,32 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
       pass: process.env.HOST_APP_PASSWORD,
     },
   });
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}&email=${user.email}`;
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
   await transporter.sendMail({
     to: user.email,
     subject: "Reset your password",
     html: `<a href="${resetUrl}">Click to reset your password</a>`,
   });
 
-  apiResponse.sendSuccess(res, statusCodes.OK, "Password reset email sent");
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "If that email has an account, a reset link has been sent",
+  );
 });
 
 // reset password
 exports.resetPassword = asynchandeler(async (req, res) => {
-  const { token, email, newPassword } = req.body;
+  const { token, newPassword } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
+
+  // Same minimum as every other password entry point — this path used to skip
+  // the check entirely, which let a reset set a shorter password than
+  // registration would ever accept.
+  if (!newPassword || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
+  }
+
   const user = await User.findOne({
     email,
     resetPasswordToken: token,
@@ -294,6 +370,9 @@ exports.resetPassword = asynchandeler(async (req, res) => {
   user.password = newPassword;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpires = undefined;
+  // A reset is how an account is recovered after a compromise, so drop any
+  // session the previous password left open.
+  user.refreshToken = null;
   await user.save();
 
   apiResponse.sendSuccess(res, statusCodes.OK, "Password reset successful");
@@ -306,12 +385,8 @@ exports.changePassword = asynchandeler(async (req, res) => {
 
   const { oldPassword, newPassword } = req.body;
 
-  //check password have number and text and minimunm 8 character using regex
-  if (!/^(?=.*\d)(?=.*[a-zA-Z]).{8,}$/.test(newPassword)) {
-    throw new customError(
-      "Password must contain at least 8 characters, including at least one letter and one number",
-      statusCodes.BAD_REQUEST,
-    );
+  if (!newPassword || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
   }
 
   if (!(await user.comparePassword(oldPassword))) {
@@ -319,6 +394,8 @@ exports.changePassword = asynchandeler(async (req, res) => {
   }
 
   user.password = newPassword;
+  // Sessions opened with the old password are no longer valid.
+  user.refreshToken = null;
   await user.save();
 
   return apiResponse.sendSuccess(
@@ -408,7 +485,7 @@ exports.getMe = asynchandeler(async (req, res) => {
 
 // search a user andd add permissin in  permission array
 exports.addPermissionToUser = asynchandeler(async (req, res) => {
-  const { userId, permissionId } = req.body;
+  const { userId, permissionId, actions } = req.body;
 
   // Check if user exists
   const user = await User.findById(userId);
@@ -419,8 +496,35 @@ exports.addPermissionToUser = asynchandeler(async (req, res) => {
   if (!permission)
     throw new customError("Permission not found", statusCodes.NOT_FOUND);
 
-  // Add permission to user's permissions array
-  user.permissions.push(permission._id);
+  // `permissions` entries are { permission, actions } subdocuments. Pushing a
+  // bare ObjectId produced an entry whose `permission` was undefined, so
+  // authorize() could never match it and the grant did nothing.
+  const requestedActions = Array.isArray(actions)
+    ? actions
+    : actions
+      ? [actions]
+      : [];
+  if (requestedActions.length === 0) {
+    throw new customError(
+      "At least one action is required (e.g. view, add, edit, delete)",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
+  const existing = user.permissions.find(
+    (p) => p.permission?.toString() === permission._id.toString(),
+  );
+
+  if (existing) {
+    // Merge, so re-granting does not drop actions already held.
+    existing.actions = [...new Set([...existing.actions, ...requestedActions])];
+  } else {
+    user.permissions.push({
+      permission: permission._id,
+      actions: [...new Set(requestedActions)],
+    });
+  }
+
   await user.save();
 
   apiResponse.sendSuccess(
@@ -446,9 +550,10 @@ exports.removePermissionFromUser = asynchandeler(async (req, res) => {
   if (!permission)
     throw new customError("Permission not found", statusCodes.NOT_FOUND);
 
-  // Remove permission from user's permissions array
+  // Entries are { permission, actions } subdocuments — compare the inner
+  // `permission` reference, not the subdocument itself.
   user.permissions = user.permissions.filter(
-    (perm) => perm.toString() !== permission._id.toString(),
+    (perm) => perm.permission?.toString() !== permission._id.toString(),
   );
   await user.save();
 
@@ -472,12 +577,17 @@ exports.isSuperAdmin = asynchandeler(async (req, res) => {
       statusCodes.BAD_REQUEST,
     );
   }
-  const user = await User.findOne({ $or: [{ email }, { phone }] });
+  // roles must be populated — `role.slug` on raw ObjectIds is always undefined,
+  // which made this endpoint report false for every account.
+  const user = await User.findOne({ $or: [{ email }, { phone }] })
+    .populate("roles")
+    .select("roles");
   if (!user) {
     throw new customError("User not found", statusCodes.NOT_FOUND);
   }
 
-  const isSuperAdmin = user?.roles?.some((role) => role.slug === "superadmin");
+  const isSuperAdmin =
+    user?.roles?.some((role) => role?.slug === "superadmin") || false;
   return apiResponse.sendSuccess(
     res,
     statusCodes.OK,
@@ -654,6 +764,53 @@ exports.updateUser = asynchandeler(async (req, res) => {
   );
 });
 
+// activate / deactivate user
+const setUserActiveStatus = (isActive) =>
+  asynchandeler(async (req, res) => {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      throw new customError("User not found", statusCodes.NOT_FOUND);
+    }
+
+    // Prevent an admin from locking themselves out
+    if (!isActive && req.user._id.toString() === id) {
+      throw new customError(
+        "You cannot deactivate your own account",
+        statusCodes.BAD_REQUEST,
+      );
+    }
+
+    const before = { isActive: user.isActive };
+
+    user.isActive = isActive;
+    await user.save();
+
+    logAudit({
+      req,
+      action: "STATUS_CHANGE",
+      entityType: "user",
+      entityId: user._id,
+      entityLabel: user.email || user.phone,
+      before,
+      after: { isActive: user.isActive },
+    });
+
+    // Invalidate cache
+    await bumpNsVersion(NS);
+
+    apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      `User ${isActive ? "activated" : "deactivated"} successfully`,
+      { _id: user._id, isActive: user.isActive },
+    );
+  });
+
+exports.activateUser = setUserActiveStatus(true);
+exports.deactivateUser = setUserActiveStatus(false);
+
 // delte user
 exports.deleteUser = asynchandeler(async (req, res) => {
   const { id } = req.params;
@@ -672,6 +829,9 @@ exports.deleteUser = asynchandeler(async (req, res) => {
 
   // Delete user from DB
   await User.findByIdAndDelete(id);
+
+  // Invalidate cache
+  await bumpNsVersion(NS);
 
   apiResponse.sendSuccess(
     res,

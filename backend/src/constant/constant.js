@@ -10,7 +10,20 @@ const statusCodes = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
+  TOO_MANY_REQUESTS: 429,
   SERVER_ERROR: 500,
 };
 
-module.exports = { dbConfig, statusCodes };
+// Password policy — deliberately permissive on character content (any
+// characters are allowed), with only a minimum length enforced. Every place
+// that accepts a password reads this so the rule cannot drift between
+// registration, admin-created users, password change, and password reset.
+const PASSWORD_MIN_LENGTH = 4;
+const PASSWORD_MIN_MESSAGE = `Password must be at least ${PASSWORD_MIN_LENGTH} characters long`;
+
+module.exports = {
+  dbConfig,
+  statusCodes,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MIN_MESSAGE,
+};

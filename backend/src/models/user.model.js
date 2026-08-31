@@ -64,6 +64,16 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpires: {
       type: Date,
     },
+    // Email verification gets its own token pair. Sharing the reset-password
+    // fields meant requesting a verification mail silently invalidated a
+    // pending password reset, and an email-verify link doubled as a valid
+    // password-reset token.
+    emailVerificationToken: {
+      type: String,
+    },
+    emailVerificationExpires: {
+      type: Date,
+    },
     discountLimit: {
       type: Number,
       default: 0,
@@ -84,6 +94,8 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ name: 1 });
 userSchema.index({ roles: 1 });
 userSchema.index({ isActive: 1, isBlocked: 1 });
+// Refresh flow looks a user up by refresh token on every token renewal.
+userSchema.index({ refreshToken: 1 });
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {

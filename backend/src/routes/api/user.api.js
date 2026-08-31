@@ -7,18 +7,34 @@ const {
   multipleFileUpload,
   singleFileUpload,
 } = require("../../middleware/multer.middleware");
+const {
+  loginLimiter,
+  passwordResetLimiter,
+  resetSubmitLimiter,
+  registerLimiter,
+  changePasswordLimiter,
+} = require("../../middleware/rateLimit.middleware");
 
-_.post("/registeruser", authController.registerUser);
-_.post("/login", authController.login);
+_.post("/registeruser", registerLimiter, authController.registerUser);
+_.post("/login", loginLimiter, authController.login);
 _.post("/refresh-token", authController.refreshToken);
 _.post("/logout", authController.logout);
 // user control
-_.post("/send-email-verification", authController.sendEmailVerification);
-_.post("/verify-email", authController.verifyEmail);
-_.post("/forgot-password", authController.forgotPassword);
-_.post("/reset-password", authController.resetPassword);
+_.post(
+  "/send-email-verification",
+  passwordResetLimiter,
+  authController.sendEmailVerification,
+);
+_.post("/verify-email", resetSubmitLimiter, authController.verifyEmail);
+_.post("/forgot-password", passwordResetLimiter, authController.forgotPassword);
+_.post("/reset-password", resetSubmitLimiter, authController.resetPassword);
 _.get("/getallusers", authGuard, authorize("create-user", "view"), authController.getAllUser);
-_.get("/change-password", authGuard, authController.changePassword);
+_.post(
+  "/change-password",
+  authGuard,
+  changePasswordLimiter,
+  authController.changePassword,
+);
 _.get(
   "/getuserbyemailorphone",
   authGuard,
@@ -48,8 +64,20 @@ _.get(
   authorize("create-user", "view"),
   authController.getUserAddedByAdmin,
 );
+_.put(
+  "/activate-user/:id",
+  authGuard,
+  authorize("create-user", "edit"),
+  authController.activateUser,
+);
+_.put(
+  "/deactivate-user/:id",
+  authGuard,
+  authorize("create-user", "edit"),
+  authController.deactivateUser,
+);
 _.delete(
-  "/detete-user/:id",
+  "/delete-user/:id",
   authGuard,
   authorize("create-user", "delete"),
   authController.deleteUser,

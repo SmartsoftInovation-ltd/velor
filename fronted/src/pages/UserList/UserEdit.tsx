@@ -123,7 +123,7 @@ const UserEdit = () => {
     }
     if (!phone.trim()) newErrors.phone = "Phone is required";
     if (!role) newErrors.role = "Role is required";
-    if (password && password.length < 6) newErrors.password = "Password must be at least 6 characters";
+    if (password && password.length < 4) newErrors.password = "Password must be at least 4 characters";
     if (discountLimit !== "") {
       const v = Number(discountLimit);
       if (isNaN(v) || v < 0 || v > 100) newErrors.discountLimit = "Discount limit must be between 0 and 100.";

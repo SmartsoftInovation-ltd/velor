@@ -5,6 +5,7 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import toast from "react-hot-toast";
+import axios from "axios";
 import axiosSecure from "../../hooks/useAxiosSecure";
 
 export default function SignUpForm() {
@@ -46,8 +47,8 @@ export default function SignUpForm() {
       newErrors.email = "Email is invalid.";
 
     if (!formData.password) newErrors.password = "Password is required.";
-    else if (formData.password.length < 8)
-      newErrors.password = "Password must be at least 8 characters.";
+    else if (formData.password.length < 4)
+      newErrors.password = "Password must be at least 4 characters.";
 
     if (!formData.phone) newErrors.phone = "Phone number is required.";
 
@@ -82,7 +83,13 @@ export default function SignUpForm() {
           navigate("/signin");
         }, 2000);
       } catch (error) {
-        console.error("Registration error:", error);
+        // Surface the server's reason — a duplicate email/phone or a
+        // rate-limit lockout previously failed silently with no feedback.
+        if (axios.isAxiosError(error) && error.response?.data?.message) {
+          toast.error(error.response.data.message);
+        } else {
+          toast.error("An error occurred during registration.");
+        }
       }
     }
   };
