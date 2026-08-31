@@ -26,7 +26,6 @@ interface Errors {
   password?: string;
   phone?: string;
   role?: string;
-  image?: string;
   discountLimit?: string;
 }
 
@@ -101,7 +100,6 @@ const AddUser = () => {
     }
     if (!phone.trim()) newErrors.phone = "Phone number is required";
     if (!role) newErrors.role = "Role is required";
-    if (!image) newErrors.image = "User image is required";
     if (discountLimit !== "") {
       const v = Number(discountLimit);
       if (isNaN(v) || v < 0 || v > 100) newErrors.discountLimit = "Discount limit must be between 0 and 100.";
@@ -374,7 +372,10 @@ const AddUser = () => {
             {/* Image Upload — full width */}
             <div className="mt-6">
               <Label>
-                User Image <RequiredMark />
+                User Image{" "}
+                <span className="text-gray-400 text-xs font-normal">
+                  (optional)
+                </span>
               </Label>
 
               {preview ? (
@@ -401,17 +402,11 @@ const AddUser = () => {
                   className={`mt-2 flex flex-col items-center justify-center w-full h-36 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
                     isDragActive
                       ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10"
-                      : errors.image
-                      ? "border-red-400 bg-red-50 dark:bg-red-500/5"
                       : "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-brand-400 hover:bg-brand-50/50 dark:hover:bg-brand-500/5"
                   }`}
                 >
                   <input {...getInputProps()} />
-                  <FaUpload
-                    className={`size-7 mb-3 ${
-                      errors.image ? "text-red-400" : "text-gray-400 dark:text-gray-500"
-                    }`}
-                  />
+                  <FaUpload className="size-7 mb-3 text-gray-400 dark:text-gray-500" />
                   <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
                     {isDragActive ? "Drop the image here" : "Drag & drop or click to upload"}
                   </p>
@@ -419,9 +414,6 @@ const AddUser = () => {
                     PNG, JPG, WEBP up to 5MB
                   </p>
                 </div>
-              )}
-              {errors.image && (
-                <p className="text-red-500 text-xs mt-1">{errors.image}</p>
               )}
             </div>
 
