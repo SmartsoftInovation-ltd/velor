@@ -6,9 +6,11 @@ import { usePermission } from "../../hooks/usePermission";
 import Button from "../ui/button/Button";
 import SalesHistoryTable from "../tables/SalesTable/SalesHistoryTable";
 
-// Combined order list — retail and wholesale sale orders in one table. The
-// backend accepts a comma-separated salesType, so both kinds arrive together
-// and the table's own type filter separates them.
+// Combined order list — sale orders plus ordinary retail/wholesale sales, all
+// in one table. The backend accepts a comma-separated salesType, so every kind
+// arrives together and the table's own type filter separates them. The point of
+// the page is the pending queue: a plain retail sale left pending still needs
+// action, so it belongs here next to the sale orders.
 const SaleOrderList = () => {
   const canAddRetail = usePermission("retail-sale-order", "add");
   const canAddWholesale = usePermission("whole-sale-order", "add");
@@ -46,12 +48,12 @@ const SaleOrderList = () => {
       />
       <div className="space-y-6">
         <ComponentCard>
-          {/* Orders open on the pending ones — those are the rows that still
-              need action. Every status stays in the fetch, so switching the
-              invoice filter (or clearing it) reveals the rest without a
-              second request. */}
+          {/* Opens on the pending rows — those are the ones that still need
+              action. Every status stays in the fetch, so switching the invoice
+              filter (or clearing it) reveals the rest without a second
+              request. */}
           <SalesHistoryTable
-            salesType="retailsaleorder,wholesaleorder"
+            salesType="retailsale,wholesale,retailsaleorder,wholesaleorder"
             defaultInvoiceStatus="pending"
           />
         </ComponentCard>
