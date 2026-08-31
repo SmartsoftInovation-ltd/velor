@@ -28,13 +28,46 @@ const getNsVersion = async (ns) => {
   return v ? Number(v) : 1;
 };
 
-const bumpNsVersion = async (ns) => {
+// Namespaces whose data the dashboard aggregates. The dashboard reads across
+// many collections, so a write to any of these makes its cached widgets stale
+// — but the writing controller has no reason to know the dashboard exists.
+// Bumping is handled here so every existing call site stays correct and a new
+// one cannot forget.
+const DASHBOARD_SOURCE_NAMESPACES = new Set([
+  "sales",
+  "salesReturn",
+  "purchase",
+  "purchase-return",
+  "product",
+  "variant",
+  "stock",
+  "customer",
+  "customerPayment",
+  "customerAdvance",
+  "employee",
+  "account",
+]);
+
+const bumpOne = async (ns) => {
   // atomic increment — all old versioned keys become unreachable
   const v = await cache.incr(`${ns}:v`);
   if (v === 1) {
     await cache.set(`${ns}:v`, 2);
     return 2;
   }
+  return v;
+};
+
+const bumpNsVersion = async (ns) => {
+  const v = await bumpOne(ns);
+
+  // Cascade to the dashboard so its widgets reflect the write immediately.
+  // Without this the dashboard served figures up to its own TTL old — a sale
+  // could be created or deleted and the totals would not move.
+  if (DASHBOARD_SOURCE_NAMESPACES.has(ns)) {
+    await bumpOne("dashboard");
+  }
+
   return v;
 };
 
@@ -50,4 +83,5 @@ module.exports = {
   getNsVersion,
   bumpNsVersion,
   buildCacheKey,
+  DASHBOARD_SOURCE_NAMESPACES,
 };
