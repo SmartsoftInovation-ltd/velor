@@ -338,9 +338,34 @@ const SalesReceiptPrint = () => {
       <style>{`
         @media print {
           @page { size: ${width} auto; margin: 0; }
-          html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+          html, body {
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          /* visibility:hidden only stops an element painting — it still
+             occupies its box. The screen-only chrome (toolbar, settings modal)
+             and the full-viewport min-h-screen wrapper therefore kept
+             reserving height past the end of the receipt, which pushed a
+             second, blank page out of the printer. Removing them from layout
+             entirely is what keeps a short receipt on one page, while a long
+             one still flows onto as many pages as it genuinely needs. */
           body * { visibility: hidden; }
           #printable-receipt, #printable-receipt * { visibility: visible; }
+          /* Escaping the Tailwind "print:hidden" class inside a template
+             literal is error-prone, so match it by attribute instead. */
+          [class~="print:hidden"] { display: none !important; }
+          #receipt-page {
+            min-height: 0 !important;
+            height: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #fff !important;
+            display: block !important;
+          }
           /* Thermal heads are 1-bit: any grey is dithered into sparse dots and
              reads as blurry. Force every glyph and rule to solid black on white
              so the printer fires a full dot instead. */
@@ -358,6 +383,12 @@ const SalesReceiptPrint = () => {
           #printable-receipt {
             position: absolute !important;
             top: 0 !important;
+            /* A receipt that fits must not be split; one that overflows still
+               breaks naturally onto the next page. */
+            page-break-before: auto !important;
+            page-break-after: auto !important;
+            break-before: auto !important;
+            break-after: auto !important;
             /* Centred rather than pinned left: on a page wider than the roll
                (A4 preview, PDF export) a left-pinned receipt hugs the edge. */
             left: 50% !important;
@@ -368,6 +399,9 @@ const SalesReceiptPrint = () => {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          /* Trailing whitespace inside the receipt can round up onto a second
+             page on some drivers. */
+          #printable-receipt > *:last-child { margin-bottom: 0 !important; }
         }
       `}</style>
 
