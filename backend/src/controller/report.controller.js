@@ -997,7 +997,11 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
   }
 
   const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  // endDate arrives as a bare day ("2026-09-03"), which parses to midnight and
+  // would drop everything recorded later that same day.
   const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
 
   const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
   if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
@@ -1116,13 +1120,70 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
         $group: {
           _id: null,
           salesTotal: { $sum: "$total" },
+          // Invoice-level percentage discount.
           discount: {
             $sum: { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
+          },
+          // Flat taka knocked off the invoice.
+          lessTaka: { $sum: { $ifNull: ["$lessTaka", 0] } },
+          // Per-line discount, summed across the invoice's items. discountType
+          // decides how searchItem.discount reads: "amount" is taka off each
+          // unit, "percent" is a share of that line's gross.
+          itemDiscount: {
+            $sum: {
+              $reduce: {
+                input: { $ifNull: ["$searchItem", []] },
+                initialValue: 0,
+                in: {
+                  $add: [
+                    "$$value",
+                    {
+                      $let: {
+                        vars: {
+                          qty: { $ifNull: ["$$this.quantity", 0] },
+                          rate: { $ifNull: ["$$this.salesRate", 0] },
+                          disc: { $ifNull: ["$$this.discount", 0] },
+                        },
+                        in: {
+                          $cond: [
+                            { $eq: [{ $ifNull: ["$$this.discountType", "amount"] }, "percent"] },
+                            {
+                              $divide: [
+                                { $multiply: ["$$qty", "$$rate", "$$disc"] },
+                                100,
+                              ],
+                            },
+                            { $multiply: ["$$qty", "$$disc"] },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
           },
           deliveryCost: { $sum: { $ifNull: ["$deliveryCost", 0] } },
           labourCost: { $sum: { $ifNull: ["$labourCost", 0] } },
           payable: { $sum: { $ifNull: ["$payable", 0] } },
           paid: { $sum: { $ifNull: ["$paid", 0] } },
+          changes: { $sum: { $ifNull: ["$changes", 0] } },
+          // Cash retained. Sales written before netPaid existed have no such
+          // field, so fall back to computing it from paid and changes rather
+          // than reading those rows as zero.
+          netPaid: {
+            $sum: {
+              $ifNull: [
+                "$netPaid",
+                {
+                  $max: [
+                    0,
+                    { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+                  ],
+                },
+              ],
+            },
+          },
           due: { $sum: { $ifNull: ["$presentDue", 0] } },
           invoiceCount: { $sum: 1 },
         },
@@ -1189,19 +1250,20 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
   });
 
   // ---- 4. Sales returns inside the range ----
-  const salesIdsInRange = await Sales.find(match).distinct("_id");
-  const [returnAgg] = salesIdsInRange.length
-    ? await SalesReturn.aggregate([
-        { $match: { invoiceNumber: { $in: salesIdsInRange } } },
-        { $group: { _id: null, totalReturn: { $sum: { $ifNull: ["$totalReturnAmount", 0] } } } },
-      ])
-    : [];
+  // Returns belong to the period they were made in, not the period of the
+  // invoice they point back at — a return raised today against last month's
+  // invoice is today's return.
+  const [returnAgg] = await SalesReturn.aggregate([
+    { $match: { date: { $gte: rangeStart, $lte: rangeEnd } } },
+    { $group: { _id: null, totalReturn: { $sum: { $ifNull: ["$totalReturnAmount", 0] } } } },
+  ]);
 
   // ---- 5. Account summary (which account received the money) ----
   const accountRows = await Sales.aggregate([
     { $match: match },
     {
       $project: {
+        saleChanges: { $ifNull: ["$changes", 0] },
         payments: {
           $concatArrays: [
             {
@@ -1216,8 +1278,51 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
         },
       },
     },
-    { $unwind: "$payments" },
-    { $group: { _id: "$payments.paymentTo", totalAmount: { $sum: "$payments.amount" } } },
+    // Keep the full entry list beside the unwound one so each entry can see
+    // what follows it when the change is apportioned.
+    { $addFields: { payments_all: "$payments" } },
+    { $unwind: { path: "$payments", includeArrayIndex: "paymentIndex" } },
+    // Change handed back reduces what the account actually received, so the
+    // entries are scaled down to netPaid. It comes off the last entries first,
+    // matching how applySalePayments posts to the accounts — anything else and
+    // this summary would disagree with the account balances it reports on.
+    {
+      $addFields: {
+        // Total sitting at or after this entry, so a change bigger than the
+        // last entry spills backwards into the one before it.
+        amountFromHere: {
+          $sum: {
+            $slice: ["$payments_all.amount", "$paymentIndex", { $size: "$payments_all" }],
+          },
+        },
+      },
+    },
+    {
+      $addFields: {
+        totalAmount: {
+          $max: [
+            0,
+            {
+              $subtract: [
+                "$payments.amount",
+                {
+                  $max: [
+                    0,
+                    {
+                      $subtract: [
+                        { $ifNull: ["$saleChanges", 0] },
+                        { $subtract: ["$amountFromHere", "$payments.amount"] },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    { $group: { _id: "$payments.paymentTo", totalAmount: { $sum: "$totalAmount" } } },
     {
       $lookup: {
         from: "accounts",
@@ -1262,12 +1367,16 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
     },
     summary: {
       salesTotal: s.salesTotal || 0,
+      itemDiscount: s.itemDiscount || 0,
       discount: s.discount || 0,
+      lessTaka: s.lessTaka || 0,
       returnAmount: returnAgg?.totalReturn || 0,
       deliveryCost: s.deliveryCost || 0,
       labourCost: s.labourCost || 0,
       payable: s.payable || 0,
       paid: s.paid || 0,
+      changes: s.changes || 0,
+      netPaid: s.netPaid || 0,
       due: s.due || 0,
       invoiceCount: s.invoiceCount || 0,
     },

@@ -31,12 +31,16 @@ interface SalesRow {
 
 interface SummaryBlock {
   salesTotal: number;
+  itemDiscount: number;
   discount: number;
+  lessTaka: number;
   returnAmount: number;
   deliveryCost: number;
   labourCost: number;
   payable: number;
   paid: number;
+  changes: number;
+  netPaid: number;
   due: number;
   invoiceCount: number;
 }
@@ -117,7 +121,12 @@ const datePresets: { value: DatePreset; label: string }[] = [
   { value: "custom", label: "Custom Range" },
 ];
 
-const toISODate = (d: Date) => d.toISOString().split("T")[0];
+const toISODate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
 const rangeForPreset = (preset: DatePreset): { start: string; end: string } => {
   const today = new Date();
@@ -180,8 +189,8 @@ const SalesSummaryReport = () => {
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
 
-  const initialRange = rangeForPreset("30d");
-  const [datePreset, setDatePreset] = useState<DatePreset>("30d");
+  const initialRange = rangeForPreset("today");
+  const [datePreset, setDatePreset] = useState<DatePreset>("today");
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
   const [salesType, setSalesType] = useState("");
@@ -313,6 +322,15 @@ const SalesSummaryReport = () => {
   const header = data?.header;
   const totals = data?.totals;
   const summary = data?.summary;
+
+  // Stored payable already has the per-invoice discounts, less taka and costs
+  // applied. Only the period's sales returns are missing from it, so that is
+  // the single adjustment made here.
+  const payable = summary ? summary.payable - summary.returnAmount : 0;
+
+  // netPaid already excludes counter change (derived server-side on write), so
+  // only the period's refunded returns come off here.
+  const netPaid = summary ? summary.netPaid - summary.returnAmount : 0;
   const accountSummary = data?.accountSummary;
   const pagination = data?.pagination;
   const rows = data?.rows ?? [];
@@ -656,8 +674,17 @@ const SalesSummaryReport = () => {
                 {[
                   { label: "Sales Total", value: summary?.salesTotal ?? 0 },
                   { label: "Buy Value", value: totals.totalBuyValue },
-                  { label: "Discount", value: summary?.discount ?? 0 },
-                  { label: "Payable", value: summary?.payable ?? 0 },
+                  {
+                    // All three deductions in one tile — the strip is a fixed
+                    // six-slot glance row, and the table below breaks the
+                    // figure out into item discount / discount / less tk.
+                    label: "Discount/Less",
+                    value:
+                      (summary?.itemDiscount ?? 0) +
+                      (summary?.discount ?? 0) +
+                      (summary?.lessTaka ?? 0),
+                  },
+                  { label: "Payable", value: payable },
                   { label: "Total Qty", value: totals.totalQty, isCount: true },
                   { label: "Items", value: totals.count, isCount: true },
                 ].map((s) => (
@@ -836,12 +863,17 @@ const SalesSummaryReport = () => {
                   <table className="w-full">
                     <tbody>
                       {[
-                        { label: "SALES TOTAL", value: summary.salesTotal },
-                        { label: "DISCOUNT/LESS (-)", value: summary.discount },
+                        { label: "SALES TOTAL", value: summary.salesTotal, always: true },
+                        { label: "ITEM DISCOUNT (-)", value: summary.itemDiscount },
+                        { label: "DISCOUNT (-)", value: summary.discount },
+                        { label: "LESS TK (-)", value: summary.lessTaka },
                         { label: "RETURN (-)", value: summary.returnAmount },
                         { label: "DELIVERY COST (+)", value: summary.deliveryCost },
                         { label: "LABOUR COST (+)", value: summary.labourCost },
-                      ].map((r) => (
+                        // A zero adjustment is noise — only the lines that moved
+                        // the total earn a row. Sales total always shows, as it
+                        // is what the rest adjusts.
+                      ].filter((r) => r.always || r.value !== 0).map((r) => (
                         <tr key={r.label} className="border-b border-gray-100 dark:border-gray-800">
                           <td className="px-3 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">
                             {r.label}
@@ -856,7 +888,7 @@ const SalesSummaryReport = () => {
                           TOTAL PAYABLE
                         </td>
                         <td className="px-3 py-2.5 text-right text-xs font-bold text-gray-800 dark:text-gray-100">
-                          {money(summary.payable)}
+                          {money(payable)}
                         </td>
                       </tr>
                       <tr className="border-b border-gray-100 dark:border-gray-800">
@@ -864,7 +896,7 @@ const SalesSummaryReport = () => {
                           PAID
                         </td>
                         <td className="px-3 py-2 text-right text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                          {money(summary.paid)}
+                          {money(netPaid)}
                         </td>
                       </tr>
                       <tr>
@@ -1094,10 +1126,24 @@ const SalesSummaryReport = () => {
                 <span>Subtotal</span>
                 <span>{money(summary.salesTotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>(-) Discount</span>
-                <span>{money(summary.discount)}</span>
-              </div>
+              {summary.itemDiscount > 0 && (
+                <div className="flex justify-between">
+                  <span>(-) Item Discount</span>
+                  <span>{money(summary.itemDiscount)}</span>
+                </div>
+              )}
+              {summary.discount > 0 && (
+                <div className="flex justify-between">
+                  <span>(-) Discount</span>
+                  <span>{money(summary.discount)}</span>
+                </div>
+              )}
+              {summary.lessTaka > 0 && (
+                <div className="flex justify-between">
+                  <span>(-) Less Tk</span>
+                  <span>{money(summary.lessTaka)}</span>
+                </div>
+              )}
               {summary.returnAmount > 0 && (
                 <div className="flex justify-between">
                   <span>(-) Return</span>
@@ -1119,11 +1165,11 @@ const SalesSummaryReport = () => {
 
               <div className="flex justify-between border-t border-black pt-1.5 text-[11px] font-bold">
                 <span>Net Sales</span>
-                <span>{money(summary.payable)}</span>
+                <span>{money(payable)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Paid</span>
-                <span className="font-bold">{money(summary.paid)}</span>
+                <span className="font-bold">{money(netPaid)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Due</span>

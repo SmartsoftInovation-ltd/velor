@@ -151,8 +151,14 @@ const salesSchema = new mongoose.Schema(
     customerAdvancePaymentAdjust: { type: Number, default: 0, min: 0 },
 
     payable: { type: Number, default: 0, min: 0 },
+    // What the customer actually handed over.
     paid: { type: Number, default: 0, min: 0 },
+    // Change given back — only ever the overpay above payable.
     changes: { type: Number, default: 0, min: 0 },
+    // Cash the shop kept: paid - changes. Stored rather than derived so
+    // reports can sum it directly, and set server-side on every write so it
+    // cannot drift from the two fields above.
+    netPaid: { type: Number, default: 0, min: 0 },
 
     presentDue: { type: Number, default: 0, min: 0 },
     previousDue: { type: Number, default: 0, min: 0 },

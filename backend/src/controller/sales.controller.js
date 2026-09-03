@@ -100,6 +100,34 @@ const getSalesPaymentCategory = async (session) => {
   return category;
 };
 
+// `netPaid` is the cash the shop kept: what the customer handed over, less any
+// change given back. Both `changes` and `netPaid` are derived server-side on
+// every write — the sales forms are not the only caller, and a client value
+// could drift from paid and payable. Change is only ever the overpay above
+// payable, so it is computed rather than trusted; an edit that lowers payable
+// without resending it would otherwise leave a stale figure behind, and that
+// figure now scales what posts to the account. `paid` itself is left untouched
+// so the audit trail of what the customer handed over survives.
+const toPaisa = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+const normalizeNetPaid = (body, fallback = {}) => {
+  if (
+    body.paid === undefined &&
+    body.changes === undefined &&
+    body.payable === undefined
+  ) {
+    return;
+  }
+  const paid = Number(body.paid ?? fallback.paid ?? 0) || 0;
+  const payable = Number(body.payable ?? fallback.payable ?? 0) || 0;
+  // Snap to paisa. Subtracting two decimal amounts in binary floating point
+  // leaves noise (1500 - 1061.45 = 438.54999999999995), which would then be
+  // stored and posted to an account. Two decimals is the real precision here,
+  // so fractions are kept and only the artefact is dropped.
+  body.changes = toPaisa(Math.max(0, paid - payable));
+  body.netPaid = toPaisa(Math.max(0, paid - body.changes));
+};
+
 // Extract {account, amount} pairs the seller entered on the Paid field(s),
 // whichever payment mode (single/multiple) is active. Zero/blank entries are
 // skipped — they don't move any money.
@@ -120,8 +148,30 @@ const extractSalePayments = (paymentMethod) => {
 // Add each sale payment to its account's balance and record a matching
 // "cash recived" transaction (tagged with saleReference) inside the sale's
 // own transaction/session — so it commits or rolls back together with the sale.
+// Change handed back reduces what the accounts actually received, so the
+// posted amounts are scaled down to netPaid. It comes off the last entries
+// first — change is returned from the final tender, not spread pro rata — and
+// an entry fully consumed by it posts nothing.
+const applyChangeToPayments = (payments, changes) => {
+  let remaining = Number(changes) || 0;
+  if (remaining <= 0) return payments;
+
+  const adjusted = [...payments];
+  for (let i = adjusted.length - 1; i >= 0 && remaining > 0; i--) {
+    const take = Math.min(adjusted[i].amount, remaining);
+    // Snap to paisa: the subtraction is float, and this amount is $inc'd
+    // straight onto an account balance where the error would accumulate.
+    adjusted[i] = { ...adjusted[i], amount: toPaisa(adjusted[i].amount - take) };
+    remaining = toPaisa(remaining - take);
+  }
+  return adjusted.filter((p) => p.amount > 0);
+};
+
 const applySalePayments = async (session, sale) => {
-  const payments = extractSalePayments(sale.paymentMethod);
+  const payments = applyChangeToPayments(
+    extractSalePayments(sale.paymentMethod),
+    sale.changes,
+  );
   if (!payments.length) return;
 
   const category = await getSalesPaymentCategory(session);
@@ -273,6 +323,7 @@ const enqueueSalesNotifications = async (createdSale) => {
 exports.createSales = asynchandeler(async (req, res) => {
   // Enforce the seller's discount limit and stamp who is accountable for it.
   enforceDiscountLimit(req.user, req.body);
+  normalizeNetPaid(req.body);
   req.body.discountGivenBy = req.user?._id;
 
   const session = await mongoose.startSession();
@@ -858,6 +909,7 @@ exports.updateSales = asynchandeler(async (req, res) => {
         discountPercent: req.body.discountPercent ?? oldSale.discountPercent,
         lessTaka: req.body.lessTaka ?? oldSale.lessTaka,
       });
+      normalizeNetPaid(req.body, oldSale);
       // Record who applied the discount on this edit.
       req.body.discountGivenBy = req.user?._id;
 
@@ -1004,9 +1056,15 @@ exports.updateSales = asynchandeler(async (req, res) => {
         throw new customError("Sales update failed", statusCodes.SERVER_ERROR);
       }
 
-      // Re-sync account balances/transactions with the new payment split —
-      // only touch them when payment info was actually part of this edit.
-      if (req.body.paymentMethod) {
+      // Re-sync account balances/transactions with the new payment split.
+      // `changes` counts as payment info too: it scales the posted amounts, so
+      // an edit touching only the change must re-post as well.
+      if (
+        req.body.paymentMethod ||
+        req.body.paid !== undefined ||
+        req.body.changes !== undefined ||
+        req.body.payable !== undefined
+      ) {
         await reverseSalePayments(session, saleId);
         await applySalePayments(session, updatedSale);
       }
