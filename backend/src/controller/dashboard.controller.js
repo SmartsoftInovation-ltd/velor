@@ -114,7 +114,21 @@ exports.getOverview = asynchandeler(async (req, res) => {
         $group: {
           _id: null,
           revenue: { $sum: "$payable" },
-          collected: { $sum: "$paid" },
+          // Cash actually kept: netPaid excludes change handed back. Sales
+          // written before that field existed fall back to paid - changes.
+          collected: {
+            $sum: {
+              $ifNull: [
+                "$netPaid",
+                {
+                  $max: [
+                    0,
+                    { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+                  ],
+                },
+              ],
+            },
+          },
           dues: { $sum: "$presentDue" },
           orders: { $sum: 1 },
           itemsSold: { $sum: { $sum: "$searchItem.quantity" } },
@@ -280,7 +294,19 @@ exports.getOverview = asynchandeler(async (req, res) => {
         $group: {
           _id: null,
           totalSales: { $sum: "$payable" },
-          cashSales: { $sum: "$paid" },
+          cashSales: {
+            $sum: {
+              $ifNull: [
+                "$netPaid",
+                {
+                  $max: [
+                    0,
+                    { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+                  ],
+                },
+              ],
+            },
+          },
           duesSales: { $sum: "$presentDue" },
         },
       },
@@ -746,7 +772,21 @@ exports.getSalesSummary = asynchandeler(async (req, res) => {
         $group: {
           _id: null,
           revenue: { $sum: "$payable" },
-          collected: { $sum: "$paid" },
+          // Cash actually kept: netPaid excludes change handed back. Sales
+          // written before that field existed fall back to paid - changes.
+          collected: {
+            $sum: {
+              $ifNull: [
+                "$netPaid",
+                {
+                  $max: [
+                    0,
+                    { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+                  ],
+                },
+              ],
+            },
+          },
           dues: { $sum: "$presentDue" },
           orders: { $sum: 1 },
         },
@@ -874,10 +914,27 @@ exports.getTransactionSummary = asynchandeler(async (req, res) => {
       },
     ]),
 
-    // Sales module — paid amount
+    // Sales module — cash kept (netPaid, excludes change handed back)
     salesModel.aggregate([
       { $match: dateMatch },
-      { $group: { _id: null, total: { $sum: "$paid" } } },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $ifNull: [
+                "$netPaid",
+                {
+                  $max: [
+                    0,
+                    { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
     ]),
 
     // Purchase module — paid amount
@@ -950,13 +1007,26 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
     customerDuePaymentDocs,
     customerAdvancePaymentDocs,
   ] = await Promise.all([
-      // 1-4. Sales module — cash actually collected (paid), grouped by salesType
+      // 1-4. Sales module — cash actually collected (netPaid, so change given
+      // back at the counter is excluded), grouped by salesType
       salesModel.aggregate([
         { $match: dateMatch },
         {
           $group: {
             _id: "$salesType",
-            amount: { $sum: "$paid" },
+            amount: {
+              $sum: {
+                $ifNull: [
+                  "$netPaid",
+                  {
+                    $max: [
+                      0,
+                      { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+                    ],
+                  },
+                ],
+              },
+            },
             count: { $sum: 1 },
           },
         },
@@ -1376,7 +1446,25 @@ exports.getDayCashSummary = asynchandeler(async (req, res) => {
   ] = await Promise.all([
     salesModel.aggregate([
       { $match: dateMatch },
-      { $group: { _id: null, amount: { $sum: "$paid" } } },
+      {
+        $group: {
+          _id: null,
+          // netPaid: cash kept, change handed back excluded.
+          amount: {
+            $sum: {
+              $ifNull: [
+                "$netPaid",
+                {
+                  $max: [
+                    0,
+                    { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
     ]),
     customerPaymentRecived.aggregate([
       { $match: { ...dateMatch, deletedAt: null } },
