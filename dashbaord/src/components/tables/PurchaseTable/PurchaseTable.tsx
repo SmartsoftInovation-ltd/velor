@@ -103,6 +103,7 @@ const COLS = [
   { label: "Serial", w: "flex-1" },
   { label: "Invoice", w: "flex-1" },
   { label: "Date", w: "flex-1" },
+  { label: "Created At", w: "flex-1" },
   { label: "Supplier", w: "flex-1" },
   { label: "Items", w: "w-20 shrink-0" },
   { label: "Sub Total", w: "flex-1" },
@@ -195,7 +196,14 @@ const PurchaseTable = () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      // A purchase delete touches most dashboard widgets — the backend
+      // cascades its cache bump to every dashboard box on write, so
+      // invalidate every "dashboard-*" query here too.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchPurchases();
     } catch (error) {
       showApiError(error, "Failed to delete the purchase.");
@@ -310,7 +318,18 @@ const PurchaseTable = () => {
                       Due ৳{purchase.dueamount?.toLocaleString() || 0}
                     </span>
                   </div>
-                  <MobileCardRow label="Date">{moment(purchase.date).format("DD MMM YYYY")}</MobileCardRow>
+                  <MobileCardRow label="Date">
+                    <span className="block">{moment(purchase.date).format("DD MMM YYYY")}</span>
+                    <span className="block text-xs text-gray-400 dark:text-gray-500">
+                      {moment(purchase.date).format("hh:mm:ss A")}
+                    </span>
+                  </MobileCardRow>
+                  <MobileCardRow label="Created At">
+                    <span className="block">{moment(purchase.createdAt).format("DD MMM YYYY")}</span>
+                    <span className="block text-xs text-gray-400 dark:text-gray-500">
+                      {moment(purchase.createdAt).format("hh:mm:ss A")}
+                    </span>
+                  </MobileCardRow>
                   <MobileCardRow label="Supplier">{getSupplierName(purchase.supplierId)}</MobileCardRow>
                   <MobileCardRow label="Items">{purchase.allproduct?.length || 0}</MobileCardRow>
                   <MobileCardRow label="Sub Total">৳{purchase.subTotal?.toLocaleString() || 0}</MobileCardRow>
@@ -442,8 +461,19 @@ const PurchaseTable = () => {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0 px-2">
-                          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 block">
                             {moment(purchase.date).format("DD MMM YYYY")}
+                          </span>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block">
+                            {moment(purchase.date).format("hh:mm:ss A")}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0 px-2">
+                          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 block">
+                            {moment(purchase.createdAt).format("DD MMM YYYY")}
+                          </span>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block">
+                            {moment(purchase.createdAt).format("hh:mm:ss A")}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0 px-2">

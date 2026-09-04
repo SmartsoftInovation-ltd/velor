@@ -443,7 +443,16 @@ const CreatePurchaseForm = () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      // A purchase touches most dashboard widgets (Purchase Items, Inventory
+      // Value, Stock Cost, Outflow, Accounts Balance, Overview KPIs) — the
+      // backend already cascades its cache bump to every dashboard box on
+      // write, so invalidate every "dashboard-*" query here too instead of
+      // naming just one and leaving the rest stale until their own TTL.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       setTableProducts([]);
       setFormData({
         invoiceNumber: "",

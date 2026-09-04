@@ -1884,7 +1884,7 @@ exports.getPurchaseSummary = asynchandeler(async (req, res) => {
 
   const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
-  const [invoiceCount, itemsAgg] = await Promise.all([
+  const [invoiceCount, itemsAgg, paymentAgg] = await Promise.all([
     purchaseModel.countDocuments(dateMatch),
 
     purchaseModel.aggregate([
@@ -1902,6 +1902,19 @@ exports.getPurchaseSummary = asynchandeler(async (req, res) => {
         },
       },
     ]),
+
+    // Document-level payable/paid — one row per purchase, not per line item,
+    // so this is a separate (unwind-free) aggregate from itemsAgg above.
+    purchaseModel.aggregate([
+      { $match: dateMatch },
+      {
+        $group: {
+          _id: null,
+          payable: { $sum: "$payable" },
+          paid: { $sum: "$paid" },
+        },
+      },
+    ]),
   ]);
 
   const payload = {
@@ -1910,6 +1923,8 @@ exports.getPurchaseSummary = asynchandeler(async (req, res) => {
       invoiceCount: invoiceCount || 0,
       quantity: itemsAgg[0]?.quantity || 0,
       value: Math.round(itemsAgg[0]?.value || 0),
+      payable: Math.round(paymentAgg[0]?.payable || 0),
+      paid: Math.round(paymentAgg[0]?.paid || 0),
     },
   };
 

@@ -377,6 +377,8 @@ export interface DashboardPurchaseSummary {
   invoiceCount: number;
   quantity: number;
   value: number;
+  payable: number;
+  paid: number;
 }
 
 export interface PurchaseSummaryData {

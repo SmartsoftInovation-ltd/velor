@@ -418,6 +418,7 @@ exports.getAllSupplierDuePayment = asynchandeler(async (req, res) => {
         supplierPaymentSerialId: 1,
         transactionId: 1,
         date: 1,
+        createdAt: 1,
         paidAmount: 1,
         lessAmount: 1,
         paymentMode: 1,

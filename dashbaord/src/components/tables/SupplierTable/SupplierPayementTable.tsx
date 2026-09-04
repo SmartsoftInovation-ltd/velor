@@ -36,6 +36,7 @@ export interface SupplierPayment {
   remainingDue: number;
   remarks: string;
   isActive: boolean;
+  createdAt?: string;
   supplier: {
     supplierName: string;
     supplierId: string;
@@ -99,10 +100,11 @@ const Tooltip = ({
 
 // ─── Grid layout ──────────────────────────────────────────────────────────────
 
-const gridTemplateColumns = "110px 1fr 1fr 1fr 1fr 1fr 1fr 100px 170px";
+const gridTemplateColumns = "150px 130px 130px 1fr 1fr 1fr 1fr 1fr 100px 170px";
 const COLUMNS = [
   "Serial",
   "Date",
+  "Created At",
   "Supplier",
   "Mobile",
   "Paid",
@@ -120,6 +122,18 @@ const formatDate = (dateStr?: string): string => {
     day: "2-digit",
     month: "short",
     year: "numeric",
+  });
+};
+
+const formatTime = (dateStr?: string): string => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
   });
 };
 
@@ -272,7 +286,18 @@ export default function SupplierPaymentTable({
                   {item.isActive ? "Active" : "Inactive"}
                 </Badge>
               </div>
-              <MobileCardRow label="Date">{formatDate(item.date)}</MobileCardRow>
+              <MobileCardRow label="Date">
+                <span className="block">{formatDate(item.date)}</span>
+                <span className="block text-xs text-gray-400 dark:text-gray-500">
+                  {formatTime(item.date)}
+                </span>
+              </MobileCardRow>
+              <MobileCardRow label="Created At">
+                <span className="block">{formatDate(item.createdAt)}</span>
+                <span className="block text-xs text-gray-400 dark:text-gray-500">
+                  {formatTime(item.createdAt)}
+                </span>
+              </MobileCardRow>
               <MobileCardRow label="Mobile">{item.supplier?.mobile || "N/A"}</MobileCardRow>
               <MobileCardRow label="Paid">
                 <span className="font-semibold text-green-600 dark:text-green-400">
@@ -286,13 +311,13 @@ export default function SupplierPaymentTable({
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <button
                   onClick={() => navigate(`/supplier-payment-invoice-print/${item._id}`)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
                 >
                   <IoIosPrint className="size-4" />
                 </button>
                 <button
                   onClick={() => navigate(`/supplier-payment-edit/${item._id}`)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
                 >
                   <FaEdit className="size-4" />
                 </button>
@@ -301,20 +326,20 @@ export default function SupplierPaymentTable({
                     setSelectedPayment(item);
                     setShowToggleModal(true);
                   }}
-                  className={`max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl transition-colors ${
+                  className={`max-md:size-11 size-10 p-0 flex items-center justify-center rounded text-white transition-colors ${
                     item.isActive
-                      ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                      : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                      ? "bg-green-500 hover:bg-green-600"
+                      : "bg-red-500 hover:bg-red-600"
                   }`}
                 >
-                  {item.isActive ? <FaToggleOn className="size-6" /> : <FaToggleOff className="size-6" />}
+                  {item.isActive ? <FaToggleOn className="size-5" /> : <FaToggleOff className="size-5" />}
                 </button>
                 <button
                   onClick={() => {
                     setSelectedPayment(item);
                     setShowDeleteModal(true);
                   }}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                 >
                   <MdDelete className="size-4" />
                 </button>
@@ -393,8 +418,23 @@ export default function SupplierPaymentTable({
                     </div>
 
                     {/* Date */}
-                    <div className="px-3 text-xs text-gray-600 dark:text-gray-300">
-                      {formatDate(item.date)}
+                    <div className="px-3">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                        {formatDate(item.date)}
+                      </p>
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                        {formatTime(item.date)}
+                      </p>
+                    </div>
+
+                    {/* Created At */}
+                    <div className="px-3">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                        {formatDate(item.createdAt)}
+                      </p>
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                        {formatTime(item.createdAt)}
+                      </p>
                     </div>
 
                     {/* Supplier Name */}
@@ -447,7 +487,7 @@ export default function SupplierPaymentTable({
                           onClick={() =>
                             navigate(`/supplier-payment-invoice-print/${item._id}`)
                           }
-                          className="size-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                          className="size-8 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
                         >
                           <IoIosPrint className="size-3.5" />
                         </button>
@@ -457,7 +497,7 @@ export default function SupplierPaymentTable({
                           onClick={() =>
                             navigate(`/supplier-payment-edit/${item._id}`)
                           }
-                          className="size-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                          className="size-8 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
                         >
                           <FaEdit className="size-3.5" />
                         </button>
@@ -469,16 +509,16 @@ export default function SupplierPaymentTable({
                             setSelectedPayment(item);
                             setShowToggleModal(true);
                           }}
-                          className={`size-8 flex items-center justify-center rounded-xl transition-colors ${
+                          className={`size-8 flex items-center justify-center rounded text-white transition-colors ${
                             item.isActive
-                              ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                              : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                              ? "bg-green-500 hover:bg-green-600"
+                              : "bg-red-500 hover:bg-red-600"
                           }`}
                         >
                           {item.isActive ? (
-                            <FaToggleOn className="size-5" />
+                            <FaToggleOn className="size-4" />
                           ) : (
-                            <FaToggleOff className="size-5" />
+                            <FaToggleOff className="size-4" />
                           )}
                         </button>
                       </Tooltip>
@@ -489,7 +529,7 @@ export default function SupplierPaymentTable({
                             setSelectedPayment(item);
                             setShowDeleteModal(true);
                           }}
-                          className="size-8 flex items-center justify-center rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                          className="size-8 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                         >
                           <MdDelete className="size-4" />
                         </button>

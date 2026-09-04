@@ -118,6 +118,7 @@ exports.createPurchase = asynchandeler(async (req, res) => {
     brand,
     dueamount,
     payable,
+    date,
   } = req.body;
 
   if (!allproduct || !Array.isArray(allproduct) || allproduct.length === 0) {
@@ -226,6 +227,9 @@ exports.createPurchase = asynchandeler(async (req, res) => {
           category,
           subCategory,
           brand,
+          // Falls back to the schema default (now) only when the caller
+          // sends nothing — a picked date must never be silently overridden.
+          ...(date ? { date } : {}),
         },
       ],
       { session },
@@ -353,6 +357,7 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     brand,
     dueamount,
     payable,
+    date,
   } = req.body;
 
   const session = await mongoose.startSession();
@@ -488,6 +493,7 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     existingPurchase.payable = payable ?? existingPurchase.payable;
     existingPurchase.paid = paid;
     existingPurchase.dueamount = dueamount ?? existingPurchase.dueamount;
+    existingPurchase.date = date || existingPurchase.date;
 
     await existingPurchase.save({ session });
 

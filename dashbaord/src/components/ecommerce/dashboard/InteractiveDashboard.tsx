@@ -523,7 +523,9 @@ export default function InteractiveDashboard() {
                 iconAccent="success"
                 loading={isPurchaseSummaryLoading}
                 stats={[
-                  { label: `${formatNumber(purchaseSummary?.invoiceCount ?? 0)} Invoices`, value: formatCurrency(purchaseSummary?.value ?? 0) },
+                  { label: "Invoices", value: formatNumber(purchaseSummary?.invoiceCount ?? 0) },
+                  { label: "Payable", value: formatCurrency(purchaseSummary?.payable ?? 0) },
+                  { label: "Paid", value: formatCurrency(purchaseSummary?.paid ?? 0), color: "success" },
                 ]}
               />
             )}
