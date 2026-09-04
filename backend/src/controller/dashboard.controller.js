@@ -23,7 +23,17 @@ const NS = "dashboard";
 const CACHE_TTL = 2 * 60; // 2 minutes — dashboard tolerates slight staleness
 
 // Resolve the requested window (?range=today|7d|30d|90d|12m|all). Defaults to 30d.
-const resolveRange = (range) => {
+// An explicit ?startDate/&endDate (YYYY-MM-DD) wins over ?range when present —
+// callers that expose a custom date picker pass these instead of a preset key.
+const resolveRange = (range, startDate, endDate) => {
+  if (startDate) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = endDate ? new Date(endDate) : new Date(startDate);
+    end.setHours(23, 59, 59, 999);
+    return { start, end, key: `${startDate}:${endDate || startDate}` };
+  }
+
   const now = new Date();
   const start = new Date(now);
   switch (range) {
@@ -55,7 +65,11 @@ const resolveRange = (range) => {
 
 // @desc  aggregated dashboard overview — one call, many widgets
 exports.getOverview = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `overview:${key}`);
   const cached = await getCache(cacheKey);
@@ -704,7 +718,11 @@ exports.getOverview = asynchandeler(async (req, res) => {
 
 // @desc  Total Invoices box — count + complete/pending/draft split, range-filtered
 exports.getInvoiceStats = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `invoices:${key}`);
   const cached = await getCache(cacheKey);
@@ -715,7 +733,7 @@ exports.getInvoiceStats = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const invoiceStatusAgg = await salesModel.aggregate([
     { $match: dateMatch },
@@ -752,7 +770,11 @@ exports.getInvoiceStats = asynchandeler(async (req, res) => {
 
 // @desc  Total Sale box — total sale amount, received, due, gross profit — range-filtered
 exports.getSalesSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `sales-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -763,7 +785,10 @@ exports.getSalesSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  // Filtered on the sale's own `date` field (the transaction date the seller
+  // set), not `createdAt` (when the record was saved) — this box answers
+  // "what sold on this date", which can differ from when it was entered.
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [salesAgg, grossProfitAgg] = await Promise.all([
     salesModel.aggregate([
@@ -863,7 +888,11 @@ const round2 = (n) => Math.round((n || 0) * 100) / 100;
 // @desc  Total Transaction box — combined inflow, payment, and balance across
 // account/customer/sales/purchase/supplier modules — range-filtered
 exports.getTransactionSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `transaction-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -874,7 +903,7 @@ exports.getTransactionSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [
     cashRecivedAgg,
@@ -985,7 +1014,11 @@ exports.getTransactionSummary = asynchandeler(async (req, res) => {
 // customer advance payment (net of cashback), and manual cash-received
 // transactions logged against accounts. Range-filtered like every other box.
 exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `inflow-transaction-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -996,7 +1029,7 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [
     salesByTypeAgg,
@@ -1249,7 +1282,11 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
 // field), and manual cash-payment transactions logged against accounts.
 // Range-filtered like every other box.
 exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `outflow-transaction-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -1260,7 +1297,7 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [
     purchasePaymentAgg,
@@ -1589,7 +1626,11 @@ exports.getAccountsBalanceSummary = asynchandeler(async (req, res) => {
 // @desc  Inventory Items box — live stock across products + variants, and
 // range-bound stock-out (total quantity sold via sales in the selected window)
 exports.getInventorySummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `inventory-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -1725,7 +1766,11 @@ exports.getCustomerSummary = asynchandeler(async (req, res) => {
 
 // @desc  Supplier box — supplier count and outstanding due balance, range-filtered
 exports.getSupplierSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `supplier-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -1777,7 +1822,11 @@ exports.getSupplierSummary = asynchandeler(async (req, res) => {
 
 // @desc  Employee box — employee count and advance payment total, range-filtered
 exports.getEmployeeSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `employee-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -1818,7 +1867,11 @@ exports.getEmployeeSummary = asynchandeler(async (req, res) => {
 // @desc  Purchase Items box — total quantity, purchase value, and invoice
 // count (one purchase document = one invoice), range-filtered
 exports.getPurchaseSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `purchase-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -1829,7 +1882,7 @@ exports.getPurchaseSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [invoiceCount, itemsAgg] = await Promise.all([
     purchaseModel.countDocuments(dateMatch),
@@ -1871,7 +1924,11 @@ exports.getPurchaseSummary = asynchandeler(async (req, res) => {
 // @desc  Sold Items box — total quantity sold, sales invoice count, and
 // discount-applied amount split by wholesale vs retail, range-filtered
 exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `sold-items-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -1882,7 +1939,7 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [invoiceCount, quantityAgg, amountBySalesType] = await Promise.all([
     salesModel.countDocuments(dateMatch),
@@ -2139,7 +2196,11 @@ exports.getProductStatusSummary = asynchandeler(async (req, res) => {
 // @desc  Supplier Payment box — paid minus less amount, and payment invoice
 // count, range-filtered
 exports.getSupplierPaymentSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `supplier-payment-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -2150,7 +2211,7 @@ exports.getSupplierPaymentSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [invoiceCount, paymentAgg] = await Promise.all([
     SupplierDuePayment.countDocuments({ ...dateMatch, deletedAt: null }),
@@ -2191,7 +2252,11 @@ exports.getSupplierPaymentSummary = asynchandeler(async (req, res) => {
 // @desc  Customer Due Payment box — payment received amount/count, and count
 // of distinct listed customers with an outstanding due, range-filtered
 exports.getCustomerDuePaymentSummary = asynchandeler(async (req, res) => {
-  const { start, end, key } = resolveRange(req.query.range);
+  const { start, end, key } = resolveRange(
+    req.query.range,
+    req.query.startDate,
+    req.query.endDate,
+  );
 
   const cacheKey = await buildCacheKey(NS, `customer-due-payment-summary:${key}`);
   const cached = await getCache(cacheKey);
@@ -2202,7 +2267,7 @@ exports.getCustomerDuePaymentSummary = asynchandeler(async (req, res) => {
     });
   }
 
-  const dateMatch = start ? { createdAt: { $gte: start, $lte: end } } : {};
+  const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
   const [paymentAgg, advancePaymentAgg, dueCustomerAgg] = await Promise.all([
     customerPaymentRecived.aggregate([
