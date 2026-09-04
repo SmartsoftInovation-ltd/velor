@@ -46,6 +46,7 @@ const DASHBOARD_SOURCE_NAMESPACES = new Set([
   "customerAdvance",
   "employee",
   "account",
+  "supplier",
 ]);
 
 const bumpOne = async (ns) => {

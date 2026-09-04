@@ -185,7 +185,11 @@ export default function SupplierPaymentTable({
       queryClient.invalidateQueries({ queryKey: ["supplier-payments"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchPayments();
     } catch (error) {
       showApiError(error, "Failed to delete payment");
@@ -210,6 +214,11 @@ export default function SupplierPaymentTable({
         `Payment ${selectedPayment.isActive ? "deactivated" : "activated"} successfully`,
       );
       queryClient.invalidateQueries({ queryKey: ["supplier-payments"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchPayments();
     } catch (error) {
       showApiError(error, "Failed to update status");

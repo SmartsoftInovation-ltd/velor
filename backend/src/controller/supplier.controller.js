@@ -625,6 +625,9 @@ exports.activateSupplierDuePayment = asynchandeler(async (req, res) => {
   );
   if (!payment)
     return apiResponse.sendError(res, statusCodes.NOT_FOUND, "Payment not found");
+  // Reactivating brings this payment back into every deletedAt:null-scoped
+  // read — including the Supplier Payment dashboard box's paid/less totals.
+  await bumpNsVersion("supplier");
   apiResponse.sendSuccess(res, statusCodes.OK, "Payment activated successfully", supplierDuePaymentDTO(payment));
 });
 
@@ -637,5 +640,8 @@ exports.deactivateSupplierDuePayment = asynchandeler(async (req, res) => {
   );
   if (!payment)
     return apiResponse.sendError(res, statusCodes.NOT_FOUND, "Payment not found");
+  // Soft-deleting drops this payment out of every deletedAt:null-scoped
+  // read — including the Supplier Payment dashboard box's paid/less totals.
+  await bumpNsVersion("supplier");
   apiResponse.sendSuccess(res, statusCodes.OK, "Payment deactivated successfully", supplierDuePaymentDTO(payment));
 });

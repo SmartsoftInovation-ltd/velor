@@ -586,7 +586,7 @@ export default function InteractiveDashboard() {
             {showBox(PERMISSIONS.DASHBOARD_SUPPLIER_PAYMENT) && (
               <KpiCard
                 title="Supplier Payment"
-                value={formatCurrencyExact(supplierPayment?.amount ?? 0)}
+                value={formatCurrencyExact(supplierPayment?.paid ?? 0)}
                 icon={<FiArrowUpCircle className="size-5" />}
                 iconAccent="error"
                 loading={isSupplierPaymentSummaryLoading}
