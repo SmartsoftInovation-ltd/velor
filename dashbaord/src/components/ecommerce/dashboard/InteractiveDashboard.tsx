@@ -606,7 +606,6 @@ export default function InteractiveDashboard() {
                 loading={isCustomerDuePaymentSummaryLoading}
                 stats={[
                   { label: "Transactions", value: formatNumber(customerDuePayment?.count ?? 0) },
-                  { label: "Customers with Due", value: formatNumber(customerDuePayment?.customersWithDue ?? 0), color: "error" },
                 ]}
               />
             )}

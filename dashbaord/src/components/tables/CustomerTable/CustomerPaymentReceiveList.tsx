@@ -130,8 +130,9 @@ const CustomerPaymentReceiveTable = ({
     overscan: 10,
   });
 
-  // Payment ID | Customer | Date | Due Amount | Paid | Less | Cashback | Remain | Account | Actions
-  const gridTemplateColumns = "1fr 1.4fr 1fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr 150px";
+  // Payment ID | Customer | Date | Created At | Due Amount | Paid | Less | Cashback | Remain | Account | Actions
+  const gridTemplateColumns =
+    "1fr 1.4fr 1.2fr 1.2fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr 150px";
 
   const handleDeleteModal = (id: string) => {
     setSelectedId(id);
@@ -156,7 +157,11 @@ const CustomerPaymentReceiveTable = ({
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchPayments();
     } catch (error) {
       showApiError(error, "Failed to delete payment. Please try again.");
@@ -173,6 +178,7 @@ const CustomerPaymentReceiveTable = ({
     "ID",
     "Customer Name",
     "Date",
+    "Created At",
     "Due Amount (৳)",
     "Paid (৳)",
     "Less (৳)",
@@ -268,9 +274,24 @@ const CustomerPaymentReceiveTable = ({
                 </div>
               </div>
               <MobileCardRow label="Date">
-                {payment.date
-                  ? moment(payment.date).format("DD MMM YYYY")
-                  : moment(payment.createdAt).format("DD MMM YYYY")}
+                <span className="block">
+                  {payment.date
+                    ? moment(payment.date).format("DD MMM YYYY")
+                    : moment(payment.createdAt).format("DD MMM YYYY")}
+                </span>
+                <span className="block text-xs text-gray-400 dark:text-gray-500">
+                  {payment.date
+                    ? moment(payment.date).format("hh:mm:ss A")
+                    : moment(payment.createdAt).format("hh:mm:ss A")}
+                </span>
+              </MobileCardRow>
+              <MobileCardRow label="Created At">
+                <span className="block">
+                  {moment(payment.createdAt).format("DD MMM YYYY")}
+                </span>
+                <span className="block text-xs text-gray-400 dark:text-gray-500">
+                  {moment(payment.createdAt).format("hh:mm:ss A")}
+                </span>
               </MobileCardRow>
               <MobileCardRow label="Due Amount">
                 <span className="text-orange-600 dark:text-orange-400 font-medium">
@@ -396,11 +417,26 @@ const CustomerPaymentReceiveTable = ({
                     </div>
 
                     {/* Date */}
-                    <div className="flex items-center justify-center px-1">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-col items-center justify-center px-1">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
                         {payment.date
                           ? moment(payment.date).format("DD MMM YYYY")
                           : moment(payment.createdAt).format("DD MMM YYYY")}
+                      </span>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                        {payment.date
+                          ? moment(payment.date).format("hh:mm:ss A")
+                          : moment(payment.createdAt).format("hh:mm:ss A")}
+                      </span>
+                    </div>
+
+                    {/* Created At */}
+                    <div className="flex flex-col items-center justify-center px-1">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                        {moment(payment.createdAt).format("DD MMM YYYY")}
+                      </span>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                        {moment(payment.createdAt).format("hh:mm:ss A")}
                       </span>
                     </div>
 

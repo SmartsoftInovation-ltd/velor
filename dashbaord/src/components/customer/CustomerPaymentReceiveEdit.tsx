@@ -96,7 +96,11 @@ const CustomerPaymentReceiveEdit = () => {
       queryClient.invalidateQueries({ queryKey: ["customer-payment", customerId] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       setTimeout(() => navigate("/customer-payment-receive-list"), 50);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to update payment.");

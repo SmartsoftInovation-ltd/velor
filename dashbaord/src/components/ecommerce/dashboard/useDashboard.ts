@@ -537,7 +537,6 @@ export const useSupplierPaymentSummary = (
 export interface DashboardCustomerDuePaymentSummary {
   amount: number;
   count: number;
-  customersWithDue: number;
 }
 
 export interface CustomerDuePaymentSummaryData {

@@ -176,6 +176,8 @@ const createCustomerPaymentSchema = Joi.object({
     "any.required": "Payment mode is required",
   }),
 
+  date: Joi.date().optional(),
+
   remarks: Joi.string().trim().max(500).allow("").optional(),
 
   // system fields

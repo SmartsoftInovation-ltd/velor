@@ -2282,52 +2282,32 @@ exports.getCustomerDuePaymentSummary = asynchandeler(async (req, res) => {
     });
   }
 
+  // Filtered on the payment's own `date` field (the transaction date set on
+  // /customer-payment-receive), not `createdAt` — matches the amount and
+  // count shown to what was actually recorded for the selected range.
   const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
-  const [paymentAgg, advancePaymentAgg, dueCustomerAgg] = await Promise.all([
+  const [paymentAgg] = await Promise.all([
     customerPaymentRecived.aggregate([
       { $match: { ...dateMatch, deletedAt: null } },
       {
         $group: {
           _id: null,
           paid: { $sum: "$paidAmount" },
-          less: { $sum: "$lessAmount" },
           count: { $sum: 1 },
         },
       },
     ]),
-
-    customerAdvancePaymentModel.aggregate([
-      { $match: { ...dateMatch, deletedAt: null } },
-      { $group: { _id: null, paid: { $sum: "$paidAmount" }, count: { $sum: 1 } } },
-    ]),
-
-    // Distinct listed customers (walking customers have no customerId) with
-    // an outstanding due on sales within the range
-    salesModel.aggregate([
-      {
-        $match: {
-          ...dateMatch,
-          presentDue: { $gt: 0 },
-          "customerType.customerId": { $ne: null },
-        },
-      },
-      { $group: { _id: "$customerType.customerId" } },
-      { $count: "total" },
-    ]),
   ]);
 
   const paid = paymentAgg[0]?.paid || 0;
-  const less = paymentAgg[0]?.less || 0;
-  const advancePaid = advancePaymentAgg[0]?.paid || 0;
-  const count = (paymentAgg[0]?.count || 0) + (advancePaymentAgg[0]?.count || 0);
+  const count = paymentAgg[0]?.count || 0;
 
   const payload = {
     range: key,
     customerDuePayment: {
-      amount: round2(paid + advancePaid - less),
+      amount: round2(paid),
       count,
-      customersWithDue: dueCustomerAgg[0]?.total || 0,
     },
   };
 

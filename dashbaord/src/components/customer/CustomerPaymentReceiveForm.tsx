@@ -122,7 +122,15 @@ const CustomerPaymentReceiveForm = () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      // A customer payment touches most dashboard widgets (Customer Due
+      // Payment, Accounts Balance, Inflow, Overview KPIs) — invalidate every
+      // "dashboard-*" query instead of naming just one and leaving the rest
+      // stale until their own TTL.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       await fetchCustomers();
       toast.success("Payment received successfully");
 

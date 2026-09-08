@@ -1,0 +1,32 @@
+import { CATALOG_A } from "./products-a";
+import { CATALOG_B } from "./products-b";
+import type { CatalogProduct } from "./types";
+
+export type CartLine = {
+  id: string;
+  product: CatalogProduct;
+  size: string;
+  color: string;
+  quantity: number;
+};
+
+const ALL = [...CATALOG_A, ...CATALOG_B];
+
+const DRAFT = [
+  { id: "line-1", productId: "leather-biker-jacket", size: "M", color: "black", quantity: 1 },
+  { id: "line-2", productId: "essential-tee", size: "L", color: "white", quantity: 2 },
+  { id: "line-3", productId: "denim-jeans", size: "M", color: "blue", quantity: 1 },
+];
+
+/**
+ * A hard-coded basket so the cart page has something to lay out. There is no
+ * cart state anywhere — this is a design fixture, not a store. Lines whose id
+ * no longer resolves are dropped rather than asserted away.
+ */
+export const CART_LINES: CartLine[] = DRAFT.flatMap((line) => {
+  const product = ALL.find((item) => item.id === line.productId);
+  return product ? [{ ...line, product }] : [];
+});
+
+export const SHIPPING_FLAT = 120;
+export const FREE_SHIPPING_THRESHOLD = 2000;
