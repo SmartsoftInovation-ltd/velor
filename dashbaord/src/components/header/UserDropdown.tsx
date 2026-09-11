@@ -3,6 +3,7 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import axiosSecure, { clearAccessToken } from "../../hooks/useAxiosSecure";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,10 +18,19 @@ export default function UserDropdown() {
     setIsOpen(false);
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    clearAuth();
-    navigate("/signin");
+  const handleLogout = async () => {
+    // Revoke the refresh token server-side first — clearing localStorage alone
+    // leaves the httpOnly refresh cookie valid, so the session could be
+    // resurrected by a refresh call. Local state is cleared either way.
+    try {
+      await axiosSecure.post("/auth/logout");
+    } catch {
+      // Session already dead: nothing to revoke, log out locally anyway.
+    } finally {
+      clearAccessToken();
+      clearAuth();
+      navigate("/signin");
+    }
   };
 
   return (

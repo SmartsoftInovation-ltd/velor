@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
@@ -7,13 +7,28 @@ import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import toast from "react-hot-toast";
 import axios from "axios";
-import axiosSecure from "../../hooks/useAxiosSecure";
+import axiosSecure, { setAccessToken } from "../../hooks/useAxiosSecure";
 import { useAuth } from "../../context/AuthContext";
 
 export default function SignInForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { refreshAuth } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+
+  // The axios interceptor redirects here with ?sessionExpired=1 when the
+  // refresh token is rejected, so the user is told why they were signed out
+  // instead of silently landing on a login screen.
+  const expiredNotified = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("sessionExpired") && !expiredNotified.current) {
+      expiredNotified.current = true;
+      toast.error("Your session expired. Please sign in again.");
+    }
+  }, [searchParams]);
+
+  // Where the user was before the session died, so we can send them back.
+  const redirectTo = searchParams.get("from") || "/";
   const [isChecked, setIsChecked] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -74,11 +89,11 @@ export default function SignInForm() {
         );
         console.log(response.data.data);
         const { accessToken } = response.data.data;
-        localStorage.setItem("accessToken", accessToken);
+        setAccessToken(accessToken);
         toast.success("Login successful");
         await refreshAuth();
         setTimeout(() => {
-          navigate("/");
+          navigate(redirectTo, { replace: true });
         }, 500);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.data?.message) {

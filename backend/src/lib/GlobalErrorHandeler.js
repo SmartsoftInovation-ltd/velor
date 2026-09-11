@@ -31,6 +31,30 @@ const developementError = (error, res) => {
 // into a sentence a shop operator can act on. Models that already raise their
 // own customError for these cases are untouched — this only catches what slips
 // through (findOneAndUpdate, bulk writes, updates that skip save hooks).
+// jwt.verify throws TokenExpiredError / JsonWebTokenError, which are not
+// customError instances, so without this they fall through as non-operational
+// and get a 500. A 500 is wrong on two counts: an expired access token is a
+// normal, expected client condition, and the dashboard's axios interceptor
+// only attempts a token refresh on a 401 — a 500 makes it give up and surface
+// a hard error instead of silently refreshing the session.
+const normalizeAuthError = (error) => {
+  if (error.name === "TokenExpiredError") {
+    error.statusCode = 401;
+    error.isOperationalError = true;
+    error.message = "Access token expired";
+    return error;
+  }
+
+  if (error.name === "JsonWebTokenError" || error.name === "NotBeforeError") {
+    error.statusCode = 401;
+    error.isOperationalError = true;
+    error.message = "Invalid token";
+    return error;
+  }
+
+  return error;
+};
+
 const normalizeDatabaseError = (error) => {
   const raw = String(error.message || "");
   const isDuplicate =
@@ -87,6 +111,7 @@ const normalizeDatabaseError = (error) => {
 };
 
 exports.globalErrorHandeler = (error, req, res, next) => {
+  error = normalizeAuthError(error);
   error = normalizeDatabaseError(error);
   error.statusCode = error.statusCode || 500;
   if (process.env.NODE_ENV == "developement") {

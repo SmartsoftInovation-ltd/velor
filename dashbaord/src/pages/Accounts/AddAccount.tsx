@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosSecure from "../../hooks/useAxiosSecure";
 import { ChangeEvent, FormEvent, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
@@ -40,10 +40,9 @@ const AddAccount = () => {
     }
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/account/create-account`,
-        { accounts }
-      );
+      const res = await axiosSecure.post(`/account/create-account`, {
+        accounts,
+      });
       if (res.status === 200) {
         toast.success("Account(s) created successfully!");
         setAccounts([""]);
