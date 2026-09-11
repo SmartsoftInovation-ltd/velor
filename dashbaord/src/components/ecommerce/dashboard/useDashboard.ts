@@ -600,6 +600,14 @@ export interface InflowCustomerPaymentRow {
   createdAt: string;
 }
 
+export interface InflowPurchaseReturnRow {
+  serial: string;
+  supplierName: string;
+  amount: number;
+  returnDate: string;
+  createdAt: string;
+}
+
 export interface InflowTransactionSummary {
   sources: InflowSource[];
   accountTransactions: InflowAccountTransaction[];
@@ -620,6 +628,8 @@ export interface InflowTransactionSummaryData {
   customerDuePaymentsTotal: number;
   customerAdvancePayments: InflowCustomerPaymentRow[];
   customerAdvancePaymentsTotal: number;
+  purchaseReturns: InflowPurchaseReturnRow[];
+  purchaseReturnsTotal: number;
   breakdown: InflowTransactionSummary["breakdown"];
   grandTotal: number;
 }

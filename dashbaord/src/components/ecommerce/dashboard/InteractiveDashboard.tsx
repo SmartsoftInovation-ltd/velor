@@ -816,8 +816,10 @@ export default function InteractiveDashboard() {
                           <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
                               {s.invoiceNumber}
-                            </span>{" "}
-                            Sales invoice of {s.customerName || "Walking Customer"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              Sales invoice of {s.customerName || "Walking Customer"}
+                            </span>
                           </p>
                           <span className="ml-2 shrink-0 text-sm font-bold text-success-600 dark:text-success-400">
                             {formatCurrency(s.amount)}
@@ -833,8 +835,10 @@ export default function InteractiveDashboard() {
                           <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
                               {p.paymentId}
-                            </span>{" "}
-                            Customer Due Payment Receive of {p.customerName || "Customer"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              Customer Due Payment Receive of {p.customerName || "Customer"}
+                            </span>
                           </p>
                           <span className="ml-2 shrink-0 text-sm font-bold text-success-600 dark:text-success-400">
                             {formatCurrency(p.amount)}
@@ -850,8 +854,29 @@ export default function InteractiveDashboard() {
                           <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
                               {p.paymentId}
-                            </span>{" "}
-                            Customer Advance Payment of {p.customerName || "Customer"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              Customer Advance Payment of {p.customerName || "Customer"}
+                            </span>
+                          </p>
+                          <span className="ml-2 shrink-0 text-sm font-bold text-success-600 dark:text-success-400">
+                            {formatCurrency(p.amount)}
+                          </span>
+                        </div>
+                      ))}
+
+                      {(inflowTransactionSummary?.purchaseReturns ?? []).map((p, i) => (
+                        <div
+                          key={`purchase-return-${p.serial}-${i}`}
+                          className="flex items-center justify-between px-3 py-2"
+                        >
+                          <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
+                            <span className="font-semibold text-gray-800 dark:text-gray-100">
+                              {p.serial || "—"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              Purchase Return{p.supplierName ? ` of ${p.supplierName}` : ""}
+                            </span>
                           </p>
                           <span className="ml-2 shrink-0 text-sm font-bold text-success-600 dark:text-success-400">
                             {formatCurrency(p.amount)}
@@ -867,8 +892,10 @@ export default function InteractiveDashboard() {
                           <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
                               {t.transactionId || "—"}
-                            </span>{" "}
-                            {t.categoryName || t.description || "Cash Received"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              {t.categoryName || t.description || "Cash Received"}
+                            </span>
                           </p>
                           <span className="ml-2 shrink-0 text-sm font-bold text-success-600 dark:text-success-400">
                             {formatCurrency(t.amount)}
@@ -921,8 +948,10 @@ export default function InteractiveDashboard() {
                           <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
                               {p.invoiceNumber}
-                            </span>{" "}
-                            Purchase Payment of {p.supplierName || "Supplier"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              Purchase Payment of {p.supplierName || "Supplier"}
+                            </span>
                           </p>
                           <span className="ml-2 shrink-0 text-sm font-bold text-error-600 dark:text-error-400">
                             -{formatCurrency(p.amount)}
@@ -938,8 +967,10 @@ export default function InteractiveDashboard() {
                           <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
                               {p.paymentId}
-                            </span>{" "}
-                            Supplier Payment of {p.supplierName || "Supplier"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              Supplier Payment of {p.supplierName || "Supplier"}
+                            </span>
                           </p>
                           <span className="ml-2 shrink-0 text-sm font-bold text-error-600 dark:text-error-400">
                             -{formatCurrency(p.amount)}
@@ -955,8 +986,10 @@ export default function InteractiveDashboard() {
                           <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
                               {t.transactionId || "—"}
-                            </span>{" "}
-                            {t.categoryName || t.description || "Cash Payment"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              {t.categoryName || t.description || "Cash Payment"}
+                            </span>
                           </p>
                           <span className="ml-2 shrink-0 text-sm font-bold text-error-600 dark:text-error-400">
                             -{formatCurrency(t.amount)}

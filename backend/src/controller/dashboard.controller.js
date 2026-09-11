@@ -18,6 +18,7 @@ const { employeeAdvancePayment } = require("../models/advancePayment.model");
 const DailyCashSummary = require("../models/dailyCashSummary.model");
 const Account = require("../models/account.model");
 const stockAdjustModel = require("../models/stockadjust.model");
+const purchaseReturnModel = require("../models/purchaseReturn.model");
 
 const NS = "dashboard";
 const CACHE_TTL = 2 * 60; // 2 minutes — dashboard tolerates slight staleness
@@ -1112,6 +1113,7 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
     salesInvoiceDocs,
     customerDuePaymentDocs,
     customerAdvancePaymentDocs,
+    purchaseReturnDocs,
   ] = await Promise.all([
       // 1-4. Sales module — cash actually collected (netPaid, so change given
       // back at the counter is excluded), grouped by salesType
@@ -1166,21 +1168,38 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
         },
       ]),
 
-      // 7. Manual cash-received transactions from All Accounts (Add Transaction)
+      // 7. Manual cash-received transactions from All Accounts (Add Transaction).
+      //
+      // Sales, customer due payments and customer advance payments each write
+      // their own "cash recived" transaction automatically (see
+      // applySalePayments in sales.controller.js), so counting every such
+      // transaction here on top of sources 1-6 double-counts the same money.
+      // Only transactions with no originating reference are genuinely manual
+      // entries, and only those belong in this source.
       crateTransactionModel
-        .find({ ...dateMatch, transactionType: "cash recived" })
+        .find({
+          ...dateMatch,
+          transactionType: "cash recived",
+          saleReference: null,
+          customerPaymentReference: null,
+          customerAdvancePaymentReference: null,
+        })
         .sort({ createdAt: -1 })
         .populate("transactionCategory", "name")
         .select("transactionSerialId transactionDescription amount transactionCategory createdAt")
         .lean(),
 
-      // 8. Per-invoice sales rows (listed customer only) — drives the
-      // "Sales Invoice" list in the Inflow card, one row per invoice.
+      // 8. Per-invoice sales rows — drives the "Sales Invoice" list in the
+      // Inflow card, one row per invoice. Walking customers are included:
+      // their cash is received all the same, and excluding them made the box
+      // disagree with the sales total above. `netPaid` is the cash the shop
+      // actually kept (change handed back already deducted), which is what
+      // source 1-4 sums, so the rows and the source total agree.
       salesModel
-        .find({ ...dateMatch, "customerType.type": "listed" })
+        .find(dateMatch)
         .sort({ createdAt: -1 })
         .populate("customerType.customerId", "fullName customerId")
-        .select("invoiceNumber paid total customerType createdAt")
+        .select("invoiceNumber paid changes netPaid total customerType createdAt")
         .lean(),
 
       // 9. Per-payment customer due-payment rows — net of less amount and cashback.
@@ -1197,6 +1216,22 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
         .sort({ createdAt: -1 })
         .populate("customer", "fullName customerId")
         .select("paymentId customer paidAmount advanceCashBack createdAt")
+        .lean(),
+
+      // 11. Purchase returns — value coming back from suppliers. This model
+      // dates its rows on `returnDate`, not `date`, so it needs its own match:
+      // the shared dateMatch would never hit. Unlike sales/customer payments
+      // a purchase return writes no cash transaction of its own, so there is
+      // nothing to de-duplicate against source 7.
+      purchaseReturnModel
+        .find(
+          start
+            ? { returnDate: { $gte: start, $lte: end } }
+            : {},
+        )
+        .sort({ createdAt: -1 })
+        .populate("supplier", "supplierName")
+        .select("serial supplier totalReturnAmount returnDate createdAt")
         .lean(),
     ]);
 
@@ -1227,6 +1262,17 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
 
   const cashAccountTotal = round2(
     cashReceivedTxns.reduce((sum, t) => sum + (t.amount || 0), 0),
+  );
+
+  const purchaseReturns = purchaseReturnDocs.map((p) => ({
+    serial: p.serial || "",
+    supplierName: p.supplier?.supplierName || "",
+    amount: round2(p.totalReturnAmount || 0),
+    returnDate: p.returnDate,
+    createdAt: p.createdAt,
+  }));
+  const purchaseReturnsTotal = round2(
+    purchaseReturns.reduce((sum, p) => sum + p.amount, 0),
   );
 
   const sources = [
@@ -1272,15 +1318,30 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
       amount: cashAccountTotal,
       count: cashReceivedTxns.length,
     },
+    {
+      key: "purchaseReturns",
+      label: "Purchase Return",
+      amount: purchaseReturnsTotal,
+      count: purchaseReturns.length,
+    },
   ];
 
   const grandTotal = round2(sources.reduce((sum, s) => sum + s.amount, 0));
 
   const salesInvoices = salesInvoiceDocs.map((s) => ({
     invoiceNumber: s.invoiceNumber || "",
-    customerName: s.customerType?.customerId?.fullName || "",
+    // Walking customers have no Customer document to populate — fall back to
+    // the name typed on the sale, then to a generic label.
+    customerName:
+      s.customerType?.customerId?.fullName ||
+      s.customerType?.walking?.customerName ||
+      "",
     customerId: s.customerType?.customerId?.customerId || "",
-    amount: round2(s.paid || 0),
+    // Cash the shop kept. Sales written before `netPaid` existed fall back to
+    // paid - changes, matching how sources 1-4 sum the same figure.
+    amount: round2(
+      s.netPaid ?? Math.max(0, (s.paid || 0) - (s.changes || 0)),
+    ),
     total: round2(s.total || 0),
     createdAt: s.createdAt,
   }));
@@ -1324,6 +1385,8 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
     customerDuePaymentsTotal,
     customerAdvancePayments,
     customerAdvancePaymentsTotal,
+    purchaseReturns,
+    purchaseReturnsTotal,
     breakdown: {
       customerPaymentReceived: {
         paidAmount: round2(cp.paidAmount),
