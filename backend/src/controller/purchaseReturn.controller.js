@@ -3,6 +3,9 @@ const PurchaseReturn = require("../models/purchaseReturn.model");
 const Product = require("../models/product.model");
 const Variant = require("../models/variant.model");
 const { SupplierModel } = require("../models/supplier.model");
+const Account = require("../models/account.model");
+const CrateTransaction = require("../models/crateTransaction.model");
+const TransitionCategory = require("../models/transitionCategory.model");
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
@@ -26,6 +29,15 @@ function validatePayload(body) {
   }
   if (!mongoose.Types.ObjectId.isValid(supplier)) {
     throw new customError("Invalid supplier ID", statusCodes.BAD_REQUEST);
+  }
+  // The refund is paid into a real account, so the account has to be named.
+  // Without it the money would have nowhere to land and the return would
+  // silently move stock only.
+  if (!body.cashType) {
+    throw new customError("Refund account is required", statusCodes.BAD_REQUEST);
+  }
+  if (!mongoose.Types.ObjectId.isValid(body.cashType)) {
+    throw new customError("Invalid refund account ID", statusCodes.BAD_REQUEST);
   }
   if (!Array.isArray(products) || products.length === 0) {
     throw new customError(
@@ -54,6 +66,84 @@ function validatePayload(body) {
     }
   }
 }
+
+const REFUND_CATEGORY_NAME = "Purchase Return Refund";
+const REFUND_CATEGORY_SLUG = "purchase-return-refund";
+
+// Upserted by slug so concurrent returns can't race two categories into
+// existence — the same pattern purchase payments use.
+const getRefundCategory = async (session) => {
+  return TransitionCategory.findOneAndUpdate(
+    { slug: REFUND_CATEGORY_SLUG },
+    {
+      $setOnInsert: {
+        name: REFUND_CATEGORY_NAME,
+        allowedType: "cash recived",
+        slug: REFUND_CATEGORY_SLUG,
+      },
+    },
+    { new: true, upsert: true, session },
+  );
+};
+
+// Credit the full return value into the chosen account and log a matching
+// "cash recived" transaction, tagged with purchaseReturnReference so the
+// refund can be found and reversed later.
+const applyPurchaseReturnRefund = async (session, purchaseReturn) => {
+  const amount = Number(purchaseReturn.totalReturnAmount || 0);
+  if (amount <= 0 || !purchaseReturn.cashType) return;
+
+  const category = await getRefundCategory(session);
+
+  const updatedAccount = await Account.findByIdAndUpdate(
+    purchaseReturn.cashType,
+    { $inc: { balance: amount } },
+    { new: true, session },
+  );
+  if (!updatedAccount) {
+    throw new customError("Refund account not found", statusCodes.NOT_FOUND);
+  }
+
+  await CrateTransaction.create(
+    [
+      {
+        date: purchaseReturn.returnDate || new Date(),
+        transactionCategory: category._id,
+        account: purchaseReturn.cashType,
+        transactionDescription: `Purchase return refund — ${purchaseReturn.serial || purchaseReturn._id}`,
+        transactionType: "cash recived",
+        amount,
+        balanceAfter: updatedAccount.balance,
+        purchaseReturnReference: purchaseReturn._id,
+      },
+    ],
+    { session },
+  );
+
+  await bumpNsVersion("account");
+};
+
+// Undo whatever this return credited — subtract each amount back out of its
+// account and delete the audit records tied to this return.
+const reversePurchaseReturnRefund = async (session, purchaseReturnId) => {
+  const transactions = await CrateTransaction.find({
+    purchaseReturnReference: purchaseReturnId,
+  }).session(session);
+  if (!transactions.length) return;
+
+  for (const t of transactions) {
+    await Account.findByIdAndUpdate(
+      t.account,
+      { $inc: { balance: -t.amount } },
+      { session },
+    );
+  }
+
+  await CrateTransaction.deleteMany({
+    purchaseReturnReference: purchaseReturnId,
+  }).session(session);
+  await bumpNsVersion("account");
+};
 
 // ─── createPurchaseReturn ────────────────────────────────────────────────────
 
@@ -156,6 +246,7 @@ exports.createPurchaseReturn = asynchandeler(async (req, res) => {
       [
         {
           supplier,
+          cashType: req.body.cashType,
           returnDate: returnDate || Date.now(),
           remarks: remarks || "",
           totalReturnAmount,
@@ -172,8 +263,14 @@ exports.createPurchaseReturn = asynchandeler(async (req, res) => {
     // shortfall is what turns that into a rejected return rather than a
     // silently skipped one.
     if (productIds.length) {
+      // A variant line carries its parent product's id too, so the stock for
+      // it lives on the Variant (stockVariant), never on the Product. Matching
+      // on `i.product` alone also decremented the parent Product, whose own
+      // `stock` is 0 for variant-based products — the filter never matched and
+      // the whole return was rejected as "not enough product stock". Only
+      // lines with no variant are product-stock lines.
       const productOps = returnProducts
-        .filter((i) => i.product)
+        .filter((i) => i.product && !i.variant)
         .map((i) => ({
           updateOne: {
             filter: { _id: i.product, stock: { $gte: i.quantity } },
@@ -222,16 +319,12 @@ exports.createPurchaseReturn = asynchandeler(async (req, res) => {
       }
     }
 
-    // Update supplier dues
-    supplierDoc.openingDues = Math.max(
-      0,
-      (supplierDoc.openingDues || 0) - totalReturnAmount,
-    );
-    supplierDoc.totalPurchaseDue = Math.max(
-      0,
-      (supplierDoc.totalPurchaseDue || 0) - totalReturnAmount,
-    );
-    await supplierDoc.save({ session });
+    // Supplier dues are deliberately NOT touched. The full value is refunded
+    // in cash into the chosen account below, so reducing the dues as well
+    // would credit the same return twice. The old code also clamped the dues
+    // at zero, which silently destroyed the return value whenever the
+    // supplier had no outstanding due — the refund replaces that entirely.
+    await applyPurchaseReturnRefund(session, purchaseReturn);
 
     await session.commitTransaction();
     session.endSession();
@@ -469,8 +562,11 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
 
     // ── STEP 1: Revert old stock ────────────────────────────────────────────
 
+    // Variant lines carry their parent product id as well, but their stock
+    // only ever moved on the Variant. Reverting them here would add stock back
+    // to a Product that was never decremented, inflating inventory.
     const oldProductOps = existing.products
-      .filter((i) => i.product)
+      .filter((i) => i.product && !i.variant)
       .map((i) => ({
         updateOne: {
           filter: { _id: i.product },
@@ -504,14 +600,10 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
       await Variant.bulkWrite(oldVariantOps, { session });
     }
 
-    // Revert old supplier dues
-    if (oldSupplier) {
-      oldSupplier.openingDues =
-        (oldSupplier.openingDues || 0) + existing.totalReturnAmount;
-      oldSupplier.totalPurchaseDue =
-        (oldSupplier.totalPurchaseDue || 0) + existing.totalReturnAmount;
-      await oldSupplier.save({ session });
-    }
+    // Undo the cash refund this return had already paid out. Supplier dues
+    // were never moved by the refund flow, so there is nothing to revert
+    // there — only the account credit and its audit row.
+    await reversePurchaseReturnRefund(session, existing._id);
 
     // ── STEP 2: Validate new payload & fetch new docs ───────────────────────
 
@@ -605,8 +697,9 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
     // Guarded the same way as the create path: the $gte makes the check
     // atomic with the decrement so stock cannot go negative, and the
     // matchedCount shortfall rejects the update instead of skipping rows.
+    // Only lines with no variant are product-stock lines — see the create path.
     const newProductOps = returnProducts
-      .filter((i) => i.product)
+      .filter((i) => i.product && !i.variant)
       .map((i) => ({
         updateOne: {
           filter: { _id: i.product, stock: { $gte: i.quantity } },
@@ -652,25 +745,22 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
       }
     }
 
-    // Apply new supplier dues
-    newSupplierDoc.openingDues = Math.max(
-      0,
-      (newSupplierDoc.openingDues || 0) - totalReturnAmount,
-    );
-    newSupplierDoc.totalPurchaseDue = Math.max(
-      0,
-      (newSupplierDoc.totalPurchaseDue || 0) - totalReturnAmount,
-    );
-    await newSupplierDoc.save({ session });
+    // Supplier dues are not touched — the return is settled in cash below.
+    // See the create path for why adjusting dues as well would double-count.
 
     // ── STEP 4: Update the return document ─────────────────────────────────
 
     existing.supplier = supplier;
+    existing.cashType = req.body.cashType;
     existing.returnDate = returnDate || existing.returnDate;
     existing.remarks = remarks ?? existing.remarks;
     existing.products = returnProducts;
     existing.totalReturnAmount = totalReturnAmount;
     await existing.save({ session });
+
+    // Re-pay the refund at its new amount, into whichever account is now
+    // chosen. The old credit was already reversed in STEP 1.
+    await applyPurchaseReturnRefund(session, existing);
 
     await session.commitTransaction();
     session.endSession();
@@ -712,8 +802,10 @@ exports.deletePurchaseReturn = asynchandeler(async (req, res) => {
     }
 
     // Revert stock
+    // Variant lines never moved Product.stock, so they must not be reverted
+    // against it — see the update path's revert block.
     const productOps = purchaseReturn.products
-      .filter((i) => i.product)
+      .filter((i) => i.product && !i.variant)
       .map((i) => ({
         updateOne: {
           filter: { _id: i.product },
@@ -743,17 +835,10 @@ exports.deletePurchaseReturn = asynchandeler(async (req, res) => {
     if (productOps.length) await Product.bulkWrite(productOps, { session });
     if (variantOps.length) await Variant.bulkWrite(variantOps, { session });
 
-    // Revert supplier dues
-    const supplierDoc = await SupplierModel.findById(
-      purchaseReturn.supplier,
-    ).session(session);
-    if (supplierDoc) {
-      supplierDoc.openingDues =
-        (supplierDoc.openingDues || 0) + purchaseReturn.totalReturnAmount;
-      supplierDoc.totalPurchaseDue =
-        (supplierDoc.totalPurchaseDue || 0) + purchaseReturn.totalReturnAmount;
-      await supplierDoc.save({ session });
-    }
+    // Take the refunded cash back out of the account it was paid into and
+    // delete its audit row. Supplier dues were never moved by the refund
+    // flow, so there is nothing to revert there.
+    await reversePurchaseReturnRefund(session, purchaseReturn._id);
 
     await PurchaseReturn.findByIdAndDelete(id).session(session);
 

@@ -21,6 +21,14 @@ const purchaseReturnSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // Account the supplier's refund is paid into. The full totalReturnAmount
+    // is credited here when the return is created, mirroring how a purchase
+    // debits its cashType account.
+    cashType: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Account",
+      required: [true, "Refund account is required"],
+    },
     remarks: {
       type: String,
       trim: true,

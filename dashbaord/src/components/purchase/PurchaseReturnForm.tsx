@@ -7,6 +7,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import DatePicker from "../form/date-picker";
+import SearchableSelect from "../form/SearchableSelect";
 import { showApiError } from "../../utils/apiError";
 
 // Matches the backend's isLikelyCode check (sales.controller.js) — a scanned
@@ -21,6 +22,11 @@ interface Supplier {
   mobile?: string;
   openingDues: number;
   totalPurchaseDue: number;
+}
+
+interface Account {
+  _id: string;
+  name: string;
 }
 
 interface ProductSearchResult {
@@ -78,6 +84,10 @@ const PurchaseReturnForm = () => {
   const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
 
   // ── Form fields ─────────────────────────────────────────────────────────────
+  // Account the supplier's refund is paid into — the backend credits the full
+  // return value here, so it is required.
+  const [cashType, setCashType] = useState("");
+
   const [returnDate, setReturnDate] = useState(
     new Date().toISOString().split("T")[0],
   );
@@ -189,6 +199,14 @@ const PurchaseReturnForm = () => {
       400,
     );
   };
+
+  const { data: accounts = [] } = useQuery<Account[]>({
+    queryKey: ["accounts"],
+    queryFn: async () => {
+      const { data } = await axiosSecure.get("/account/all-account");
+      return data?.data?.accounts || [];
+    },
+  });
 
   const { data: productResults = [], isFetching: productSearching } = useQuery<
     ProductSearchResult[]
@@ -344,6 +362,7 @@ const PurchaseReturnForm = () => {
       }
     }
     if (!returnDate) errs.returnDate = "Return date is required.";
+    if (!cashType) errs.cashType = "Please select a refund account.";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -354,6 +373,7 @@ const PurchaseReturnForm = () => {
 
     const payload = {
       supplier: selectedSupplier!._id,
+      cashType,
       returnDate: new Date(returnDate).toISOString(),
       remarks: remarks.trim() || undefined,
       totalReturnAmount,
@@ -373,12 +393,16 @@ const PurchaseReturnForm = () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-returns-v2"] });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["supplier"] });
+      // The refund credits an account balance, so the cached account list is
+      // stale the moment this succeeds.
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
       loadSuppliers();
       // Reset
       clearSupplier();
       setReturnItems([]);
       setReturnDate(new Date().toISOString().split("T")[0]);
       setRemarks("");
+      setCashType("");
       setErrors({});
     } catch (error: any) {
       showApiError(error, "Failed to create purchase return.");
@@ -402,7 +426,7 @@ const PurchaseReturnForm = () => {
 
         <div className="p-5 space-y-4">
           {/* Row 1: Supplier + Date side by side */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {/* Supplier search */}
             <div ref={supplierRef} className="relative">
               <Label>
@@ -496,17 +520,40 @@ const PurchaseReturnForm = () => {
                 <p className="text-red-500 text-xs mt-1">{errors.returnDate}</p>
               )}
             </div>
+
+            {/* Refund Account — the full return value is credited here */}
+            <div>
+              <Label>
+                Refund Account <span className="text-red-500">*</span>
+              </Label>
+              <SearchableSelect
+                options={accounts.map((a) => ({ value: a._id, label: a.name }))}
+                value={cashType}
+                onChange={(val) => {
+                  setCashType(val);
+                  setErrors((prev) => ({ ...prev, cashType: "" }));
+                }}
+                placeholder={
+                  accounts.length === 0 ? "Loading..." : "Select account"
+                }
+                searchPlaceholder="Search account..."
+                hasError={!!errors.cashType}
+              />
+              {errors.cashType && (
+                <p className="text-red-500 text-xs mt-1">{errors.cashType}</p>
+              )}
+            </div>
           </div>
 
           {/* Row 2: Remarks full width */}
           <div>
             <Label>Remarks</Label>
-            <input
-              type="text"
+            <textarea
+              rows={3}
               placeholder="Optional notes…"
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-gray-400"
+              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-gray-400 resize-y"
             />
           </div>
         </div>
