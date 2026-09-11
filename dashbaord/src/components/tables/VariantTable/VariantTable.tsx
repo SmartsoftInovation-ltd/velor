@@ -144,7 +144,11 @@ const VariantTable = () => {
       const { data } = await axiosSecure.get(endpoint);
       return data?.data?.variants || data?.data || [];
     },
-    staleTime: 2 * 60 * 1000,
+    // The list must reflect a create/update as soon as the form navigates
+    // back here, so it always refetches on mount rather than serving a
+    // cached page. Mutations additionally invalidate ["variants"].
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const virtualizer = useVirtualizer({

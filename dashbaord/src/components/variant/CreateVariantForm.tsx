@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
@@ -219,6 +219,7 @@ const CreateVariantForm = ({
 }: CreateVariantFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Per-row barcode input refs — a USB scanner just types into whatever has
   // focus, so clicking the scanner icon on a row focuses that row's field.
@@ -1024,12 +1025,14 @@ const CreateVariantForm = ({
           headers: { "Content-Type": "multipart/form-data" },
         });
         toast.success("Variant updated successfully!");
+        await queryClient.invalidateQueries({ queryKey: ["variants"] });
         navigate("/variant-list");
       } else {
         await axiosSecure.post(`/variant`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         toast.success("Variants created successfully!");
+        await queryClient.invalidateQueries({ queryKey: ["variants"] });
         localStorage.removeItem("variant_form_draft");
         clearDraftFiles();
 
