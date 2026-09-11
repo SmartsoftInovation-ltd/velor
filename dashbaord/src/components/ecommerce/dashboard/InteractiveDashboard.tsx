@@ -418,7 +418,9 @@ export default function InteractiveDashboard() {
                 stats={[
                   { label: "Receive", value: formatCurrency(salesSummary?.received ?? 0), color: "success" },
                   { label: "Due", value: formatCurrency(salesSummary?.due ?? 0), color: "error" },
-                  { label: "Profit", value: formatCurrency(salesSummary?.profit ?? 0) },
+                  // Exact formatter: profit carries 2 decimals from the API, and
+                  // formatCurrency would drop them (1137.50 -> "1,137.5").
+                  { label: "Profit", value: formatCurrencyExact(salesSummary?.profit ?? 0) },
                 ]}
                 progressSegments={[
                   { label: "Receive", value: salesSummary?.received ?? 0, color: "success" },

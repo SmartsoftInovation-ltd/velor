@@ -63,6 +63,156 @@ const resolveRange = (range, startDate, endDate) => {
   return { start, end: now, key: range };
 };
 
+// Profit pipeline, shared by the Total Sale box and the dashboard overview so
+// the two can never disagree.
+//
+// Profit is revenue actually earned minus what the goods cost, per line:
+//
+//   grossLine    = salesRate × quantity
+//   lineDiscount = discountType "amount" ? discount × quantity   (taka/unit)
+//                                        : grossLine × discount% (percent)
+//   netLine      = grossLine − lineDiscount
+//   invoiceCut   = netLine × sale.discountPercent / 100
+//   lessCut      = sale.lessTaka ÷ (number of lines on the sale)
+//   profit      += (netLine − invoiceCut − lessCut) − purchasePrice × quantity
+//
+// Notes on the choices here:
+//   - The line's own discount is read from the stored searchItem, NOT re-resolved
+//     from the catalogue. The sales form resolves a product/variant/category
+//     discount at pick time and freezes it onto the line, so re-resolving would
+//     double-count and would also re-price historical sales whenever the
+//     catalogue changes. What the customer was charged is what profit uses.
+//   - "amount" discounts are per unit, mirroring the sales form's
+//     (salesRate − discount) × quantity.
+//   - discountPercent applies to the already-discounted netLine, matching how
+//     the form computes the invoice total.
+//   - lessTaka is split equally across the sale's lines (60 over 3 lines = 20
+//     each), so a whole-invoice reduction lands proportionally on profit.
+//   - VAT, delivery and labour are excluded: VAT is passed through to the
+//     government and the other two are cost recovery, not margin.
+//   - Only salesStatus "sale" lines count; returns and exchanges are not sales.
+//   - subtotal is deliberately NOT trusted — it is written by the client. Every
+//     figure is recomputed here from salesRate/discount/quantity.
+const buildProfitPipeline = (dateMatch) => [
+  { $match: dateMatch },
+  // Captured before $unwind — once unwound the array length is gone, and
+  // lessTaka cannot be divided across the sale's lines without it.
+  { $addFields: { lineCount: { $size: { $ifNull: ["$searchItem", []] } } } },
+  { $unwind: "$searchItem" },
+  { $match: { "searchItem.salesStatus": "sale" } },
+  {
+    $lookup: {
+      from: "products",
+      localField: "searchItem.productId",
+      foreignField: "_id",
+      as: "productDoc",
+    },
+  },
+  {
+    $lookup: {
+      from: "variants",
+      localField: "searchItem.variantId",
+      foreignField: "_id",
+      as: "variantDoc",
+    },
+  },
+  {
+    $addFields: {
+      grossLine: {
+        $multiply: [
+          { $ifNull: ["$searchItem.salesRate", 0] },
+          { $ifNull: ["$searchItem.quantity", 0] },
+        ],
+      },
+      unitCost: {
+        $ifNull: [
+          { $first: "$variantDoc.purchasePrice" },
+          { $ifNull: [{ $first: "$productDoc.purchasePrice" }, 0] },
+        ],
+      },
+    },
+  },
+  {
+    $addFields: {
+      netLine: {
+        $subtract: [
+          "$grossLine",
+          {
+            $cond: [
+              { $eq: ["$searchItem.discountType", "percent"] },
+              {
+                $divide: [
+                  {
+                    $multiply: [
+                      "$grossLine",
+                      { $ifNull: ["$searchItem.discount", 0] },
+                    ],
+                  },
+                  100,
+                ],
+              },
+              {
+                $multiply: [
+                  { $ifNull: ["$searchItem.discount", 0] },
+                  { $ifNull: ["$searchItem.quantity", 0] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  },
+  {
+    $addFields: {
+      netRevenue: {
+        $subtract: [
+          {
+            $subtract: [
+              "$netLine",
+              {
+                $divide: [
+                  {
+                    $multiply: [
+                      "$netLine",
+                      { $ifNull: ["$discountPercent", 0] },
+                    ],
+                  },
+                  100,
+                ],
+              },
+            ],
+          },
+          // Guard against a zero lineCount: $unwind already proves at least one
+          // line exists, but a divide-by-zero would poison the whole sum.
+          {
+            $cond: [
+              { $gt: ["$lineCount", 0] },
+              { $divide: [{ $ifNull: ["$lessTaka", 0] }, "$lineCount"] },
+              0,
+            ],
+          },
+        ],
+      },
+    },
+  },
+  {
+    $group: {
+      _id: null,
+      // Kept at full precision; rounded once by the caller. Rounding per line
+      // would drift across a large invoice count.
+      profit: {
+        $sum: {
+          $subtract: [
+            "$netRevenue",
+            { $multiply: ["$unitCost", { $ifNull: ["$searchItem.quantity", 0] }] },
+          ],
+        },
+      },
+    },
+  },
+];
+
 // @desc  aggregated dashboard overview — one call, many widgets
 exports.getOverview = asynchandeler(async (req, res) => {
   const { start, end, key } = resolveRange(
@@ -455,47 +605,9 @@ exports.getOverview = asynchandeler(async (req, res) => {
       .select("transactionSerialId transactionDescription amount createdAt")
       .lean(),
 
-    // 28. Gross profit within range — revenue minus each line's actual
-    // purchase-price cost, joined from Product/Variant at query time.
-    salesModel.aggregate([
-      { $match: dateMatch },
-      { $unwind: "$searchItem" },
-      {
-        $lookup: {
-          from: "products",
-          localField: "searchItem.productId",
-          foreignField: "_id",
-          as: "productDoc",
-        },
-      },
-      {
-        $lookup: {
-          from: "variants",
-          localField: "searchItem.variantId",
-          foreignField: "_id",
-          as: "variantDoc",
-        },
-      },
-      {
-        $addFields: {
-          unitCost: {
-            $ifNull: [
-              { $first: "$variantDoc.purchasePrice" },
-              { $ifNull: [{ $first: "$productDoc.purchasePrice" }, 0] },
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          revenue: { $sum: "$searchItem.subtotal" },
-          cost: {
-            $sum: { $multiply: ["$unitCost", "$searchItem.quantity"] },
-          },
-        },
-      },
-    ]),
+    // 28. Gross profit within range — line revenue after every discount,
+    // minus each line's actual purchase-price cost. See buildProfitPipeline.
+    salesModel.aggregate(buildProfitPipeline(dateMatch)),
 
     // 29. Total out-of-stock (0 units) active products — uncapped count
     productModel.countDocuments({ isActive: true, stock: 0 }),
@@ -556,9 +668,7 @@ exports.getOverview = asynchandeler(async (req, res) => {
         (pv.costValue || 0) + (vv.costValue || 0),
       ),
       outstandingDues: Math.round(duesAgg[0]?.totalDue || 0),
-      grossProfit: Math.round(
-        (grossProfitAgg[0]?.revenue || 0) - (grossProfitAgg[0]?.cost || 0),
-      ),
+      grossProfit: round2(grossProfitAgg[0]?.profit || 0),
       stockOutCount: stockOutCount || 0,
     },
     summary: (() => {
@@ -818,45 +928,8 @@ exports.getSalesSummary = asynchandeler(async (req, res) => {
       },
     ]),
 
-    salesModel.aggregate([
-      { $match: dateMatch },
-      { $unwind: "$searchItem" },
-      {
-        $lookup: {
-          from: "products",
-          localField: "searchItem.productId",
-          foreignField: "_id",
-          as: "productDoc",
-        },
-      },
-      {
-        $lookup: {
-          from: "variants",
-          localField: "searchItem.variantId",
-          foreignField: "_id",
-          as: "variantDoc",
-        },
-      },
-      {
-        $addFields: {
-          unitCost: {
-            $ifNull: [
-              { $first: "$variantDoc.purchasePrice" },
-              { $ifNull: [{ $first: "$productDoc.purchasePrice" }, 0] },
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          revenue: { $sum: "$searchItem.subtotal" },
-          cost: {
-            $sum: { $multiply: ["$unitCost", "$searchItem.quantity"] },
-          },
-        },
-      },
-    ]),
+    // Profit after every discount level — see buildProfitPipeline.
+    salesModel.aggregate(buildProfitPipeline(dateMatch)),
   ]);
 
   const s = salesAgg[0] || { revenue: 0, collected: 0, dues: 0, orders: 0 };
@@ -867,9 +940,9 @@ exports.getSalesSummary = asynchandeler(async (req, res) => {
       total: Math.round(s.revenue || 0),
       received: Math.round(s.collected || 0),
       due: Math.round(s.dues || 0),
-      profit: Math.round(
-        (grossProfitAgg[0]?.revenue || 0) - (grossProfitAgg[0]?.cost || 0),
-      ),
+      // Profit keeps 2 decimals — line discounts and percentage cuts rarely
+      // land on whole taka, and rounding to integers hid real money.
+      profit: round2(grossProfitAgg[0]?.profit || 0),
       orders: s.orders || 0,
     },
   };
