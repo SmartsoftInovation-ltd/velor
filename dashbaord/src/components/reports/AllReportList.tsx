@@ -122,6 +122,11 @@ const categories: ReportCategory[] = [
         description: "Opening, purchases, adjustments, sales & returns per item",
         path: "/stock-details-report",
       },
+      {
+        name: "Product Ledger",
+        description: "Every stock in/out movement for one item, with balance",
+        path: "/product-ledger",
+      },
     ],
   },
   {

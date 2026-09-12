@@ -5,6 +5,9 @@ const { apiResponse } = require("../utils/apiResponse");
 const { statusCodes } = require("../constant/constant");
 const Purchase = require("../models/purchase.model");
 const PurchaseReturn = require("../models/purchaseReturn.model");
+const Variant = require("../models/variant.model");
+const StockAdjust = require("../models/stockadjust.model");
+const CourierReturn = require("../models/courierReturn.model");
 const Sales = require("../models/sales.model");
 const SalesReturn = require("../models/salesReturn.model");
 const { customerModel: Customer } = require("../models/customer.model");
@@ -1703,6 +1706,374 @@ exports.getStockDetailsReport = asynchandeler(async (req, res) => {
 
   apiResponse.sendSuccess(res, statusCodes.OK, "Stock details report fetched successfully", {
     ...payload,
+    fromCache: false,
+  });
+});
+
+// Sale rows are labelled by what kind of sale moved the stock, so a ledger
+// distinguishes a POS retail sale from a web order at a glance.
+const SALES_TYPE_ACTION = {
+  retailsale: "Retail Sale",
+  wholesale: "Wholesale",
+  retailsaleorder: "Retail Sale Order",
+  wholesaleorder: "Wholesale Order",
+};
+
+// @desc Product ledger — every stock movement for ONE product or variant, in
+// date order, with a running balance. Opening stock is the item's initialStock
+// and every later row comes from the collection that actually moved the stock:
+// purchases and their returns, sales (by sales type) and their returns, courier
+// returns, and manual stock adjustments.
+exports.getProductLedgerReport = asynchandeler(async (req, res) => {
+  const { productId, variantId, startDate, endDate } = req.body || {};
+
+  if (!productId && !variantId) {
+    throw new customError("productId or variantId is required", statusCodes.BAD_REQUEST);
+  }
+  if (productId && !mongoose.Types.ObjectId.isValid(productId)) {
+    throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+  }
+  if (variantId && !mongoose.Types.ObjectId.isValid(variantId)) {
+    throw new customError("Invalid variantId", statusCodes.BAD_REQUEST);
+  }
+
+  const variantOid = variantId ? new mongoose.Types.ObjectId(variantId) : null;
+  const productOid = productId ? new mongoose.Types.ObjectId(productId) : null;
+
+  const cacheKey = await buildCacheKey(
+    PRODUCT_NS,
+    `report:product-ledger:${productId || "-"}:${variantId || "-"}:${startDate || "-"}:${endDate || "-"}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Product ledger fetched successfully", {
+      ...cached,
+      fromCache: true,
+    });
+  }
+
+  // Identify the item first: its name/barcode/colour/size label the sheet, and
+  // its initialStock is the opening row.
+  let item = null;
+  if (variantOid) {
+    const variant = await Variant.findById(variantOid)
+      .select("variantName barCode sku size color initialStock product createdAt")
+      .populate("product", "name")
+      .lean();
+    if (!variant) throw new customError("Variant not found", statusCodes.NOT_FOUND);
+    item = {
+      productId: variant.product?._id || null,
+      variantId: variant._id,
+      productName: variant.product?.name || variant.variantName || "-",
+      variantName: variant.variantName || "",
+      barcode: variant.barCode || variant.sku || "-",
+      color: variant.color || "-",
+      size: variant.size || "-",
+      openingStock: variant.initialStock || 0,
+      createdAt: variant.createdAt,
+    };
+  } else {
+    const product = await Product.findById(productOid)
+      .select("name barCode sku size color initialStock createdAt")
+      .lean();
+    if (!product) throw new customError("Product not found", statusCodes.NOT_FOUND);
+    item = {
+      productId: product._id,
+      variantId: null,
+      productName: product.name,
+      variantName: "",
+      barcode: product.barCode || product.sku || "-",
+      color: product.color || "-",
+      size: product.size || "-",
+      openingStock: product.initialStock || 0,
+      createdAt: product.createdAt,
+    };
+  }
+
+  // Each source matches on whichever id the caller gave: a variant ledger only
+  // counts lines naming that variant, a product ledger only lines naming the
+  // product directly (its variants have their own ledgers).
+  const lineMatch = (productField, variantField) =>
+    variantOid ? { [variantField]: variantOid } : { [productField]: productOid };
+
+  const dateFilter = (field) => {
+    const range = {};
+    if (startDate) range.$gte = new Date(startDate);
+    if (endDate) range.$lte = new Date(endDate);
+    return Object.keys(range).length > 0 ? [{ $match: { [field]: range } }] : [];
+  };
+
+  // ---- Purchases: stock in ----
+  const purchaseRows = await Purchase.aggregate([
+    ...dateFilter("date"),
+    { $unwind: "$allproduct" },
+    { $match: lineMatch("allproduct.product", "allproduct.variant") },
+    {
+      $project: {
+        _id: 0,
+        date: "$date",
+        action: "Purchase",
+        reference: { $ifNull: ["$serial", "$invoiceNumber"] },
+        stockIn: { $ifNull: ["$allproduct.quantity", 0] },
+        stockOut: { $literal: 0 },
+      },
+    },
+  ]);
+
+  // ---- Purchase returns: stock out ----
+  const purchaseReturnRows = await PurchaseReturn.aggregate([
+    ...dateFilter("returnDate"),
+    { $unwind: "$products" },
+    { $match: lineMatch("products.product", "products.variant") },
+    {
+      $project: {
+        _id: 0,
+        date: "$returnDate",
+        action: "Purchase Return",
+        reference: "$serial",
+        stockIn: { $literal: 0 },
+        stockOut: { $ifNull: ["$products.quantity", 0] },
+      },
+    },
+  ]);
+
+  // ---- Sales: stock out, labelled by sales type ----
+  const salesRows = await Sales.aggregate([
+    ...dateFilter("date"),
+    { $unwind: "$searchItem" },
+    { $match: lineMatch("searchItem.productId", "searchItem.variantId") },
+    {
+      $project: {
+        _id: 0,
+        date: "$date",
+        action: {
+          $switch: {
+            branches: Object.entries(SALES_TYPE_ACTION).map(([value, label]) => ({
+              case: { $eq: ["$salesType", value] },
+              then: label,
+            })),
+            default: "Sold",
+          },
+        },
+        reference: "$invoiceNumber",
+        stockIn: { $literal: 0 },
+        stockOut: { $ifNull: ["$searchItem.quantity", 0] },
+      },
+    },
+  ]);
+
+  // ---- Sales returns: stock in ----
+  const salesReturnRows = await SalesReturn.aggregate([
+    ...dateFilter("date"),
+    { $unwind: "$allproduct" },
+    { $match: lineMatch("allproduct.product", "allproduct.variant") },
+    {
+      $project: {
+        _id: 0,
+        date: "$date",
+        action: "Sales Return",
+        reference: "$invoiceNumber",
+        stockIn: { $ifNull: ["$allproduct.quantity", 0] },
+        stockOut: { $literal: 0 },
+      },
+    },
+  ]);
+
+  // ---- Courier returns: stock in (no date field of its own, uses createdAt) ----
+  const courierReturnRows = await CourierReturn.aggregate([
+    ...dateFilter("createdAt"),
+    { $match: lineMatch("product", "variant") },
+    {
+      $project: {
+        _id: 0,
+        date: "$createdAt",
+        action: "Courier Return",
+        reference: { $ifNull: [{ $toString: "$orderId" }, "-"] },
+        stockIn: { $ifNull: ["$receivedQuantity", 0] },
+        stockOut: { $literal: 0 },
+      },
+    },
+  ]);
+
+  // ---- Manual adjustments: one row per direction, so a single adjustment that
+  // both adds and removes shows as two clearly-signed lines ----
+  const adjustDocs = await StockAdjust.aggregate([
+    ...dateFilter("date"),
+    { $match: lineMatch("productId", "variantId") },
+    {
+      $project: {
+        _id: 1,
+        date: 1,
+        adjustReason: 1,
+        increaseQuantity: { $ifNull: ["$increaseQuantity", 0] },
+        decreaseQuantity: { $ifNull: ["$decreaseQuantity", 0] },
+      },
+    },
+  ]);
+
+  const adjustRows = [];
+  for (const a of adjustDocs) {
+    const reference = a.adjustReason || String(a._id);
+    if (a.increaseQuantity > 0) {
+      adjustRows.push({
+        date: a.date,
+        action: "Adjust Plus (+)",
+        reference,
+        stockIn: a.increaseQuantity,
+        stockOut: { $literal: 0 },
+      });
+    }
+    if (a.decreaseQuantity > 0) {
+      adjustRows.push({
+        date: a.date,
+        action: "Adjust Minus (-)",
+        reference,
+        stockIn: { $literal: 0 },
+        stockOut: a.decreaseQuantity,
+      });
+    }
+  }
+
+  const movements = [
+    ...purchaseRows,
+    ...purchaseReturnRows,
+    ...salesRows,
+    ...salesReturnRows,
+    ...courierReturnRows,
+    ...adjustRows,
+  ].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // The opening row carries the item's initialStock and is dated to the start
+  // of the requested range (the item's creation date when no range was given),
+  // since initialStock has no date of its own.
+  const openingDate = startDate ? new Date(startDate) : item.createdAt || new Date();
+  const rows = [
+    {
+      date: openingDate,
+      action: "Opening",
+      reference: "N/A",
+      stockIn: item.openingStock,
+      stockOut: 0,
+    },
+    ...movements,
+  ];
+
+  let balance = 0;
+  const ledger = rows.map((r, idx) => {
+    balance += (r.stockIn || 0) - (r.stockOut || 0);
+    return {
+      _id: `${idx}`,
+      sl: idx + 1,
+      date: r.date,
+      action: r.action,
+      reference: r.reference || "-",
+      stockIn: r.stockIn || 0,
+      stockOut: r.stockOut || 0,
+      balance,
+    };
+  });
+
+  const totals = ledger.reduce(
+    (acc, r) => ({
+      count: acc.count + 1,
+      totalStockIn: acc.totalStockIn + r.stockIn,
+      totalStockOut: acc.totalStockOut + r.stockOut,
+      balance: r.balance,
+    }),
+    { count: 0, totalStockIn: 0, totalStockOut: 0, balance: 0 },
+  );
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    item,
+    filters: {
+      productId: productId || null,
+      variantId: variantId || null,
+      startDate: startDate || "",
+      endDate: endDate || "",
+    },
+    rows: ledger,
+    totals,
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Product ledger fetched successfully", {
+    ...payload,
+    fromCache: false,
+  });
+});
+
+// @desc Selectable items for the product ledger's picker — every variant plus
+// every product that has none, each with the barcode/colour/size the ledger
+// header shows, so one search box can find an item by name or by barcode.
+exports.getLedgerItems = asynchandeler(async (req, res) => {
+  const search = (req.query.search || "").trim();
+
+  const cacheKey = await buildCacheKey(PRODUCT_NS, `report:ledger-items:${search.toLowerCase()}`);
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Ledger items fetched successfully", {
+      items: cached,
+      fromCache: true,
+    });
+  }
+
+  const rx = search ? new RegExp(search, "i") : null;
+
+  const variants = await Variant.find({
+    isActive: { $ne: false },
+    ...(rx ? { $or: [{ variantName: rx }, { barCode: rx }, { sku: rx }] } : {}),
+  })
+    .select("variantName barCode sku size color product")
+    .populate("product", "name")
+    .limit(500)
+    .lean();
+
+  const productsWithoutVariants = await Product.aggregate([
+    { $match: { isActive: { $ne: false }, ...(rx ? { $or: [{ name: rx }, { barCode: rx }, { sku: rx }] } : {}) } },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "_id",
+        foreignField: "product",
+        as: "variants",
+        pipeline: [{ $match: { isActive: { $ne: false } } }, { $project: { _id: 1 } }],
+      },
+    },
+    { $match: { variants: { $size: 0 } } },
+    { $limit: 500 },
+    { $project: { name: 1, barCode: 1, sku: 1, size: 1, color: 1 } },
+  ]);
+
+  const items = [
+    ...variants.map((v) => ({
+      productId: v.product?._id || null,
+      variantId: v._id,
+      productName: v.product?.name || v.variantName || "-",
+      variantName: v.variantName || "",
+      barcode: v.barCode || v.sku || "",
+      color: v.color || "",
+      size: v.size || "",
+    })),
+    ...productsWithoutVariants.map((p) => ({
+      productId: p._id,
+      variantId: null,
+      productName: p.name,
+      variantName: "",
+      barcode: p.barCode || p.sku || "",
+      color: p.color || "",
+      size: p.size || "",
+    })),
+  ].sort((a, b) => a.productName.localeCompare(b.productName));
+
+  await setCache(cacheKey, items, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Ledger items fetched successfully", {
+    items,
     fromCache: false,
   });
 });

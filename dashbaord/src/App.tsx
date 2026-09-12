@@ -235,6 +235,9 @@ const StockReport = lazy(() => import("./components/reports/Stock/StockReport"))
 const StockDetailsReport = lazy(
   () => import("./components/reports/Stock/StockDetailsReport"),
 );
+const ProductLedgerReport = lazy(
+  () => import("./components/reports/Stock/ProductLedgerReport"),
+);
 const PurchaseSummaryReport = lazy(
   () => import("./components/reports/Purchase/PurchaseSummaryReport"),
 );
@@ -983,6 +986,15 @@ export default function App() {
                   element={
                     <ProtectedRoute module="stock-details-report" action="view">
                       <StockDetailsReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/product-ledger"
+                  element={
+                    <ProtectedRoute module="product-ledger-report" action="view">
+                      <ProductLedgerReport />
                     </ProtectedRoute>
                   }
                 />
