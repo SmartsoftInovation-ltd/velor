@@ -11,6 +11,7 @@ const { customerModel: Customer } = require("../models/customer.model");
 const Employee = require("../models/employee.model");
 const Supplier = require("../models/supplier.model").SupplierModel;
 const StoreInformation = require("../models/storeInformation.model");
+const Product = require("../models/product.model");
 const { getCache, setCache, buildCacheKey } = require("@/utils/cache.util");
 
 // Shares invalidation with purchase.controller.js (bumpNsVersion("purchase")
@@ -19,6 +20,7 @@ const { getCache, setCache, buildCacheKey } = require("@/utils/cache.util");
 const PURCHASE_NS = "purchase";
 const SALES_NS = "sales";
 const STORE_NS = "storeinformation";
+const PRODUCT_NS = "product";
 const REPORT_CACHE_TTL = 60 * 5; // 5 minutes
 const STORE_CACHE_TTL = 60 * 60; // 1 hour
 
@@ -1158,6 +1160,246 @@ exports.getPurchaseReturnSummaryReport = asynchandeler(async (req, res) => {
     "Purchase return summary report fetched successfully",
     { ...payload, fromCache: false },
   );
+});
+
+// @desc Stock report — one row per sellable unit: a single-variant product is
+// its own row, a multi-variant product contributes one row per variant. Prices
+// and stock come from the variant where it has them and fall back to the parent
+// product. STOCK VALUE is buy rate x stock.
+exports.getStockReport = asynchandeler(async (req, res) => {
+  const { category, subCategory, brand, productId, search, inStockOnly } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = { isActive: { $ne: false } };
+  castObjectIdFilter(match, "category", category);
+  castObjectIdFilter(match, "subcategory", subCategory);
+  castObjectIdFilter(match, "brand", brand);
+  castObjectIdFilter(match, "_id", productId);
+
+  const searchTerm = (search || "").trim();
+
+  const cacheKey = await buildCacheKey(
+    PRODUCT_NS,
+    `report:stock:${category || "-"}:${subCategory || "-"}:${brand || "-"}:${productId || "-"}:${searchTerm.toLowerCase()}:${inStockOnly ? "instock" : "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Stock report fetched successfully", {
+      ...cached,
+      fromCache: true,
+    });
+  }
+
+  // Variants are looked up rather than read from product.variant[] so a variant
+  // deactivated after the product was saved drops out of the report.
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "_id",
+        foreignField: "product",
+        as: "variants",
+        pipeline: [
+          { $match: { isActive: { $ne: false } } },
+          {
+            $project: {
+              variantName: 1,
+              barCode: 1,
+              sku: 1,
+              size: 1,
+              color: 1,
+              purchasePrice: 1,
+              retailPrice: 1,
+              wholesalePrice: 1,
+              stockVariant: 1,
+              unit: 1,
+              groupUnit: 1,
+              groupUnitQuantity: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "subcategories",
+        localField: "subcategory",
+        foreignField: "_id",
+        as: "subcategoryInfo",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    { $unwind: { path: "$subcategoryInfo", preserveNullAndEmptyArrays: true } },
+    // Each product becomes an array of rows: its variants, or itself when it
+    // has none. $unwind then turns that array back into one document per row.
+    {
+      $addFields: {
+        stockRows: {
+          $cond: [
+            { $gt: [{ $size: "$variants" }, 0] },
+            {
+              $map: {
+                input: "$variants",
+                as: "v",
+                in: {
+                  variantId: "$$v._id",
+                  variantName: "$$v.variantName",
+                  barcode: { $ifNull: ["$$v.barCode", { $ifNull: ["$$v.sku", "$barCode"] }] },
+                  size: { $ifNull: ["$$v.size", "$size"] },
+                  color: { $ifNull: ["$$v.color", "$color"] },
+                  buyRate: { $ifNull: ["$$v.purchasePrice", "$purchasePrice"] },
+                  wsPrice: { $ifNull: ["$$v.wholesalePrice", "$wholesalePrice"] },
+                  retailPrice: { $ifNull: ["$$v.retailPrice", "$retailPrice"] },
+                  unit: { $ifNull: ["$$v.unit", "$unit"] },
+                  groupUnit: { $ifNull: ["$$v.groupUnit", "$groupUnit"] },
+                  groupUnitQuantity: {
+                    $ifNull: ["$$v.groupUnitQuantity", "$groupUnitQuantity"],
+                  },
+                  stock: { $ifNull: ["$$v.stockVariant", 0] },
+                },
+              },
+            },
+            [
+              {
+                variantId: null,
+                variantName: "Single",
+                barcode: { $ifNull: ["$barCode", "$sku"] },
+                size: "$size",
+                color: "$color",
+                buyRate: "$purchasePrice",
+                wsPrice: "$wholesalePrice",
+                retailPrice: "$retailPrice",
+                unit: "$unit",
+                groupUnit: "$groupUnit",
+                groupUnitQuantity: "$groupUnitQuantity",
+                stock: { $ifNull: ["$stock", 0] },
+              },
+            ],
+          ],
+        },
+      },
+    },
+    { $unwind: "$stockRows" },
+    {
+      $addFields: {
+        rowStock: { $ifNull: ["$stockRows.stock", 0] },
+        rowBuyRate: { $ifNull: ["$stockRows.buyRate", 0] },
+      },
+    },
+    { $addFields: { rowStockValue: { $multiply: ["$rowBuyRate", "$rowStock"] } } },
+  ];
+
+  if (searchTerm) {
+    // Digits scan as a barcode; anything else matches the product or variant name.
+    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    pipeline.push({
+      $match: isBarcode
+        ? { "stockRows.barcode": searchTerm }
+        : {
+            $or: [
+              { name: { $regex: searchTerm, $options: "i" } },
+              { "stockRows.variantName": { $regex: searchTerm, $options: "i" } },
+              { "stockRows.barcode": { $regex: searchTerm, $options: "i" } },
+            ],
+          },
+    });
+  }
+
+  if (inStockOnly) {
+    pipeline.push({ $match: { rowStock: { $gt: 0 } } });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { name: 1, "stockRows.variantName": 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: {
+              $concat: [
+                { $toString: "$_id" },
+                "-",
+                { $ifNull: [{ $toString: "$stockRows.variantId" }, "single"] },
+              ],
+            },
+            productName: { $ifNull: ["$name", "-"] },
+            variantName: { $ifNull: ["$stockRows.variantName", "-"] },
+            subcategory: { $ifNull: ["$subcategoryInfo.name", "-"] },
+            barcode: { $ifNull: ["$stockRows.barcode", "-"] },
+            color: { $ifNull: ["$stockRows.color", "-"] },
+            size: { $ifNull: ["$stockRows.size", "-"] },
+            buyRate: "$rowBuyRate",
+            wsPrice: { $ifNull: ["$stockRows.wsPrice", 0] },
+            retailPrice: { $ifNull: ["$stockRows.retailPrice", 0] },
+            unit: { $ifNull: ["$stockRows.unit", ""] },
+            groupUnit: { $ifNull: ["$stockRows.groupUnit", ""] },
+            groupUnitQuantity: { $ifNull: ["$stockRows.groupUnitQuantity", 0] },
+            stock: "$rowStock",
+            stockValue: "$rowStockValue",
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalBuyRate: { $sum: "$rowBuyRate" },
+            totalWsPrice: { $sum: { $ifNull: ["$stockRows.wsPrice", 0] } },
+            totalRetailPrice: { $sum: { $ifNull: ["$stockRows.retailPrice", 0] } },
+            totalStock: { $sum: "$rowStock" },
+            totalStockValue: { $sum: "$rowStockValue" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Product.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalBuyRate: 0,
+    totalWsPrice: 0,
+    totalRetailPrice: 0,
+    totalStock: 0,
+    totalStockValue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+      productId: productId || null,
+      search: searchTerm || "",
+      inStockOnly: !!inStockOnly,
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalBuyRate: totals.totalBuyRate,
+      totalWsPrice: totals.totalWsPrice,
+      totalRetailPrice: totals.totalRetailPrice,
+      totalStock: totals.totalStock,
+      totalStockValue: totals.totalStockValue,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Stock report fetched successfully", {
+    ...payload,
+    fromCache: false,
+  });
 });
 
 // @desc Suppliers that have at least one purchase — for the purchase reports' supplier filter dropdown

@@ -29,6 +29,11 @@ _.route("/purchase-return-summary").post(
   authorize("purchase-return-summary", "view"),
   reportController.getPurchaseReturnSummaryReport,
 );
+_.route("/stock").post(
+  authGuard,
+  authorize("stock-report", "view"),
+  reportController.getStockReport,
+);
 _.route("/purchase/suppliers").get(
   authGuard,
   authorize("purchase-invoice", "view"),

@@ -7,6 +7,7 @@ import {
   TbTruckDelivery,
   TbReceipt2,
   TbWallet,
+  TbBox,
   TbChevronRight,
   TbSearch,
 } from "react-icons/tb";
@@ -101,6 +102,20 @@ const categories: ReportCategory[] = [
         name: "Sales Summary",
         description: "Product-wise totals with weighted average buy price",
         path: "/sales-summary",
+      },
+    ],
+  },
+  {
+    key: "stock",
+    label: "Stock",
+    icon: <TbBox className="size-[18px]" />,
+    chipBg: "bg-teal-50 dark:bg-teal-500/10",
+    chipText: "text-teal-500",
+    reports: [
+      {
+        name: "Stock Report",
+        description: "Overall stock with buy rate, quantity & stock value",
+        path: "/stock-report",
       },
     ],
   },
