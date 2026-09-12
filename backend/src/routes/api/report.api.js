@@ -59,6 +59,11 @@ _.route("/stock-adjustment").post(
   authorize("stock-adjustment-report", "view"),
   reportController.getStockAdjustmentReport,
 );
+_.route("/low-stock").post(
+  authGuard,
+  authorize("low-stock-report", "view"),
+  reportController.getLowStockReport,
+);
 _.route("/purchase/suppliers").get(
   authGuard,
   authorize("purchase-invoice", "view"),

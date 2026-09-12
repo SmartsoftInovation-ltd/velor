@@ -2530,6 +2530,245 @@ exports.getStockAdjustmentReport = asynchandeler(async (req, res) => {
   });
 });
 
+// @desc Low stock alert report — every sellable item whose stock has fallen to
+// or below its alert quantity. Stock is a snapshot, so the optional date range
+// filters by when the item was created rather than by movement. BUY RATE is the
+// purchase price, and GROUP QTY reads the stock in group units.
+exports.getLowStockReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, productId, category, subCategory, brand, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = { isActive: { $ne: false } };
+  castObjectIdFilter(match, "category", category);
+  castObjectIdFilter(match, "subcategory", subCategory);
+  castObjectIdFilter(match, "brand", brand);
+  castObjectIdFilter(match, "_id", productId);
+  if (startDate || endDate) {
+    match.createdAt = {};
+    if (startDate) match.createdAt.$gte = new Date(startDate);
+    if (endDate) match.createdAt.$lte = new Date(endDate);
+  }
+
+  const searchTerm = (search || "").trim();
+
+  const cacheKey = await buildCacheKey(
+    PRODUCT_NS,
+    `report:low-stock:${startDate || "-"}:${endDate || "-"}:${productId || "-"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:${searchTerm.toLowerCase()}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Low stock report fetched successfully", {
+      ...cached,
+      fromCache: true,
+    });
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "_id",
+        foreignField: "product",
+        as: "variants",
+        pipeline: [
+          { $match: { isActive: { $ne: false } } },
+          {
+            $project: {
+              variantName: 1,
+              barCode: 1,
+              sku: 1,
+              size: 1,
+              color: 1,
+              purchasePrice: 1,
+              retailPrice: 1,
+              wholesalePrice: 1,
+              stockVariant: 1,
+              unit: 1,
+              groupUnit: 1,
+              groupUnitQuantity: 1,
+              alertQuantity: 1,
+              alertVariantStock: 1,
+            },
+          },
+        ],
+      },
+    },
+    // A multi-variant product contributes one row per variant; a product with
+    // no variants is its own row.
+    {
+      $addFields: {
+        stockRows: {
+          $cond: [
+            { $gt: [{ $size: "$variants" }, 0] },
+            {
+              $map: {
+                input: "$variants",
+                as: "v",
+                in: {
+                  variantId: "$$v._id",
+                  variantName: "$$v.variantName",
+                  barcode: { $ifNull: ["$$v.barCode", { $ifNull: ["$$v.sku", "$barCode"] }] },
+                  size: { $ifNull: ["$$v.size", "$size"] },
+                  color: { $ifNull: ["$$v.color", "$color"] },
+                  buyRate: { $ifNull: ["$$v.purchasePrice", "$purchasePrice"] },
+                  wsPrice: { $ifNull: ["$$v.wholesalePrice", "$wholesalePrice"] },
+                  retailPrice: { $ifNull: ["$$v.retailPrice", "$retailPrice"] },
+                  unit: { $ifNull: ["$$v.unit", "$unit"] },
+                  groupUnit: { $ifNull: ["$$v.groupUnit", "$groupUnit"] },
+                  groupUnitQuantity: { $ifNull: ["$$v.groupUnitQuantity", "$groupUnitQuantity"] },
+                  stock: { $ifNull: ["$$v.stockVariant", 0] },
+                  // The variant's own alert wins; the product's is the fallback
+                  // and 5 is the schema default both share.
+                  alertQty: {
+                    $ifNull: [
+                      "$$v.alertQuantity",
+                      { $ifNull: ["$$v.alertVariantStock", { $ifNull: ["$alertQuantity", 5] }] },
+                    ],
+                  },
+                },
+              },
+            },
+            [
+              {
+                variantId: null,
+                variantName: "Single",
+                barcode: { $ifNull: ["$barCode", "$sku"] },
+                size: "$size",
+                color: "$color",
+                buyRate: "$purchasePrice",
+                wsPrice: "$wholesalePrice",
+                retailPrice: "$retailPrice",
+                unit: "$unit",
+                groupUnit: "$groupUnit",
+                groupUnitQuantity: "$groupUnitQuantity",
+                stock: { $ifNull: ["$stock", 0] },
+                alertQty: { $ifNull: ["$alertQuantity", 5] },
+              },
+            ],
+          ],
+        },
+      },
+    },
+    { $unwind: "$stockRows" },
+    {
+      $addFields: {
+        rowStock: { $ifNull: ["$stockRows.stock", 0] },
+        rowAlertQty: { $ifNull: ["$stockRows.alertQty", 5] },
+        rowBuyRate: { $ifNull: ["$stockRows.buyRate", 0] },
+      },
+    },
+    // The report's whole point: only items at or below their alert level.
+    { $match: { $expr: { $lte: ["$rowStock", "$rowAlertQty"] } } },
+    { $addFields: { rowShortfall: { $subtract: ["$rowAlertQty", "$rowStock"] } } },
+  ];
+
+  if (searchTerm) {
+    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    pipeline.push({
+      $match: isBarcode
+        ? { "stockRows.barcode": searchTerm }
+        : {
+            $or: [
+              { name: { $regex: searchTerm, $options: "i" } },
+              { "stockRows.variantName": { $regex: searchTerm, $options: "i" } },
+              { "stockRows.barcode": { $regex: searchTerm, $options: "i" } },
+            ],
+          },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        // Worst shortfall first, so what needs reordering most is on page one.
+        { $sort: { rowShortfall: -1, name: 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: {
+              $concat: [
+                { $toString: "$_id" },
+                "-",
+                { $ifNull: [{ $toString: "$stockRows.variantId" }, "single"] },
+              ],
+            },
+            productName: { $ifNull: ["$name", "-"] },
+            variantName: { $ifNull: ["$stockRows.variantName", "-"] },
+            barcode: { $ifNull: ["$stockRows.barcode", "-"] },
+            color: { $ifNull: ["$stockRows.color", "-"] },
+            size: { $ifNull: ["$stockRows.size", "-"] },
+            buyRate: "$rowBuyRate",
+            wsPrice: { $ifNull: ["$stockRows.wsPrice", 0] },
+            retailPrice: { $ifNull: ["$stockRows.retailPrice", 0] },
+            unit: { $ifNull: ["$stockRows.unit", ""] },
+            groupUnit: { $ifNull: ["$stockRows.groupUnit", ""] },
+            groupUnitQuantity: { $ifNull: ["$stockRows.groupUnitQuantity", 0] },
+            stock: "$rowStock",
+            alertQty: "$rowAlertQty",
+            shortfall: "$rowShortfall",
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalBuyRate: { $sum: "$rowBuyRate" },
+            totalStock: { $sum: "$rowStock" },
+            totalAlertQty: { $sum: "$rowAlertQty" },
+            outOfStock: { $sum: { $cond: [{ $lte: ["$rowStock", 0] }, 1, 0] } },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Product.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalBuyRate: 0,
+    totalStock: 0,
+    totalAlertQty: 0,
+    outOfStock: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate: startDate || "",
+      endDate: endDate || "",
+      productId: productId || null,
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+      search: searchTerm || "",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalBuyRate: totals.totalBuyRate,
+      totalStock: totals.totalStock,
+      totalAlertQty: totals.totalAlertQty,
+      outOfStock: totals.outOfStock,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Low stock report fetched successfully", {
+    ...payload,
+    fromCache: false,
+  });
+});
+
 // @desc Suppliers that have at least one purchase — for the purchase reports' supplier filter dropdown
 exports.getPurchaseInvoiceSuppliers = asynchandeler(async (req, res) => {
   const cacheKey = await buildCacheKey(PURCHASE_NS, "report:purchase:suppliers");

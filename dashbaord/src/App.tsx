@@ -247,6 +247,9 @@ const SizeWiseStockReport = lazy(
 const StockAdjustmentReport = lazy(
   () => import("./components/reports/Stock/StockAdjustmentReport"),
 );
+const LowStockReport = lazy(
+  () => import("./components/reports/Stock/LowStockReport"),
+);
 const PurchaseSummaryReport = lazy(
   () => import("./components/reports/Purchase/PurchaseSummaryReport"),
 );
@@ -1031,6 +1034,15 @@ export default function App() {
                   element={
                     <ProtectedRoute module="stock-adjustment-report" action="view">
                       <StockAdjustmentReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/low-stock-report"
+                  element={
+                    <ProtectedRoute module="low-stock-report" action="view">
+                      <LowStockReport />
                     </ProtectedRoute>
                   }
                 />

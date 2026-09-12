@@ -142,6 +142,11 @@ const categories: ReportCategory[] = [
         description: "Manual adjustments with per-product adjustment counts",
         path: "/stock-adjustment-report",
       },
+      {
+        name: "Low Stock Alert",
+        description: "Items at or below their alert quantity",
+        path: "/low-stock-report",
+      },
     ],
   },
   {
