@@ -40,6 +40,11 @@ const categories: ReportCategory[] = [
         path: "/purchase-invoice",
       },
       {
+        name: "Purchase Product",
+        description: "Product-wise purchased items with buy rate & qty",
+        path: "/purchase-product",
+      },
+      {
         name: "Purchase Summary",
         description: "Aggregated purchase totals by date range",
         path: "/purchase-summary",

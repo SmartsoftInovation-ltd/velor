@@ -219,8 +219,11 @@ const OrderInvoice = lazy(
 const OrderStatusReport = lazy(
   () => import("./components/reports/Order/OrderStatusReport"),
 );
-const PurchaseInvoice = lazy(
-  () => import("./components/reports/Purchase/PurchaseInvoice"),
+const PurchaseInvoiceReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseInvoiceReport"),
+);
+const PurchaseProductReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseProductReport"),
 );
 const PurchaseReturnInvoice = lazy(
   () => import("./components/reports/Purchase/PurchaseReturnInvoice"),
@@ -261,9 +264,6 @@ const TransactionReportView = lazy(
 const TransactionSummaryView = lazy(
   () =>
     import("./components/tables/ReportTable/Account/TransactionSummaryView"),
-);
-const PurchaseInvoiceView = lazy(
-  () => import("./components/tables/ReportTable/PurchaseInvoiceView"),
 );
 const PurchaseReturnInvoiceView = lazy(
   () =>
@@ -908,13 +908,17 @@ export default function App() {
                   path="/purchase-invoice"
                   element={
                     <ProtectedRoute module="purchase-invoice" action="view">
-                      <PurchaseInvoice />
+                      <PurchaseInvoiceReport />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/purchase-invoice/view"
-                  element={<PurchaseInvoiceView />}
+                  path="/purchase-product"
+                  element={
+                    <ProtectedRoute module="purchase-product-report" action="view">
+                      <PurchaseProductReport />
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
                   path="/purchase-summary"

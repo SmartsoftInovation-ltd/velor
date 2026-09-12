@@ -75,6 +75,16 @@ function supplierNameFilterStage(supplierName) {
   ];
 }
 
+// Product filter matches a purchase line item, so it can only run after the
+// allproduct $unwind. Returns [] when no product is selected.
+function productLineFilterStage(productId) {
+  if (!productId) return [];
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+  }
+  return [{ $match: { "allproduct.product": new mongoose.Types.ObjectId(productId) } }];
+}
+
 function parsePagination(req) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
@@ -99,9 +109,11 @@ function castObjectIdFilter(match, field, value) {
   match[field] = new mongoose.Types.ObjectId(value);
 }
 
-// @desc Purchase invoice report — one row per purchase invoice, date range + optional supplier filter, paginated
+// @desc Purchase invoice report — one row per purchase invoice, date range +
+// optional supplier / payment-status filter, paginated. Mirrors the sales
+// invoice report's payload shape so both reports share one frontend layout.
 exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
-  const { startDate, endDate, supplierId, supplierName } = req.body || {};
+  const { startDate, endDate, supplierId, supplierName, paymentStatus } = req.body || {};
   const { page, limit, skip } = parsePagination(req);
 
   if (!startDate || !endDate) {
@@ -111,9 +123,22 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
   const match = { date: { $gte: new Date(startDate), $lte: new Date(endDate) } };
   castObjectIdFilter(match, "supplierId", supplierId);
 
+  // Purchase has no stored payment status — derive it from paid vs payable.
+  const status = (paymentStatus || "").trim();
+  const statusStages = [];
+  if (status === "paid") {
+    statusStages.push({ $match: { $expr: { $lte: ["$dueamount", 0] } } });
+  } else if (status === "due") {
+    statusStages.push({ $match: { $expr: { $lte: ["$paid", 0] } } });
+  } else if (status === "partial") {
+    statusStages.push({
+      $match: { $expr: { $and: [{ $gt: ["$paid", 0] }, { $gt: ["$dueamount", 0] }] } },
+    });
+  }
+
   const cacheKey = await buildCacheKey(
     PURCHASE_NS,
-    `report:purchase-invoice:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:p${page}:l${limit}`,
+    `report:purchase-invoice:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:${status || "all"}:p${page}:l${limit}`,
   );
   const cached = await getCache(cacheKey);
   if (cached) {
@@ -132,6 +157,7 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
     { $match: match },
     ...supplierLookupStages(),
     ...supplierNameFilterStage(supplierName),
+    ...statusStages,
     {
       $facet: {
         rows: [
@@ -151,6 +177,15 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
               payable: 1,
               paid: 1,
               due: "$dueamount",
+              paymentStatus: {
+                $switch: {
+                  branches: [
+                    { case: { $lte: ["$dueamount", 0] }, then: "paid" },
+                    { case: { $lte: ["$paid", 0] }, then: "due" },
+                  ],
+                  default: "partial",
+                },
+              },
             },
           },
         ],
@@ -191,7 +226,9 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
     filters: {
       startDate,
       endDate,
+      supplierId: supplierId || null,
       supplier: supplierName?.trim() || (supplierId ? "Selected supplier" : "ALL"),
+      paymentStatus: status || "ALL",
     },
     rows,
     totals: {
@@ -225,6 +262,7 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
     endDate,
     supplierId,
     supplierName,
+    productId,
     category,
     subCategory,
     brand,
@@ -243,7 +281,7 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
 
   const cacheKey = await buildCacheKey(
     PURCHASE_NS,
-    `report:purchase-product:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
+    `report:purchase-product:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:${productId || "-"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
   );
   const cached = await getCache(cacheKey);
   if (cached) {
@@ -263,6 +301,7 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
     ...supplierLookupStages(),
     ...supplierNameFilterStage(supplierName),
     { $unwind: "$allproduct" },
+    ...productLineFilterStage(productId),
     {
       $lookup: {
         from: "products",
@@ -280,7 +319,17 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
         foreignField: "_id",
         as: "variantInfo",
         pipeline: [
-          { $project: { barCode: 1, product: 1 } },
+          {
+            $project: {
+              barCode: 1,
+              product: 1,
+              size: 1,
+              color: 1,
+              purchasePrice: 1,
+              retailPrice: 1,
+              wholesalePrice: 1,
+            },
+          },
           {
             $lookup: {
               from: "products",
@@ -295,10 +344,33 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
       },
     },
     { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    // Prices/attributes recorded on the purchase line are the historical values
+    // and win; the variant's own fields only fill in where the line left a gap.
     {
       $addFields: {
         lineProductName: { $ifNull: ["$variantInfo.variantProduct.name", "$productInfo.name"] },
         lineBarcode: { $ifNull: ["$variantInfo.barCode", "$productInfo.barCode"] },
+        lineColor: {
+          $ifNull: [
+            { $cond: [{ $in: ["$allproduct.color", ["", null, "N/A"]] }, null, "$allproduct.color"] },
+            "$variantInfo.color",
+          ],
+        },
+        lineSize: {
+          $ifNull: [
+            { $cond: [{ $in: ["$allproduct.size", ["", null, "N/A"]] }, null, "$allproduct.size"] },
+            "$variantInfo.size",
+          ],
+        },
+        lineBuyRate: {
+          $ifNull: ["$allproduct.purchasePrice", { $ifNull: ["$variantInfo.purchasePrice", 0] }],
+        },
+        lineWsPrice: {
+          $ifNull: ["$allproduct.wholesalePrice", { $ifNull: ["$variantInfo.wholesalePrice", 0] }],
+        },
+        lineRsPrice: {
+          $ifNull: ["$allproduct.retailPrice", { $ifNull: ["$variantInfo.retailPrice", 0] }],
+        },
       },
     },
     {
@@ -316,13 +388,18 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
               supplierName: { $ifNull: ["$supplier.supplierName", "-"] },
               productName: { $ifNull: ["$lineProductName", "-"] },
               barcode: { $ifNull: ["$lineBarcode", "-"] },
-              color: "$allproduct.color",
-              size: "$allproduct.size",
-              buyRate: "$allproduct.purchasePrice",
+              color: { $ifNull: ["$lineColor", "-"] },
+              size: { $ifNull: ["$lineSize", "-"] },
+              buyRate: "$lineBuyRate",
               qty: "$allproduct.quantity",
-              wsPrice: "$allproduct.wholesalePrice",
-              rsPrice: "$allproduct.retailPrice",
-              buyTotal: "$allproduct.subTotal",
+              wsPrice: "$lineWsPrice",
+              rsPrice: "$lineRsPrice",
+              buyTotal: {
+                $ifNull: [
+                  "$allproduct.subTotal",
+                  { $multiply: ["$lineBuyRate", { $ifNull: ["$allproduct.quantity", 0] }] },
+                ],
+              },
             },
           },
         ],
@@ -331,11 +408,18 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
             $group: {
               _id: null,
               count: { $sum: 1 },
-              totalBuyRate: { $sum: "$allproduct.purchasePrice" },
+              totalBuyRate: { $sum: "$lineBuyRate" },
               totalQty: { $sum: "$allproduct.quantity" },
-              totalWsPrice: { $sum: "$allproduct.wholesalePrice" },
-              totalRsPrice: { $sum: "$allproduct.retailPrice" },
-              totalBuyTotal: { $sum: "$allproduct.subTotal" },
+              totalWsPrice: { $sum: "$lineWsPrice" },
+              totalRsPrice: { $sum: "$lineRsPrice" },
+              totalBuyTotal: {
+                $sum: {
+                  $ifNull: [
+                    "$allproduct.subTotal",
+                    { $multiply: ["$lineBuyRate", { $ifNull: ["$allproduct.quantity", 0] }] },
+                  ],
+                },
+              },
             },
           },
         ],
@@ -362,6 +446,7 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
       startDate,
       endDate,
       supplier: supplierName?.trim() || (supplierId ? "Selected supplier" : "ALL"),
+      productId: productId || null,
       category: category || "ALL",
       subCategory: subCategory || "ALL",
       brand: brand || "ALL",
