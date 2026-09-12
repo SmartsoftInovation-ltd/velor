@@ -7,6 +7,7 @@ import {
   TbTruckDelivery,
   TbReceipt2,
   TbWallet,
+  TbUsers,
   TbChevronRight,
   TbSearch,
 } from "react-icons/tb";
@@ -135,6 +136,20 @@ const categories: ReportCategory[] = [
         name: "Fund Handover",
         description: "Cash handover records between shifts",
         path: "/fund-handover",
+      },
+    ],
+  },
+  {
+    key: "employee",
+    label: "Employee",
+    icon: <TbUsers className="size-[18px]" />,
+    chipBg: "bg-rose-50 dark:bg-rose-500/10",
+    chipText: "text-rose-500",
+    reports: [
+      {
+        name: "Employee List",
+        description: "Full employee roster with contact, designation & salary details",
+        path: "/employee-list-report",
       },
     ],
   },
