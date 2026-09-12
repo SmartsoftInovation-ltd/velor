@@ -2078,6 +2078,458 @@ exports.getLedgerItems = asynchandeler(async (req, res) => {
   });
 });
 
+// Preferred order for the size columns on the size & colour stock sheet. A size
+// that is not on this list (a numeric waist, a free-form label) still gets its
+// own column, sorted after these and numerically where it can be.
+const SIZE_ORDER = [
+  "XS", "S", "M", "L", "XL", "2XL", "XXL", "3XL", "XXXL", "4XL", "5XL", "6XL", "7XL", "8XL",
+];
+
+const sizeSortKey = (label) => {
+  const idx = SIZE_ORDER.indexOf(label.toUpperCase());
+  if (idx !== -1) return [0, idx, label];
+  const n = parseFloat(label);
+  if (!Number.isNaN(n)) return [1, n, label];
+  return [2, 0, label];
+};
+
+const compareSizes = (a, b) => {
+  const ka = sizeSortKey(a);
+  const kb = sizeSortKey(b);
+  if (ka[0] !== kb[0]) return ka[0] - kb[0];
+  if (ka[1] !== kb[1]) return ka[1] - kb[1];
+  return String(ka[2]).localeCompare(String(kb[2]));
+};
+
+// @desc Size & colour stock report — with groupBy "color" (the default) one row
+// per product + colour; with groupBy "product" one row per product, colours
+// folded together, which is the Size Wise Stock view. Either way the stock of
+// each size is spread across size columns taken from whatever sizes the
+// filtered data actually uses (a store may label sizes S/M/L, 30/32/34, or
+// anything else), ordered smallest to largest. BUY RATE is the purchase price
+// of the row's variants and VALUE is buy rate x the row's total stock.
+exports.getSizeColorStockReport = asynchandeler(async (req, res) => {
+  const { category, subCategory, brand, productId, search, inStockOnly, groupBy } =
+    req.body || {};
+  const byProduct = groupBy === "product";
+  const { page, limit, skip } = parsePagination(req);
+
+  const productMatch = { isActive: { $ne: false } };
+  castObjectIdFilter(productMatch, "category", category);
+  castObjectIdFilter(productMatch, "subcategory", subCategory);
+  castObjectIdFilter(productMatch, "brand", brand);
+  castObjectIdFilter(productMatch, "_id", productId);
+
+  const searchTerm = (search || "").trim();
+
+  const cacheKey = await buildCacheKey(
+    PRODUCT_NS,
+    `report:size-color-stock:${byProduct ? "product" : "color"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:${productId || "-"}:${searchTerm.toLowerCase()}:${inStockOnly ? "instock" : "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Size & colour stock fetched successfully", {
+      ...cached,
+      fromCache: true,
+    });
+  }
+
+  // Variants carry the size/colour/stock; the product carries the filters, so
+  // the join runs variant-first and matches the product afterwards.
+  const pipeline = [
+    { $match: { isActive: { $ne: false } } },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product",
+        foreignField: "_id",
+        as: "productInfo",
+        pipeline: [
+          { $match: productMatch },
+          { $project: { name: 1, barCode: 1, sku: 1, purchasePrice: 1 } },
+        ],
+      },
+    },
+    { $unwind: "$productInfo" },
+  ];
+
+  if (searchTerm) {
+    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    pipeline.push({
+      $match: isBarcode
+        ? { $or: [{ barCode: searchTerm }, { "productInfo.barCode": searchTerm }] }
+        : {
+            $or: [
+              { "productInfo.name": { $regex: searchTerm, $options: "i" } },
+              { variantName: { $regex: searchTerm, $options: "i" } },
+              { barCode: { $regex: searchTerm, $options: "i" } },
+            ],
+          },
+    });
+  }
+
+  pipeline.push(
+    {
+      $addFields: {
+        rowColor: {
+          $let: {
+            vars: { c: { $trim: { input: { $ifNull: ["$color", ""] } } } },
+            in: { $cond: [{ $eq: ["$$c", ""] }, "N/A", "$$c"] },
+          },
+        },
+        rowSize: {
+          $let: {
+            vars: { z: { $trim: { input: { $ifNull: ["$size", ""] } } } },
+            in: { $cond: [{ $eq: ["$$z", ""] }, "N/A", "$$z"] },
+          },
+        },
+        rowStock: { $ifNull: ["$stockVariant", 0] },
+        rowBuyRate: { $ifNull: ["$purchasePrice", "$productInfo.purchasePrice"] },
+      },
+    },
+    // One row per product (+ colour unless grouping by product); every variant
+    // in the group folds in, its size kept alongside its stock so the size
+    // columns can be filled below.
+    {
+      $group: {
+        _id: byProduct
+          ? { product: "$productInfo._id" }
+          : { product: "$productInfo._id", color: "$rowColor" },
+        productName: { $first: "$productInfo.name" },
+        barcode: { $first: { $ifNull: ["$productInfo.barCode", { $ifNull: ["$barCode", "$sku"] }] } },
+        color: { $first: "$rowColor" },
+        colors: { $addToSet: "$rowColor" },
+        // Sizes are averaged into one buy rate only when a colour's variants
+        // disagree; normally they share a price.
+        buyRate: { $avg: "$rowBuyRate" },
+        total: { $sum: "$rowStock" },
+        sizeEntries: { $push: { size: "$rowSize", stock: "$rowStock" } },
+      },
+    },
+    { $addFields: { value: { $multiply: [{ $ifNull: ["$buyRate", 0] }, "$total"] } } },
+  );
+
+  if (inStockOnly) {
+    pipeline.push({ $match: { total: { $gt: 0 } } });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [{ $sort: { productName: 1, color: 1 } }, { $skip: skip }, { $limit: limit }],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalBuyRate: { $sum: { $ifNull: ["$buyRate", 0] } },
+            totalStock: { $sum: "$total" },
+            totalValue: { $sum: "$value" },
+            sizeEntries: { $push: "$sizeEntries" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Variant.aggregate(pipeline);
+  const rawRows = result?.rows || [];
+  const rawTotals = result?.totals?.[0];
+
+  // Column set comes from the whole filtered result, not just this page, so the
+  // columns stay put while paging through.
+  const sizeTotals = {};
+  for (const group of rawTotals?.sizeEntries || []) {
+    for (const e of group) {
+      sizeTotals[e.size] = (sizeTotals[e.size] || 0) + (e.stock || 0);
+    }
+  }
+  const sizeColumns = Object.keys(sizeTotals).sort(compareSizes);
+
+  const rows = rawRows.map((r) => {
+    const sizeStock = Object.fromEntries(sizeColumns.map((z) => [z, 0]));
+    const present = [];
+    for (const e of r.sizeEntries || []) {
+      if (sizeStock[e.size] === undefined) sizeStock[e.size] = 0;
+      sizeStock[e.size] += e.stock || 0;
+      if (!present.includes(e.size)) present.push(e.size);
+    }
+    // Grouping by product folds several colours into one row, so the colour
+    // cell lists them all rather than showing whichever happened to be first.
+    const colorLabel = byProduct
+      ? (r.colors || []).filter((c) => c && c !== "N/A").sort().join(", ") || "-"
+      : r.color || "-";
+    return {
+      _id: byProduct ? String(r._id.product) : `${r._id.product}-${r._id.color}`,
+      productName: r.productName || "-",
+      barcode: r.barcode || "-",
+      color: colorLabel,
+      size: present.filter((z) => z !== "N/A").sort(compareSizes).join(", ") || "-",
+      buyRate: r.buyRate || 0,
+      sizeStock,
+      total: r.total || 0,
+      value: r.value || 0,
+    };
+  });
+
+  const totals = {
+    count: rawTotals?.count || 0,
+    totalBuyRate: rawTotals?.totalBuyRate || 0,
+    totalStock: rawTotals?.totalStock || 0,
+    totalValue: rawTotals?.totalValue || 0,
+    sizeStock: sizeTotals,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    sizeColumns,
+    filters: {
+      groupBy: byProduct ? "product" : "color",
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+      productId: productId || null,
+      search: searchTerm || "",
+      inStockOnly: !!inStockOnly,
+    },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Size & colour stock fetched successfully", {
+    ...payload,
+    fromCache: false,
+  });
+});
+
+// @desc Stock adjustment report — one row per manual adjustment, showing what
+// was adjusted and by how much in each direction. StockAdjust has no serial of
+// its own, so the ADJUST ID is derived from the document id, which is stable
+// and unique.
+exports.getStockAdjustmentReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, productId, category, subCategory, brand, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = {};
+  if (startDate || endDate) {
+    match.date = {};
+    if (startDate) match.date.$gte = new Date(startDate);
+    if (endDate) match.date.$lte = new Date(endDate);
+  }
+  castObjectIdFilter(match, "productId", productId);
+
+  const searchTerm = (search || "").trim();
+
+  const cacheKey = await buildCacheKey(
+    PRODUCT_NS,
+    `report:stock-adjustment:${startDate || "-"}:${endDate || "-"}:${productId || "-"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:${searchTerm.toLowerCase()}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Stock adjustment report fetched successfully", {
+      ...cached,
+      fromCache: true,
+    });
+  }
+
+  // An adjustment names either a product or a variant; category/brand live on
+  // the product, so both paths resolve to a product before those filters run.
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "products",
+        localField: "productId",
+        foreignField: "_id",
+        as: "productInfo",
+        pipeline: [
+          { $project: { name: 1, barCode: 1, sku: 1, size: 1, color: 1, category: 1, subcategory: 1, brand: 1 } },
+        ],
+      },
+    },
+    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "variantId",
+        foreignField: "_id",
+        as: "variantInfo",
+        pipeline: [
+          { $project: { variantName: 1, barCode: 1, sku: 1, size: 1, color: 1, product: 1 } },
+          {
+            $lookup: {
+              from: "products",
+              localField: "product",
+              foreignField: "_id",
+              as: "variantProduct",
+              pipeline: [
+                { $project: { name: 1, barCode: 1, category: 1, subcategory: 1, brand: 1 } },
+              ],
+            },
+          },
+          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
+        ],
+      },
+    },
+    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        rowProductName: {
+          $ifNull: ["$productInfo.name", "$variantInfo.variantProduct.name"],
+        },
+        rowBarcode: {
+          $ifNull: [
+            "$variantInfo.barCode",
+            { $ifNull: ["$variantInfo.sku", { $ifNull: ["$productInfo.barCode", "$productInfo.sku"] }] },
+          ],
+        },
+        rowColor: { $ifNull: ["$variantInfo.color", "$productInfo.color"] },
+        rowSize: { $ifNull: ["$variantInfo.size", "$productInfo.size"] },
+        rowCategory: { $ifNull: ["$productInfo.category", "$variantInfo.variantProduct.category"] },
+        rowSubCategory: {
+          $ifNull: ["$productInfo.subcategory", "$variantInfo.variantProduct.subcategory"],
+        },
+        rowBrand: { $ifNull: ["$productInfo.brand", "$variantInfo.variantProduct.brand"] },
+        rowAdjPlus: { $ifNull: ["$increaseQuantity", 0] },
+        rowAdjMinus: { $ifNull: ["$decreaseQuantity", 0] },
+      },
+    },
+  ];
+
+  const classMatch = {};
+  const addClass = (field, value, label) => {
+    if (!value) return;
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new customError(`Invalid ${label}`, statusCodes.BAD_REQUEST);
+    }
+    classMatch[field] = new mongoose.Types.ObjectId(value);
+  };
+  addClass("rowCategory", category, "category");
+  addClass("rowSubCategory", subCategory, "subCategory");
+  addClass("rowBrand", brand, "brand");
+  if (Object.keys(classMatch).length > 0) pipeline.push({ $match: classMatch });
+
+  if (searchTerm) {
+    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    pipeline.push({
+      $match: isBarcode
+        ? { rowBarcode: searchTerm }
+        : {
+            $or: [
+              { rowProductName: { $regex: searchTerm, $options: "i" } },
+              { rowBarcode: { $regex: searchTerm, $options: "i" } },
+              { adjustReason: { $regex: searchTerm, $options: "i" } },
+            ],
+          },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { date: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            date: 1,
+            // e.g. SADJ-4F32A9 — derived from the document id since the model
+            // carries no serial.
+            adjustId: {
+              $concat: [
+                "SADJ-",
+                { $toUpper: { $substrCP: [{ $toString: "$_id" }, 18, 6] } },
+              ],
+            },
+            productName: { $ifNull: ["$rowProductName", "-"] },
+            barcode: { $ifNull: ["$rowBarcode", "-"] },
+            color: { $ifNull: ["$rowColor", "-"] },
+            size: { $ifNull: ["$rowSize", "-"] },
+            reason: { $ifNull: ["$adjustReason", "-"] },
+            adjPlus: "$rowAdjPlus",
+            adjMinus: "$rowAdjMinus",
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalAdjPlus: { $sum: "$rowAdjPlus" },
+            totalAdjMinus: { $sum: "$rowAdjMinus" },
+          },
+        },
+      ],
+      // How many times each product was adjusted in the filtered range — the
+      // report's "koto bar adjust hoyeche" summary.
+      byProduct: [
+        {
+          $group: {
+            _id: { $ifNull: ["$rowProductName", "-"] },
+            adjustments: { $sum: 1 },
+            adjPlus: { $sum: "$rowAdjPlus" },
+            adjMinus: { $sum: "$rowAdjMinus" },
+          },
+        },
+        { $sort: { adjustments: -1, _id: 1 } },
+        { $limit: 50 },
+        {
+          $project: {
+            _id: 0,
+            productName: "$_id",
+            adjustments: 1,
+            adjPlus: 1,
+            adjMinus: 1,
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await StockAdjust.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || { count: 0, totalAdjPlus: 0, totalAdjMinus: 0 };
+  const byProduct = result?.byProduct || [];
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate: startDate || "",
+      endDate: endDate || "",
+      productId: productId || null,
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+      search: searchTerm || "",
+    },
+    rows,
+    byProduct,
+    totals: {
+      count: totals.count,
+      totalAdjPlus: totals.totalAdjPlus,
+      totalAdjMinus: totals.totalAdjMinus,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Stock adjustment report fetched successfully", {
+    ...payload,
+    fromCache: false,
+  });
+});
+
 // @desc Suppliers that have at least one purchase — for the purchase reports' supplier filter dropdown
 exports.getPurchaseInvoiceSuppliers = asynchandeler(async (req, res) => {
   const cacheKey = await buildCacheKey(PURCHASE_NS, "report:purchase:suppliers");

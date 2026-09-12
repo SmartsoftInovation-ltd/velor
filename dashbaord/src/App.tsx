@@ -238,6 +238,15 @@ const StockDetailsReport = lazy(
 const ProductLedgerReport = lazy(
   () => import("./components/reports/Stock/ProductLedgerReport"),
 );
+const SizeColorStockReport = lazy(
+  () => import("./components/reports/Stock/SizeColorStockReport"),
+);
+const SizeWiseStockReport = lazy(
+  () => import("./components/reports/Stock/SizeWiseStockReport"),
+);
+const StockAdjustmentReport = lazy(
+  () => import("./components/reports/Stock/StockAdjustmentReport"),
+);
 const PurchaseSummaryReport = lazy(
   () => import("./components/reports/Purchase/PurchaseSummaryReport"),
 );
@@ -995,6 +1004,33 @@ export default function App() {
                   element={
                     <ProtectedRoute module="product-ledger-report" action="view">
                       <ProductLedgerReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/size-color-stock-report"
+                  element={
+                    <ProtectedRoute module="size-color-stock-report" action="view">
+                      <SizeColorStockReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/size-wise-stock-report"
+                  element={
+                    <ProtectedRoute module="size-wise-stock-report" action="view">
+                      <SizeWiseStockReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/stock-adjustment-report"
+                  element={
+                    <ProtectedRoute module="stock-adjustment-report" action="view">
+                      <StockAdjustmentReport />
                     </ProtectedRoute>
                   }
                 />

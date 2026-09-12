@@ -127,6 +127,21 @@ const categories: ReportCategory[] = [
         description: "Every stock in/out movement for one item, with balance",
         path: "/product-ledger",
       },
+      {
+        name: "Size & Color Stock",
+        description: "Size-wise stock per product colour, with total value",
+        path: "/size-color-stock-report",
+      },
+      {
+        name: "Size Wise Stock",
+        description: "Size-wise stock per product, with total value",
+        path: "/size-wise-stock-report",
+      },
+      {
+        name: "Stock Adjustment",
+        description: "Manual adjustments with per-product adjustment counts",
+        path: "/stock-adjustment-report",
+      },
     ],
   },
   {

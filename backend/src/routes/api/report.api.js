@@ -49,6 +49,16 @@ _.route("/ledger-items").get(
   authorize("product-ledger-report", "view"),
   reportController.getLedgerItems,
 );
+_.route("/size-color-stock").post(
+  authGuard,
+  authorize("size-color-stock-report", "view"),
+  reportController.getSizeColorStockReport,
+);
+_.route("/stock-adjustment").post(
+  authGuard,
+  authorize("stock-adjustment-report", "view"),
+  reportController.getStockAdjustmentReport,
+);
 _.route("/purchase/suppliers").get(
   authGuard,
   authorize("purchase-invoice", "view"),
