@@ -1402,6 +1402,311 @@ exports.getStockReport = asynchandeler(async (req, res) => {
   });
 });
 
+// @desc Stock details report — the movement behind each item's stock: opening,
+// purchases, adjustments, sales (POS and web), and the three return streams,
+// one row per variant (or per product when it has none). STOCK is derived from
+// those movements with the same formula the Category Stock Details page uses,
+// and STOCK VALUE is buy rate x that stock.
+exports.getStockDetailsReport = asynchandeler(async (req, res) => {
+  const { category, subCategory, brand, productId, search, inStockOnly } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = { isActive: { $ne: false } };
+  castObjectIdFilter(match, "category", category);
+  castObjectIdFilter(match, "subcategory", subCategory);
+  castObjectIdFilter(match, "brand", brand);
+  castObjectIdFilter(match, "_id", productId);
+
+  const searchTerm = (search || "").trim();
+
+  const cacheKey = await buildCacheKey(
+    PRODUCT_NS,
+    `report:stock-details:${category || "-"}:${subCategory || "-"}:${brand || "-"}:${productId || "-"}:${searchTerm.toLowerCase()}:${inStockOnly ? "instock" : "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Stock details report fetched successfully", {
+      ...cached,
+      fromCache: true,
+    });
+  }
+
+  // totalSalesReturnQuantity is a mongoose virtual (a sum over salesReturn[]),
+  // so aggregation has to add it up itself.
+  const courierReturnSum = (field) => ({
+    $reduce: {
+      input: { $ifNull: [field, []] },
+      initialValue: 0,
+      in: { $add: ["$$value", { $ifNull: ["$$this.quantity", 0] }] },
+    },
+  });
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "_id",
+        foreignField: "product",
+        as: "variants",
+        pipeline: [
+          { $match: { isActive: { $ne: false } } },
+          {
+            $project: {
+              variantName: 1,
+              barCode: 1,
+              sku: 1,
+              size: 1,
+              color: 1,
+              purchasePrice: 1,
+              initialStock: 1,
+              purchaseQuantityStock: 1,
+              stockAdjustmentPlus: 1,
+              stockAdjustmentMinus: 1,
+              posSold: 1,
+              totalSales: 1,
+              purchaseReturnStock: 1,
+              salesReturnStock: 1,
+              courierReturn: courierReturnSum("$salesReturn"),
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "subcategories",
+        localField: "subcategory",
+        foreignField: "_id",
+        as: "subcategoryInfo",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    { $unwind: { path: "$subcategoryInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        productCourierReturn: courierReturnSum("$salesReturn"),
+      },
+    },
+    {
+      $addFields: {
+        detailRows: {
+          $cond: [
+            { $gt: [{ $size: "$variants" }, 0] },
+            {
+              $map: {
+                input: "$variants",
+                as: "v",
+                in: {
+                  variantId: "$$v._id",
+                  variantName: "$$v.variantName",
+                  barcode: { $ifNull: ["$$v.barCode", { $ifNull: ["$$v.sku", "$barCode"] }] },
+                  size: { $ifNull: ["$$v.size", "$size"] },
+                  color: { $ifNull: ["$$v.color", "$color"] },
+                  buyRate: { $ifNull: ["$$v.purchasePrice", "$purchasePrice"] },
+                  opening: { $ifNull: ["$$v.initialStock", 0] },
+                  buyQty: { $ifNull: ["$$v.purchaseQuantityStock", 0] },
+                  adjPlus: { $ifNull: ["$$v.stockAdjustmentPlus", 0] },
+                  adjMinus: { $ifNull: ["$$v.stockAdjustmentMinus", 0] },
+                  posSold: { $ifNull: ["$$v.posSold", 0] },
+                  webSold: { $ifNull: ["$$v.totalSales", 0] },
+                  buyReturn: { $ifNull: ["$$v.purchaseReturnStock", 0] },
+                  salesReturn: { $ifNull: ["$$v.salesReturnStock", 0] },
+                  courierReturn: { $ifNull: ["$$v.courierReturn", 0] },
+                },
+              },
+            },
+            [
+              {
+                variantId: null,
+                variantName: "Single",
+                barcode: { $ifNull: ["$barCode", "$sku"] },
+                size: "$size",
+                color: "$color",
+                buyRate: "$purchasePrice",
+                opening: { $ifNull: ["$initialStock", 0] },
+                buyQty: { $ifNull: ["$purchaseQuantityStock", 0] },
+                adjPlus: { $ifNull: ["$stockAdjustmentPlus", 0] },
+                adjMinus: { $ifNull: ["$stockAdjustmentMinus", 0] },
+                posSold: { $ifNull: ["$posSold", 0] },
+                webSold: { $ifNull: ["$totalSales", 0] },
+                buyReturn: { $ifNull: ["$purchaseReturnStock", 0] },
+                salesReturn: { $ifNull: ["$salesReturnStock", 0] },
+                courierReturn: { $ifNull: ["$productCourierReturn", 0] },
+              },
+            ],
+          ],
+        },
+      },
+    },
+    { $unwind: "$detailRows" },
+    // Stock = (opening + buy qty + adj(+) + sales return + courier return)
+    //       - (POS sold + web sold + adj(-) + purchase return)
+    {
+      $addFields: {
+        rowBuyRate: { $ifNull: ["$detailRows.buyRate", 0] },
+        rowStock: {
+          $subtract: [
+            {
+              $add: [
+                "$detailRows.opening",
+                "$detailRows.buyQty",
+                "$detailRows.adjPlus",
+                "$detailRows.salesReturn",
+                "$detailRows.courierReturn",
+              ],
+            },
+            {
+              $add: [
+                "$detailRows.posSold",
+                "$detailRows.webSold",
+                "$detailRows.adjMinus",
+                "$detailRows.buyReturn",
+              ],
+            },
+          ],
+        },
+      },
+    },
+    { $addFields: { rowStockValue: { $multiply: ["$rowBuyRate", "$rowStock"] } } },
+  ];
+
+  if (searchTerm) {
+    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    pipeline.push({
+      $match: isBarcode
+        ? { "detailRows.barcode": searchTerm }
+        : {
+            $or: [
+              { name: { $regex: searchTerm, $options: "i" } },
+              { "detailRows.variantName": { $regex: searchTerm, $options: "i" } },
+              { "detailRows.barcode": { $regex: searchTerm, $options: "i" } },
+            ],
+          },
+    });
+  }
+
+  if (inStockOnly) {
+    pipeline.push({ $match: { rowStock: { $gt: 0 } } });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { name: 1, "detailRows.variantName": 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: {
+              $concat: [
+                { $toString: "$_id" },
+                "-",
+                { $ifNull: [{ $toString: "$detailRows.variantId" }, "single"] },
+              ],
+            },
+            productName: { $ifNull: ["$name", "-"] },
+            variantName: { $ifNull: ["$detailRows.variantName", "-"] },
+            subcategory: { $ifNull: ["$subcategoryInfo.name", "-"] },
+            barcode: { $ifNull: ["$detailRows.barcode", "-"] },
+            color: { $ifNull: ["$detailRows.color", "-"] },
+            size: { $ifNull: ["$detailRows.size", "-"] },
+            buyRate: "$rowBuyRate",
+            opening: "$detailRows.opening",
+            buyQty: "$detailRows.buyQty",
+            adjPlus: "$detailRows.adjPlus",
+            adjMinus: "$detailRows.adjMinus",
+            posSold: "$detailRows.posSold",
+            webSold: "$detailRows.webSold",
+            buyReturn: "$detailRows.buyReturn",
+            salesReturn: "$detailRows.salesReturn",
+            courierReturn: "$detailRows.courierReturn",
+            stock: "$rowStock",
+            stockValue: "$rowStockValue",
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalBuyRate: { $sum: "$rowBuyRate" },
+            totalOpening: { $sum: "$detailRows.opening" },
+            totalBuyQty: { $sum: "$detailRows.buyQty" },
+            totalAdjPlus: { $sum: "$detailRows.adjPlus" },
+            totalAdjMinus: { $sum: "$detailRows.adjMinus" },
+            totalPosSold: { $sum: "$detailRows.posSold" },
+            totalWebSold: { $sum: "$detailRows.webSold" },
+            totalBuyReturn: { $sum: "$detailRows.buyReturn" },
+            totalSalesReturn: { $sum: "$detailRows.salesReturn" },
+            totalCourierReturn: { $sum: "$detailRows.courierReturn" },
+            totalStock: { $sum: "$rowStock" },
+            totalStockValue: { $sum: "$rowStockValue" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Product.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalBuyRate: 0,
+    totalOpening: 0,
+    totalBuyQty: 0,
+    totalAdjPlus: 0,
+    totalAdjMinus: 0,
+    totalPosSold: 0,
+    totalWebSold: 0,
+    totalBuyReturn: 0,
+    totalSalesReturn: 0,
+    totalCourierReturn: 0,
+    totalStock: 0,
+    totalStockValue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+      productId: productId || null,
+      search: searchTerm || "",
+      inStockOnly: !!inStockOnly,
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalBuyRate: totals.totalBuyRate,
+      totalOpening: totals.totalOpening,
+      totalBuyQty: totals.totalBuyQty,
+      totalAdjPlus: totals.totalAdjPlus,
+      totalAdjMinus: totals.totalAdjMinus,
+      totalPosSold: totals.totalPosSold,
+      totalWebSold: totals.totalWebSold,
+      totalBuyReturn: totals.totalBuyReturn,
+      totalSalesReturn: totals.totalSalesReturn,
+      totalCourierReturn: totals.totalCourierReturn,
+      totalStock: totals.totalStock,
+      totalStockValue: totals.totalStockValue,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Stock details report fetched successfully", {
+    ...payload,
+    fromCache: false,
+  });
+});
+
 // @desc Suppliers that have at least one purchase — for the purchase reports' supplier filter dropdown
 exports.getPurchaseInvoiceSuppliers = asynchandeler(async (req, res) => {
   const cacheKey = await buildCacheKey(PURCHASE_NS, "report:purchase:suppliers");

@@ -34,6 +34,11 @@ _.route("/stock").post(
   authorize("stock-report", "view"),
   reportController.getStockReport,
 );
+_.route("/stock-details").post(
+  authGuard,
+  authorize("stock-details-report", "view"),
+  reportController.getStockDetailsReport,
+);
 _.route("/purchase/suppliers").get(
   authGuard,
   authorize("purchase-invoice", "view"),

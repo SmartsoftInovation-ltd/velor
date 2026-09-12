@@ -117,6 +117,11 @@ const categories: ReportCategory[] = [
         description: "Overall stock with buy rate, quantity & stock value",
         path: "/stock-report",
       },
+      {
+        name: "Stock Details",
+        description: "Opening, purchases, adjustments, sales & returns per item",
+        path: "/stock-details-report",
+      },
     ],
   },
   {
