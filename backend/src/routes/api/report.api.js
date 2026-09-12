@@ -59,5 +59,10 @@ _.route("/sales/salesmen").get(
   authorize("sales-invoice-report", "view"),
   reportController.getSalesInvoiceSalesmen,
 );
+_.route("/employee-list").post(
+  authGuard,
+  authorize("employee", "view"),
+  reportController.getEmployeeListReport,
+);
 
 module.exports = _;

@@ -19,6 +19,9 @@ const { getCache, setCache, buildCacheKey } = require("@/utils/cache.util");
 const PURCHASE_NS = "purchase";
 const SALES_NS = "sales";
 const STORE_NS = "storeinformation";
+// Matches NS_EMPLOYEE in employee.controller.js, which already bumps this
+// namespace on every employee/designation/department/section mutation.
+const EMPLOYEE_NS = "employee";
 const REPORT_CACHE_TTL = 60 * 5; // 5 minutes
 const STORE_CACHE_TTL = 60 * 60; // 1 hour
 
@@ -2165,6 +2168,102 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "Sales summary report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Employee list report — full employee roster with contact, designation,
+// department/section and salary details. Optional designation/department/
+// section/status filters, paginated. Unlike the purchase/sales reports this is
+// a roster snapshot rather than a period-bound transaction report, so no date
+// range is required.
+exports.getEmployeeListReport = asynchandeler(async (req, res) => {
+  const { designation, department, section, status } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = { isDeleted: { $ne: true } };
+  castObjectIdFilter(match, "designation", designation);
+  castObjectIdFilter(match, "deapartment", department);
+  castObjectIdFilter(match, "section", section);
+  if (status === "active") match.isActive = true;
+  else if (status === "inactive") match.isActive = false;
+
+  const cacheKey = await buildCacheKey(
+    EMPLOYEE_NS,
+    `report:employee-list:${designation || "all"}:${department || "all"}:${section || "all"}:${status || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Employee list report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const [employees, count, salaryAgg] = await Promise.all([
+    Employee.find(match)
+      .populate("designation", "name")
+      .populate("deapartment", "name")
+      .populate("section", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .select(
+        "employeeId fullName mobile email gender nidNumber dateOfBirth religion designation joiningDate referenceMobile bloodGroup deapartment section salary isActive",
+      )
+      .lean(),
+    Employee.countDocuments(match),
+    Employee.aggregate([
+      { $match: match },
+      { $group: { _id: null, totalSalary: { $sum: { $ifNull: ["$salary.netSalary", 0] } } } },
+    ]),
+  ]);
+
+  const rows = employees.map((e) => ({
+    _id: e._id,
+    employeeId: e.employeeId,
+    fullName: e.fullName,
+    mobile: e.mobile,
+    email: e.email,
+    gender: e.gender,
+    nidNumber: e.nidNumber,
+    dateOfBirth: e.dateOfBirth,
+    religion: e.religion,
+    designationName: e.designation?.name || "-",
+    joiningDate: e.joiningDate,
+    referenceMobile: e.referenceMobile,
+    bloodGroup: e.bloodGroup,
+    departmentName: e.deapartment?.name || "-",
+    sectionName: e.section?.name || "-",
+    netSalary: e.salary?.netSalary || 0,
+    isActive: e.isActive,
+  }));
+
+  const totalSalary = salaryAgg?.[0]?.totalSalary || 0;
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      designation: designation || null,
+      department: department || null,
+      section: section || null,
+      status: status || "ALL",
+    },
+    rows,
+    totals: { count, totalSalary },
+    pagination: paginationMeta(count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Employee list report fetched successfully",
     { ...payload, fromCache: false },
   );
 });
