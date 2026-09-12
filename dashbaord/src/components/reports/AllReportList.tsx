@@ -41,14 +41,24 @@ const categories: ReportCategory[] = [
         path: "/purchase-invoice",
       },
       {
+        name: "Purchase Product",
+        description: "Product-wise purchased items with buy rate & qty",
+        path: "/purchase-product",
+      },
+      {
         name: "Purchase Summary",
-        description: "Aggregated purchase totals by date range",
+        description: "Product-wise totals with average buy rate",
         path: "/purchase-summary",
       },
       {
         name: "Purchase Return",
-        description: "Return & refund tracking against suppliers",
+        description: "Item-wise returns with buy rate, qty & total",
         path: "/purchase-return-invoice",
+      },
+      {
+        name: "Purchase Return Summary",
+        description: "Item-wise return totals with average buy rate",
+        path: "/purchase-return-summary",
       },
     ],
   },

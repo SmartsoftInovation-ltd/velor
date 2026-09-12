@@ -59,8 +59,10 @@ export const PERMISSIONS = {
   RETAIL_SALES_ORDER: "retail-sale-order",
   WHOLE_SALES_ORDER: "whole-sale-order",
   PURCHASE_INVOICE: "purchase-invoice",
+  PURCHASE_PRODUCT_REPORT: "purchase-product-report",
   PURCHASE_SUMMARY: "purchase-summary",
   PURCHASE_RETURN_REPORT: "purchase-return-report",
+  PURCHASE_RETURN_SUMMARY: "purchase-return-summary",
   ORDER_INVOICE: "order-invoice",
   ORDER_STATUS_REPORT: "order-status-report",
   SALES_INVOICE_REPORT: "sales-invoice-report",
@@ -147,8 +149,10 @@ export const DASHBOARD_BOX_MODULES: PermissionModule[] = [
 // cards derive their visibility from one list.
 export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/purchase-invoice": PERMISSIONS.PURCHASE_INVOICE,
+  "/purchase-product": PERMISSIONS.PURCHASE_PRODUCT_REPORT,
   "/purchase-summary": PERMISSIONS.PURCHASE_SUMMARY,
   "/purchase-return-invoice": PERMISSIONS.PURCHASE_RETURN_REPORT,
+  "/purchase-return-summary": PERMISSIONS.PURCHASE_RETURN_SUMMARY,
   "/order-invoice": PERMISSIONS.ORDER_INVOICE,
   "/order-status-report": PERMISSIONS.ORDER_STATUS_REPORT,
   "/sales-invoice": PERMISSIONS.SALES_INVOICE_REPORT,

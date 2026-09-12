@@ -4,6 +4,7 @@ const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { statusCodes } = require("../constant/constant");
 const Purchase = require("../models/purchase.model");
+const PurchaseReturn = require("../models/purchaseReturn.model");
 const Sales = require("../models/sales.model");
 const SalesReturn = require("../models/salesReturn.model");
 const { customerModel: Customer } = require("../models/customer.model");
@@ -75,6 +76,35 @@ function supplierNameFilterStage(supplierName) {
   ];
 }
 
+// Category/subCategory/brand live on the Product, which a purchase-return line
+// reaches either directly or through its variant's parent product. Both paths
+// are resolved into lineCategory/lineSubCategory/lineBrand before this runs, so
+// the filter matches whichever one the line used.
+function returnClassificationFilterStages({ category, subCategory, brand }) {
+  const match = {};
+  const add = (field, value, label) => {
+    if (!value) return;
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new customError(`Invalid ${label}`, statusCodes.BAD_REQUEST);
+    }
+    match[field] = new mongoose.Types.ObjectId(value);
+  };
+  add("lineCategory", category, "category");
+  add("lineSubCategory", subCategory, "subCategory");
+  add("lineBrand", brand, "brand");
+  return Object.keys(match).length > 0 ? [{ $match: match }] : [];
+}
+
+// Product filter matches a purchase line item, so it can only run after the
+// allproduct $unwind. Returns [] when no product is selected.
+function productLineFilterStage(productId) {
+  if (!productId) return [];
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+  }
+  return [{ $match: { "allproduct.product": new mongoose.Types.ObjectId(productId) } }];
+}
+
 function parsePagination(req) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
@@ -99,9 +129,11 @@ function castObjectIdFilter(match, field, value) {
   match[field] = new mongoose.Types.ObjectId(value);
 }
 
-// @desc Purchase invoice report — one row per purchase invoice, date range + optional supplier filter, paginated
+// @desc Purchase invoice report — one row per purchase invoice, date range +
+// optional supplier / payment-status filter, paginated. Mirrors the sales
+// invoice report's payload shape so both reports share one frontend layout.
 exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
-  const { startDate, endDate, supplierId, supplierName } = req.body || {};
+  const { startDate, endDate, supplierId, supplierName, paymentStatus } = req.body || {};
   const { page, limit, skip } = parsePagination(req);
 
   if (!startDate || !endDate) {
@@ -111,9 +143,22 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
   const match = { date: { $gte: new Date(startDate), $lte: new Date(endDate) } };
   castObjectIdFilter(match, "supplierId", supplierId);
 
+  // Purchase has no stored payment status — derive it from paid vs payable.
+  const status = (paymentStatus || "").trim();
+  const statusStages = [];
+  if (status === "paid") {
+    statusStages.push({ $match: { $expr: { $lte: ["$dueamount", 0] } } });
+  } else if (status === "due") {
+    statusStages.push({ $match: { $expr: { $lte: ["$paid", 0] } } });
+  } else if (status === "partial") {
+    statusStages.push({
+      $match: { $expr: { $and: [{ $gt: ["$paid", 0] }, { $gt: ["$dueamount", 0] }] } },
+    });
+  }
+
   const cacheKey = await buildCacheKey(
     PURCHASE_NS,
-    `report:purchase-invoice:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:p${page}:l${limit}`,
+    `report:purchase-invoice:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:${status || "all"}:p${page}:l${limit}`,
   );
   const cached = await getCache(cacheKey);
   if (cached) {
@@ -132,6 +177,7 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
     { $match: match },
     ...supplierLookupStages(),
     ...supplierNameFilterStage(supplierName),
+    ...statusStages,
     {
       $facet: {
         rows: [
@@ -146,11 +192,22 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
               supplierInvoice: "$invoiceNumber",
               supplierName: { $ifNull: ["$supplier.supplierName", "-"] },
               total: "$subTotal",
-              commission: 1,
+              // The purchase form's "commission" field is what the report shows
+              // as Discount; shipping is what it shows as Delivery.
+              discount: "$commission",
               delivery: "$shipping",
               payable: 1,
               paid: 1,
               due: "$dueamount",
+              paymentStatus: {
+                $switch: {
+                  branches: [
+                    { case: { $lte: ["$dueamount", 0] }, then: "paid" },
+                    { case: { $lte: ["$paid", 0] }, then: "due" },
+                  ],
+                  default: "partial",
+                },
+              },
             },
           },
         ],
@@ -160,7 +217,7 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
               _id: null,
               count: { $sum: 1 },
               totalAmount: { $sum: "$subTotal" },
-              totalCommission: { $sum: "$commission" },
+              totalDiscount: { $sum: "$commission" },
               totalDelivery: { $sum: "$shipping" },
               totalPayable: { $sum: "$payable" },
               totalPaid: { $sum: "$paid" },
@@ -177,7 +234,7 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
   const totals = result?.totals?.[0] || {
     count: 0,
     totalAmount: 0,
-    totalCommission: 0,
+    totalDiscount: 0,
     totalDelivery: 0,
     totalPayable: 0,
     totalPaid: 0,
@@ -191,13 +248,15 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
     filters: {
       startDate,
       endDate,
+      supplierId: supplierId || null,
       supplier: supplierName?.trim() || (supplierId ? "Selected supplier" : "ALL"),
+      paymentStatus: status || "ALL",
     },
     rows,
     totals: {
       count: totals.count,
       totalAmount: totals.totalAmount,
-      totalCommission: totals.totalCommission,
+      totalDiscount: totals.totalDiscount,
       totalDelivery: totals.totalDelivery,
       totalPayable: totals.totalPayable,
       totalPaid: totals.totalPaid,
@@ -225,6 +284,7 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
     endDate,
     supplierId,
     supplierName,
+    productId,
     category,
     subCategory,
     brand,
@@ -243,7 +303,7 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
 
   const cacheKey = await buildCacheKey(
     PURCHASE_NS,
-    `report:purchase-product:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
+    `report:purchase-product:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:${productId || "-"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
   );
   const cached = await getCache(cacheKey);
   if (cached) {
@@ -263,13 +323,24 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
     ...supplierLookupStages(),
     ...supplierNameFilterStage(supplierName),
     { $unwind: "$allproduct" },
+    ...productLineFilterStage(productId),
     {
       $lookup: {
         from: "products",
         localField: "allproduct.product",
         foreignField: "_id",
         as: "productInfo",
-        pipeline: [{ $project: { name: 1, barCode: 1 } }],
+        pipeline: [
+          {
+            $project: {
+              name: 1,
+              barCode: 1,
+              purchasePrice: 1,
+              retailPrice: 1,
+              wholesalePrice: 1,
+            },
+          },
+        ],
       },
     },
     { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
@@ -280,7 +351,17 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
         foreignField: "_id",
         as: "variantInfo",
         pipeline: [
-          { $project: { barCode: 1, product: 1 } },
+          {
+            $project: {
+              barCode: 1,
+              product: 1,
+              size: 1,
+              color: 1,
+              purchasePrice: 1,
+              retailPrice: 1,
+              wholesalePrice: 1,
+            },
+          },
           {
             $lookup: {
               from: "products",
@@ -295,10 +376,50 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
       },
     },
     { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    // Buy/WS/RS rates are the variant's own prices (falling back to the parent
+    // product for items purchased without a variant, then to the price recorded
+    // on the purchase line). Buy Total is always qty x buy rate.
     {
       $addFields: {
         lineProductName: { $ifNull: ["$variantInfo.variantProduct.name", "$productInfo.name"] },
         lineBarcode: { $ifNull: ["$variantInfo.barCode", "$productInfo.barCode"] },
+        lineColor: {
+          $ifNull: [
+            { $cond: [{ $in: ["$allproduct.color", ["", null, "N/A"]] }, null, "$allproduct.color"] },
+            "$variantInfo.color",
+          ],
+        },
+        lineSize: {
+          $ifNull: [
+            { $cond: [{ $in: ["$allproduct.size", ["", null, "N/A"]] }, null, "$allproduct.size"] },
+            "$variantInfo.size",
+          ],
+        },
+        lineBuyRate: {
+          $ifNull: [
+            "$variantInfo.purchasePrice",
+            { $ifNull: ["$productInfo.purchasePrice", { $ifNull: ["$allproduct.purchasePrice", 0] }] },
+          ],
+        },
+        lineWsPrice: {
+          $ifNull: [
+            "$variantInfo.wholesalePrice",
+            { $ifNull: ["$productInfo.wholesalePrice", { $ifNull: ["$allproduct.wholesalePrice", 0] }] },
+          ],
+        },
+        lineRsPrice: {
+          $ifNull: [
+            "$variantInfo.retailPrice",
+            { $ifNull: ["$productInfo.retailPrice", { $ifNull: ["$allproduct.retailPrice", 0] }] },
+          ],
+        },
+      },
+    },
+    {
+      $addFields: {
+        lineBuyTotal: {
+          $multiply: ["$lineBuyRate", { $ifNull: ["$allproduct.quantity", 0] }],
+        },
       },
     },
     {
@@ -316,13 +437,13 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
               supplierName: { $ifNull: ["$supplier.supplierName", "-"] },
               productName: { $ifNull: ["$lineProductName", "-"] },
               barcode: { $ifNull: ["$lineBarcode", "-"] },
-              color: "$allproduct.color",
-              size: "$allproduct.size",
-              buyRate: "$allproduct.purchasePrice",
+              color: { $ifNull: ["$lineColor", "-"] },
+              size: { $ifNull: ["$lineSize", "-"] },
+              buyRate: "$lineBuyRate",
               qty: "$allproduct.quantity",
-              wsPrice: "$allproduct.wholesalePrice",
-              rsPrice: "$allproduct.retailPrice",
-              buyTotal: "$allproduct.subTotal",
+              wsPrice: "$lineWsPrice",
+              rsPrice: "$lineRsPrice",
+              buyTotal: "$lineBuyTotal",
             },
           },
         ],
@@ -331,11 +452,11 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
             $group: {
               _id: null,
               count: { $sum: 1 },
-              totalBuyRate: { $sum: "$allproduct.purchasePrice" },
+              totalBuyRate: { $sum: "$lineBuyRate" },
               totalQty: { $sum: "$allproduct.quantity" },
-              totalWsPrice: { $sum: "$allproduct.wholesalePrice" },
-              totalRsPrice: { $sum: "$allproduct.retailPrice" },
-              totalBuyTotal: { $sum: "$allproduct.subTotal" },
+              totalWsPrice: { $sum: "$lineWsPrice" },
+              totalRsPrice: { $sum: "$lineRsPrice" },
+              totalBuyTotal: { $sum: "$lineBuyTotal" },
             },
           },
         ],
@@ -362,6 +483,7 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
       startDate,
       endDate,
       supplier: supplierName?.trim() || (supplierId ? "Selected supplier" : "ALL"),
+      productId: productId || null,
       category: category || "ALL",
       subCategory: subCategory || "ALL",
       brand: brand || "ALL",
@@ -385,6 +507,655 @@ exports.getPurchaseProductReport = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "Purchase product report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Purchase summary report — one row per product across the whole date
+// range. A product bought many times at different rates collapses into a single
+// row whose AVG BUY RATE is the simple average of every purchase line's own
+// price (sum of prices / number of lines), matching how the printed sheet is
+// read. WS/RS prices come from the same purchase lines and average the same
+// way. BUY TOTAL is that average rate multiplied by the summed quantity.
+exports.getPurchaseSummaryReport = asynchandeler(async (req, res) => {
+  const {
+    startDate,
+    endDate,
+    supplierId,
+    supplierName,
+    productId,
+    category,
+    subCategory,
+    brand,
+  } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const match = { date: { $gte: new Date(startDate), $lte: new Date(endDate) } };
+  castObjectIdFilter(match, "supplierId", supplierId);
+  castObjectIdFilter(match, "category", category);
+  castObjectIdFilter(match, "subCategory", subCategory);
+  castObjectIdFilter(match, "brand", brand);
+
+  const cacheKey = await buildCacheKey(
+    PURCHASE_NS,
+    `report:purchase-summary:${startDate}:${endDate}:${supplierId || "all"}:${(supplierName || "").trim().toLowerCase()}:${productId || "-"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Purchase summary report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    ...supplierLookupStages(),
+    ...supplierNameFilterStage(supplierName),
+    { $unwind: "$allproduct" },
+    ...productLineFilterStage(productId),
+    {
+      $lookup: {
+        from: "products",
+        localField: "allproduct.product",
+        foreignField: "_id",
+        as: "productInfo",
+        pipeline: [{ $project: { name: 1, barCode: 1 } }],
+      },
+    },
+    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+    // A line may reference a variant instead of a product; the variant carries
+    // the parent product, which is what rows group by.
+    {
+      $lookup: {
+        from: "variants",
+        localField: "allproduct.variant",
+        foreignField: "_id",
+        as: "variantInfo",
+        pipeline: [
+          { $project: { barCode: 1, product: 1 } },
+          {
+            $lookup: {
+              from: "products",
+              localField: "product",
+              foreignField: "_id",
+              as: "variantProduct",
+              pipeline: [{ $project: { name: 1, barCode: 1 } }],
+            },
+          },
+          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
+        ],
+      },
+    },
+    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        groupProductId: {
+          $ifNull: ["$allproduct.product", "$variantInfo.product"],
+        },
+        lineProductName: {
+          $ifNull: ["$productInfo.name", "$variantInfo.variantProduct.name"],
+        },
+        lineBarcode: {
+          $ifNull: [
+            "$productInfo.barCode",
+            { $ifNull: ["$variantInfo.variantProduct.barCode", "$variantInfo.barCode"] },
+          ],
+        },
+        lineColor: {
+          $cond: [{ $in: ["$allproduct.color", ["", null, "N/A"]] }, null, "$allproduct.color"],
+        },
+        lineSize: {
+          $cond: [{ $in: ["$allproduct.size", ["", null, "N/A"]] }, null, "$allproduct.size"],
+        },
+        lineBuyRate: { $ifNull: ["$allproduct.purchasePrice", 0] },
+        lineWsPrice: { $ifNull: ["$allproduct.wholesalePrice", 0] },
+        lineRsPrice: { $ifNull: ["$allproduct.retailPrice", 0] },
+        lineQty: { $ifNull: ["$allproduct.quantity", 0] },
+      },
+    },
+    // One row per product. Colours and sizes seen across those purchases are
+    // collected so a product bought in several variants still shows them.
+    {
+      $group: {
+        _id: { $ifNull: ["$groupProductId", "$lineProductName"] },
+        productName: { $first: "$lineProductName" },
+        barcode: { $first: "$lineBarcode" },
+        colors: { $addToSet: "$lineColor" },
+        sizes: { $addToSet: "$lineSize" },
+        lineCount: { $sum: 1 },
+        sumBuyRate: { $sum: "$lineBuyRate" },
+        sumWsPrice: { $sum: "$lineWsPrice" },
+        sumRsPrice: { $sum: "$lineRsPrice" },
+        qty: { $sum: "$lineQty" },
+      },
+    },
+    {
+      $addFields: {
+        avgBuyRate: { $divide: ["$sumBuyRate", { $max: ["$lineCount", 1] }] },
+        avgWsPrice: { $divide: ["$sumWsPrice", { $max: ["$lineCount", 1] }] },
+        avgRsPrice: { $divide: ["$sumRsPrice", { $max: ["$lineCount", 1] }] },
+      },
+    },
+    { $addFields: { buyTotal: { $multiply: ["$avgBuyRate", "$qty"] } } },
+    {
+      $facet: {
+        rows: [
+          { $sort: { productName: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              productName: { $ifNull: ["$productName", "-"] },
+              barcode: { $ifNull: ["$barcode", "-"] },
+              color: {
+                $let: {
+                  vars: { c: { $filter: { input: "$colors", as: "v", cond: { $ne: ["$$v", null] } } } },
+                  in: {
+                    $cond: [
+                      { $eq: [{ $size: "$$c" }, 0] },
+                      "-",
+                      { $reduce: {
+                        input: "$$c",
+                        initialValue: "",
+                        in: { $cond: [{ $eq: ["$$value", ""] }, "$$this", { $concat: ["$$value", ", ", "$$this"] }] },
+                      } },
+                    ],
+                  },
+                },
+              },
+              size: {
+                $let: {
+                  vars: { z: { $filter: { input: "$sizes", as: "v", cond: { $ne: ["$$v", null] } } } },
+                  in: {
+                    $cond: [
+                      { $eq: [{ $size: "$$z" }, 0] },
+                      "-",
+                      { $reduce: {
+                        input: "$$z",
+                        initialValue: "",
+                        in: { $cond: [{ $eq: ["$$value", ""] }, "$$this", { $concat: ["$$value", ", ", "$$this"] }] },
+                      } },
+                    ],
+                  },
+                },
+              },
+              purchaseCount: "$lineCount",
+              avgBuyRate: 1,
+              qty: 1,
+              wsPrice: "$avgWsPrice",
+              rsPrice: "$avgRsPrice",
+              buyTotal: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalAvgBuyRate: { $sum: "$avgBuyRate" },
+              totalQty: { $sum: "$qty" },
+              totalWsPrice: { $sum: "$avgWsPrice" },
+              totalRsPrice: { $sum: "$avgRsPrice" },
+              totalBuyTotal: { $sum: "$buyTotal" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await Purchase.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalAvgBuyRate: 0,
+    totalQty: 0,
+    totalWsPrice: 0,
+    totalRsPrice: 0,
+    totalBuyTotal: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      supplier: supplierName?.trim() || (supplierId ? "Selected supplier" : "ALL"),
+      productId: productId || null,
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalAvgBuyRate: totals.totalAvgBuyRate,
+      totalQty: totals.totalQty,
+      totalWsPrice: totals.totalWsPrice,
+      totalRsPrice: totals.totalRsPrice,
+      totalBuyTotal: totals.totalBuyTotal,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Purchase summary report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Purchase return report — one row per returned line item, date range +
+// optional supplier / product filter, paginated. BUY RATE is the price recorded
+// on the return line and TOTAL is that rate multiplied by the returned quantity.
+exports.getPurchaseReturnReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, supplierId, productId, category, subCategory, brand } =
+    req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // PurchaseReturn dates the document with returnDate, not date.
+  const match = { returnDate: { $gte: new Date(startDate), $lte: new Date(endDate) } };
+  castObjectIdFilter(match, "supplier", supplierId);
+
+  const cacheKey = await buildCacheKey(
+    PURCHASE_NS,
+    `report:purchase-return:${startDate}:${endDate}:${supplierId || "all"}:${productId || "-"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Purchase return report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const productFilterStages = [];
+  if (productId) {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+    }
+    productFilterStages.push({
+      $match: { "products.product": new mongoose.Types.ObjectId(productId) },
+    });
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "suppliers",
+        localField: "supplier",
+        foreignField: "_id",
+        as: "supplierInfo",
+        pipeline: [{ $project: { supplierName: 1 } }],
+      },
+    },
+    { $unwind: { path: "$supplierInfo", preserveNullAndEmptyArrays: true } },
+    { $unwind: "$products" },
+    ...productFilterStages,
+    {
+      $lookup: {
+        from: "products",
+        localField: "products.product",
+        foreignField: "_id",
+        as: "productInfo",
+        pipeline: [
+          { $project: { name: 1, barCode: 1, category: 1, subcategory: 1, brand: 1 } },
+        ],
+      },
+    },
+    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+    // A return line may name a variant instead of a product; the variant carries
+    // its own barcode/colour/size plus the parent product's name.
+    {
+      $lookup: {
+        from: "variants",
+        localField: "products.variant",
+        foreignField: "_id",
+        as: "variantInfo",
+        pipeline: [
+          { $project: { barCode: 1, product: 1, size: 1, color: 1 } },
+          {
+            $lookup: {
+              from: "products",
+              localField: "product",
+              foreignField: "_id",
+              as: "variantProduct",
+              pipeline: [
+                { $project: { name: 1, category: 1, subcategory: 1, brand: 1 } },
+              ],
+            },
+          },
+          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
+        ],
+      },
+    },
+    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        lineProductName: { $ifNull: ["$productInfo.name", "$variantInfo.variantProduct.name"] },
+        lineBarcode: { $ifNull: ["$productInfo.barCode", "$variantInfo.barCode"] },
+        lineColor: {
+          $cond: [{ $in: [{ $ifNull: ["$variantInfo.color", null] }, ["", null, "N/A"]] }, null, "$variantInfo.color"],
+        },
+        lineSize: {
+          $cond: [{ $in: [{ $ifNull: ["$variantInfo.size", null] }, ["", null, "N/A"]] }, null, "$variantInfo.size"],
+        },
+        lineCategory: {
+          $ifNull: ["$productInfo.category", "$variantInfo.variantProduct.category"],
+        },
+        lineSubCategory: {
+          $ifNull: ["$productInfo.subcategory", "$variantInfo.variantProduct.subcategory"],
+        },
+        lineBrand: { $ifNull: ["$productInfo.brand", "$variantInfo.variantProduct.brand"] },
+        lineBuyRate: { $ifNull: ["$products.purchasePrice", 0] },
+        lineQty: { $ifNull: ["$products.quantity", 0] },
+      },
+    },
+    ...returnClassificationFilterStages({ category, subCategory, brand }),
+    // TOTAL is always rate x qty, never the stored subtotal, so the column and
+    // the footer can't drift apart.
+    { $addFields: { lineTotal: { $multiply: ["$lineBuyRate", "$lineQty"] } } },
+    {
+      $facet: {
+        rows: [
+          { $sort: { returnDate: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              date: "$returnDate",
+              returnId: "$serial",
+              supplierName: { $ifNull: ["$supplierInfo.supplierName", "-"] },
+              productName: { $ifNull: ["$lineProductName", "-"] },
+              barcode: { $ifNull: ["$lineBarcode", "-"] },
+              color: { $ifNull: ["$lineColor", "-"] },
+              size: { $ifNull: ["$lineSize", "-"] },
+              buyRate: "$lineBuyRate",
+              qty: "$lineQty",
+              total: "$lineTotal",
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalBuyRate: { $sum: "$lineBuyRate" },
+              totalQty: { $sum: "$lineQty" },
+              totalAmount: { $sum: "$lineTotal" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await PurchaseReturn.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalBuyRate: 0,
+    totalQty: 0,
+    totalAmount: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      supplierId: supplierId || null,
+      productId: productId || null,
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalBuyRate: totals.totalBuyRate,
+      totalQty: totals.totalQty,
+      totalAmount: totals.totalAmount,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Purchase return report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Purchase return summary report — one row per returned variant (or per
+// product where the return line names no variant). The same item returned more
+// than once at different rates collapses into a single row whose AVG BUY RATE
+// is the simple average of those rates, and TOTAL is that average multiplied by
+// the summed returned quantity.
+exports.getPurchaseReturnSummaryReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, supplierId, productId, category, subCategory, brand } =
+    req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const match = { returnDate: { $gte: new Date(startDate), $lte: new Date(endDate) } };
+  castObjectIdFilter(match, "supplier", supplierId);
+
+  const cacheKey = await buildCacheKey(
+    PURCHASE_NS,
+    `report:purchase-return-summary:${startDate}:${endDate}:${supplierId || "all"}:${productId || "-"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Purchase return summary report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const productFilterStages = [];
+  if (productId) {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+    }
+    productFilterStages.push({
+      $match: { "products.product": new mongoose.Types.ObjectId(productId) },
+    });
+  }
+
+  const pipeline = [
+    { $match: match },
+    { $unwind: "$products" },
+    ...productFilterStages,
+    {
+      $lookup: {
+        from: "products",
+        localField: "products.product",
+        foreignField: "_id",
+        as: "productInfo",
+        pipeline: [
+          { $project: { name: 1, barCode: 1, category: 1, subcategory: 1, brand: 1 } },
+        ],
+      },
+    },
+    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "products.variant",
+        foreignField: "_id",
+        as: "variantInfo",
+        pipeline: [
+          { $project: { barCode: 1, product: 1, size: 1, color: 1 } },
+          {
+            $lookup: {
+              from: "products",
+              localField: "product",
+              foreignField: "_id",
+              as: "variantProduct",
+              pipeline: [
+                { $project: { name: 1, category: 1, subcategory: 1, brand: 1 } },
+              ],
+            },
+          },
+          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
+        ],
+      },
+    },
+    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        // Rows group by variant when the return line names one, so the same
+        // variant returned at several rates lands in a single row; otherwise
+        // the product itself is the grouping key.
+        groupKey: { $ifNull: ["$products.variant", "$products.product"] },
+        lineProductName: { $ifNull: ["$productInfo.name", "$variantInfo.variantProduct.name"] },
+        lineBarcode: { $ifNull: ["$variantInfo.barCode", "$productInfo.barCode"] },
+        lineColor: {
+          $cond: [{ $in: [{ $ifNull: ["$variantInfo.color", null] }, ["", null, "N/A"]] }, null, "$variantInfo.color"],
+        },
+        lineSize: {
+          $cond: [{ $in: [{ $ifNull: ["$variantInfo.size", null] }, ["", null, "N/A"]] }, null, "$variantInfo.size"],
+        },
+        lineCategory: {
+          $ifNull: ["$productInfo.category", "$variantInfo.variantProduct.category"],
+        },
+        lineSubCategory: {
+          $ifNull: ["$productInfo.subcategory", "$variantInfo.variantProduct.subcategory"],
+        },
+        lineBrand: { $ifNull: ["$productInfo.brand", "$variantInfo.variantProduct.brand"] },
+        lineBuyRate: { $ifNull: ["$products.purchasePrice", 0] },
+        lineQty: { $ifNull: ["$products.quantity", 0] },
+      },
+    },
+    ...returnClassificationFilterStages({ category, subCategory, brand }),
+    {
+      $group: {
+        _id: { $ifNull: ["$groupKey", "$lineProductName"] },
+        productName: { $first: "$lineProductName" },
+        barcode: { $first: "$lineBarcode" },
+        color: { $first: "$lineColor" },
+        size: { $first: "$lineSize" },
+        returnCount: { $sum: 1 },
+        sumBuyRate: { $sum: "$lineBuyRate" },
+        qty: { $sum: "$lineQty" },
+      },
+    },
+    {
+      $addFields: {
+        avgBuyRate: { $divide: ["$sumBuyRate", { $max: ["$returnCount", 1] }] },
+      },
+    },
+    { $addFields: { total: { $multiply: ["$avgBuyRate", "$qty"] } } },
+    {
+      $facet: {
+        rows: [
+          { $sort: { productName: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              productName: { $ifNull: ["$productName", "-"] },
+              barcode: { $ifNull: ["$barcode", "-"] },
+              color: { $ifNull: ["$color", "-"] },
+              size: { $ifNull: ["$size", "-"] },
+              returnCount: 1,
+              avgBuyRate: 1,
+              qty: 1,
+              total: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalAvgBuyRate: { $sum: "$avgBuyRate" },
+              totalQty: { $sum: "$qty" },
+              totalAmount: { $sum: "$total" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await PurchaseReturn.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalAvgBuyRate: 0,
+    totalQty: 0,
+    totalAmount: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      supplierId: supplierId || null,
+      productId: productId || null,
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalAvgBuyRate: totals.totalAvgBuyRate,
+      totalQty: totals.totalQty,
+      totalAmount: totals.totalAmount,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Purchase return summary report fetched successfully",
     { ...payload, fromCache: false },
   );
 });

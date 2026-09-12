@@ -219,14 +219,20 @@ const OrderInvoice = lazy(
 const OrderStatusReport = lazy(
   () => import("./components/reports/Order/OrderStatusReport"),
 );
-const PurchaseInvoice = lazy(
-  () => import("./components/reports/Purchase/PurchaseInvoice"),
+const PurchaseInvoiceReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseInvoiceReport"),
 );
-const PurchaseReturnInvoice = lazy(
-  () => import("./components/reports/Purchase/PurchaseReturnInvoice"),
+const PurchaseProductReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseProductReport"),
 );
-const PurchaseSummary = lazy(
-  () => import("./components/reports/Purchase/PurchaseSummary"),
+const PurchaseReturnReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseReturnReport"),
+);
+const PurchaseReturnSummaryReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseReturnSummaryReport"),
+);
+const PurchaseSummaryReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseSummaryReport"),
 );
 const SalesInvoiceReport = lazy(
   () => import("./components/reports/Sales/SalesInvoiceReport"),
@@ -264,13 +270,6 @@ const TransactionReportView = lazy(
 const TransactionSummaryView = lazy(
   () =>
     import("./components/tables/ReportTable/Account/TransactionSummaryView"),
-);
-const PurchaseInvoiceView = lazy(
-  () => import("./components/tables/ReportTable/PurchaseInvoiceView"),
-);
-const PurchaseReturnInvoiceView = lazy(
-  () =>
-    import("./components/tables/ReportTable/Purchase/PurchaseReturnInvoiceView"),
 );
 const OrderInvoiceView = lazy(
   () => import("./components/tables/ReportTable/Order/OrderInvoiceView"),
@@ -911,29 +910,41 @@ export default function App() {
                   path="/purchase-invoice"
                   element={
                     <ProtectedRoute module="purchase-invoice" action="view">
-                      <PurchaseInvoice />
+                      <PurchaseInvoiceReport />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/purchase-invoice/view"
-                  element={<PurchaseInvoiceView />}
+                  path="/purchase-product"
+                  element={
+                    <ProtectedRoute module="purchase-product-report" action="view">
+                      <PurchaseProductReport />
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
                   path="/purchase-summary"
                   element={
                     <ProtectedRoute module="purchase-summary" action="view">
-                      <PurchaseSummary />
+                      <PurchaseSummaryReport />
                     </ProtectedRoute>
                   }
                 />
                 <Route
                   path="/purchase-return-invoice"
-                  element={<PurchaseReturnInvoice />}
+                  element={
+                    <ProtectedRoute module="purchase-return-report" action="view">
+                      <PurchaseReturnReport />
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
-                  path="/purchase-return-invoice/view"
-                  element={<PurchaseReturnInvoiceView />}
+                  path="/purchase-return-summary"
+                  element={
+                    <ProtectedRoute module="purchase-return-summary" action="view">
+                      <PurchaseReturnSummaryReport />
+                    </ProtectedRoute>
+                  }
                 />
 
                 <Route
