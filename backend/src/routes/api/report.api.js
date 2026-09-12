@@ -14,6 +14,21 @@ _.route("/purchase-product").post(
   authorize("purchase-product-report", "view"),
   reportController.getPurchaseProductReport,
 );
+_.route("/purchase-summary").post(
+  authGuard,
+  authorize("purchase-summary", "view"),
+  reportController.getPurchaseSummaryReport,
+);
+_.route("/purchase-return").post(
+  authGuard,
+  authorize("purchase-return-report", "view"),
+  reportController.getPurchaseReturnReport,
+);
+_.route("/purchase-return-summary").post(
+  authGuard,
+  authorize("purchase-return-summary", "view"),
+  reportController.getPurchaseReturnSummaryReport,
+);
 _.route("/purchase/suppliers").get(
   authGuard,
   authorize("purchase-invoice", "view"),

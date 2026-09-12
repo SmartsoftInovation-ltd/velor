@@ -23,7 +23,7 @@ interface PurchaseRow {
   supplierInvoice: string;
   supplierName: string;
   total: number;
-  commission: number;
+  discount: number;
   delivery: number;
   payable: number;
   paid: number;
@@ -46,7 +46,7 @@ interface ReportData {
   totals: {
     count: number;
     totalAmount: number;
-    totalCommission: number;
+    totalDiscount: number;
     totalDelivery: number;
     totalPayable: number;
     totalPaid: number;
@@ -132,7 +132,7 @@ const COLUMN_DEFS = [
   { key: "supplierInvoice", label: "Supplier Inv." },
   { key: "supplierName", label: "Supplier Name" },
   { key: "total", label: "Total" },
-  { key: "commission", label: "Commission" },
+  { key: "discount", label: "Discount" },
   { key: "delivery", label: "Delivery" },
   { key: "payable", label: "Payable" },
   { key: "paid", label: "Paid" },
@@ -155,8 +155,8 @@ const PurchaseInvoiceReport = () => {
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
 
-  const initialRange = rangeForPreset("30d");
-  const [datePreset, setDatePreset] = useState<DatePreset>("30d");
+  const initialRange = rangeForPreset("today");
+  const [datePreset, setDatePreset] = useState<DatePreset>("today");
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
   const [supplierId, setSupplierId] = useState("");
@@ -499,7 +499,7 @@ const PurchaseInvoiceReport = () => {
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 print:hidden">
                 {[
                   { label: "Total Purchase", value: totals.totalAmount },
-                  { label: "Commission", value: totals.totalCommission },
+                  { label: "Discount", value: totals.totalDiscount },
                   { label: "Payable", value: totals.totalPayable },
                   { label: "Paid", value: totals.totalPaid },
                   { label: "Due", value: totals.totalDue, danger: true },
@@ -589,9 +589,9 @@ const PurchaseInvoiceReport = () => {
                               {money(row.total)}
                             </td>
                           )}
-                          {visibleColumns.commission && (
+                          {visibleColumns.discount && (
                             <td className="px-3 py-2.5 text-right text-xs text-gray-700 dark:text-gray-300">
-                              {money(row.commission)}
+                              {money(row.discount)}
                             </td>
                           )}
                           {visibleColumns.delivery && (
@@ -632,9 +632,9 @@ const PurchaseInvoiceReport = () => {
                             {money(totals.totalAmount)}
                           </td>
                         )}
-                        {visibleColumns.commission && (
+                        {visibleColumns.discount && (
                           <td className="px-3 py-3 text-right text-xs text-gray-800 dark:border-gray-700 dark:text-gray-100">
-                            {money(totals.totalCommission)}
+                            {money(totals.totalDiscount)}
                           </td>
                         )}
                         {visibleColumns.delivery && (
@@ -802,10 +802,10 @@ const PurchaseInvoiceReport = () => {
                     <span className="th-label">Total</span>
                     <span className="th-value">৳{money(row.total)}</span>
                   </div>
-                  {row.commission > 0 && (
+                  {row.discount > 0 && (
                     <div className="th-row">
-                      <span className="th-label">Commission</span>
-                      <span className="th-value">৳{money(row.commission)}</span>
+                      <span className="th-label">Discount</span>
+                      <span className="th-value">৳{money(row.discount)}</span>
                     </div>
                   )}
                   {row.delivery > 0 && (
@@ -836,8 +836,8 @@ const PurchaseInvoiceReport = () => {
                     <span>৳{money(totals.totalAmount)}</span>
                   </div>
                   <div className="th-summary-row">
-                    <span>Commission</span>
-                    <span>৳{money(totals.totalCommission)}</span>
+                    <span>Discount</span>
+                    <span>৳{money(totals.totalDiscount)}</span>
                   </div>
                   <div className="th-summary-row">
                     <span>Delivery</span>

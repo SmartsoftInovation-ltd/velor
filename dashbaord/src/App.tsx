@@ -225,11 +225,14 @@ const PurchaseInvoiceReport = lazy(
 const PurchaseProductReport = lazy(
   () => import("./components/reports/Purchase/PurchaseProductReport"),
 );
-const PurchaseReturnInvoice = lazy(
-  () => import("./components/reports/Purchase/PurchaseReturnInvoice"),
+const PurchaseReturnReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseReturnReport"),
 );
-const PurchaseSummary = lazy(
-  () => import("./components/reports/Purchase/PurchaseSummary"),
+const PurchaseReturnSummaryReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseReturnSummaryReport"),
+);
+const PurchaseSummaryReport = lazy(
+  () => import("./components/reports/Purchase/PurchaseSummaryReport"),
 );
 const SalesInvoiceReport = lazy(
   () => import("./components/reports/Sales/SalesInvoiceReport"),
@@ -264,10 +267,6 @@ const TransactionReportView = lazy(
 const TransactionSummaryView = lazy(
   () =>
     import("./components/tables/ReportTable/Account/TransactionSummaryView"),
-);
-const PurchaseReturnInvoiceView = lazy(
-  () =>
-    import("./components/tables/ReportTable/Purchase/PurchaseReturnInvoiceView"),
 );
 const OrderInvoiceView = lazy(
   () => import("./components/tables/ReportTable/Order/OrderInvoiceView"),
@@ -924,17 +923,25 @@ export default function App() {
                   path="/purchase-summary"
                   element={
                     <ProtectedRoute module="purchase-summary" action="view">
-                      <PurchaseSummary />
+                      <PurchaseSummaryReport />
                     </ProtectedRoute>
                   }
                 />
                 <Route
                   path="/purchase-return-invoice"
-                  element={<PurchaseReturnInvoice />}
+                  element={
+                    <ProtectedRoute module="purchase-return-report" action="view">
+                      <PurchaseReturnReport />
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
-                  path="/purchase-return-invoice/view"
-                  element={<PurchaseReturnInvoiceView />}
+                  path="/purchase-return-summary"
+                  element={
+                    <ProtectedRoute module="purchase-return-summary" action="view">
+                      <PurchaseReturnSummaryReport />
+                    </ProtectedRoute>
+                  }
                 />
 
                 <Route
