@@ -9,6 +9,7 @@ const Sales = require("../models/sales.model");
 const SalesReturn = require("../models/salesReturn.model");
 const { customerModel: Customer } = require("../models/customer.model");
 const Employee = require("../models/employee.model");
+const { employeeAdvancePayment: EmployeeAdvancePayment } = require("../models/advancePayment.model");
 const Supplier = require("../models/supplier.model").SupplierModel;
 const StoreInformation = require("../models/storeInformation.model");
 const { getCache, setCache, buildCacheKey } = require("@/utils/cache.util");
@@ -22,6 +23,9 @@ const STORE_NS = "storeinformation";
 // Matches NS_EMPLOYEE in employee.controller.js, which already bumps this
 // namespace on every employee/designation/department/section mutation.
 const EMPLOYEE_NS = "employee";
+// Matches NS_ADVANCE in employee.controller.js, bumped on every advance
+// payment create/update/delete.
+const ADVANCE_NS = "employeeAdvance";
 const REPORT_CACHE_TTL = 60 * 5; // 5 minutes
 const STORE_CACHE_TTL = 60 * 60; // 1 hour
 
@@ -2265,5 +2269,179 @@ exports.getEmployeeListReport = asynchandeler(async (req, res) => {
     statusCodes.OK,
     "Employee list report fetched successfully",
     { ...payload, fromCache: false },
+  );
+});
+
+// @desc Employee payment report — one row per advance payment record, date
+// range + optional employee filter, paginated. BALANCE is the employee's net
+// salary minus the amount paid on that record — the same rule
+// createEmployeeAdvancePayment already enforces (amount can never exceed
+// netSalary), so this mirrors it rather than reading a stored balance field
+// (the schema never actually persists one).
+exports.getEmployeePaymentReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, employeeId } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  // endDate arrives as a bare day ("2026-09-03"), which parses to midnight and
+  // would drop everything recorded later that same day.
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  castObjectIdFilter(match, "employeeId", employeeId);
+
+  const cacheKey = await buildCacheKey(
+    ADVANCE_NS,
+    `report:employee-payment:${startDate}:${endDate}:${employeeId || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Employee payment report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "employees",
+        localField: "employeeId",
+        foreignField: "_id",
+        as: "employee",
+        pipeline: [{ $project: { employeeId: 1, fullName: 1, designation: 1, salary: 1 } }],
+      },
+    },
+    { $unwind: { path: "$employee", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "employeedesignations",
+        localField: "employee.designation",
+        foreignField: "_id",
+        as: "designationInfo",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    { $unwind: { path: "$designationInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        netSalary: { $ifNull: ["$employee.salary.netSalary", 0] },
+        lineBalance: {
+          $subtract: [{ $ifNull: ["$employee.salary.netSalary", 0] }, { $ifNull: ["$amount", 0] }],
+        },
+      },
+    },
+    {
+      $facet: {
+        rows: [
+          { $sort: { date: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              date: 1,
+              month: 1,
+              paymentMode: 1,
+              employeeId: { $ifNull: ["$employee.employeeId", "-"] },
+              fullName: { $ifNull: ["$employee.fullName", "-"] },
+              designationName: { $ifNull: ["$designationInfo.name", "-"] },
+              salary: "$netSalary",
+              amount: 1,
+              balance: "$lineBalance",
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalSalary: { $sum: "$netSalary" },
+              totalPaid: { $sum: { $ifNull: ["$amount", 0] } },
+              totalBalance: { $sum: "$lineBalance" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await EmployeeAdvancePayment.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalSalary: 0,
+    totalPaid: 0,
+    totalBalance: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      employeeId: employeeId || null,
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalSalary: totals.totalSalary,
+      totalPaid: totals.totalPaid,
+      totalBalance: totals.totalBalance,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Employee payment report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Employees that have at least one advance payment — for the employee
+// payment report's employee filter dropdown
+exports.getEmployeePaymentEmployees = asynchandeler(async (req, res) => {
+  const cacheKey = await buildCacheKey(ADVANCE_NS, "report:employee-payment:employees");
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Employee list fetched successfully",
+      { employees: cached, fromCache: true },
+    );
+  }
+
+  const employeeIds = await EmployeeAdvancePayment.distinct("employeeId");
+
+  const employees = await Employee.find({ _id: { $in: employeeIds } })
+    .select("_id employeeId fullName")
+    .sort({ fullName: 1 })
+    .lean();
+
+  await setCache(cacheKey, employees, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Employee list fetched successfully",
+    { employees, fromCache: false },
   );
 });

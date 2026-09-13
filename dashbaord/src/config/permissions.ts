@@ -166,4 +166,5 @@ export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/account-balance": PERMISSIONS.ACCOUNT_BALANCE,
   "/fund-handover": PERMISSIONS.FUND_HANDOVER,
   "/employee-list-report": PERMISSIONS.EMPLOYEE,
+  "/employee-payment-report": PERMISSIONS.EMPLOYEE,
 };

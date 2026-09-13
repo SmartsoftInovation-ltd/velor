@@ -161,6 +161,11 @@ const categories: ReportCategory[] = [
         description: "Full employee roster with contact, designation & salary details",
         path: "/employee-list-report",
       },
+      {
+        name: "Employee Payment",
+        description: "Advance/salary payment history with salary, paid & balance",
+        path: "/employee-payment-report",
+      },
     ],
   },
 ];

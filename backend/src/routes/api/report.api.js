@@ -64,5 +64,15 @@ _.route("/employee-list").post(
   authorize("employee", "view"),
   reportController.getEmployeeListReport,
 );
+_.route("/employee-payment").post(
+  authGuard,
+  authorize("employee", "view"),
+  reportController.getEmployeePaymentReport,
+);
+_.route("/employee-payment/employees").get(
+  authGuard,
+  authorize("employee", "view"),
+  reportController.getEmployeePaymentEmployees,
+);
 
 module.exports = _;

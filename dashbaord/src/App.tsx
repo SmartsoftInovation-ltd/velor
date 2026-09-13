@@ -246,6 +246,9 @@ const SalesSummaryReport = lazy(
 const EmployeeListReport = lazy(
   () => import("./components/reports/Employee/EmployeeListReport"),
 );
+const EmployeePaymentReport = lazy(
+  () => import("./components/reports/Employee/EmployeePaymentReport"),
+);
 const CreateReports = lazy(() => import("./pages/Reports/CreateReports"));
 const AccountBalanceView = lazy(
   () => import("./components/tables/ReportTable/Account/AccountBalanceView"),
@@ -1072,6 +1075,14 @@ export default function App() {
                   element={
                     <ProtectedRoute module="employee" action="view">
                       <EmployeeListReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/employee-payment-report"
+                  element={
+                    <ProtectedRoute module="employee" action="view">
+                      <EmployeePaymentReport />
                     </ProtectedRoute>
                   }
                 />
