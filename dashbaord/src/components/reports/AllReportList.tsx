@@ -8,6 +8,7 @@ import {
   TbReceipt2,
   TbWallet,
   TbUsers,
+  TbBox,
   TbChevronRight,
   TbSearch,
 } from "react-icons/tb";
@@ -102,6 +103,50 @@ const categories: ReportCategory[] = [
         name: "Sales Summary",
         description: "Product-wise totals with weighted average buy price",
         path: "/sales-summary",
+      },
+    ],
+  },
+  {
+    key: "stock",
+    label: "Stock",
+    icon: <TbBox className="size-[18px]" />,
+    chipBg: "bg-teal-50 dark:bg-teal-500/10",
+    chipText: "text-teal-500",
+    reports: [
+      {
+        name: "Stock Report",
+        description: "Overall stock with buy rate, quantity & stock value",
+        path: "/stock-report",
+      },
+      {
+        name: "Stock Details",
+        description: "Opening, purchases, adjustments, sales & returns per item",
+        path: "/stock-details-report",
+      },
+      {
+        name: "Product Ledger",
+        description: "Every stock in/out movement for one item, with balance",
+        path: "/product-ledger",
+      },
+      {
+        name: "Size & Color Stock",
+        description: "Size-wise stock per product colour, with total value",
+        path: "/size-color-stock-report",
+      },
+      {
+        name: "Size Wise Stock",
+        description: "Size-wise stock per product, with total value",
+        path: "/size-wise-stock-report",
+      },
+      {
+        name: "Stock Adjustment",
+        description: "Manual adjustments with per-product adjustment counts",
+        path: "/stock-adjustment-report",
+      },
+      {
+        name: "Low Stock Alert",
+        description: "Items at or below their alert quantity",
+        path: "/low-stock-report",
       },
     ],
   },

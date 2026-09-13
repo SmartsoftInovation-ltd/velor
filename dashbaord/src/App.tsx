@@ -231,6 +231,25 @@ const PurchaseReturnReport = lazy(
 const PurchaseReturnSummaryReport = lazy(
   () => import("./components/reports/Purchase/PurchaseReturnSummaryReport"),
 );
+const StockReport = lazy(() => import("./components/reports/Stock/StockReport"));
+const StockDetailsReport = lazy(
+  () => import("./components/reports/Stock/StockDetailsReport"),
+);
+const ProductLedgerReport = lazy(
+  () => import("./components/reports/Stock/ProductLedgerReport"),
+);
+const SizeColorStockReport = lazy(
+  () => import("./components/reports/Stock/SizeColorStockReport"),
+);
+const SizeWiseStockReport = lazy(
+  () => import("./components/reports/Stock/SizeWiseStockReport"),
+);
+const StockAdjustmentReport = lazy(
+  () => import("./components/reports/Stock/StockAdjustmentReport"),
+);
+const LowStockReport = lazy(
+  () => import("./components/reports/Stock/LowStockReport"),
+);
 const PurchaseSummaryReport = lazy(
   () => import("./components/reports/Purchase/PurchaseSummaryReport"),
 );
@@ -969,6 +988,69 @@ export default function App() {
                 <Route
                   path="/order-status-report/view"
                   element={<OrderStatusReportView />}
+                />
+
+                <Route
+                  path="/stock-report"
+                  element={
+                    <ProtectedRoute module="stock-report" action="view">
+                      <StockReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/stock-details-report"
+                  element={
+                    <ProtectedRoute module="stock-details-report" action="view">
+                      <StockDetailsReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/product-ledger"
+                  element={
+                    <ProtectedRoute module="product-ledger-report" action="view">
+                      <ProductLedgerReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/size-color-stock-report"
+                  element={
+                    <ProtectedRoute module="size-color-stock-report" action="view">
+                      <SizeColorStockReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/size-wise-stock-report"
+                  element={
+                    <ProtectedRoute module="size-wise-stock-report" action="view">
+                      <SizeWiseStockReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/stock-adjustment-report"
+                  element={
+                    <ProtectedRoute module="stock-adjustment-report" action="view">
+                      <StockAdjustmentReport />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/low-stock-report"
+                  element={
+                    <ProtectedRoute module="low-stock-report" action="view">
+                      <LowStockReport />
+                    </ProtectedRoute>
+                  }
                 />
 
                 <Route path="/all-reports" element={<CreateReports />} />

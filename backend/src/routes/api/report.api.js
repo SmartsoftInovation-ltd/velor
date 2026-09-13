@@ -29,6 +29,41 @@ _.route("/purchase-return-summary").post(
   authorize("purchase-return-summary", "view"),
   reportController.getPurchaseReturnSummaryReport,
 );
+_.route("/stock").post(
+  authGuard,
+  authorize("stock-report", "view"),
+  reportController.getStockReport,
+);
+_.route("/stock-details").post(
+  authGuard,
+  authorize("stock-details-report", "view"),
+  reportController.getStockDetailsReport,
+);
+_.route("/product-ledger").post(
+  authGuard,
+  authorize("product-ledger-report", "view"),
+  reportController.getProductLedgerReport,
+);
+_.route("/ledger-items").get(
+  authGuard,
+  authorize("product-ledger-report", "view"),
+  reportController.getLedgerItems,
+);
+_.route("/size-color-stock").post(
+  authGuard,
+  authorize("size-color-stock-report", "view"),
+  reportController.getSizeColorStockReport,
+);
+_.route("/stock-adjustment").post(
+  authGuard,
+  authorize("stock-adjustment-report", "view"),
+  reportController.getStockAdjustmentReport,
+);
+_.route("/low-stock").post(
+  authGuard,
+  authorize("low-stock-report", "view"),
+  reportController.getLowStockReport,
+);
 _.route("/purchase/suppliers").get(
   authGuard,
   authorize("purchase-invoice", "view"),
