@@ -14,6 +14,7 @@ const { customerModel: Customer } = require("../models/customer.model");
 const Employee = require("../models/employee.model");
 const { employeeAdvancePayment: EmployeeAdvancePayment } = require("../models/advancePayment.model");
 const Supplier = require("../models/supplier.model").SupplierModel;
+const SupplierDuePayment = require("../models/supplier.model").SupplierDuePayment;
 const StoreInformation = require("../models/storeInformation.model");
 const Product = require("../models/product.model");
 const { getCache, setCache, buildCacheKey } = require("@/utils/cache.util");
@@ -31,6 +32,7 @@ const EMPLOYEE_NS = "employee";
 // payment create/update/delete.
 const ADVANCE_NS = "employeeAdvance";
 const PRODUCT_NS = "product";
+const SUPPLIER_NS = "supplier";
 const REPORT_CACHE_TTL = 60 * 5; // 5 minutes
 const STORE_CACHE_TTL = 60 * 60; // 1 hour
 
@@ -155,18 +157,11 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
   const match = { date: { $gte: new Date(startDate), $lte: new Date(endDate) } };
   castObjectIdFilter(match, "supplierId", supplierId);
 
-  // Purchase has no stored payment status — derive it from paid vs payable.
+  // Purchase now stores paymentStatus (see purchase.model.js), so the filter
+  // folds into the indexed top-level $match instead of an $expr stage that no
+  // index can serve.
   const status = (paymentStatus || "").trim();
-  const statusStages = [];
-  if (status === "paid") {
-    statusStages.push({ $match: { $expr: { $lte: ["$dueamount", 0] } } });
-  } else if (status === "due") {
-    statusStages.push({ $match: { $expr: { $lte: ["$paid", 0] } } });
-  } else if (status === "partial") {
-    statusStages.push({
-      $match: { $expr: { $and: [{ $gt: ["$paid", 0] }, { $gt: ["$dueamount", 0] }] } },
-    });
-  }
+  if (status) match.paymentStatus = status;
 
   const cacheKey = await buildCacheKey(
     PURCHASE_NS,
@@ -189,7 +184,6 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
     { $match: match },
     ...supplierLookupStages(),
     ...supplierNameFilterStage(supplierName),
-    ...statusStages,
     {
       $facet: {
         rows: [
@@ -211,15 +205,7 @@ exports.getPurchaseInvoiceReport = asynchandeler(async (req, res) => {
               payable: 1,
               paid: 1,
               due: "$dueamount",
-              paymentStatus: {
-                $switch: {
-                  branches: [
-                    { case: { $lte: ["$dueamount", 0] }, then: "paid" },
-                    { case: { $lte: ["$paid", 0] }, then: "due" },
-                  ],
-                  default: "partial",
-                },
-              },
+              paymentStatus: 1,
             },
           },
         ],
@@ -5055,5 +5041,457 @@ exports.getCustomerSalesSummaryReport = asynchandeler(async (req, res) => {
     statusCodes.OK,
     "Customer sales summary report fetched successfully",
     { ...payload, fromCache: false },
+  );
+});
+
+// @desc Supplier purchase invoice report — one row per purchase invoice, for
+// the supplier report category. The SUPPLIER PURCHASE INVOICE sheet: SL,
+// purchase inv., date, supplier info (name + mobile), total, commission,
+// shipping, payable, paid, due, status.
+//
+// paymentStatus is the stored field on Purchase (see purchase.model.js), so
+// the filter folds into the indexed top-level $match rather than an $expr
+// stage. The rule that maintains it: 0 paid -> "due", paid below payable ->
+// "partial", paid covering payable -> "paid".
+exports.getSupplierPurchaseInvoiceReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, supplierId, supplierName, paymentStatus } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every purchase made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  castObjectIdFilter(match, "supplierId", supplierId);
+
+  const status = (paymentStatus || "").trim();
+  if (status) match.paymentStatus = status;
+
+  const nameQuery = typeof supplierName === "string" ? supplierName.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    PURCHASE_NS,
+    `report:supplier-purchase-invoice:${startDate}:${endDate}:${supplierId || "all"}:${nameQuery.toLowerCase() || "all"}:${status || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier purchase invoice report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "suppliers",
+        localField: "supplierId",
+        foreignField: "_id",
+        as: "supplier",
+        pipeline: [{ $project: { supplierName: 1, mobile: 1 } }],
+      },
+    },
+    { $unwind: { path: "$supplier", preserveNullAndEmptyArrays: true } },
+  ];
+
+  // Name/mobile search runs after the lookup because the supplier's name lives
+  // on the joined document, not on the purchase itself.
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: { $or: [{ "supplier.supplierName": rx }, { "supplier.mobile": rx }] },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { date: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            date: 1,
+            purchaseInvoice: { $ifNull: ["$serial", "$invoiceNumber"] },
+            supplierInvoice: "$invoiceNumber",
+            supplierName: { $ifNull: ["$supplier.supplierName", "-"] },
+            supplierPhone: { $ifNull: ["$supplier.mobile", ""] },
+            total: "$subTotal",
+            commission: 1,
+            shipping: 1,
+            payable: 1,
+            paid: 1,
+            due: "$dueamount",
+            paymentStatus: 1,
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalAmount: { $sum: "$subTotal" },
+            totalCommission: { $sum: "$commission" },
+            totalShipping: { $sum: "$shipping" },
+            totalPayable: { $sum: "$payable" },
+            totalPaid: { $sum: "$paid" },
+            totalDue: { $sum: "$dueamount" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Purchase.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalAmount: 0,
+    totalCommission: 0,
+    totalShipping: 0,
+    totalPayable: 0,
+    totalPaid: 0,
+    totalDue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      supplierId: supplierId || null,
+      supplierName: nameQuery || null,
+      paymentStatus: status || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalAmount: totals.totalAmount,
+      totalCommission: totals.totalCommission,
+      totalShipping: totals.totalShipping,
+      totalPayable: totals.totalPayable,
+      totalPaid: totals.totalPaid,
+      totalDue: totals.totalDue,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier purchase invoice report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Suppliers that have at least one purchase — for the supplier report's
+// supplier dropdown.
+exports.getSupplierReportSuppliers = asynchandeler(async (req, res) => {
+  const cacheKey = await buildCacheKey(PURCHASE_NS, "report:supplier:suppliers");
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier list fetched successfully",
+      { suppliers: cached, fromCache: true },
+    );
+  }
+
+  const supplierIds = await Purchase.distinct("supplierId", { supplierId: { $ne: null } });
+
+  const suppliers = await Supplier.find({ _id: { $in: supplierIds } })
+    .select("_id supplierName mobile")
+    .sort({ supplierName: 1 })
+    .lean();
+
+  await setCache(cacheKey, suppliers, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier list fetched successfully",
+    { suppliers, fromCache: false },
+  );
+});
+
+// @desc Supplier payment report — one row per supplier due-payment record, for
+// the supplier report category. The SUPPLIER PAYMENT sheet: SL, trx id, date,
+// supplier (name + mobile), payment method, paid, less, reference #.
+//
+// Reads SupplierDuePayment. Note its `supplierId` is a STRING (the supplier's
+// phone-derived business id), not an ObjectId, so the supplier join matches
+// supplierId -> supplierId rather than the usual _id foreign key.
+//
+// PAYMENT METHOD is the single `paymentMode` account on the record. The model
+// stores one account per payment, so a row shows one method — a payment split
+// across two accounts would need two records (or a schema change).
+//
+// Soft-deleted records (isActive false / deletedAt set) are excluded: they are
+// reversed payments and must not inflate the totals.
+exports.getSupplierPaymentReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, supplierId, supplierName, paymentMode } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every payment made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = {
+    date: { $gte: rangeStart, $lte: rangeEnd },
+    isActive: { $ne: false },
+    deletedAt: null,
+  };
+
+  // supplierId here is the string business id, not an ObjectId — no casting.
+  if (supplierId && String(supplierId).trim() !== "") {
+    match.supplierId = String(supplierId).trim();
+  }
+
+  if (paymentMode && String(paymentMode).trim() !== "") {
+    if (!mongoose.Types.ObjectId.isValid(paymentMode)) {
+      throw new customError("Invalid paymentMode", statusCodes.BAD_REQUEST);
+    }
+    match.paymentMode = new mongoose.Types.ObjectId(paymentMode);
+  }
+
+  const nameQuery = typeof supplierName === "string" ? supplierName.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SUPPLIER_NS,
+    `report:supplier-payment:${startDate}:${endDate}:${supplierId || "all"}:${nameQuery.toLowerCase() || "all"}:${paymentMode || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier payment report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      // String-to-string join: the payment stores the supplier's business id,
+      // not its _id.
+      $lookup: {
+        from: "suppliers",
+        localField: "supplierId",
+        foreignField: "supplierId",
+        as: "supplier",
+        pipeline: [{ $project: { supplierName: 1, mobile: 1 } }],
+      },
+    },
+    { $unwind: { path: "$supplier", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "accounts",
+        localField: "paymentMode",
+        foreignField: "_id",
+        as: "account",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+  ];
+
+  // Name/mobile search runs after the lookup because the supplier's name lives
+  // on the joined document, not on the payment record.
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: { $or: [{ "supplier.supplierName": rx }, { "supplier.mobile": rx }] },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { date: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            date: 1,
+            trxId: { $ifNull: ["$supplierPaymentSerialId", "$transactionId"] },
+            transactionId: 1,
+            supplierName: { $ifNull: ["$supplier.supplierName", "-"] },
+            supplierPhone: { $ifNull: ["$supplier.mobile", ""] },
+            paymentMethod: { $ifNull: ["$account.name", "-"] },
+            paid: { $ifNull: ["$paidAmount", 0] },
+            less: { $ifNull: ["$lessAmount", 0] },
+            // The sheet's REFERENCE # column — the record's free-text remarks.
+            reference: { $ifNull: ["$remarks", ""] },
+            remainingDue: { $ifNull: ["$remainingDue", 0] },
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalPaid: { $sum: { $ifNull: ["$paidAmount", 0] } },
+            totalLess: { $sum: { $ifNull: ["$lessAmount", 0] } },
+          },
+        },
+      ],
+    },
+  });
+
+  // Payment methods present in the range, so the filter dropdown can be built
+  // without calling the account endpoint — that one is gated by the
+  // add-account permission, which a report-only user need not hold.
+  //
+  // Runs as its own pass with every filter EXCEPT paymentMode: folding it into
+  // the main $facet would narrow the list by the method filter itself, so
+  // picking one method would leave the dropdown showing only that method.
+  const methodMatch = { ...match };
+  delete methodMatch.paymentMode;
+  const methodPipeline = [
+    { $match: methodMatch },
+    {
+      $lookup: {
+        from: "suppliers",
+        localField: "supplierId",
+        foreignField: "supplierId",
+        as: "supplier",
+        pipeline: [{ $project: { supplierName: 1, mobile: 1 } }],
+      },
+    },
+    { $unwind: { path: "$supplier", preserveNullAndEmptyArrays: true } },
+  ];
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    methodPipeline.push({
+      $match: { $or: [{ "supplier.supplierName": rx }, { "supplier.mobile": rx }] },
+    });
+  }
+  methodPipeline.push(
+    {
+      $lookup: {
+        from: "accounts",
+        localField: "paymentMode",
+        foreignField: "_id",
+        as: "account",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+    {
+      $group: {
+        _id: "$paymentMode",
+        name: { $first: { $ifNull: ["$account.name", "-"] } },
+        count: { $sum: 1 },
+        totalPaid: { $sum: { $ifNull: ["$paidAmount", 0] } },
+      },
+    },
+    { $match: { _id: { $ne: null } } },
+    { $project: { _id: 0, id: "$_id", name: 1, count: 1, totalPaid: 1 } },
+    { $sort: { name: 1 } },
+  );
+
+  const [[result], methods] = await Promise.all([
+    SupplierDuePayment.aggregate(pipeline),
+    SupplierDuePayment.aggregate(methodPipeline),
+  ]);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || { count: 0, totalPaid: 0, totalLess: 0 };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      supplierId: supplierId || null,
+      supplierName: nameQuery || null,
+      paymentMode: paymentMode || "ALL",
+    },
+    rows,
+    methods,
+    totals: {
+      count: totals.count,
+      totalPaid: totals.totalPaid,
+      totalLess: totals.totalLess,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier payment report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Suppliers that have at least one due payment — for the supplier payment
+// report's dropdown. Values are the string business ids the payment records
+// store, not ObjectIds, so the filter can use them directly.
+exports.getSupplierPaymentSuppliers = asynchandeler(async (req, res) => {
+  const cacheKey = await buildCacheKey(SUPPLIER_NS, "report:supplier-payment:suppliers");
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Supplier list fetched successfully",
+      { suppliers: cached, fromCache: true },
+    );
+  }
+
+  const supplierIds = await SupplierDuePayment.distinct("supplierId", {
+    supplierId: { $ne: null },
+    isActive: { $ne: false },
+    deletedAt: null,
+  });
+
+  const suppliers = await Supplier.find({ supplierId: { $in: supplierIds } })
+    .select("supplierId supplierName mobile")
+    .sort({ supplierName: 1 })
+    .lean();
+
+  await setCache(cacheKey, suppliers, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Supplier list fetched successfully",
+    { suppliers, fromCache: false },
   );
 });

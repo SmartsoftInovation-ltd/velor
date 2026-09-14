@@ -78,6 +78,8 @@ const permissionList = [
   { permissionName: "Customer Sales Invoice Report" },
   { permissionName: "Customer Sales Product Report" },
   { permissionName: "Customer Sales Summary Report" },
+  { permissionName: "Supplier Purchase Invoice Report" },
+  { permissionName: "Supplier Payment Report" },
   { permissionName: "Transaction Report" },
   { permissionName: "Transaction Summary" },
   { permissionName: "Cash Ledger" },

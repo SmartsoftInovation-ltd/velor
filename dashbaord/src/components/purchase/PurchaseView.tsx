@@ -68,10 +68,37 @@ interface Purchase {
   payable: number;
   dueamount: number;
   paid: number;
+  // Derived server-side from paid vs payable (see purchase.model.js).
+  paymentStatus?: "paid" | "partial" | "due";
   createdAt: string;
 }
 
-// ---------- Helper ----------
+// ---------- Helpers ----------
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  paid: "Paid",
+  partial: "Partial",
+  due: "Due",
+};
+
+const PAYMENT_STATUS_TONE: Record<string, string> = {
+  paid: "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400",
+  partial: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+  due: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
+};
+
+// Purchases saved before paymentStatus existed have no stored value, so the
+// same rule the model applies is repeated here as a read-time fallback. Runs
+// the backfill script once and this branch stops being reached.
+const resolvePaymentStatus = (purchase: Purchase): string => {
+  if (purchase.paymentStatus) return purchase.paymentStatus;
+  const payable = Number(purchase.payable) || 0;
+  const paid = Number(purchase.paid) || 0;
+  if (payable <= 0) return "paid";
+  if (paid <= 0) return "due";
+  if (paid >= payable) return "paid";
+  return "partial";
+};
+
 const getItemImage = (item: PurchaseItem): string => {
   const src = item.variant ?? item.product;
   if (!src) return "";
@@ -199,11 +226,11 @@ const PurchaseView = () => {
               </p>
             </div>
             <div className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider ${
-              purchase.dueamount > 0
-                ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
-                : "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
+              PAYMENT_STATUS_TONE[resolvePaymentStatus(purchase)] ??
+              "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
             }`}>
-              {purchase.dueamount > 0 ? `Due ৳${purchase.dueamount.toLocaleString()}` : "Fully Paid"}
+              {PAYMENT_STATUS_LABEL[resolvePaymentStatus(purchase)] ?? resolvePaymentStatus(purchase)}
+              {purchase.dueamount > 0 ? ` · ৳${purchase.dueamount.toLocaleString()} Due` : ""}
             </div>
           </div>
 
@@ -220,6 +247,19 @@ const PurchaseView = () => {
               value={
                 <span className={purchase.dueamount > 0 ? "text-red-500" : "text-green-600"}>
                   ৳{purchase.dueamount.toLocaleString()}
+                </span>
+              }
+            />
+            <InfoCard
+              label="Payment Status"
+              value={
+                <span
+                  className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+                    PAYMENT_STATUS_TONE[resolvePaymentStatus(purchase)] ??
+                    "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {PAYMENT_STATUS_LABEL[resolvePaymentStatus(purchase)] ?? resolvePaymentStatus(purchase)}
                 </span>
               }
             />

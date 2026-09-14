@@ -9,6 +9,7 @@ import {
   TbWallet,
   TbUsers,
   TbUserDollar,
+  TbTruck,
   TbBox,
   TbChevronRight,
   TbSearch,
@@ -128,6 +129,25 @@ const categories: ReportCategory[] = [
         name: "Customer Sales Summary",
         description: "Product-wise totals with qty, sales price & amount",
         path: "/customer-sales-summary",
+      },
+    ],
+  },
+  {
+    key: "supplier",
+    label: "Supplier",
+    icon: <TbTruck className="size-[18px]" />,
+    chipBg: "bg-orange-50 dark:bg-orange-500/10",
+    chipText: "text-orange-500",
+    reports: [
+      {
+        name: "Supplier Purchase Invoice",
+        description: "Invoice-wise purchases with supplier & payment status filter",
+        path: "/supplier-purchase-invoice",
+      },
+      {
+        name: "Supplier Payment",
+        description: "Due payments with trx id, method, paid & less",
+        path: "/supplier-payment-report",
       },
     ],
   },

@@ -100,6 +100,18 @@ const purchaseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    // Derived from paid vs payable, never trusted from the request body:
+    // 0 paid -> "due", paid below payable -> "partial", paid covering payable
+    // -> "paid". Kept as a stored field rather than computed on read so the
+    // purchase report can filter and index on it.
+    paymentStatus: {
+      type: String,
+      enum: ["paid", "partial", "due"],
+      default: "due",
+      index: true,
+    },
+
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
@@ -115,6 +127,64 @@ const purchaseSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+// Single source of truth for the status rule, shared by the document hook and
+// the update hooks below so every write path agrees.
+//
+// A zero or negative payable (a fully-discounted or empty purchase) has nothing
+// left to owe, so it counts as settled rather than falling through to "due".
+function derivePurchasePaymentStatus(paid, payable) {
+  const paidAmount = Number(paid) || 0;
+  const payableAmount = Number(payable) || 0;
+  if (payableAmount <= 0) return "paid";
+  if (paidAmount <= 0) return "due";
+  if (paidAmount >= payableAmount) return "paid";
+  return "partial";
+}
+
+purchaseSchema.statics.derivePaymentStatus = derivePurchasePaymentStatus;
+
+// Recompute on every document save, so create/update paths cannot drift.
+purchaseSchema.pre("save", function (next) {
+  this.paymentStatus = derivePurchasePaymentStatus(this.paid, this.payable);
+  next();
+});
+
+// findOneAndUpdate / updateOne / updateMany bypass document middleware, so the
+// same rule is reapplied here. Only runs when the update actually touches paid
+// or payable; otherwise the stored status is already correct and re-reading the
+// document on every unrelated update would be wasted work.
+async function reapplyPaymentStatusOnUpdate(next) {
+  try {
+    const update = this.getUpdate();
+    if (!update) return next();
+
+    const set = update.$set || update;
+    const inc = update.$inc || {};
+    const touchesPaid = "paid" in set || "paid" in inc;
+    const touchesPayable = "payable" in set || "payable" in inc;
+    if (!touchesPaid && !touchesPayable) return next();
+
+    const current = await this.model.findOne(this.getQuery()).select("paid payable").lean();
+
+    const nextPaid =
+      "paid" in set ? set.paid : (current?.paid || 0) + (inc.paid || 0);
+    const nextPayable =
+      "payable" in set ? set.payable : (current?.payable || 0) + (inc.payable || 0);
+
+    const status = derivePurchasePaymentStatus(nextPaid, nextPayable);
+    if (update.$set) update.$set.paymentStatus = status;
+    else update.paymentStatus = status;
+    this.setUpdate(update);
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+purchaseSchema.pre("findOneAndUpdate", reapplyPaymentStatusOnUpdate);
+purchaseSchema.pre("updateOne", reapplyPaymentStatusOnUpdate);
+purchaseSchema.pre("updateMany", reapplyPaymentStatusOnUpdate);
 
 purchaseSchema.pre("save", async function (next) {
   try {
@@ -143,6 +213,8 @@ purchaseSchema.index({ invoiceNumber: 1 }, { unique: true });
 // Purchase invoice report — date-range scan, optionally narrowed by supplier
 purchaseSchema.index({ date: -1 });
 purchaseSchema.index({ supplierId: 1, date: -1 });
+// Supplier purchase invoice report — status filter within a date range
+purchaseSchema.index({ paymentStatus: 1, date: -1 });
 
 // Auto-generate a sequential, never-reused serial after first save
 purchaseSchema.post("save", async function (doc, next) {
