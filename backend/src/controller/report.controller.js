@@ -4054,3 +4054,1006 @@ exports.getEmployeePaymentEmployees = asynchandeler(async (req, res) => {
     { employees, fromCache: false },
   );
 });
+
+// @desc Customer sales invoice report — one row per sale invoice for the
+// customer report category. Same source collection as the sales invoice
+// report, but filtered and read customer-first: the customer name/phone
+// search and the payment status are the two primary filters, and the row
+// carries the CUSTOMER SALES INVOICE sheet's columns (total, discount,
+// delivery, labour, payable, paid, due, status).
+//
+// DELIVERY comes from `deliveryCost` on the sale. The sale schema has no
+// `shipping` field — that name only exists on Purchase — so `deliveryCost`
+// is the sale's delivery charge and what the sheet's DELIVERY column means.
+//
+// `customerName` is a free-text search rather than an id filter so walking
+// customers, who have no Customer document to pick from a dropdown, are
+// searchable too: it matches the listed customer's name/mobile and the
+// walking customer's embedded name/mobile alike.
+exports.getCustomerSalesInvoiceReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerId, customerName, paymentStatus, salesType } =
+    req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (paymentStatus && paymentStatus.trim() !== "") match.paymentStatus = paymentStatus.trim();
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+  castObjectIdFilter(match, "customerType.customerId", customerId);
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:customer-sales-invoice:${startDate}:${endDate}:${customerId || "all"}:${nameQuery || "all"}:${paymentStatus || "all"}:${salesType || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer sales invoice report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        // Resolve the two customer shapes (listed vs walking) into one pair of
+        // fields so the name search and the projected row read the same value.
+        resolvedCustomerName: {
+          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+        },
+        resolvedCustomerPhone: {
+          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+        },
+        discountAmount: { $multiply: ["$total", { $divide: ["$discountPercent", 100] }] },
+        vatAmount: { $multiply: ["$total", { $divide: ["$vatPercent", 100] }] },
+      },
+    },
+  ];
+
+  // Name/phone search runs after the lookup because it has to see the resolved
+  // fields — a listed customer's name lives on the joined document, not on the
+  // sale, so this cannot be folded into the initial $match.
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: {
+        $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }],
+      },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { date: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            date: 1,
+            invoiceNumber: 1,
+            salesType: 1,
+            customerName: "$resolvedCustomerName",
+            customerPhone: "$resolvedCustomerPhone",
+            total: 1,
+            discount: "$discountAmount",
+            vat: "$vatAmount",
+            delivery: "$deliveryCost",
+            labour: "$labourCost",
+            payable: 1,
+            paid: 1,
+            due: "$presentDue",
+            paymentStatus: 1,
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalAmount: { $sum: "$total" },
+            totalDiscount: { $sum: "$discountAmount" },
+            totalVat: { $sum: "$vatAmount" },
+            totalDelivery: { $sum: "$deliveryCost" },
+            totalLabour: { $sum: "$labourCost" },
+            totalPayable: { $sum: "$payable" },
+            totalPaid: { $sum: "$paid" },
+            totalDue: { $sum: "$presentDue" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalAmount: 0,
+    totalDiscount: 0,
+    totalVat: 0,
+    totalDelivery: 0,
+    totalLabour: 0,
+    totalPayable: 0,
+    totalPaid: 0,
+    totalDue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      paymentStatus: paymentStatus || "ALL",
+      salesType: salesType || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalAmount: totals.totalAmount,
+      totalDiscount: totals.totalDiscount,
+      totalVat: totals.totalVat,
+      totalDelivery: totals.totalDelivery,
+      totalLabour: totals.totalLabour,
+      totalPayable: totals.totalPayable,
+      totalPaid: totals.totalPaid,
+      totalDue: totals.totalDue,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer sales invoice report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Customers that have at least one sale — for the customer report's
+// customer dropdown. Walking customers have no Customer document, so they
+// cannot appear here; the report's name search covers them instead.
+exports.getCustomerReportCustomers = asynchandeler(async (req, res) => {
+  const cacheKey = await buildCacheKey(SALES_NS, "report:customer:customers");
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer list fetched successfully",
+      { customers: cached, fromCache: true },
+    );
+  }
+
+  const customerIds = await Sales.distinct("customerType.customerId", {
+    "customerType.customerId": { $ne: null },
+  });
+
+  const customers = await Customer.find({ _id: { $in: customerIds } })
+    .select("_id fullName mobileNumber")
+    .sort({ fullName: 1 })
+    .lean();
+
+  await setCache(cacheKey, customers, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer list fetched successfully",
+    { customers, fromCache: false },
+  );
+});
+
+// @desc Customer sales product report — one row per sold line item, for the
+// customer report category. The CUSTOMER SALES PRODUCT sheet: SL, invoice,
+// sales type, date, product name, barcode, color, qty, WS price, RS price,
+// sub. total — filtered by customer (id or name/phone search) and payment
+// status, matching the customer sales invoice report's filters.
+//
+// SUB. TOTAL is RS PRICE x QTY on every row, including wholesale ones. That is
+// what the sheet does, so it is reproduced here deliberately: it is a retail
+// valuation of what was sold, NOT the amount charged. The sale's own
+// `searchItem.subtotal` (the real transacted line value, net of any per-line
+// discount) is returned alongside as `soldSubtotal` so the two never get
+// confused by a later reader.
+//
+// The footer block (discount/less, delivery, labour, payable, paid, due) is
+// invoice-level money, so it is summed over DISTINCT invoices — grouping by
+// invoice first. Summing it per line would multiply an invoice's delivery cost
+// by the number of lines on it.
+exports.getCustomerSalesProductReport = asynchandeler(async (req, res) => {
+  const {
+    startDate,
+    endDate,
+    customerId,
+    customerName,
+    paymentStatus,
+    salesType,
+    productId,
+    category,
+    subCategory,
+    brand,
+  } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (paymentStatus && paymentStatus.trim() !== "") match.paymentStatus = paymentStatus.trim();
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+  castObjectIdFilter(match, "customerType.customerId", customerId);
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+
+  // Product-level filters can only run after the $unwind and the product
+  // $lookup below, so they are collected here and applied as a second $match
+  // rather than being folded into the indexed top-level one.
+  const lineMatch = {};
+  if (productId) {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+    }
+    // Matches on the resolved product so a variant line whose own productId is
+    // unset still matches when its parent product is the one selected.
+    lineMatch["resolvedProduct._id"] = new mongoose.Types.ObjectId(productId);
+  }
+  castObjectIdFilter(lineMatch, "resolvedProduct.category", category);
+  castObjectIdFilter(lineMatch, "resolvedProduct.subcategory", subCategory);
+  castObjectIdFilter(lineMatch, "resolvedProduct.brand", brand);
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:customer-sales-product:${startDate}:${endDate}:${customerId || "all"}:${nameQuery || "all"}:${paymentStatus || "all"}:${salesType || "all"}:${productId || "all"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer sales product report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCustomerName: {
+          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+        },
+        resolvedCustomerPhone: {
+          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+        },
+      },
+    },
+  ];
+
+  // Name/phone search runs after the lookup because a listed customer's name
+  // lives on the joined document, not on the sale itself.
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: {
+        $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }],
+      },
+    });
+  }
+
+  pipeline.push(
+    // Invoice-level money is captured BEFORE the $unwind, while there is still
+    // exactly one document per sale. After the unwind these fields repeat on
+    // every line of the invoice and can no longer be summed.
+    {
+      $addFields: {
+        invoiceDiscountAmount: {
+          $add: [
+            { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
+            { $ifNull: ["$lessTaka", 0] },
+          ],
+        },
+      },
+    },
+    { $unwind: "$searchItem" },
+    {
+      $lookup: {
+        from: "products",
+        localField: "searchItem.productId",
+        foreignField: "_id",
+        as: "productInfo",
+        pipeline: [
+          {
+            $project: {
+              name: 1,
+              barCode: 1,
+              color: 1,
+              size: 1,
+              category: 1,
+              subcategory: 1,
+              brand: 1,
+              wholesalePrice: 1,
+              retailPrice: 1,
+            },
+          },
+        ],
+      },
+    },
+    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "searchItem.variantId",
+        foreignField: "_id",
+        as: "variantInfo",
+        pipeline: [
+          {
+            $project: {
+              barCode: 1,
+              color: 1,
+              size: 1,
+              product: 1,
+              wholesalePrice: 1,
+              retailPrice: 1,
+            },
+          },
+          {
+            // A sale line referencing a variant may carry no productId of its
+            // own, so the parent product is resolved through the variant to
+            // get its display name.
+            $lookup: {
+              from: "products",
+              localField: "product",
+              foreignField: "_id",
+              as: "variantProduct",
+              pipeline: [
+                {
+                  $project: {
+                    name: 1,
+                    barCode: 1,
+                    color: 1,
+                    size: 1,
+                    category: 1,
+                    subcategory: 1,
+                    brand: 1,
+                    wholesalePrice: 1,
+                    retailPrice: 1,
+                  },
+                },
+              ],
+            },
+          },
+          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
+        ],
+      },
+    },
+    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    {
+      // A variant line may not carry productId, so the effective product is the
+      // directly-joined one when present, otherwise the variant's parent.
+      // Filters match against this rather than productInfo, so variant lines
+      // are not silently dropped by a category/brand filter.
+      $addFields: {
+        resolvedProduct: { $ifNull: ["$productInfo", "$variantInfo.variantProduct"] },
+      },
+    },
+    ...(Object.keys(lineMatch).length > 0 ? [{ $match: lineMatch }] : []),
+    {
+      // The variant is the more specific record, so its prices win where a
+      // variant was sold; the product is the fallback for non-variant lines.
+      $addFields: {
+        lineQty: { $ifNull: ["$searchItem.quantity", 0] },
+        lineWsPrice: {
+          $ifNull: ["$variantInfo.wholesalePrice", { $ifNull: ["$resolvedProduct.wholesalePrice", 0] }],
+        },
+        lineRsPrice: {
+          $ifNull: ["$variantInfo.retailPrice", { $ifNull: ["$resolvedProduct.retailPrice", 0] }],
+        },
+      },
+    },
+    {
+      // SUB. TOTAL per the sheet: RS price x qty, regardless of sales type.
+      $addFields: {
+        lineSubTotal: { $multiply: ["$lineRsPrice", "$lineQty"] },
+      },
+    },
+    {
+      $facet: {
+        rows: [
+          { $sort: { date: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              date: 1,
+              invoiceNumber: 1,
+              salesType: 1,
+              paymentStatus: 1,
+              customerName: "$resolvedCustomerName",
+              customerPhone: "$resolvedCustomerPhone",
+              productName: { $ifNull: ["$resolvedProduct.name", "-"] },
+              barcode: {
+                $ifNull: [
+                  "$searchItem.barcode",
+                  { $ifNull: ["$variantInfo.barCode", "$resolvedProduct.barCode"] },
+                ],
+              },
+              color: {
+                $ifNull: [
+                  "$variantInfo.color",
+                  { $ifNull: ["$resolvedProduct.color", "$searchItem.color"] },
+                ],
+              },
+              size: {
+                $ifNull: [
+                  "$variantInfo.size",
+                  { $ifNull: ["$resolvedProduct.size", "$searchItem.size"] },
+                ],
+              },
+              qty: "$lineQty",
+              wsPrice: "$lineWsPrice",
+              rsPrice: "$lineRsPrice",
+              subTotal: "$lineSubTotal",
+              // The real transacted line value, net of any per-line discount.
+              // Kept distinct from subTotal, which is a retail valuation.
+              soldSubtotal: { $ifNull: ["$searchItem.subtotal", 0] },
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalQty: { $sum: "$lineQty" },
+              totalWsPrice: { $sum: "$lineWsPrice" },
+              totalRsPrice: { $sum: "$lineRsPrice" },
+              totalSubTotal: { $sum: "$lineSubTotal" },
+              totalSoldSubtotal: { $sum: { $ifNull: ["$searchItem.subtotal", 0] } },
+            },
+          },
+        ],
+        // Invoice-level money, de-duplicated: group back to one document per
+        // invoice first, then sum. Without the first $group each value would
+        // be counted once per line on its invoice.
+        invoiceTotals: [
+          {
+            $group: {
+              _id: "$_id",
+              discount: { $first: "$invoiceDiscountAmount" },
+              delivery: { $first: "$deliveryCost" },
+              labour: { $first: "$labourCost" },
+              payable: { $first: "$payable" },
+              paid: { $first: "$paid" },
+              due: { $first: "$presentDue" },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              invoiceCount: { $sum: 1 },
+              totalDiscount: { $sum: "$discount" },
+              totalDelivery: { $sum: "$delivery" },
+              totalLabour: { $sum: "$labour" },
+              totalPayable: { $sum: "$payable" },
+              totalPaid: { $sum: "$paid" },
+              totalDue: { $sum: "$due" },
+            },
+          },
+        ],
+      },
+    },
+  );
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalQty: 0,
+    totalWsPrice: 0,
+    totalRsPrice: 0,
+    totalSubTotal: 0,
+    totalSoldSubtotal: 0,
+  };
+  const invoiceTotals = result?.invoiceTotals?.[0] || {
+    invoiceCount: 0,
+    totalDiscount: 0,
+    totalDelivery: 0,
+    totalLabour: 0,
+    totalPayable: 0,
+    totalPaid: 0,
+    totalDue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      paymentStatus: paymentStatus || "ALL",
+      salesType: salesType || "ALL",
+      product: productId || "ALL",
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalQty: totals.totalQty,
+      totalWsPrice: totals.totalWsPrice,
+      totalRsPrice: totals.totalRsPrice,
+      totalSubTotal: totals.totalSubTotal,
+      totalSoldSubtotal: totals.totalSoldSubtotal,
+    },
+    invoiceTotals: {
+      invoiceCount: invoiceTotals.invoiceCount,
+      totalDiscount: invoiceTotals.totalDiscount,
+      totalDelivery: invoiceTotals.totalDelivery,
+      totalLabour: invoiceTotals.totalLabour,
+      totalPayable: invoiceTotals.totalPayable,
+      totalPaid: invoiceTotals.totalPaid,
+      totalDue: invoiceTotals.totalDue,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer sales product report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Customer sales summary report — one row per PRODUCT sold in the range
+// (lines for the same product across invoices collapse into one row), for the
+// customer report category. The CUSTOMER SALES SUMMARY sheet: SL, product
+// name, qty, sales price, total.
+//
+// SALES PRICE follows the sales type filter, since that is what determines
+// which price list the customer was billed from:
+//   wholesale / wholesaleorder -> wholesalePrice
+//   everything else (incl. no filter) -> retailPrice
+// The variant is the more specific record, so its price wins where a variant
+// was sold; the product is the fallback for non-variant lines.
+//
+// TOTAL is salesPrice x qty per row. The footer sums each column on its own,
+// matching the sheet: the TOTAL row's price cell is the sum of the per-row
+// unit prices, NOT a weighted average, so it will not equal totalAmount/qty.
+//
+// The money block below the table (discount/less, delivery, labour, payable,
+// paid, due) is invoice-level, so it is summed over DISTINCT invoices rather
+// than per line — otherwise an invoice's delivery cost would be counted once
+// per line item on it.
+exports.getCustomerSalesSummaryReport = asynchandeler(async (req, res) => {
+  const {
+    startDate,
+    endDate,
+    customerId,
+    customerName,
+    paymentStatus,
+    salesType,
+    productId,
+    category,
+    subCategory,
+    brand,
+  } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const normalisedSalesType = salesType && salesType.trim() !== "" ? salesType.trim() : "";
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (paymentStatus && paymentStatus.trim() !== "") match.paymentStatus = paymentStatus.trim();
+  if (normalisedSalesType) match.salesType = normalisedSalesType;
+  castObjectIdFilter(match, "customerType.customerId", customerId);
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+
+  // Which price list the SALES PRICE column reads from.
+  const isWholesale =
+    normalisedSalesType === "wholesale" || normalisedSalesType === "wholesaleorder";
+  const priceField = isWholesale ? "wholesalePrice" : "retailPrice";
+  const priceLabel = isWholesale ? "Wholesale Price" : "Retail Price";
+
+  const lineMatch = {};
+  if (productId) {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+    }
+    lineMatch["resolvedProduct._id"] = new mongoose.Types.ObjectId(productId);
+  }
+  castObjectIdFilter(lineMatch, "resolvedProduct.category", category);
+  castObjectIdFilter(lineMatch, "resolvedProduct.subcategory", subCategory);
+  castObjectIdFilter(lineMatch, "resolvedProduct.brand", brand);
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:customer-sales-summary:${startDate}:${endDate}:${customerId || "all"}:${nameQuery || "all"}:${paymentStatus || "all"}:${normalisedSalesType || "all"}:${productId || "all"}:${category || "-"}:${subCategory || "-"}:${brand || "-"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer sales summary report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCustomerName: {
+          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+        },
+        resolvedCustomerPhone: {
+          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+        },
+      },
+    },
+  ];
+
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: {
+        $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }],
+      },
+    });
+  }
+
+  pipeline.push(
+    // Invoice-level money is captured BEFORE the $unwind, while there is still
+    // exactly one document per sale.
+    {
+      $addFields: {
+        invoiceDiscountAmount: {
+          $add: [
+            { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
+            { $ifNull: ["$lessTaka", 0] },
+          ],
+        },
+      },
+    },
+    { $unwind: "$searchItem" },
+    {
+      $lookup: {
+        from: "products",
+        localField: "searchItem.productId",
+        foreignField: "_id",
+        as: "productInfo",
+        pipeline: [
+          {
+            $project: {
+              name: 1,
+              category: 1,
+              subcategory: 1,
+              brand: 1,
+              purchasePrice: 1,
+              wholesalePrice: 1,
+              retailPrice: 1,
+            },
+          },
+        ],
+      },
+    },
+    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "searchItem.variantId",
+        foreignField: "_id",
+        as: "variantInfo",
+        pipeline: [
+          {
+            $project: {
+              product: 1,
+              purchasePrice: 1,
+              wholesalePrice: 1,
+              retailPrice: 1,
+            },
+          },
+          {
+            $lookup: {
+              from: "products",
+              localField: "product",
+              foreignField: "_id",
+              as: "variantProduct",
+              pipeline: [
+                {
+                  $project: {
+                    name: 1,
+                    category: 1,
+                    subcategory: 1,
+                    brand: 1,
+                    purchasePrice: 1,
+                    wholesalePrice: 1,
+                    retailPrice: 1,
+                  },
+                },
+              ],
+            },
+          },
+          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
+        ],
+      },
+    },
+    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedProduct: { $ifNull: ["$productInfo", "$variantInfo.variantProduct"] },
+      },
+    },
+    ...(Object.keys(lineMatch).length > 0 ? [{ $match: lineMatch }] : []),
+    {
+      $addFields: {
+        lineQty: { $ifNull: ["$searchItem.quantity", 0] },
+        linePrice: {
+          $ifNull: [
+            `$variantInfo.${priceField}`,
+            { $ifNull: [`$resolvedProduct.${priceField}`, 0] },
+          ],
+        },
+      },
+    },
+    {
+      // One row per product. Lines for the same product across several
+      // invoices collapse here, which is what makes this a summary rather
+      // than the line-item product report.
+      //
+      // The unit price is taken as the LAST price seen for the product rather
+      // than summed: it is a per-unit figure, so adding it across lines would
+      // be meaningless. Row TOTAL is still the true sum of price x qty for
+      // each contributing line, so a product whose price changed mid-range
+      // keeps an accurate total even though one unit price is displayed.
+      $group: {
+        _id: { $ifNull: ["$resolvedProduct._id", "$searchItem.productId"] },
+        productName: { $last: { $ifNull: ["$resolvedProduct.name", "-"] } },
+        qty: { $sum: "$lineQty" },
+        salesPrice: { $last: "$linePrice" },
+        total: { $sum: { $multiply: ["$linePrice", "$lineQty"] } },
+      },
+    },
+    {
+      $facet: {
+        rows: [
+          { $sort: { total: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              productName: 1,
+              qty: 1,
+              salesPrice: 1,
+              total: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              // Distinct products, which is what the rows now are.
+              count: { $sum: 1 },
+              totalQty: { $sum: "$qty" },
+              // Column-wise sum of the displayed unit prices, per the sheet.
+              // Deliberately NOT a weighted average price.
+              totalSalesPrice: { $sum: "$salesPrice" },
+              totalAmount: { $sum: "$total" },
+            },
+          },
+        ],
+      },
+    },
+  );
+
+  // Invoice-level money cannot be read off the grouped-by-product pipeline
+  // above, so it is computed by its own aggregation over the same filters.
+  const invoiceMatch = { ...match };
+  const invoicePipeline = [
+    { $match: invoiceMatch },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCustomerName: {
+          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+        },
+        resolvedCustomerPhone: {
+          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+        },
+      },
+    },
+  ];
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    invoicePipeline.push({
+      $match: { $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }] },
+    });
+  }
+  invoicePipeline.push({
+    $group: {
+      _id: null,
+      invoiceCount: { $sum: 1 },
+      totalDiscount: {
+        $sum: {
+          $add: [
+            { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
+            { $ifNull: ["$lessTaka", 0] },
+          ],
+        },
+      },
+      totalDelivery: { $sum: { $ifNull: ["$deliveryCost", 0] } },
+      totalLabour: { $sum: { $ifNull: ["$labourCost", 0] } },
+      totalPayable: { $sum: { $ifNull: ["$payable", 0] } },
+      totalPaid: { $sum: { $ifNull: ["$paid", 0] } },
+      totalDue: { $sum: { $ifNull: ["$presentDue", 0] } },
+    },
+  });
+
+  const [[result], [invoiceAgg]] = await Promise.all([
+    Sales.aggregate(pipeline),
+    Sales.aggregate(invoicePipeline),
+  ]);
+
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalQty: 0,
+    totalSalesPrice: 0,
+    totalAmount: 0,
+  };
+  const invoiceTotals = invoiceAgg || {
+    invoiceCount: 0,
+    totalDiscount: 0,
+    totalDelivery: 0,
+    totalLabour: 0,
+    totalPayable: 0,
+    totalPaid: 0,
+    totalDue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      paymentStatus: paymentStatus || "ALL",
+      salesType: normalisedSalesType || "ALL",
+      product: productId || "ALL",
+      category: category || "ALL",
+      subCategory: subCategory || "ALL",
+      brand: brand || "ALL",
+    },
+    // Tells the client which price list the SALES PRICE column is showing, so
+    // the column header can say so rather than the reader having to infer it.
+    priceType: { field: priceField, label: priceLabel },
+    rows,
+    totals: {
+      count: totals.count,
+      totalQty: totals.totalQty,
+      totalSalesPrice: totals.totalSalesPrice,
+      totalAmount: totals.totalAmount,
+    },
+    invoiceTotals: {
+      invoiceCount: invoiceTotals.invoiceCount,
+      totalDiscount: invoiceTotals.totalDiscount,
+      totalDelivery: invoiceTotals.totalDelivery,
+      totalLabour: invoiceTotals.totalLabour,
+      totalPayable: invoiceTotals.totalPayable,
+      totalPaid: invoiceTotals.totalPaid,
+      totalDue: invoiceTotals.totalDue,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer sales summary report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});

@@ -8,6 +8,7 @@ import {
   TbReceipt2,
   TbWallet,
   TbUsers,
+  TbUserDollar,
   TbBox,
   TbChevronRight,
   TbSearch,
@@ -103,6 +104,30 @@ const categories: ReportCategory[] = [
         name: "Sales Summary",
         description: "Product-wise totals with weighted average buy price",
         path: "/sales-summary",
+      },
+    ],
+  },
+  {
+    key: "customer",
+    label: "Customer",
+    icon: <TbUserDollar className="size-[18px]" />,
+    chipBg: "bg-indigo-50 dark:bg-indigo-500/10",
+    chipText: "text-indigo-500",
+    reports: [
+      {
+        name: "Customer Sales Invoice",
+        description: "Invoice-wise customer sales with name & payment status filter",
+        path: "/customer-sales-invoice",
+      },
+      {
+        name: "Customer Sales Product",
+        description: "Item-wise customer sales with WS/RS price and sub. total",
+        path: "/customer-sales-product",
+      },
+      {
+        name: "Customer Sales Summary",
+        description: "Product-wise totals with qty, sales price & amount",
+        path: "/customer-sales-summary",
       },
     ],
   },
