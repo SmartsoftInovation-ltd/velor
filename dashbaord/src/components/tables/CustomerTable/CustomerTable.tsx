@@ -72,6 +72,7 @@ interface Customer {
   permanentAddress?: string;
   regularDiscountPercent?: number;
   openingDues?: number;
+  initialDue?: number;
   dueLimit?: number;
   isActive: boolean;
   image?: { url: string; publicId: string; status: string };
@@ -120,7 +121,8 @@ const CustomerTable = ({
     overscan: 10,
   });
 
-  const gridTemplateColumns = "1fr 60px 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 148px";
+  const gridTemplateColumns =
+    "1fr 60px 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 148px";
 
   const handleDeleteModal = (customerId: string) => {
     setSelectedCustomer(customerId);
@@ -304,6 +306,9 @@ const CustomerTable = ({
                   {customer.openingDues != null ? customer.openingDues : "N/A"}
                 </span>
               </MobileCardRow>
+              <MobileCardRow label="Initial Due (৳)">
+                {customer.initialDue != null ? customer.initialDue : "N/A"}
+              </MobileCardRow>
               <MobileCardRow label="Discount">
                 {customer.regularDiscountPercent != null ? `${customer.regularDiscountPercent}%` : "N/A"}
               </MobileCardRow>
@@ -364,6 +369,7 @@ const CustomerTable = ({
             "Type",
             "Mobile",
             "Dues (৳)",
+            "Initial Due (৳)",
             "Discount",
             "Due Limit",
             "Date",
@@ -509,6 +515,14 @@ const CustomerTable = ({
                         {customer.openingDues != null
                           ? customer.openingDues
                           : "N/A"}
+                      </span>
+                    </div>
+
+                    {/* Initial Due — the figure carried in at creation, not
+                        moved by transactions. */}
+                    <div className="flex items-center justify-center">
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {customer.initialDue != null ? customer.initialDue : "N/A"}
                       </span>
                     </div>
 

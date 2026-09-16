@@ -326,8 +326,12 @@ exports.deleteCustomerType = asynchandeler(async (req, res) => {
 exports.createCustomer = asynchandeler(async (req, res) => {
   const { image: imageFile, ...rest } = req.body;
 
+  // initialDue is seeded from openingDues rather than accepted from the client:
+  // at creation the two are the same figure, and the create form never shows
+  // initialDue. It only diverges later, once transactions move openingDues.
   const customer = await customerModel.create({
     ...rest,
+    initialDue: Number(rest.openingDues || 0),
     image: imageFile
       ? {
           status: "pending",
@@ -459,6 +463,10 @@ exports.updateCustomer = asynchandeler(async (req, res) => {
   delete req.body.createdAt;
   delete req.body.updatedAt;
   delete req.body.deletedAt;
+  // openingDues is the live running due, maintained by sales/payments/returns.
+  // The edit form disables it, and dropping it here means a crafted request
+  // cannot overwrite the balance either. initialDue stays editable.
+  delete req.body.openingDues;
 
   const { image: imageFile, ...rest } = req.body;
 
@@ -482,6 +490,27 @@ exports.updateCustomer = asynchandeler(async (req, res) => {
 
   // 4) Update other fields
   const beforeCustomer = customer.toObject();
+
+  // Correcting initialDue moves the live balance by the same amount: the
+  // starting figure was wrong, so every balance derived from it was wrong by
+  // that difference. Raising initialDue 5000 -> 6000 adds 1000 to openingDues;
+  // lowering it 5000 -> 3000 subtracts 2000. Only the delta is applied, never
+  // the new value itself, so the transactions since creation are preserved.
+  if (rest.initialDue !== undefined) {
+    const previousInitialDue = Number(customer.initialDue || 0);
+    const nextInitialDue = Number(rest.initialDue || 0);
+    const delta = nextInitialDue - previousInitialDue;
+
+    if (delta !== 0) {
+      // Clamped at 0 because openingDues is schema-bound to min 0 — a
+      // correction larger than the outstanding balance would otherwise throw.
+      customer.openingDues = Math.max(
+        0,
+        Number(customer.openingDues || 0) + delta,
+      );
+    }
+  }
+
   Object.assign(customer, rest);
   const updatedCustomer = await customer.save();
 

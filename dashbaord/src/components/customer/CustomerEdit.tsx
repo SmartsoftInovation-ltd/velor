@@ -46,6 +46,7 @@ const CustomerEdit = () => {
     occupation: "",
     nidNumber: "",
     openingDues: "",
+    initialDue: "",
     regularDiscountPercent: "",
     emailAddress: "",
     presentAddress: "",
@@ -76,6 +77,7 @@ const CustomerEdit = () => {
       occupation: customerData.occupation || "",
       nidNumber: customerData.nidNumber || "",
       openingDues: customerData.openingDues?.toString() || "",
+      initialDue: customerData.initialDue?.toString() || "",
       regularDiscountPercent: customerData.regularDiscountPercent?.toString() || "",
       emailAddress: customerData.emailAddress || "",
       presentAddress: customerData.presentAddress || "",
@@ -190,7 +192,7 @@ const CustomerEdit = () => {
       formData.append("customerType", selectedType!._id);
       if (form.occupation) formData.append("occupation", form.occupation);
       if (form.nidNumber) formData.append("nidNumber", form.nidNumber);
-      if (form.openingDues) formData.append("openingDues", form.openingDues);
+      if (form.initialDue) formData.append("initialDue", form.initialDue);
       if (form.regularDiscountPercent) formData.append("regularDiscountPercent", form.regularDiscountPercent);
       if (form.emailAddress) formData.append("emailAddress", form.emailAddress);
       if (form.presentAddress) formData.append("presentAddress", form.presentAddress);
@@ -377,12 +379,25 @@ const CustomerEdit = () => {
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 hover:border-gray-300 transition-colors" />
               </div>
 
-              {/* Opening Dues */}
+              {/* Initial Due — the figure the customer was carried in with.
+                  Editable so a wrong starting balance can be corrected. */}
               <div className="flex flex-col gap-1.5">
-                <Label>Opening Dues (৳)</Label>
-                <input type="number" placeholder="0" value={form.openingDues}
-                  onChange={(e) => handleChange("openingDues", e.target.value)}
+                <Label>Initial Due (৳)</Label>
+                <input type="number" placeholder="0" value={form.initialDue}
+                  onChange={(e) => handleChange("initialDue", e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 hover:border-gray-300 transition-colors" />
+              </div>
+
+              {/* Opening Dues — the live running balance, moved by sales,
+                  payments and returns. Read-only: the server drops any value
+                  submitted for it. */}
+              <div className="flex flex-col gap-1.5">
+                <Label>Total Dues (৳)</Label>
+                <input type="number" value={form.openingDues} disabled readOnly
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed focus:outline-none" />
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                  Updated automatically by sales, payments and returns.
+                </p>
               </div>
 
               {/* Due Limit */}

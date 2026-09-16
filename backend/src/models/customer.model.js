@@ -123,10 +123,21 @@ const customerSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // The live running due. Sales, payments and returns all move this, so it
+    // is never edited by hand — the edit form shows it read-only.
     openingDues: {
       type: Number,
       default: 0,
       min: [0, "Opening dues cannot be negative"],
+    },
+
+    // The due the customer was carried in with, captured once at creation from
+    // openingDues and never touched by transactions. Editable afterwards so a
+    // wrong starting figure can be corrected.
+    initialDue: {
+      type: Number,
+      default: 0,
+      min: [0, "Initial due cannot be negative"],
     },
 
     advancePaymentRecived: {

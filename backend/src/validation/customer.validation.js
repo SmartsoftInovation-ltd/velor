@@ -39,6 +39,10 @@ const customerCreateSchema = Joi.object({
     "number.min": "Opening dues cannot be negative.",
   }),
 
+  // Seeded server-side from openingDues on create, so the create form neither
+  // shows nor sends it.
+  initialDue: Joi.forbidden(),
+
   regularDiscountPercent: Joi.number().min(0).max(100).default(0).messages({
     "number.base": "Regular discount must be a number.",
     "number.min": "Discount cannot be negative.",
@@ -126,10 +130,23 @@ const validateCustomerCreate = async (req, res, next) => {
   }
 };
 
+// On update the two due fields swap roles: openingDues is the live running
+// balance and is not editable, while initialDue — fixed at creation — can be
+// corrected. `openingDues: Joi.any().strip()` drops a submitted value instead
+// of rejecting the request, so a form that still posts the disabled field
+// keeps working.
+const customerUpdateSchema = customerCreateSchema.keys({
+  openingDues: Joi.any().strip(),
+  initialDue: Joi.number().min(0).optional().messages({
+    "number.base": "Initial due must be a number.",
+    "number.min": "Initial due cannot be negative.",
+  }),
+});
+
 // UPDATE
 const validateCustomerUpdate = async (req, res, next) => {
   try {
-    const value = await customerCreateSchema.validateAsync(req.body);
+    const value = await customerUpdateSchema.validateAsync(req.body);
 
     const imageFile = validateCustomerImage(req);
     if (imageFile) value.image = imageFile;
