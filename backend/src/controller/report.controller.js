@@ -10,14 +10,24 @@ const StockAdjust = require("../models/stockadjust.model");
 const CourierReturn = require("../models/courierReturn.model");
 const Sales = require("../models/sales.model");
 const SalesReturn = require("../models/salesReturn.model");
-const { customerModel: Customer } = require("../models/customer.model");
+const {
+  customerModel: Customer,
+  CustomerType,
+  customerPaymentRecived: CustomerPaymentRecived,
+  customerAdvancePaymentModel: CustomerAdvancePayment,
+} = require("../models/customer.model");
 const Employee = require("../models/employee.model");
 const { employeeAdvancePayment: EmployeeAdvancePayment } = require("../models/advancePayment.model");
 const Supplier = require("../models/supplier.model").SupplierModel;
 const SupplierDuePayment = require("../models/supplier.model").SupplierDuePayment;
 const StoreInformation = require("../models/storeInformation.model");
 const Product = require("../models/product.model");
-const { getCache, setCache, buildCacheKey } = require("@/utils/cache.util");
+const {
+  getCache,
+  setCache,
+  buildCacheKey,
+  getNsVersion,
+} = require("@/utils/cache.util");
 
 // Shares invalidation with purchase.controller.js (bumpNsVersion("purchase")
 // already runs on create/update/delete there) and storeInformation.controller.js
@@ -33,6 +43,15 @@ const EMPLOYEE_NS = "employee";
 const ADVANCE_NS = "employeeAdvance";
 const PRODUCT_NS = "product";
 const SUPPLIER_NS = "supplier";
+// Matches NS_CUSTOMER_PAYMENT in customer.controller.js, bumped on every
+// customer payment create/update/delete. The advance-payment side bumps
+// NS_CUSTOMER_ADVANCE, so that namespace is folded into the same key below to
+// keep the merged report from serving stale rows after an advance changes.
+const CUSTOMER_NS = "customer";
+// Matches NS in salesReturn.controller.js, bumped on every return write.
+const SALES_RETURN_NS = "salesReturn";
+const CUSTOMER_PAYMENT_NS = "customerPayment";
+const CUSTOMER_ADVANCE_NS = "customerAdvance";
 const REPORT_CACHE_TTL = 60 * 5; // 5 minutes
 const STORE_CACHE_TTL = 60 * 60; // 1 hour
 
@@ -5493,5 +5512,964 @@ exports.getSupplierPaymentSuppliers = asynchandeler(async (req, res) => {
     statusCodes.OK,
     "Supplier list fetched successfully",
     { suppliers, fromCache: false },
+  );
+});
+
+// @desc Customer payment report — one row per received payment, merging the two
+// places a customer payment can be recorded:
+//   * CustomerPaymentRecived        ("Customer Payment Received")
+//   * CustomerAdvancePaymentRecived ("Customer Advance Payment")
+// Both are normalised into one row shape via $unionWith so the sheet can show a
+// single date-ordered ledger. PAYMENT CATEGORY names which model a row came
+// from; a row carrying a non-zero cash back is re-labelled "Return Cash Back"
+// so the sheet matches the accountant's category list.
+exports.getCustomerPaymentReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerId, customerName, paymentMode, category } =
+    req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError(
+      "startDate and endDate are required",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every payment made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const baseMatch = {
+    date: { $gte: rangeStart, $lte: rangeEnd },
+    isActive: { $ne: false },
+    deletedAt: null,
+  };
+
+  // Both models store `customer` as an ObjectId ref, so the same cast works for
+  // either side of the union.
+  if (customerId && String(customerId).trim() !== "") {
+    if (!mongoose.Types.ObjectId.isValid(customerId)) {
+      throw new customError("Invalid customerId", statusCodes.BAD_REQUEST);
+    }
+    baseMatch.customer = new mongoose.Types.ObjectId(customerId);
+  }
+
+  if (paymentMode && String(paymentMode).trim() !== "") {
+    if (!mongoose.Types.ObjectId.isValid(paymentMode)) {
+      throw new customError("Invalid paymentMode", statusCodes.BAD_REQUEST);
+    }
+    baseMatch.paymentMode = new mongoose.Types.ObjectId(paymentMode);
+  }
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+  const categoryFilter =
+    typeof category === "string" && category.trim() !== "" ? category.trim() : "";
+
+  // buildCacheKey versions on one namespace only, but this report reads both
+  // collections — so the advance namespace's version is folded into the suffix.
+  // Without it an advance-payment write would leave these rows stale until TTL.
+  const advanceVersion = await getNsVersion(CUSTOMER_ADVANCE_NS);
+  const cacheKey = await buildCacheKey(
+    CUSTOMER_PAYMENT_NS,
+    `report:customer-payment:a${advanceVersion}:${startDate}:${endDate}:${customerId || "all"}:${
+      nameQuery.toLowerCase() || "all"
+    }:${paymentMode || "all"}:${categoryFilter || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer payment report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  // Normalise the due-payment side. `lessAmount` and `cashBack` are distinct
+  // columns on the sheet, so they are kept apart rather than summed.
+  const duePaymentStages = [
+    { $match: baseMatch },
+    {
+      $project: {
+        _id: 1,
+        date: 1,
+        customer: 1,
+        paymentMode: 1,
+        trxId: { $ifNull: ["$paymentId", ""] },
+        paid: { $ifNull: ["$paidAmount", 0] },
+        less: { $ifNull: ["$lessAmount", 0] },
+        cashBack: { $ifNull: ["$cashBack", 0] },
+        remarks: { $ifNull: ["$remarks", ""] },
+        sourceCategory: "Customer Payment Received",
+      },
+    },
+  ];
+
+  // The advance model names its cash-back field `advanceCashBack` and has no
+  // less column at all, so `less` is pinned to 0 to keep the union's row shape
+  // identical on both sides.
+  const advancePaymentStages = [
+    { $match: baseMatch },
+    {
+      $project: {
+        _id: 1,
+        date: 1,
+        customer: 1,
+        paymentMode: 1,
+        trxId: { $ifNull: ["$paymentId", ""] },
+        paid: { $ifNull: ["$paidAmount", 0] },
+        less: { $literal: 0 },
+        cashBack: { $ifNull: ["$advanceCashBack", 0] },
+        remarks: { $ifNull: ["$remarks", ""] },
+        sourceCategory: "Customer Advance Payment",
+      },
+    },
+  ];
+
+  // Stages shared by the row pipeline and the filter-option passes: join the
+  // customer and account, then derive the displayed category.
+  const enrichStages = [
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customer",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "accounts",
+        localField: "paymentMode",
+        foreignField: "_id",
+        as: "account",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        // A row that carries cash back is reported under its own category
+        // regardless of which model produced it.
+        paymentCategory: {
+          $cond: [{ $gt: ["$cashBack", 0] }, "Return Cash Back", "$sourceCategory"],
+        },
+      },
+    },
+  ];
+
+  // Name/mobile search runs after the lookup because the customer's name lives
+  // on the joined document, not on the payment record.
+  const nameFilterStages = [];
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    nameFilterStages.push({
+      $match: {
+        $or: [
+          { "customerInfo.fullName": rx },
+          { "customerInfo.mobileNumber": rx },
+        ],
+      },
+    });
+  }
+
+  const categoryFilterStages = categoryFilter
+    ? [{ $match: { paymentCategory: categoryFilter } }]
+    : [];
+
+  const unionStage = {
+    $unionWith: {
+      coll: "customeradvancepaymentreciveds",
+      pipeline: advancePaymentStages,
+    },
+  };
+
+  const pipeline = [
+    ...duePaymentStages,
+    unionStage,
+    ...enrichStages,
+    ...nameFilterStages,
+    ...categoryFilterStages,
+    {
+      $facet: {
+        rows: [
+          { $sort: { date: -1, _id: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              date: 1,
+              trxId: 1,
+              customerName: { $ifNull: ["$customerInfo.fullName", "-"] },
+              customerPhone: { $ifNull: ["$customerInfo.mobileNumber", ""] },
+              paymentCategory: 1,
+              paymentMethod: { $ifNull: ["$account.name", "-"] },
+              paid: 1,
+              less: 1,
+              cashBack: 1,
+              remarks: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalPaid: { $sum: "$paid" },
+              totalLess: { $sum: "$less" },
+              totalCashBack: { $sum: "$cashBack" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  // Payment methods and categories present in the range, so the two dropdowns
+  // can be built without calling the account endpoint — that one is gated by
+  // the add-account permission, which a report-only user need not hold.
+  //
+  // Each runs as its own pass with every filter EXCEPT its own: folding them
+  // into the main $facet would narrow each list by its own filter, so picking
+  // one value would leave that dropdown showing only that value.
+  const buildOptionPipeline = (excludeKey) => {
+    const optionMatch = { ...baseMatch };
+    if (excludeKey === "paymentMode") delete optionMatch.paymentMode;
+
+    const dueSide = [
+      { $match: optionMatch },
+      { $project: duePaymentStages[1].$project },
+    ];
+    const advanceSide = [
+      { $match: optionMatch },
+      { $project: advancePaymentStages[1].$project },
+    ];
+
+    return [
+      ...dueSide,
+      {
+        $unionWith: {
+          coll: "customeradvancepaymentreciveds",
+          pipeline: advanceSide,
+        },
+      },
+      ...enrichStages,
+      ...nameFilterStages,
+      ...(excludeKey === "category" ? [] : categoryFilterStages),
+    ];
+  };
+
+  const methodPipeline = [
+    ...buildOptionPipeline("paymentMode"),
+    {
+      $group: {
+        _id: "$paymentMode",
+        name: { $first: { $ifNull: ["$account.name", "-"] } },
+        count: { $sum: 1 },
+        totalPaid: { $sum: "$paid" },
+      },
+    },
+    { $match: { _id: { $ne: null } } },
+    { $project: { _id: 0, id: "$_id", name: 1, count: 1, totalPaid: 1 } },
+    { $sort: { name: 1 } },
+  ];
+
+  const categoryPipeline = [
+    ...buildOptionPipeline("category"),
+    {
+      $group: {
+        _id: "$paymentCategory",
+        count: { $sum: 1 },
+        totalPaid: { $sum: "$paid" },
+      },
+    },
+    { $match: { _id: { $ne: null } } },
+    { $project: { _id: 0, name: "$_id", count: 1, totalPaid: 1 } },
+    { $sort: { name: 1 } },
+  ];
+
+  const [[result], methods, categories] = await Promise.all([
+    CustomerPaymentRecived.aggregate(pipeline),
+    CustomerPaymentRecived.aggregate(methodPipeline),
+    CustomerPaymentRecived.aggregate(categoryPipeline),
+  ]);
+
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalPaid: 0,
+    totalLess: 0,
+    totalCashBack: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      paymentMode: paymentMode || "ALL",
+      category: categoryFilter || "ALL",
+    },
+    rows,
+    methods,
+    categories,
+    totals: {
+      count: totals.count,
+      totalPaid: totals.totalPaid,
+      totalLess: totals.totalLess,
+      totalCashBack: totals.totalCashBack,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer payment report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Customers that have at least one received payment (due or advance) —
+// for the customer payment report's dropdown.
+exports.getCustomerPaymentCustomers = asynchandeler(async (req, res) => {
+  const advanceVersion = await getNsVersion(CUSTOMER_ADVANCE_NS);
+  const cacheKey = await buildCacheKey(
+    CUSTOMER_PAYMENT_NS,
+    `report:customer-payment:customers:a${advanceVersion}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer list fetched successfully",
+      { customers: cached, fromCache: true },
+    );
+  }
+
+  const activeOnly = { isActive: { $ne: false }, deletedAt: null };
+  const [dueIds, advanceIds] = await Promise.all([
+    CustomerPaymentRecived.distinct("customer", activeOnly),
+    CustomerAdvancePayment.distinct("customer", activeOnly),
+  ]);
+
+  const uniqueIds = [
+    ...new Map(
+      [...dueIds, ...advanceIds]
+        .filter(Boolean)
+        .map((id) => [String(id), id]),
+    ).values(),
+  ];
+
+  const customers = await Customer.find({ _id: { $in: uniqueIds } })
+    .select("fullName mobileNumber")
+    .sort({ fullName: 1 })
+    .lean();
+
+  await setCache(cacheKey, customers, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer list fetched successfully",
+    { customers, fromCache: false },
+  );
+});
+
+// @desc Customer balance summary — one row per customer with the running
+// balance the shop is owed.
+//
+//   TOTAL BALANCE = OPENING BALANCE + TOTAL SALES - TOTAL PAID
+//
+// OPENING BALANCE is the customer's `openingDues` (the due carried in when the
+// customer was first entered). CREDIT LIMIT is `dueLimit` — the schema has no
+// `creditLimit` field, that is the column's source.
+//
+// TOTAL SALES / TOTAL PAID are summed from the Sales collection, so the date
+// range narrows the sales side only: a customer's opening balance predates
+// every sale and so is never filtered out by it. That also means a customer
+// with no sales in the range still appears, showing opening balance alone —
+// the driving collection is Customer, with sales joined in.
+exports.getCustomerBalanceSummaryReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerId, customerName, customerType } =
+    req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  // Unlike the payment report, the range is optional here: with no dates the
+  // sheet shows each customer's all-time balance, which is the default view.
+  let rangeStart = null;
+  let rangeEnd = null;
+  if (startDate && endDate) {
+    rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+  }
+
+  const match = { isActive: { $ne: false }, deletedAt: null };
+
+  if (customerId && String(customerId).trim() !== "") {
+    if (!mongoose.Types.ObjectId.isValid(customerId)) {
+      throw new customError("Invalid customerId", statusCodes.BAD_REQUEST);
+    }
+    match._id = new mongoose.Types.ObjectId(customerId);
+  }
+
+  if (customerType && String(customerType).trim() !== "") {
+    if (!mongoose.Types.ObjectId.isValid(customerType)) {
+      throw new customError("Invalid customerType", statusCodes.BAD_REQUEST);
+    }
+    match.customerType = new mongoose.Types.ObjectId(customerType);
+  }
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    // Serial id is searchable too so "CUS-VR-01" finds the row the sheet shows.
+    match.$or = [
+      { fullName: rx },
+      { mobileNumber: rx },
+      { customSerialId: rx },
+    ];
+  }
+
+  // Versioned on the customer namespace but reads Sales too, so the sales
+  // namespace version is folded into the suffix — otherwise a new sale would
+  // leave these totals stale until the TTL expired.
+  const salesVersion = await getNsVersion(SALES_NS);
+  const cacheKey = await buildCacheKey(
+    CUSTOMER_NS,
+    `report:customer-balance-summary:s${salesVersion}:${startDate || "any"}:${
+      endDate || "any"
+    }:${customerId || "all"}:${nameQuery.toLowerCase() || "all"}:${
+      customerType || "all"
+    }:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer balance summary report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  // Only completed sales count toward a balance — a draft or pending invoice
+  // has not been billed to the customer yet.
+  const salesConditions = [
+    { $eq: ["$customerType.customerId", "$$cid"] },
+    { $eq: ["$invoiceStatus", "complete"] },
+  ];
+  if (rangeStart && rangeEnd) {
+    salesConditions.push({ $gte: ["$date", rangeStart] });
+    salesConditions.push({ $lte: ["$date", rangeEnd] });
+  }
+
+  const buildStages = () => [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customertypes",
+        localField: "customerType",
+        foreignField: "_id",
+        as: "typeInfo",
+        pipeline: [{ $project: { customerType: 1 } }],
+      },
+    },
+    { $unwind: { path: "$typeInfo", preserveNullAndEmptyArrays: true } },
+    {
+      // Summed inside the $lookup so only two numbers come back per customer,
+      // rather than every matching sale document.
+      $lookup: {
+        from: "sales",
+        let: { cid: "$_id" },
+        as: "salesAgg",
+        pipeline: [
+          { $match: { $expr: { $and: salesConditions } } },
+          {
+            $group: {
+              _id: null,
+              totalSales: { $sum: { $ifNull: ["$payable", 0] } },
+              // netPaid is paid minus change given back, so it is the cash the
+              // shop actually kept — `paid` alone would overstate on overpay.
+              totalPaid: { $sum: { $ifNull: ["$netPaid", 0] } },
+            },
+          },
+        ],
+      },
+    },
+    { $unwind: { path: "$salesAgg", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        openingBalance: { $ifNull: ["$openingDues", 0] },
+        creditLimit: { $ifNull: ["$dueLimit", 0] },
+        totalSales: { $ifNull: ["$salesAgg.totalSales", 0] },
+        totalPaid: { $ifNull: ["$salesAgg.totalPaid", 0] },
+      },
+    },
+    {
+      $addFields: {
+        totalBalance: {
+          $subtract: [
+            { $add: ["$openingBalance", "$totalSales"] },
+            "$totalPaid",
+          ],
+        },
+      },
+    },
+  ];
+
+  const pipeline = [
+    ...buildStages(),
+    {
+      $facet: {
+        rows: [
+          { $sort: { fullName: 1, _id: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              serialId: { $ifNull: ["$customSerialId", ""] },
+              customerName: { $ifNull: ["$fullName", "-"] },
+              customerPhone: { $ifNull: ["$mobileNumber", ""] },
+              customerType: { $ifNull: ["$typeInfo.customerType", "-"] },
+              creditLimit: 1,
+              openingBalance: 1,
+              totalSales: 1,
+              totalPaid: 1,
+              totalBalance: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalCreditLimit: { $sum: "$creditLimit" },
+              totalOpeningBalance: { $sum: "$openingBalance" },
+              totalSales: { $sum: "$totalSales" },
+              totalPaid: { $sum: "$totalPaid" },
+              totalBalance: { $sum: "$totalBalance" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await Customer.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalCreditLimit: 0,
+    totalOpeningBalance: 0,
+    totalSales: 0,
+    totalPaid: 0,
+    totalBalance: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      customerType: customerType || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalCreditLimit: totals.totalCreditLimit,
+      totalOpeningBalance: totals.totalOpeningBalance,
+      totalSales: totals.totalSales,
+      totalPaid: totals.totalPaid,
+      totalBalance: totals.totalBalance,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer balance summary report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Customers and customer types for the balance summary report's two
+// dropdowns. Every active customer is listed, not only those with sales, since
+// a customer with opening dues and no sales still appears on the sheet.
+exports.getCustomerBalanceSummaryFilters = asynchandeler(async (req, res) => {
+  const cacheKey = await buildCacheKey(
+    CUSTOMER_NS,
+    "report:customer-balance-summary:filters",
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer filters fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const [customers, types] = await Promise.all([
+    Customer.find({ isActive: { $ne: false }, deletedAt: null })
+      .select("fullName mobileNumber customSerialId")
+      .sort({ fullName: 1 })
+      .lean(),
+    CustomerType.find().select("customerType").sort({ customerType: 1 }).lean(),
+  ]);
+
+  const payload = { customers, types };
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer filters fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Customer ledger — one date-ordered statement per customer, merging the
+// five places a customer's balance moves:
+//
+//   Opening Balance          received = openingDues,        payment = 0
+//   Sales Invoice            received = payable,            payment = netPaid
+//   Customer Payment Receive received = 0,                  payment = paidAmount
+//   Customer Advance         received = 0,                  payment = paidAmount
+//   Sales Return             received = totalReturnAmount,  payment = 0
+//
+// BALANCE is a running total (received - payment accumulated down the sheet),
+// not a per-row figure, so it is computed with $setWindowFields after the union
+// is sorted — a per-row subtraction would restart at every line.
+//
+// The ledger is only meaningful for one customer at a time (the running balance
+// of several customers interleaved means nothing), so customerId is required.
+exports.getCustomerLedgerReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerId } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!customerId || String(customerId).trim() === "") {
+    throw new customError("customerId is required", statusCodes.BAD_REQUEST);
+  }
+  if (!mongoose.Types.ObjectId.isValid(customerId)) {
+    throw new customError("Invalid customerId", statusCodes.BAD_REQUEST);
+  }
+  const custId = new mongoose.Types.ObjectId(customerId);
+
+  // The range is optional: with no dates the sheet shows the whole history.
+  let rangeStart = null;
+  let rangeEnd = null;
+  if (startDate && endDate) {
+    rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+  }
+
+  const customer = await Customer.findById(custId)
+    .select("fullName mobileNumber customSerialId openingDues createdAt")
+    .lean();
+  if (!customer) {
+    throw new customError("Customer not found", statusCodes.NOT_FOUND);
+  }
+
+  const salesVersion = await getNsVersion(SALES_NS);
+  const paymentVersion = await getNsVersion(CUSTOMER_PAYMENT_NS);
+  const advanceVersion = await getNsVersion(CUSTOMER_ADVANCE_NS);
+  const returnVersion = await getNsVersion(SALES_RETURN_NS);
+  const cacheKey = await buildCacheKey(
+    CUSTOMER_NS,
+    `report:customer-ledger:s${salesVersion}:p${paymentVersion}:a${advanceVersion}:r${returnVersion}:${customerId}:${
+      startDate || "any"
+    }:${endDate || "any"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer ledger fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const inRange = (dateExpr) =>
+    rangeStart
+      ? [{ $gte: [dateExpr, rangeStart] }, { $lte: [dateExpr, rangeEnd] }]
+      : [];
+
+  // Every branch projects the same row shape. `sortKey` pins the opening
+  // balance to the top of the statement: it is the balance carried in, so it
+  // must precede every transaction regardless of the date it was recorded on.
+  const rowShape = (
+    referenceId,
+    description,
+    received,
+    payment,
+    date,
+    sortKey = 1,
+  ) => ({
+    $project: {
+      _id: 1,
+      date,
+      referenceId,
+      description,
+      received,
+      payment,
+      sortKey: { $literal: sortKey },
+    },
+  });
+
+  // --- 1. Opening balance -------------------------------------------------
+  // Not a transaction, so it has no serial of its own — the sheet prints N/A.
+  // Deliberately NOT date-filtered: the opening balance is the amount carried
+  // in before any transaction, so a date range narrows the transactions listed
+  // beneath it, never the opening line itself.
+  const openingPipeline = [
+    { $match: { _id: custId } },
+    rowShape(
+      { $literal: "N/A" },
+      { $literal: "Opening Balance" },
+      { $ifNull: ["$openingDues", 0] },
+      { $literal: 0 },
+      "$createdAt",
+      0,
+    ),
+  ];
+
+  // --- 2. Sales invoices --------------------------------------------------
+  const salesPipeline = [
+    {
+      $match: {
+        $expr: {
+          $and: [
+            { $eq: ["$customerType.customerId", custId] },
+            { $eq: ["$invoiceStatus", "complete"] },
+            ...inRange("$date"),
+          ],
+        },
+      },
+    },
+    rowShape(
+      { $ifNull: ["$invoiceNumber", "N/A"] },
+      { $literal: "Sales Invoice" },
+      { $ifNull: ["$payable", 0] },
+      { $ifNull: ["$netPaid", 0] },
+      "$date",
+    ),
+  ];
+
+  // --- 3. Customer payment receive ---------------------------------------
+  const paymentPipeline = [
+    {
+      $match: {
+        $expr: {
+          $and: [
+            { $eq: ["$customer", custId] },
+            { $ne: ["$isActive", false] },
+            { $eq: ["$deletedAt", null] },
+            ...inRange("$date"),
+          ],
+        },
+      },
+    },
+    rowShape(
+      { $ifNull: ["$paymentId", "N/A"] },
+      { $literal: "Customer Payment Receive" },
+      { $literal: 0 },
+      { $ifNull: ["$paidAmount", 0] },
+      "$date",
+    ),
+  ];
+
+  // --- 4. Customer advance ------------------------------------------------
+  const advancePipeline = [
+    {
+      $match: {
+        $expr: {
+          $and: [
+            { $eq: ["$customer", custId] },
+            { $ne: ["$isActive", false] },
+            { $eq: ["$deletedAt", null] },
+            ...inRange("$date"),
+          ],
+        },
+      },
+    },
+    rowShape(
+      { $ifNull: ["$paymentId", "N/A"] },
+      { $literal: "Customer Advance" },
+      { $literal: 0 },
+      { $ifNull: ["$paidAmount", 0] },
+      "$date",
+    ),
+  ];
+
+  // --- 5. Sales returns ---------------------------------------------------
+  // SalesReturn stores no customer of its own; it reaches one only through the
+  // sale it reverses, so the customer filter has to run after that $lookup.
+  const returnPipeline = [
+    ...(rangeStart ? [{ $match: { $expr: { $and: inRange("$date") } } }] : []),
+    {
+      $lookup: {
+        from: "sales",
+        localField: "invoiceNumber",
+        foreignField: "_id",
+        as: "sale",
+        pipeline: [{ $project: { "customerType.customerId": 1 } }],
+      },
+    },
+    { $unwind: { path: "$sale", preserveNullAndEmptyArrays: false } },
+    { $match: { "sale.customerType.customerId": custId } },
+    rowShape(
+      { $ifNull: ["$returnId", "N/A"] },
+      { $literal: "Sales Return" },
+      { $ifNull: ["$totalReturnAmount", 0] },
+      { $literal: 0 },
+      "$date",
+    ),
+  ];
+
+  const ledgerStages = [
+    ...openingPipeline,
+    { $unionWith: { coll: "sales", pipeline: salesPipeline } },
+    { $unionWith: { coll: "customerpaymentreciveds", pipeline: paymentPipeline } },
+    {
+      $unionWith: {
+        coll: "customeradvancepaymentreciveds",
+        pipeline: advancePipeline,
+      },
+    },
+    { $unionWith: { coll: "salesreturns", pipeline: returnPipeline } },
+    { $sort: { sortKey: 1, date: 1, _id: 1 } },
+    {
+      // Running balance over every row in the statement, in sorted order.
+      $setWindowFields: {
+        sortBy: { sortKey: 1, date: 1, _id: 1 },
+        output: {
+          runningReceived: {
+            $sum: "$received",
+            window: { documents: ["unbounded", "current"] },
+          },
+          runningPayment: {
+            $sum: "$payment",
+            window: { documents: ["unbounded", "current"] },
+          },
+        },
+      },
+    },
+    {
+      $addFields: {
+        balance: { $subtract: ["$runningReceived", "$runningPayment"] },
+      },
+    },
+  ];
+
+  const pipeline = [
+    ...ledgerStages,
+    {
+      $facet: {
+        rows: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              date: 1,
+              referenceId: 1,
+              description: 1,
+              received: 1,
+              payment: 1,
+              balance: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalReceived: { $sum: "$received" },
+              totalPayment: { $sum: "$payment" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await Customer.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalReceived: 0,
+    totalPayment: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    customer: {
+      _id: customer._id,
+      serialId: customer.customSerialId || "",
+      name: customer.fullName || "-",
+      phone: customer.mobileNumber || "",
+    },
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      customerId,
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalReceived: totals.totalReceived,
+      totalPayment: totals.totalPayment,
+      // The sheet's TOTAL balance is the closing balance of the whole
+      // statement, not the sum of the per-row running balances.
+      closingBalance: totals.totalReceived - totals.totalPayment,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer ledger fetched successfully",
+    { ...payload, fromCache: false },
   );
 });

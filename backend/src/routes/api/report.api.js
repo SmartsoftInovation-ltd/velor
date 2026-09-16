@@ -134,6 +134,31 @@ _.route("/customer/customers").get(
   authorize("customer-sales-invoice-report", "view"),
   reportController.getCustomerReportCustomers,
 );
+_.route("/customer-payment").post(
+  authGuard,
+  authorize("customer-payment-report", "view"),
+  reportController.getCustomerPaymentReport,
+);
+_.route("/customer-payment/customers").get(
+  authGuard,
+  authorize("customer-payment-report", "view"),
+  reportController.getCustomerPaymentCustomers,
+);
+_.route("/customer-balance-summary").post(
+  authGuard,
+  authorize("customer-balance-summary-report", "view"),
+  reportController.getCustomerBalanceSummaryReport,
+);
+_.route("/customer-balance-summary/filters").get(
+  authGuard,
+  authorize("customer-balance-summary-report", "view"),
+  reportController.getCustomerBalanceSummaryFilters,
+);
+_.route("/customer-ledger").post(
+  authGuard,
+  authorize("customer-ledger-report", "view"),
+  reportController.getCustomerLedgerReport,
+);
 _.route("/employee-list").post(
   authGuard,
   authorize("employee", "view"),

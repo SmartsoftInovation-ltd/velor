@@ -130,6 +130,24 @@ const categories: ReportCategory[] = [
         description: "Product-wise totals with qty, sales price & amount",
         path: "/customer-sales-summary",
       },
+      {
+        name: "Customer Payment",
+        description:
+          "Due & advance payments with trx ref, category, paid, less & cashback",
+        path: "/customer-payment-report",
+      },
+      {
+        name: "Customer Balance Summary",
+        description:
+          "Opening balance + total sales - paid = balance, per customer",
+        path: "/customer-balance-summary",
+      },
+      {
+        name: "Customer Ledger",
+        description:
+          "Date-ordered statement with received, payment & running balance",
+        path: "/customer-ledger",
+      },
     ],
   },
   {

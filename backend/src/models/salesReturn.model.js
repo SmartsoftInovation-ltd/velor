@@ -1,10 +1,18 @@
 const mongoose = require("mongoose");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
+const Counter = require("./counter.model");
+const { env } = require("../config/env.config");
 
 const salesReturnSchema = new mongoose.Schema(
   {
-  
+    returnId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+
     invoiceNumber: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Sales",
@@ -90,6 +98,34 @@ salesReturnSchema.pre("save", async function (next) {
         );
       }
     }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Auto-generate a sequential, never-reused returnId after first save — e.g.
+// RET-INV-01. The counter is atomic, so concurrent returns can't collide the
+// way a count-the-rows-and-increment scheme can.
+salesReturnSchema.post("save", async function (doc, next) {
+  try {
+    if (doc.returnId) return next();
+
+    const session = doc.$session();
+
+    const counter = await Counter.findOneAndUpdate(
+      { key: "SALES_RETURN" },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true, session },
+    );
+
+    const padded = String(counter.seq).padStart(2, "0");
+    doc.returnId = `RET-${env.INVOICE_PREFIX}-${padded}`;
+    await doc.constructor.updateOne(
+      { _id: doc._id },
+      { $set: { returnId: doc.returnId } },
+      { session },
+    );
     next();
   } catch (error) {
     next(error);

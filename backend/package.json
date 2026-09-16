@@ -19,6 +19,7 @@
     "backfill:customer-payment-due": "node src/seeder/backfillCustomerPaymentDue.js",
     "backfill:customer-advance-payment-due": "node src/seeder/backfillCustomerAdvancePaymentDue.js",
     "backfill:sales-invoice": "node src/seeder/backfillSalesInvoiceNumber.js",
+    "backfill:sales-return-id": "node src/seeder/backfillSalesReturnId.js",
     "backfill:purchase-payment-status": "node src/seeder/backfillPurchasePaymentStatus.js",
     "backfill:product-embedding": "node src/scripts/backfill.js",
     "socket": "node src/socket/client.js",
