@@ -63,11 +63,22 @@ const supplierSchema = new mongoose.Schema(
       maxlength: [300, "Address cannot exceed 300 characters"],
     },
 
-    // Opening Dues (optional)
+    // The live running due. Purchases, payments and returns all move this, so
+    // it is never edited by hand — the edit form shows it read-only.
     openingDues: {
       type: Number,
       default: 0,
       min: [0, "Opening dues cannot be negative"],
+    },
+
+    // The due the supplier was carried in with, captured once at creation from
+    // openingDues and never touched by transactions. Editable afterwards so a
+    // wrong starting figure can be corrected; the correction's delta is
+    // applied to openingDues too.
+    initialDue: {
+      type: Number,
+      default: 0,
+      min: [0, "Initial due cannot be negative"],
     },
     totalPurchaseDue: {
       type: Number,

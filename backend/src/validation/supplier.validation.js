@@ -29,6 +29,10 @@ exports.createSupplierSchema = Joi.object({
     "number.min": "Opening dues cannot be negative",
   }),
 
+  // Seeded server-side from openingDues on create, so the create form neither
+  // shows nor sends it.
+  initialDue: Joi.forbidden(),
+
   isActive: Joi.boolean().optional(),
   deletedAt: Joi.date().allow(null).optional(),
 }).options({
@@ -50,7 +54,13 @@ exports.updateSupplierSchema = Joi.object({
 
   supplierAddress: Joi.string().trim().max(300).allow("").optional(),
 
-  openingDues: Joi.number().min(0).optional(),
+  // The live running due — not editable. Stripped rather than rejected so a
+  // form that still posts the disabled field keeps working.
+  openingDues: Joi.any().strip(),
+
+  initialDue: Joi.number().min(0).optional().messages({
+    "number.min": "Initial due cannot be negative",
+  }),
 
   isActive: Joi.boolean().optional(),
   deletedAt: Joi.date().allow(null).optional(),

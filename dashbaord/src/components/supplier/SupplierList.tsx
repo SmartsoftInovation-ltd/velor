@@ -20,6 +20,7 @@ export interface Supplier {
   mobile: string;
   supplierAddress: string;
   openingDues: number;
+  initialDue?: number;
   totalPurchaseDue: number;
   isActive: boolean;
 }

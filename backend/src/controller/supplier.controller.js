@@ -90,9 +90,13 @@ const reverseSupplierPayment = async (paymentId) => {
 // @desc create a new supplier
 exports.createSupplier = asynchandeler(async (req, res) => {
   const { mobile } = req.body;
+  // initialDue is seeded from openingDues rather than accepted from the client:
+  // at creation the two are the same figure, and the create form never shows
+  // initialDue. It only diverges later, once transactions move openingDues.
   const supplier = new SupplierModel({
     ...req.body,
     supplierId: mobile,
+    initialDue: Number(req.body.openingDues || 0),
   });
   await supplier.save();
   apiResponse.sendSuccess(
@@ -162,15 +166,45 @@ exports.getAllSupplier = asynchandeler(async (req, res) => {
 
 // update supplier module
 exports.updateSupplier = asynchandeler(async (req, res) => {
-  const supplier = await SupplierModel.findOneAndUpdate(
-    { supplierId: req.params.supplierId },
-    req.body,
-    {
-      new: true,
-    },
-  );
+  const supplier = await SupplierModel.findOne({
+    supplierId: req.params.supplierId,
+  });
   if (!supplier)
-    apiResponse.sendError(res, statusCodes.NOT_FOUND, "Supplier not found");
+    return apiResponse.sendError(
+      res,
+      statusCodes.NOT_FOUND,
+      "Supplier not found",
+    );
+
+  // openingDues is the live running due, maintained by purchases/payments/
+  // returns. The edit form disables it, and dropping it here means a crafted
+  // request cannot overwrite the balance either. initialDue stays editable.
+  delete req.body.openingDues;
+  delete req.body.supplierId;
+
+  // Correcting initialDue moves the live balance by the same amount: the
+  // starting figure was wrong, so every balance derived from it was wrong by
+  // that difference. Raising initialDue 5000 -> 6000 adds 1000 to openingDues;
+  // lowering it 5000 -> 3000 subtracts 2000. Only the delta is applied, never
+  // the new value itself, so the transactions since creation are preserved.
+  if (req.body.initialDue !== undefined) {
+    const previousInitialDue = Number(supplier.initialDue || 0);
+    const nextInitialDue = Number(req.body.initialDue || 0);
+    const delta = nextInitialDue - previousInitialDue;
+
+    if (delta !== 0) {
+      // Clamped at 0 because openingDues is schema-bound to min 0 — a
+      // correction larger than the outstanding balance would otherwise throw.
+      supplier.openingDues = Math.max(
+        0,
+        Number(supplier.openingDues || 0) + delta,
+      );
+    }
+  }
+
+  Object.assign(supplier, req.body);
+  await supplier.save();
+
   apiResponse.sendSuccess(
     res,
     statusCodes.OK,

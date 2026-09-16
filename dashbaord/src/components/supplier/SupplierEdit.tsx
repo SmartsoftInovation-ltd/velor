@@ -23,6 +23,7 @@ const SupplierEdit = () => {
     mobile: "",
     supplierAddress: "",
     openingDues: "",
+    initialDue: "",
   });
   const [errors, setErrors] = useState<{
     supplierName?: string;
@@ -52,6 +53,8 @@ const SupplierEdit = () => {
         supplierAddress: supplier.supplierAddress || "",
         openingDues:
           supplier.openingDues != null ? String(supplier.openingDues) : "",
+        initialDue:
+          supplier.initialDue != null ? String(supplier.initialDue) : "",
       });
     }
   }, [supplier]);
@@ -60,7 +63,8 @@ const SupplierEdit = () => {
     mutationFn: async (payload: typeof formData) =>
       axiosSecure.put(`/supplier/update-supplier/${supplierId}`, {
         ...payload,
-        openingDues: payload.openingDues ? Number(payload.openingDues) : 0,
+        openingDues: undefined,
+        initialDue: payload.initialDue ? Number(payload.initialDue) : 0,
       }),
     onSuccess: () => {
       toast.success("Supplier updated successfully!");
@@ -172,8 +176,8 @@ const SupplierEdit = () => {
               </div>
             </div>
 
-            {/* Row 2 — Contact Person + Designation */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Row 2 — Contact Person + Designation + the two due fields */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="contactPersonName">Contact Person Name</Label>
                 <Input
@@ -201,6 +205,47 @@ const SupplierEdit = () => {
                   }
                 />
               </div>
+
+              {/* Initial Due — the figure the supplier was carried in with.
+                  Editable, and its delta is applied to Total Dues. */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="initialDue">Initial Due</Label>
+                <div className="relative w-full">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm font-medium select-none">
+                    ৳
+                  </span>
+                  <Input
+                    id="initialDue"
+                    type="number"
+                    placeholder="0.00"
+                    value={formData.initialDue}
+                    onChange={(e) => handleChange("initialDue", e.target.value)}
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+
+              {/* Total Dues — the live running balance, moved by purchases,
+                  payments and returns. Read-only; the server drops any value
+                  submitted for it. */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="openingDues">Total Dues</Label>
+                <div className="relative w-full">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm font-medium select-none">
+                    ৳
+                  </span>
+                  <Input
+                    id="openingDues"
+                    type="number"
+                    value={formData.openingDues}
+                    disabled
+                    className="pl-7"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                  Updated automatically by purchases, payments and returns.
+                </p>
+              </div>
             </div>
 
             {/* Row 3 — Address */}
@@ -216,24 +261,6 @@ const SupplierEdit = () => {
                 }
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
               />
-            </div>
-
-            {/* Row 4 — Opening Dues */}
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="openingDues">Opening Dues</Label>
-              <div className="relative w-full md:w-64">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm font-medium select-none">
-                  ৳
-                </span>
-                <Input
-                  id="openingDues"
-                  type="number"
-                  placeholder="0.00"
-                  value={formData.openingDues}
-                  onChange={(e) => handleChange("openingDues", e.target.value)}
-                  className="pl-7"
-                />
-              </div>
             </div>
 
             <div className="flex justify-end pt-2">

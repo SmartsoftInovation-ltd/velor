@@ -45,6 +45,7 @@ exports.supplierDTO = (doc) => {
     mobile: doc.mobile || "",
     supplierAddress: doc.supplierAddress || "",
     openingDues: doc.openingDues ?? 0,
+    initialDue: doc.initialDue ?? 0,
     isActive: doc.isActive,
     deletedAt: doc.deletedAt,
   };
@@ -62,6 +63,7 @@ exports.supplierListDTO = (docs = []) => {
     mobile: doc.mobile || "",
     supplierAddress: doc.supplierAddress || "",
     openingDues: doc.openingDues ?? 0,
+    initialDue: doc.initialDue ?? 0,
     isActive: doc.isActive,
     deletedAt: doc.deletedAt,
   }));

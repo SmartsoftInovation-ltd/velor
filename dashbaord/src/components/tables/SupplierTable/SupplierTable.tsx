@@ -63,8 +63,8 @@ interface SupplierTableProps {
 }
 
 // Equal 1fr for all data columns; fixed only for # and Actions
-const gridTemplateColumns = "110px 1fr 1fr 1fr 1fr 1fr 1fr 160px";
-const COLUMNS = ["Serial ID", "Supplier Name", "Contact Person", "Designation", "Mobile", "Address", "Due Balance", "Actions"];
+const gridTemplateColumns = "110px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 160px";
+const COLUMNS = ["Serial ID", "Supplier Name", "Contact Person", "Designation", "Mobile", "Address", "Initial Due", "Due Balance", "Actions"];
 
 export default function SupplierTable({
   suppliers,
@@ -175,6 +175,11 @@ export default function SupplierTable({
               <MobileCardRow label="Contact Person">{item.contactPersonName || "N/A"}</MobileCardRow>
               <MobileCardRow label="Designation">{item.contactPersonDesignation || "N/A"}</MobileCardRow>
               <MobileCardRow label="Mobile">{item.mobile}</MobileCardRow>
+              <MobileCardRow label="Initial Due">
+                <span className="text-gray-500 dark:text-gray-400">
+                  ৳{(item.initialDue ?? 0).toLocaleString()}
+                </span>
+              </MobileCardRow>
               <MobileCardRow label="Due Balance">
                 <span className={(item.openingDues ?? 0) > 0 ? "text-red-500 font-semibold" : "text-gray-400 dark:text-gray-500"}>
                   ৳{(item.openingDues ?? 0).toLocaleString()}
@@ -291,6 +296,14 @@ export default function SupplierTable({
                         ? truncateWords(item.supplierAddress, 25)
                         : <span className="text-gray-300 dark:text-gray-600">—</span>
                       }
+                    </div>
+
+                    {/* Initial Due — the figure carried in at creation, not
+                        moved by transactions. */}
+                    <div className="px-3 text-sm text-center">
+                      <span className="text-gray-500 dark:text-gray-400">
+                        ৳{(item.initialDue ?? 0).toLocaleString()}
+                      </span>
                     </div>
 
                     {/* Due Balance — opening dues */}

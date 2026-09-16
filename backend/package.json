@@ -21,6 +21,7 @@
     "backfill:sales-invoice": "node src/seeder/backfillSalesInvoiceNumber.js",
     "backfill:sales-return-id": "node src/seeder/backfillSalesReturnId.js",
     "backfill:customer-initial-due": "node src/seeder/backfillCustomerInitialDue.js",
+    "backfill:supplier-initial-due": "node src/seeder/backfillSupplierInitialDue.js",
     "backfill:purchase-payment-status": "node src/seeder/backfillPurchasePaymentStatus.js",
     "backfill:product-embedding": "node src/scripts/backfill.js",
     "socket": "node src/socket/client.js",
