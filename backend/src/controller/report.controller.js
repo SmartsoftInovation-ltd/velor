@@ -6473,3 +6473,240 @@ exports.getCustomerLedgerReport = asynchandeler(async (req, res) => {
     { ...payload, fromCache: false },
   );
 });
+
+// @desc Customer due list — one row per customer with what they still owe.
+//
+//   CUSTOMER INFO    customSerialId + fullName + mobileNumber
+//   CUSTOMER TYPE    joined from CustomerType
+//   CREDIT LIMIT     the customer's dueLimit (the schema has no creditLimit)
+//   DUE INVOICES     count of that customer's sales with paymentStatus "due"
+//   TOTAL DUES       the customer's openingDues (the live running balance)
+//   LAST SALES DATE  max `date` across their sales — the sale's own date field,
+//                    not createdAt
+//   LAST PAY DATE    max `date` across their customer payment receives
+//
+// Customer is the driving collection, not Sales: TOTAL DUES and CREDIT LIMIT
+// live on the customer, so a customer carrying a due with no invoice in the
+// range must still appear. The date range therefore narrows the joined sales
+// and payments, never the customer's own due figure.
+exports.getCustomerDueListReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerId, customerName, customerType } =
+    req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  // The range is optional: with no dates the sheet shows all-time figures.
+  let rangeStart = null;
+  let rangeEnd = null;
+  if (startDate && endDate) {
+    rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+  }
+
+  const match = { isActive: { $ne: false }, deletedAt: null };
+
+  if (customerId && String(customerId).trim() !== "") {
+    if (!mongoose.Types.ObjectId.isValid(customerId)) {
+      throw new customError("Invalid customerId", statusCodes.BAD_REQUEST);
+    }
+    match._id = new mongoose.Types.ObjectId(customerId);
+  }
+
+  if (customerType && String(customerType).trim() !== "") {
+    if (!mongoose.Types.ObjectId.isValid(customerType)) {
+      throw new customError("Invalid customerType", statusCodes.BAD_REQUEST);
+    }
+    match.customerType = new mongoose.Types.ObjectId(customerType);
+  }
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    match.$or = [
+      { fullName: rx },
+      { mobileNumber: rx },
+      { customSerialId: rx },
+    ];
+  }
+
+  const salesVersion = await getNsVersion(SALES_NS);
+  const paymentVersion = await getNsVersion(CUSTOMER_PAYMENT_NS);
+  const cacheKey = await buildCacheKey(
+    CUSTOMER_NS,
+    `report:customer-due-list:s${salesVersion}:p${paymentVersion}:${
+      startDate || "any"
+    }:${endDate || "any"}:${customerId || "all"}:${
+      nameQuery.toLowerCase() || "all"
+    }:${customerType || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer due list fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const inRange = (field) =>
+    rangeStart
+      ? [{ $gte: [field, rangeStart] }, { $lte: [field, rangeEnd] }]
+      : [];
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customertypes",
+        localField: "customerType",
+        foreignField: "_id",
+        as: "typeInfo",
+        pipeline: [{ $project: { customerType: 1 } }],
+      },
+    },
+    { $unwind: { path: "$typeInfo", preserveNullAndEmptyArrays: true } },
+    {
+      // Both figures come from one pass over the customer's sales: the count of
+      // still-owing invoices, and the latest sale date. Only completed invoices
+      // count — a draft or pending one has not been billed yet.
+      $lookup: {
+        from: "sales",
+        let: { cid: "$_id" },
+        as: "salesAgg",
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$customerType.customerId", "$$cid"] },
+                  { $eq: ["$invoiceStatus", "complete"] },
+                  ...inRange("$date"),
+                ],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              dueInvoices: {
+                $sum: { $cond: [{ $eq: ["$paymentStatus", "due"] }, 1, 0] },
+              },
+              // The sale's own date field, not createdAt.
+              lastSalesDate: { $max: "$date" },
+            },
+          },
+        ],
+      },
+    },
+    { $unwind: { path: "$salesAgg", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "customerpaymentreciveds",
+        let: { cid: "$_id" },
+        as: "payAgg",
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$customer", "$$cid"] },
+                  { $ne: ["$isActive", false] },
+                  { $eq: ["$deletedAt", null] },
+                  ...inRange("$date"),
+                ],
+              },
+            },
+          },
+          { $group: { _id: null, lastPayDate: { $max: "$date" } } },
+        ],
+      },
+    },
+    { $unwind: { path: "$payAgg", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        creditLimit: { $ifNull: ["$dueLimit", 0] },
+        totalDues: { $ifNull: ["$openingDues", 0] },
+        dueInvoices: { $ifNull: ["$salesAgg.dueInvoices", 0] },
+        lastSalesDate: "$salesAgg.lastSalesDate",
+        lastPayDate: "$payAgg.lastPayDate",
+      },
+    },
+    {
+      $facet: {
+        rows: [
+          { $sort: { totalDues: -1, fullName: 1, _id: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              serialId: { $ifNull: ["$customSerialId", ""] },
+              customerName: { $ifNull: ["$fullName", "-"] },
+              customerPhone: { $ifNull: ["$mobileNumber", ""] },
+              customerType: { $ifNull: ["$typeInfo.customerType", "-"] },
+              creditLimit: 1,
+              dueInvoices: 1,
+              totalDues: 1,
+              lastSalesDate: 1,
+              lastPayDate: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalCreditLimit: { $sum: "$creditLimit" },
+              totalDueInvoices: { $sum: "$dueInvoices" },
+              totalDues: { $sum: "$totalDues" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await Customer.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalCreditLimit: 0,
+    totalDueInvoices: 0,
+    totalDues: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      customerType: customerType || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalCreditLimit: totals.totalCreditLimit,
+      totalDueInvoices: totals.totalDueInvoices,
+      totalDues: totals.totalDues,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer due list fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});

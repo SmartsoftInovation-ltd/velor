@@ -159,6 +159,11 @@ _.route("/customer-ledger").post(
   authorize("customer-ledger-report", "view"),
   reportController.getCustomerLedgerReport,
 );
+_.route("/customer-due-list").post(
+  authGuard,
+  authorize("customer-due-list-report", "view"),
+  reportController.getCustomerDueListReport,
+);
 _.route("/employee-list").post(
   authGuard,
   authorize("employee", "view"),

@@ -283,6 +283,9 @@ const CustomerBalanceSummaryReport = lazy(
 const CustomerLedgerReport = lazy(
   () => import("./components/reports/Customer/CustomerLedgerReport"),
 );
+const CustomerDueListReport = lazy(
+  () => import("./components/reports/Customer/CustomerDueListReport"),
+);
 const SupplierPaymentReport = lazy(
   () => import("./components/reports/Supplier/SupplierPaymentReport"),
 );
@@ -1142,6 +1145,14 @@ export default function App() {
                   element={
                     <ProtectedRoute module="customer-ledger-report" action="view">
                       <CustomerLedgerReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customer-due-list"
+                  element={
+                    <ProtectedRoute module="customer-due-list-report" action="view">
+                      <CustomerDueListReport />
                     </ProtectedRoute>
                   }
                 />

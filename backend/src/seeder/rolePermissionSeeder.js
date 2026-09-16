@@ -138,6 +138,10 @@ const ROLE_PERMISSIONS = {
     "Create User":                ["view", "add", "edit"],
     "Create Role":                ["view"],
     "Create Permission":          ["view"],
+    "Customer Payment Report":    ["view"],
+    "Customer Balance Summary Report":["view"],
+    "Customer Ledger Report":     ["view"],
+    "Customer Due List Report":   ["view"],
   },
 
   // manager — day-to-day operations: sales, orders, stock, customers, reports
@@ -184,6 +188,18 @@ const ROLE_PERMISSIONS = {
     "Transaction Report":         ["view"],
     "Transaction Summary":        ["view"],
     "Cash Ledger":                ["view"],
+    "Customer Payment Report":    ["view"],
+    "Customer Balance Summary Report":["view"],
+    "Customer Ledger Report":     ["view"],
+    "Customer Due List Report":   ["view"],
+  },
+
+  // salesman — customer-facing reports only
+  salesman: {
+    "Customer Payment Report":    ["view"],
+    "Customer Balance Summary Report":["view"],
+    "Customer Ledger Report":     ["view"],
+    "Customer Due List Report":   ["view"],
   },
 
   // user — basic view + sales only

@@ -148,6 +148,12 @@ const categories: ReportCategory[] = [
           "Date-ordered statement with received, payment & running balance",
         path: "/customer-ledger",
       },
+      {
+        name: "Customer Due List",
+        description:
+          "Outstanding dues with due invoice count, last sale & last payment",
+        path: "/customer-due-list",
+      },
     ],
   },
   {
