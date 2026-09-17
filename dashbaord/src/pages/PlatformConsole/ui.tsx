@@ -223,7 +223,7 @@ export const Modal = ({ title, description, icon, onClose, children, width = "ma
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-theme-xl sm:rounded-3xl dark:bg-gray-900 ${width}`}
+        className={`no-scrollbar relative max-h-[92vh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white shadow-theme-xl sm:rounded-3xl dark:bg-gray-900 ${width}`}
       >
         <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-gray-100 bg-white/95 px-6 py-5 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
           {icon && <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-lg text-accent-600 dark:bg-accent-500/15 dark:text-accent-400">{icon}</span>}

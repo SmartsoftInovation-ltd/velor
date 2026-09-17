@@ -276,7 +276,7 @@ const IntegrationForm = ({ schema, values, canEdit, onSave, onTest }: Props) => 
 
   return (
     <form onSubmit={save} className="flex h-full flex-col">
-      <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+      <div className="no-scrollbar flex-1 space-y-6 overflow-y-auto overscroll-contain px-6 py-6">
         {enabledField && (
           <div
             className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-4 transition ${
