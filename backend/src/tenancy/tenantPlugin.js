@@ -102,8 +102,9 @@ const scopePipeline = (pipeline, tenantId) => {
 };
 
 // Unique constraints are per tenant: { field } becomes { tenantId, field }.
-// sparse becomes a partial filter, because a compound index always contains
-// tenantId and would otherwise treat every missing value as a duplicate null.
+// sparse (and optional fields) become a partial filter, because a compound index
+// always contains tenantId and would otherwise treat every missing value as a
+// duplicate null.
 const scopeUniqueIndexes = (schema) => {
   const scopedOptions = (fields, { sparse, ...options }) =>
     sparse
@@ -117,7 +118,9 @@ const scopeUniqueIndexes = (schema) => {
     if (name === "tenantId" || !type._index?.unique) return;
     const { unique, sparse, ...rest } = type._index;
     type._index = null;
-    schema.index({ tenantId: 1, [name]: 1 }, { ...scopedOptions({ [name]: 1 }, { sparse, ...rest }), unique: true });
+    // An optional field is effectively sparse: documents without it must not collide
+    const partial = sparse || !type.isRequired;
+    schema.index({ tenantId: 1, [name]: 1 }, { ...scopedOptions({ [name]: 1 }, { sparse: partial, ...rest }), unique: true });
   });
 
   schema._indexes = schema._indexes.map(([fields, options]) =>

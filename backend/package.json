@@ -37,7 +37,9 @@
     "worker:embedding": "node src/workers/embedding.worker.js",
     "worker:all": "concurrently \"npm run worker:image\" \"npm run worker:sms\" \"npm run worker:email\" \"npm run worker:audit\" \"npm run worker:embedding\"",
     "seed:platform-admin": "node src/seeder/seedPlatformAdmin.js",
-    "tenant:create": "node src/scripts/createTenant.js"
+    "tenant:create": "node src/scripts/createTenant.js",
+    "migrate": "node src/migrations/cli.js",
+    "migrate:cutover": "node src/migrations/cli.js --cutover"
   },
   "_moduleAliases": {
     "@": "src"

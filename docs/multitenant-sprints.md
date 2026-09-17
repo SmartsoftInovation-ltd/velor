@@ -21,7 +21,7 @@
 | 3 | Platform identity & tenant API | §3.1, §8.2 (API only), §10 step 4 | **done** |
 | 4 | Tenant settings core (encryption, service, platform endpoints) | §5.2–5.6, §10 step 5 | **done** |
 | 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | **done** |
-| 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | todo |
+| 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | **done** |
 | 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | todo |
 | 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | todo |
 | 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | todo |
@@ -172,6 +172,17 @@
 | 6.6 | `cloudName` backfill on image fields |
 
 **Done when:** migration runs twice with the same result on a copy of production data; counts/totals match pre-migration snapshot.
+
+**Implementation notes (as built):**
+- `npm run migrate -- --tenant velor` runs, once per tenant (recorded in the `migrations` collection):
+  1. `001-import-env-settings` — `.env` values + `Merchant` documents → encrypted `TenantSettings` (sections the tenant already has are untouched). Pathao is imported **disabled** because legacy data has no merchant username/password; add them in the platform console and enable.
+  2. `002-backfill-tenant-id` — batched `$set tenantId` on every tenant-scoped collection (driver-level, idempotent).
+  3. `003-create-tenant-indexes` — builds all schema indexes (per-tenant uniques); conflicts with old global indexes are reported, not fatal.
+  4. `004-backfill-cloud-name` — sets `cloudName` = `CLOUD_NAME` on every stored image with a `publicId`.
+- Counter `seq` values are kept, so Velor's invoice numbers continue.
+- `npm run migrate:cutover` refuses while any document lacks `tenantId`, then drops every unique index that does not start with `tenantId` and builds the indexes that were blocked.
+- Plugin: optional unique fields (not `required`) now also get a partial filter, so e.g. users without a phone number no longer collide (fixes D9).
+- **Production run order:** backup → `npm run tenant:create -- --name Velor --slug velor --status active` → `npm run migrate -- --tenant velor` → verify → deploy Sprint 7+ code → `npm run migrate:cutover`.
 
 ## Sprint 7 — Tenant-aware auth
 

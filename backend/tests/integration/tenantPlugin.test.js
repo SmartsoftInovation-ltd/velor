@@ -53,9 +53,21 @@ describe("tenantPlugin unique indexes", () => {
     await expect(runForTenant(A, () => Code.create({ code: "X1" }))).rejects.toThrow(/duplicate key/);
   });
 
+  it("optional unique fields do not collide when missing; required ones stay strict", () => {
+    const optional = Code.schema.indexes().find(([fields]) => "code" in fields)[1];
+    expect(optional.partialFilterExpression).toEqual({ code: { $exists: true } });
+
+    const requiredSchema = new mongoose.Schema({ sku: { type: String, unique: true, required: true } });
+    requiredSchema.plugin(tenantPlugin);
+    const [, options] = requiredSchema.indexes().find(([fields]) => "sku" in fields);
+    expect(options.partialFilterExpression).toBeUndefined();
+  });
+
   it("keeps sparse semantics: documents without the field do not collide", async () => {
     await runForTenant(A, () => Code.create({ code: "S1" }));
     await expect(runForTenant(A, () => Code.create({ code: "S2" }))).resolves.toBeDefined();
+    await runForTenant(A, () => Code.create({ serial: "only-serial-1" }));
+    await expect(runForTenant(A, () => Code.create({ serial: "only-serial-2" }))).resolves.toBeDefined();
   });
 });
 
