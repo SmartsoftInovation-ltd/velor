@@ -171,12 +171,11 @@ const getCloudinaryConfig = async () => {
       cloud_name: process.env.CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
       api_secret: process.env.CLOUDINARY_API_SECRET,
-      folder: "",
     };
   }
   await requireConfigured(tenant.tenantId, "cloudinary", "CLOUDINARY_NOT_CONFIGURED", "Image storage (Cloudinary)");
-  const { cloudName, apiKey, apiSecret, folder } = tenant.values.cloudinary;
-  return { cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, folder: folder || "" };
+  const { cloudName, apiKey, apiSecret } = tenant.values.cloudinary;
+  return { cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret };
 };
 
 const getGroqConfig = async () => {

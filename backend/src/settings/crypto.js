@@ -60,6 +60,22 @@ const decryptSecret = (stored) => {
   ]).toString("utf8");
 };
 
+/**
+ * Decrypts when the key ring can, otherwise reports why instead of throwing.
+ * A value encrypted with a key that is no longer on the ring (rotated away, or a
+ * key lost before it was backed up) is unreadable, but that must not take down
+ * every request that merely reads settings — reading whether an integration is
+ * configured does not need the secret itself. Callers that need the plaintext
+ * check `ok` and fail on their own terms.
+ */
+const tryDecryptSecret = (stored) => {
+  try {
+    return { ok: true, value: decryptSecret(stored) };
+  } catch (error) {
+    return { ok: false, value: null, error };
+  }
+};
+
 const isEncryptedWithActiveKey = (stored) => stored?.keyVersion === process.env.SETTINGS_ACTIVE_KEY_VERSION;
 
 // The only view of a secret that may leave the server
@@ -68,4 +84,4 @@ const maskSecret = (stored) =>
     ? { isSet: true, last4: stored.last4 || "", updatedAt: stored.updatedAt || null }
     : { isSet: false, last4: "", updatedAt: null };
 
-module.exports = { encryptSecret, decryptSecret, isEncryptedWithActiveKey, maskSecret };
+module.exports = { encryptSecret, decryptSecret, tryDecryptSecret, isEncryptedWithActiveKey, maskSecret };

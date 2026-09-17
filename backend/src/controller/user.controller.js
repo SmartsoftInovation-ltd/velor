@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const { sendEmail } = require("../helpers/nodemailer");
 const { getGeneralConfig } = require("../integrations/config");
 const { getTenantId, runAsPlatform } = require("../tenancy/context");
-const { platformSmsAvailable, sendPlatformSms } = require("../service/platformSms.service");
+const { sendSMS } = require("../helpers/sms");
 const { getTenantById, assertTenantActive } = require("../tenancy/tenantResolver");
 const { getFeatures } = require("../settings/settings.service");
 const rbac = require("../tenancy/rbac");
@@ -326,7 +326,9 @@ exports.verifyEmail = asynchandeler(async (req, res) => {
   apiResponse.sendSuccess(res, statusCodes.OK, "Email verified successfully");
 });
 
-//forgot password: a one-time code by SMS (the platform SMS account)
+//forgot password: a one-time code by SMS, sent with the store's own SMS settings
+// (Store Settings → SMS). The platform SMS account is only for messages to a store
+// owner who has no store yet, such as the sign-in details for a new store.
 const RESET_CODE_TTL_MS = 10 * 60 * 1000;
 const RESET_CODE_MAX_ATTEMPTS = 5;
 const RESET_CODE_SENT_MESSAGE = "If that account has a phone number, a reset code has been sent by SMS";
@@ -348,8 +350,13 @@ const clearResetCode = (user) => {
 };
 
 exports.forgotPassword = asynchandeler(async (req, res) => {
-  if (!platformSmsAvailable()) {
-    throw new customError("Password reset by SMS is not available. Please contact support.", statusCodes.SERVICE_UNAVAILABLE, "SMS_NOT_CONFIGURED");
+  const tenantId = getTenantId();
+  if (!tenantId || !(await getFeatures(tenantId)).sms) {
+    throw new customError(
+      "This store has not set up SMS, so reset codes cannot be sent. Ask the store owner to configure it in Store Settings.",
+      statusCodes.SERVICE_UNAVAILABLE,
+      "SMS_NOT_CONFIGURED",
+    );
   }
 
   const user = await findByEmailOrPhone(req.body);
@@ -367,7 +374,7 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
   await user.save();
 
   const store = req.tenant?.name ? `${req.tenant.name} ` : "";
-  await sendPlatformSms(
+  await sendSMS(
     user.phone,
     `Your ${store}password reset code is ${code}. It expires in 10 minutes. Do not share this code with anyone.`,
   );

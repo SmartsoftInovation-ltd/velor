@@ -117,7 +117,6 @@ export const INTEGRATIONS: Record<string, IntegrationMeta> = {
       cloudName: { label: "Cloud name", placeholder: "your-cloud" },
       apiKey: { label: "API key (numeric)" },
       apiSecret: { label: "API secret" },
-      folder: { label: "Folder", placeholder: "velor", help: "Optional. Images are uploaded into this folder." },
     },
   },
   groq: {

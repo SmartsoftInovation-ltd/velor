@@ -7,8 +7,8 @@ const integrationConfig = require("../integrations/config");
 // cloudinary.config() with credentials: one process serves many tenants.
 
 const credentials = async () => {
-  const { cloud_name, api_key, api_secret, folder } = await integrationConfig.getCloudinaryConfig();
-  return { auth: { cloud_name, api_key, api_secret }, folder };
+  const { cloud_name, api_key, api_secret } = await integrationConfig.getCloudinaryConfig();
+  return { auth: { cloud_name, api_key, api_secret } };
 };
 
 /**
@@ -25,12 +25,11 @@ const credentials = async () => {
 const cloudinaryFileUpload = async (localFilePath, { deleteAfter = true } = {}) => {
   if (!localFilePath || !fs.existsSync(localFilePath)) return null;
 
-  const { auth, folder } = await credentials();
+  const { auth } = await credentials();
 
   try {
     const result = await cloudinary.uploader.upload(localFilePath, {
       ...auth,
-      ...(folder ? { folder } : {}),
       resource_type: "auto",
     });
 
@@ -89,12 +88,11 @@ const deleteCloudinaryFile = async (publicId, cloudName) => {
 const uploadBarcodeToCloudinary = async (barcodeBase64) => {
   if (!barcodeBase64) return null;
 
-  const { auth, folder } = await credentials();
+  const { auth } = await credentials();
 
   try {
     const result = await cloudinary.uploader.upload(barcodeBase64, {
       ...auth,
-      ...(folder ? { folder } : {}),
       resource_type: "image",
       format: "png",
       transformation: [

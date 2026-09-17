@@ -2,7 +2,7 @@ const joi = require("joi");
 const IORedis = require("ioredis");
 const TenantSettings = require("../models/platform/tenantSettings.model");
 const { SECTIONS } = require("./definitions");
-const { encryptSecret, decryptSecret, maskSecret } = require("./crypto");
+const { encryptSecret, tryDecryptSecret, maskSecret } = require("./crypto");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 
@@ -78,12 +78,26 @@ const sectionOr404 = (key) => {
 
 const isEmpty = (value) => value === undefined || value === null || value === "";
 
-// Effective section with defaults; secrets decrypted (or null when unset)
+// Effective section with defaults; secrets decrypted (or null when unset).
+// A secret the key ring can no longer read resolves to null and is logged: the
+// section then reads as unconfigured, which is the truth — the value cannot be
+// used — instead of failing every request that touches settings.
 const resolveSection = (definition, stored = {}) =>
   Object.fromEntries(
     Object.entries(definition.fields).map(([name, field]) => {
-      if (field.type === "secret") return [name, stored[name]?.ciphertext ? decryptSecret(stored[name]) : null];
-      return [name, isEmpty(stored[name]) && stored[name] !== "" ? field.default : stored[name]];
+      if (field.type !== "secret") {
+        return [name, isEmpty(stored[name]) && stored[name] !== "" ? field.default : stored[name]];
+      }
+      if (!stored[name]?.ciphertext) return [name, null];
+
+      const result = tryDecryptSecret(stored[name]);
+      if (!result.ok) {
+        console.error(
+          `[settings] "${definition.path}.${name}" cannot be decrypted with key "${stored[name].keyVersion}" ` +
+            `(${result.error.message}). Re-enter it to store it under the active key.`,
+        );
+      }
+      return [name, result.value];
     }),
   );
 
@@ -200,8 +214,10 @@ const updateSection = async (tenantId, sectionKey, patch, { allowedFields, updat
   for (const [name, value] of Object.entries(values)) {
     const field = definition.fields[name];
     if (field.type === "secret") {
-      const current = stored[name]?.ciphertext ? decryptSecret(stored[name]) : null;
-      if (value === current) continue;
+      // An unreadable stored value counts as "different": re-entering the secret
+      // is how an operator replaces one encrypted under a key they no longer have.
+      const current = stored[name]?.ciphertext ? tryDecryptSecret(stored[name]).value : null;
+      if (current !== null && value === current) continue;
       if (value === null) delete next[name];
       else next[name] = encryptSecret(value);
       changes.push(`${sectionKey}.${name}`);

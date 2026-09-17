@@ -91,7 +91,6 @@ const SECTIONS = {
       cloudName: { type: "string", pattern: /^[a-z0-9_-]+$/i, default: "", required: true },
       apiKey: { type: "string", pattern: /^\d+$/, default: "", required: true },
       apiSecret: { type: "secret", required: true },
-      folder: { type: "string", default: "" },
     },
   },
   groq: {
