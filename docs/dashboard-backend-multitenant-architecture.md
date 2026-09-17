@@ -9,9 +9,9 @@
 ## সংক্ষেপে (Quick summary)
 
 - একটাই database; প্রতিটা business document এ `tenantId` থাকবে। একটা Mongoose plugin নিজে থেকেই প্রতিটা query তে `tenantId` filter বসাবে — tenant না জানলে query চালাবেই না (fail-closed)।
-- **Platform owner (আপনি)** আলাদা account দিয়ে login করবেন, seller (tenant) তৈরি করবেন, তার owner account বানাবেন, আর API দিয়ে seller-এর SMS, invoice prefix, SSLCommerz, order hotline, courier key/secret, email — সব **per-seller settings** হিসেবে assign করবেন।
+- **Platform owner (আপনি)** আলাদা account দিয়ে login করবেন, seller (tenant) তৈরি করবেন, তার owner account বানাবেন, আর API দিয়ে seller-এর SMS, invoice prefix, SSLCommerz, order hotline, courier key/secret, email, **Cloudinary, Groq API key** — সব **per-seller settings** হিসেবে assign করবেন।
 - এই values আর `.env` এ থাকবে না। Database এ `TenantSettings` এ থাকবে, secret গুলো **encrypted** থাকবে, API কখনো secret ফেরত দেবে না (শুধু `••••1234`)।
-- `.env` এ থাকবে শুধু platform-level জিনিস (DB, Redis, JWT secret, encryption key, public URL)।
+- `.env` এ থাকবে শুধু platform-level জিনিস (DB, Redis, JWT secret, encryption key, public URL)। কোনো seller-এর third-party key `.env` এ থাকবে না।
 - Dashboard: একটাই build (`app.<domain>`)। Login এ workspace (store ID) লাগবে। Tenant owner তার staff add/remove করবে; staff শুধু নিজের tenant এর data দেখবে।
 - Platform console (`platform.<domain>`) আলাদা ছোট app — tenant তৈরি, settings assign, suspend।
 
@@ -43,7 +43,7 @@
 | Hosting | Everything on the VPS (API, workers, dashboard static build, platform console, later the storefront) |
 | Current scope | Backend + dashboard. Storefront later. |
 | Isolation model | Shared MongoDB database, `tenantId` on every business document, fail-closed Mongoose plugin |
-| Per-seller configuration | Stored per tenant in the database, assigned by the platform owner via API/console, secrets encrypted |
+| Per-seller configuration | Stored per tenant in the database, assigned by the platform owner via API/console, secrets encrypted. Includes **every** third-party account: SMS, email, SSLCommerz, couriers, **Cloudinary**, **Groq**. No platform-shared third-party accounts. |
 | Dashboard deployment | One build for all tenants at `app.<domain>` |
 | Platform owner identity | Separate `PlatformUser` collection and login — never a row in `User` |
 
@@ -115,6 +115,8 @@ backend/src/
     mailer.client.js           getMailer(tenantId)
     sslcommerz.client.js       getSslCommerz(tenantId)
     courier.factory.js         getCourier(tenantId, provider)
+    cloudinary.client.js       getCloudinary(tenantId)  (replaces the global cloudinary.config in helpers/cloudinary.js)
+    groq.client.js             getGroq(tenantId)        (replaces process.env.GROQ_API_KEY in utils/llm.js)
   controller/platform/
     tenant.controller.js
     tenantSettings.controller.js
@@ -219,7 +221,8 @@ POST /api/v1/auth/login  { workspace, email | phone, password }
   tenant: { _id, name, slug, logo, status },
   permissions: { "<module-slug>": ["view","add","edit","delete"], ... },   ← effective, computed on server
   features: { sms: true, email: true, sslcommerz: false,
-              couriers: { pathao: true, steadfast: false } }               ← which settings are configured
+              couriers: { pathao: true, steadfast: false },
+              cloudinary: true, ai: false }                               ← which settings are configured
 }
 ```
 
@@ -265,6 +268,8 @@ Each seller needs different SMS keys, invoice prefix, SSLCommerz store, order ho
 | `WEBHOOK_SECRET` + hardcoded fallback | `PathaoCourier.js:206-212` | `couriers.pathao.webhookSecret` | yes |
 | `STEADFAST_API_KEY` | `SteadFastCourier.js:126` | `couriers.steadfast.webhookToken` | yes |
 | `VITE_*_WEBHOOK_SECRET` (dashboard bundle!) | `dashbaord/src/components/courier/CourierForm.tsx:38-42` | removed from dashboard; backend-only | yes |
+| `CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | `helpers/cloudinary.js` (global `cloudinary.config` at load); callers: `workers/image.worker.js` and the banner, brand, category, customer, discountBanner, outletinformation, siteinformation, storeInformation, user controllers | `cloudinary.cloudName`, `cloudinary.apiKey`, `cloudinary.apiSecret` | `apiSecret` |
+| `GROQ_API_KEY` (+ hardcoded model `llama-3.3-70b-versatile`) | `utils/llm.js` → `chat.controller.js` | `ai.groq.apiKey`, `ai.groq.model` | `apiKey` |
 
 ### 5.2 What stays in `.env` (platform-level)
 
@@ -277,10 +282,9 @@ Each seller needs different SMS keys, invoice prefix, SSLCommerz store, order ho
 | `SETTINGS_ACTIVE_KEY_VERSION` | which key encrypts new writes |
 | `API_PUBLIC_URL` | `https://api.<domain>` — base for webhook/callback URLs |
 | `APP_URL`, `PLATFORM_URL` | CORS + email links for staff |
-| `CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | one platform Cloudinary account, folder per tenant |
-| `GROQ_API_KEY` | platform AI key (per-tenant rate limit) |
-| `PLATFORM_SMTP_*` (optional) | default sender for tenants without their own SMTP (password reset, staff invites) |
-| `PLATFORM_SMS_*` (optional) | default SMS account if you resell SMS |
+| `PLATFORM_SMTP_*` (optional) | Default sender for tenants without their own SMTP (password reset, staff invites) |
+
+`.env` holds **no seller's third-party credentials** (no Cloudinary, Groq, SMS, SSLCommerz, courier or SMTP keys belonging to a seller).
 
 ### 5.3 `TenantSettings` document (one per tenant)
 
@@ -310,6 +314,15 @@ Each seller needs different SMS keys, invoice prefix, SSLCommerz store, order ho
 | **couriers.steadfast** | `enabled`, `baseUrl`, `apiKey` | mixed | | |
 | | `secretKey`, `webhookToken` | secret | ✔ | |
 | **couriers.redx / paperfly / ecourier** | same pattern, when those integrations are built | | | |
+| **cloudinary** | `enabled` | boolean | | |
+| | `cloudName` | string | | `^[a-z0-9_-]+$`, required when enabled |
+| | `apiKey` | string | | numeric string, required when enabled |
+| | `apiSecret` | secret | ✔ | required when enabled |
+| | `folder` | string | | default `velor/{tenantSlug}`; optional |
+| **ai.groq** | `enabled` | boolean | | |
+| | `apiKey` | secret | ✔ | `^gsk_`, required when enabled |
+| | `model` | string | | default `llama-3.3-70b-versatile` |
+| | `temperature` | number | | 0–1, default 0.3 |
 | meta | `tenantId` (unique), `updatedBy` (PlatformUser), `version` (increments on every change), timestamps | | | |
 
 **Secret field storage shape:** `{ ciphertext, iv, authTag, keyVersion, last4, updatedAt }`, never plaintext.
@@ -340,7 +353,9 @@ Base: `https://api.<domain>/api/v1/platform` (platform JWT required)
 | `PATCH` | `/tenants/:tenantId/settings/email` | Email mode / SMTP |
 | `PATCH` | `/tenants/:tenantId/settings/payment/sslcommerz` | SSLCommerz |
 | `PATCH` | `/tenants/:tenantId/settings/couriers/:provider` | `pathao` · `steadfast` · … |
-| `POST` | `/tenants/:tenantId/settings/:section/test` | Live check: send a test SMS / verify SMTP / SSLCommerz session init in sandbox / Pathao token issue / Steadfast balance |
+| `PATCH` | `/tenants/:tenantId/settings/cloudinary` | Seller's own Cloudinary account |
+| `PATCH` | `/tenants/:tenantId/settings/ai/groq` | Seller's own Groq key/model |
+| `POST` | `/tenants/:tenantId/settings/:section/test` | Live check: send a test SMS / verify SMTP / SSLCommerz session init in sandbox / Pathao token issue / Steadfast balance / Cloudinary `api.ping` with the seller's credentials / Groq `GET /openai/v1/models` with the seller's key |
 | `GET` | `/tenants/:tenantId/settings/webhooks` | Shows the URLs to paste into Pathao/Steadfast/SSLCommerz panels |
 
 `PATCH` is the "post kore assign kora" step. It creates the section if missing and updates only the fields sent.
@@ -410,6 +425,20 @@ Request `PATCH /platform/tenants/66f0…a1/settings/couriers/pathao`
 }
 ```
 
+**Example: Cloudinary**
+
+Request `PATCH /platform/tenants/66f0…a1/settings/cloudinary`
+```json
+{ "enabled": true, "cloudName": "pizzashop-cdn", "apiKey": "123456789012345", "apiSecret": "xxxx", "folder": "pizzashop" }
+```
+
+**Example: Groq**
+
+Request `PATCH /platform/tenants/66f0…a1/settings/ai/groq`
+```json
+{ "enabled": true, "apiKey": "gsk_xxxx", "model": "llama-3.3-70b-versatile" }
+```
+
 **Tenant-side (dashboard) settings endpoints**
 
 | Method | Path | Who | Purpose |
@@ -441,6 +470,8 @@ Integration clients:
 | `getMailer()` | `mode=smtp` → nodemailer transport cached per `tenantId+version`; `mode=platform` → platform transport with tenant `fromName`/`replyTo`; `disabled` → 422 |
 | `getSslCommerz()` | `new SSLCommerzPayment(storeId, storePassword, isLive)` per call; callback URLs = `${API_PUBLIC_URL}/api/v1/hooks/sslcommerz/${tenant.webhookKey}/{success,fail,cancel,ipn}` |
 | `getCourier(provider)` | `PathaoCourier`/`SteadFastCourier` constructed from settings instead of a `Merchant` doc; token cache in Redis per tenant |
+| `getCloudinary()` | Returns upload/url/delete helpers bound to the tenant's `cloudName`/`apiKey`/`apiSecret`, passed **per call** in the SDK options. Never call global `cloudinary.config()`: one API or worker process serves many tenants at once, so global config would upload seller A's image to seller B's account. Not configured → 422 `CLOUDINARY_NOT_CONFIGURED`. |
+| `getGroq()` | Uses `ai.groq.apiKey` + `model`; not configured → 422 `AI_NOT_CONFIGURED` (chat widget hidden). Embeddings stay local (`@xenova/transformers`), no key needed. |
 | Serial generators | Read `getSettings().general.invoicePrefix` instead of `env.INVOICE_PREFIX` (15 call sites, listed in §5.1) |
 
 Model hooks run inside the request's tenant context, so they can call `getSettings()`. Replace the synchronous `env.INVOICE_PREFIX` read with an awaited settings read in those `post('save')` hooks.
@@ -451,6 +482,14 @@ Model hooks run inside the request's tenant context, so they can call `getSettin
 - Counters are per tenant (`{tenantId, key}`), so each seller starts at 1 and never collides with another seller.
 - Uniqueness is `{tenantId, invoiceNumber}`, so a prefix change cannot create duplicates.
 - Recommended: warn in the console when the tenant already has invoices. Optionally lock the prefix after the first invoice (see Open Questions).
+
+### 5.7.1 Cloudinary account rules
+
+- The image queue runs in a separate worker process. Each job carries `tenantId` (§6), and the worker calls `getCloudinary()` inside `runForTenant`, so every upload goes to that seller's account.
+- Every stored image gets `cloudName` next to `url`/`publicId` (existing `imageSchema` in User, Product, Variant, Brand, Category, Banner, SiteInformation, StoreInformation, Employee, Customer…). Deleting or replacing an image uses the account it was uploaded to, not whatever account is configured now.
+- **If a seller changes Cloudinary account:** new uploads go to the new account. Old image URLs keep working as long as the old account exists. Deleting an old asset whose `cloudName` no longer matches the current settings is logged and skipped, not an error. Moving old assets is an optional platform script (re-upload + update `url`/`publicId`/`cloudName`).
+- Cloudinary is a **required onboarding step**: image upload screens are feature-gated until it's configured, because products, brands, categories and banners all upload images.
+- Existing Velor images: the import script (§11) writes the current env account into Velor's settings and backfills `cloudName` on existing image fields.
 
 ### 5.8 Webhooks and callbacks per tenant
 
@@ -466,7 +505,8 @@ Model hooks run inside the request's tenant context, so they can call `getSettin
 
 - `features` in `getme` (§3.4) tells the dashboard which integrations are ready.
 - Sidebar items for SMS / courier delivery / online payment show a "Not configured — contact support" state instead of failing on submit.
-- Backend returns `422 { code: "SMS_NOT_CONFIGURED" | "SSLCOMMERZ_NOT_CONFIGURED" | "COURIER_NOT_CONFIGURED" | "EMAIL_NOT_CONFIGURED" }` so the UI can show the right message.
+- Backend returns `422 { code: "SMS_NOT_CONFIGURED" | "SSLCOMMERZ_NOT_CONFIGURED" | "COURIER_NOT_CONFIGURED" | "EMAIL_NOT_CONFIGURED" | "CLOUDINARY_NOT_CONFIGURED" | "AI_NOT_CONFIGURED" }` so the UI can show the right message.
+- Image upload is checked **before** the request is accepted (in the controller, not only in the worker). Otherwise the product would be saved and the image job would fail silently in the background.
 
 ---
 
@@ -479,7 +519,8 @@ Model hooks run inside the request's tenant context, so they can call `getSettin
 | BullMQ | Queue wrapper adds `tenantId` to every job from context; each worker wraps its processor in `runForTenant(job.data.tenantId)`; jobs without `tenantId` fail | `queues/*`, `workers/*` |
 | Audit worker | Replace `auditLogModel.collection.insertOne` with model insert (or stamp `tenantId` explicitly) | `workers/audit.worker.js` |
 | Socket.io | Handshake auth with the access token; join `tenant:{tid}` and `tenant:{tid}:user:{uid}`; replace `io.emit("orderPlaced")` and `io.emit("sms:bulk:done")` with room emits | `socket/socket.js`, `order.controller.js`, `workers/sms.worker.js` |
-| Cloudinary | Upload folder `tenants/{tenantId}/{entity}` | `helpers/cloudinary.js`, `workers/image.worker.js` |
+| Cloudinary | Per-tenant account via `getCloudinary()` (§5.6, §5.7.1); remove global `cloudinary.config`; add `cloudName` to `imageSchema` | `helpers/cloudinary.js`, `workers/image.worker.js`, image-uploading controllers |
+| Groq chat | Per-tenant key via `getGroq()`; per-tenant rate limit on `/chat` | `utils/llm.js`, `chat.controller.js` |
 | Auth rate limiter | Key includes workspace slug | `middleware/rateLimit.middleware.js` |
 | Vector search | `vector_index` gets `tenantId` filter field; `retrieve()` passes `filter: { tenantId }` | `utils/retrieve.js` |
 | Singletons | `SiteInformation.findOne()` / `StoreInformation.findOne()` become per-tenant automatically via the plugin | controllers listed in the main plan §3.1 D4 |
@@ -558,6 +599,7 @@ dashbaord/src/
 | Users → Add/Edit/List | all users in DB | Tenant staff only (automatic); show staff limit "4 / 10"; owner row locked; "Force logout" action |
 | Courier form | Reads `VITE_*_WEBHOOK_SECRET`, tenant enters merchant creds | **Delete secret env usage.** Show integration status + webhook URL from `/settings/webhooks`; credentials are managed by platform (or owner if policy allows later) |
 | SMS pages | Uses global key; balance from global key | Feature-gated; balance from tenant SMS key via backend |
+| Image uploads (product, variant, brand, category, banner, discount banner, site/store/outlet info, user, employee, customer) | Always enabled | Feature-gated on `features.cloudinary`: upload inputs disabled with a "Cloudinary not configured" note |
 | Settings → Site/Store/Outlet information | singleton | Same pages; automatically per tenant |
 | New: Store Settings | — | General (hotline, Facebook editable by owner; invoice prefix read-only), Integrations status (✔/✘, `last4`), Webhook URLs |
 | New: Store suspended page | — | Shown on `TENANT_SUSPENDED` |
@@ -622,7 +664,7 @@ Then assign settings with the `PATCH …/settings/*` calls from §5.5, and verif
 |---|---|
 | Login | Platform email + password (+ TOTP recommended) |
 | Tenants list | Name, slug, status, plan, staff count, created, integrations ✔/✘ |
-| Create tenant wizard | 1 Store info → 2 Owner → 3 General settings → 4 SMS → 5 Email → 6 SSLCommerz → 7 Couriers → 8 Review & create (each integration step skippable) |
+| Create tenant wizard | 1 Store info → 2 Owner → 3 General settings → 4 **Cloudinary (required)** → 5 SMS → 6 Email → 7 SSLCommerz → 8 Couriers → 9 Groq AI → 10 Review & create (steps 5–9 skippable) |
 | Tenant detail → Overview | Status, plan/limits, owner, suspend/activate |
 | Tenant detail → Settings | One card per section: masked values, Edit (write-only secret inputs with "leave blank to keep"), **Test** button, last updated by/at |
 | Tenant detail → Webhooks | URLs to paste into Pathao/Steadfast/SSLCommerz |
@@ -660,7 +702,7 @@ Each step is one PR / one conversation. "Done when" is the acceptance check.
 | **3** | `tenancy/` context + plugin in **shadow mode** (logs, does not throw) + `Tenant` model + Velor tenant created + `tenantId` optional on all models | App behaves exactly as before; logs show unscoped paths |
 | **4** | `PlatformUser`, platform auth, `POST/GET/PATCH /platform/tenants` | You can create a tenant via Postman |
 | **5** | `TenantSettings` + crypto + settings service + platform settings endpoints + `test` endpoints + **env→settings import for Velor** | Velor's SMS/SSLCommerz/courier/email work from DB settings with env values removed |
-| **6** | Replace all env reads with settings (serial generators, SMS, mailer, SSLCommerz, couriers, order hotline, email links); per-tenant webhook routes; `Merchant` → settings | grep finds no `INVOICE_PREFIX`, `BULK_SMS_*`, `SSLC_*`, `HOST_MAIL`, `ORDER_HOT_LINE_NUMBER`, `WEBHOOK_SECRET` in `src/` |
+| **6** | Replace all env reads with settings (serial generators, SMS, mailer, SSLCommerz, couriers, order hotline, email links, Cloudinary, Groq); per-tenant webhook routes; `Merchant` → settings; `cloudName` on images | grep finds no `INVOICE_PREFIX`, `BULK_SMS_*`, `SSLC_*`, `HOST_MAIL`, `ORDER_HOT_LINE_NUMBER`, `WEBHOOK_SECRET`, `CLOUD_NAME`, `CLOUDINARY_*`, `GROQ_API_KEY`, `cloudinary.config(` in `src/` |
 | **7** | Backfill `tenantId` for Velor data; compound unique indexes; counters per tenant | Every document has `tenantId`; new indexes built; old ones still present |
 | **8** | Auth: workspace login, new token claims, `authGuard` by `sub`+`tid`, `tokenVersion`, legacy-token grace, `getme` new shape | Dashboard login with workspace works; old sessions refresh cleanly |
 | **9** | RBAC: owner role, tenant roles, escalation guard, staff limit, permission CRUD → platform-only | Tests: employee cannot grant more than they have |
@@ -677,7 +719,7 @@ Each step is one PR / one conversation. "Done when" is the acceptance check.
 
 1. **Backup** (snapshot/mongodump) + record collection counts and key totals.
 2. Create `Tenant { slug: "velor" }` and map the existing superadmin user as owner (rename role slug `superadmin` → `owner` in step 9).
-3. **Import env → settings once:** a script reads the current production `.env` values (`INVOICE_PREFIX`, `ORDER_HOT_LINE_NUMBER`, `FACEBOOK_URL`, `BULK_SMS_*`, `SSLC_*`, `HOST_MAIL`/`HOST_APP_PASSWORD`, `WEBHOOK_SECRET`, `STEADFAST_API_KEY`) plus existing `Merchant` documents, and writes Velor's encrypted `TenantSettings`. Then delete those vars from `.env`.
+3. **Import env → settings once:** a script reads the current production `.env` values (`INVOICE_PREFIX`, `ORDER_HOT_LINE_NUMBER`, `FACEBOOK_URL`, `BULK_SMS_*`, `SSLC_*`, `HOST_MAIL`/`HOST_APP_PASSWORD`, `WEBHOOK_SECRET`, `STEADFAST_API_KEY`, `CLOUD_NAME`/`CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`, `GROQ_API_KEY`) plus existing `Merchant` documents, and writes Velor's encrypted `TenantSettings`. It also backfills `cloudName` on every existing image field. Then delete those vars from `.env`.
 4. Backfill `tenantId = velor` in batches on every collection (idempotent, re-runnable).
 5. Counters: existing `seq` values kept → Velor's next invoice number continues exactly where it stopped; prefix is unchanged because it was imported in (3).
 6. Build compound indexes → switch code → drop old global unique indexes last.
@@ -710,6 +752,10 @@ Each step is one PR / one conversation. "Done when" is the acceptance check.
 - [ ] SSLCommerz IPN for A validated with A's credentials only
 - [ ] Pathao webhook with B's `webhookKey` and A's secret → rejected
 - [ ] Audit log shows changed field names, no values
+- [ ] Two tenants uploading images at the same moment → each file lands in its own Cloudinary account (concurrency test against the image worker)
+- [ ] Tenant without Cloudinary → upload endpoints return 422 before saving anything
+- [ ] Changing a tenant's Cloudinary account: old images still display; new uploads go to the new account
+- [ ] Chat for A uses A's Groq key; tenant without Groq → 422 `AI_NOT_CONFIGURED`
 
 **RBAC**
 - [ ] Employee with `create-user:add` cannot assign a role holding permissions they lack
@@ -733,3 +779,4 @@ Each step is one PR / one conversation. "Done when" is the acceptance check.
 | 8 | Is production MongoDB Atlas? (`$vectorSearch` needs it) | Confirm before step 10 |
 | 9 | Multiple outlets per tenant (`OutletInformation`, `StoreInformation` lists)? | Out of scope; keep tenant as the only scoping dimension for now |
 | 10 | Platform console: separate repo folder `platform-console/` in this monorepo? | Yes |
+| 11 | Provide a platform Cloudinary/Groq fallback for sellers who have no account yet? | No, following your requirement; Cloudinary is a required onboarding step, Groq is optional |

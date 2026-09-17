@@ -1,81 +1,81 @@
 const Permission = require("../models/permisson.model");
-const { customError } = require("../lib/CustomError");
 const Role = require("../models/role.model");
 const User = require("../models/user.model");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 dotenv.config();
 
-async function seedSuperAdmin() {
-  try {
-    // delete existing superadmin users
-    await User.deleteMany({ email: "superadmin@gmail.com" });
-    console.log("Cleared existing superadmin users.");
-    // Check existing permissions
-    const allPermissions = await Permission.find({});
-    if (allPermissions?.length === 0) {
-      console.log(" first seed roles and permissions");
-      return;
-    }
-    const roles = await Role.find({ slug: "superadmin" });
-    if (roles.length === 0) {
-      throw new customError(
-        "Superadmin role not found. Please seed roles first.",
-        500,
-      );
-    }
-    // now crate super admin user
-    const superAdminUser = await User.findOne({ email: "superadmin" });
-    if (superAdminUser) {
-      apiResponse.sendSuccess(res, 200, "Superadmin user already exists");
-    }
-    const superAdmin = new User({
-      email: "superadmin@gmail.com",
-      name: "superadmin",
-      password: "Sadmin@123",
-      image: null,
-      roles: roles.map((role) => role._id),
-      permissions: allPermissions.map((permission) => ({
-        permission: permission._id,
-        actions: ["view", "add", "edit", "delete"],
-      })),
-      isActive: true,
-    });
-    if (!superAdmin) {
-      throw new customError("Superadmin user creation failed.", 500);
-    }
+const MIN_PASSWORD_LENGTH = 12;
 
-    await superAdmin.save();
-    // now superadmin id added  to createdBy
-    superAdmin.createdBy = superAdmin._id;
-    await superAdmin.save();
-    console.log("Superadmin user created successfully.");
-  } catch (error) {
-    throw new customError("Error seeding superadmin: " + error.message, 500);
+/**
+ * Creates the superadmin account. Credentials are never hardcoded:
+ * the CLI reads SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD from the environment.
+ * Idempotent — an existing account is left untouched.
+ */
+async function seedSuperAdmin({ email, password, name = "superadmin" } = {}) {
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error("SUPERADMIN_EMAIL is required");
   }
+  if (!password) {
+    throw new Error("SUPERADMIN_PASSWORD is required");
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `SUPERADMIN_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters`,
+    );
+  }
+
+  const allPermissions = await Permission.find({});
+  if (allPermissions.length === 0) {
+    throw new Error("No permissions found. Seed permissions first.");
+  }
+
+  const roles = await Role.find({ slug: "superadmin" });
+  if (roles.length === 0) {
+    throw new Error("Superadmin role not found. Seed roles first.");
+  }
+
+  const existing = await User.findOne({ email: normalizedEmail });
+  if (existing) {
+    console.log("Superadmin user already exists, skipping.");
+    return { created: false, user: existing };
+  }
+
+  const superAdmin = new User({
+    email: normalizedEmail,
+    name,
+    password,
+    image: null,
+    roles: roles.map((role) => role._id),
+    permissions: allPermissions.map((permission) => ({
+      permission: permission._id,
+      actions: ["view", "add", "edit", "delete"],
+    })),
+    isActive: true,
+  });
+  superAdmin.createdBy = superAdmin._id;
+  await superAdmin.save();
+
+  console.log("Superadmin user created successfully.");
+  return { created: true, user: superAdmin };
 }
 
-mongoose
-  .connect(process.env.DATABASE_URL)
-  .then(() => {
-    console.log("Connected to MongoDB");
-    return seedSuperAdmin();
-  })
-  .then(() => {
-    console.log("Superadmin seeding completed successfully.");
-    return mongoose.disconnect();
-  })
-  .catch((err) => {
-    console.error("Error connecting to MongoDB or seeding superadmin:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  mongoose
+    .connect(process.env.DATABASE_URL)
+    .then(() =>
+      seedSuperAdmin({
+        email: process.env.SUPERADMIN_EMAIL,
+        password: process.env.SUPERADMIN_PASSWORD,
+      }),
+    )
+    .then(() => mongoose.disconnect())
+    .catch(async (err) => {
+      console.error("Error seeding superadmin:", err.message);
+      await mongoose.disconnect();
+      process.exit(1);
+    });
+}
 
-// ┌─────────────┬─────────────────────┬────────────────┐
-// │    Role     │        Email        │    Password    │
-// ├─────────────┼─────────────────────┼────────────────┤
-// │ Super Admin │ superadmin@baig.com │ SuperAdmin@123 │
-// ├─────────────┼─────────────────────┼────────────────┤
-// │ Admin       │ admin@baig.com      │ Admin@1234     │
-// ├─────────────┼─────────────────────┼────────────────┤
-// │ Manager     │ manager@baig.com    │ Manager@123    │
-// └─────────────┴─────────────────────┴────────────────┘
+module.exports = { seedSuperAdmin };

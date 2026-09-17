@@ -3,7 +3,10 @@ const { customError } = require("../lib/CustomError");
 const { dbConfig } = require("../constant/constant");
 const dbConnect = async () => {
   try {
-    const conn = await mongoose.connect(`${process.env.DATABASE_URL}`);
+    // Production indexes are built by migration scripts, never implicitly on boot
+    const conn = await mongoose.connect(`${process.env.DATABASE_URL}`, {
+      autoIndex: process.env.NODE_ENV !== "production",
+    });
     console.log(conn.connection.host, " 🚀🚀🚀 database connected 🚀🚀");
   } catch (error) {
     console.error("Database connection error:", error.message);

@@ -28,23 +28,16 @@ const CourierForm = () => {
     webhookIntegrationeURL: "",
   });
 
-  // Set webhook secret and integration URL when courier changes
+  // Set integration URL when courier changes. The webhook secret is typed in
+  // by the admin — secrets must never be baked into the dashboard bundle.
   useEffect(() => {
     if (!selectedCourier) return;
 
     const courierSlug = selectedCourier.toLowerCase();
 
-    const envSecrets: Record<string, string> = {
-      pathao: import.meta.env.VITE_PATHAO_WEBHOOK_SECRET || "",
-      steadfast: import.meta.env.VITE_STEADFAST_WEBHOOK_SECRET || "",
-      redx: import.meta.env.VITE_REDX_WEBHOOK_SECRET || "",
-      paperfly: import.meta.env.VITE_PAPERFLY_WEBHOOK_SECRET || "",
-      ecourier: import.meta.env.VITE_ECOURIER_WEBHOOK_SECRET || "",
-    };
-
     setFormData((prev) => ({
       ...prev,
-      webhookSecret: envSecrets[courierSlug] || "",
+      webhookSecret: "",
       webhookIntegrationeURL: `${
         import.meta.env.VITE_API_URL
       }/courier/${courierSlug}-webhook`,
@@ -92,13 +85,14 @@ const CourierForm = () => {
   };
 
   const fields: Record<
-    keyof Omit<CourierFormData, "webhookIntegrationeURL" | "webhookSecret">,
+    keyof Omit<CourierFormData, "webhookIntegrationeURL">,
     { label: string; type: string }
   > = {
     merchantID: { label: "Merchant ID", type: "text" },
     merchantSecret: { label: "Merchant Secret", type: "text" },
     store_id: { label: "Store ID", type: "text" },
     baseURL: { label: "Base URL", type: "text" },
+    webhookSecret: { label: "Webhook Secret", type: "password" },
   };
 
   return (
@@ -139,17 +133,6 @@ const CourierForm = () => {
                 />
               </div>
             ))}
-
-            {/* Webhook Secret (Readonly) */}
-            <div>
-              <Label>Webhook Secret</Label>
-              <input
-                type="text"
-                value={formData.webhookSecret}
-                readOnly
-                className="w-full border px-3 py-2 rounded-md bg-gray-100 text-gray-600"
-              />
-            </div>
 
             {/* Webhook Integration URL (Readonly) */}
             <div>

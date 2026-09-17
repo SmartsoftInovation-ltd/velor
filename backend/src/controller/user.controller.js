@@ -3,7 +3,7 @@ const Role = require("../models/role.model");
 const Permission = require("../models/permisson.model");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const { sendEmail } = require("../helpers/nodemailer");
 const { apiResponse } = require("../utils/apiResponse");
 const { customError } = require("../lib/CustomError");
 const { validateUser } = require("../validation/user.validation");
@@ -251,21 +251,13 @@ exports.sendEmailVerification = asynchandeler(async (req, res) => {
   user.emailVerificationExpires = Date.now() + 1000 * 60 * 60; // 1 hour
   await user.save();
 
-  // Send email (replace with your mail config)
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    // secure: true,
-    auth: {
-      user: process.env.HOST_MAIL,
-      pass: process.env.HOST_APP_PASSWORD,
-    },
-  });
   const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
-  await transporter.sendMail({
-    to: user.email,
-    subject: "Verify your email",
-    html: `<a href="${verifyUrl}">Click to verify your email</a>`,
-  });
+  await sendEmail(
+    user.email,
+    "Verify your email",
+    `<a href="${verifyUrl}">Click to verify your email</a>`,
+    { throwOnError: true },
+  );
 
   apiResponse.sendSuccess(
     res,
@@ -325,20 +317,13 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
   await user.save();
 
   // Send reset email
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    // secure: true,
-    auth: {
-      user: process.env.HOST_MAIL,
-      pass: process.env.HOST_APP_PASSWORD,
-    },
-  });
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
-  await transporter.sendMail({
-    to: user.email,
-    subject: "Reset your password",
-    html: `<a href="${resetUrl}">Click to reset your password</a>`,
-  });
+  await sendEmail(
+    user.email,
+    "Reset your password",
+    `<a href="${resetUrl}">Click to reset your password</a>`,
+    { throwOnError: true },
+  );
 
   apiResponse.sendSuccess(
     res,
