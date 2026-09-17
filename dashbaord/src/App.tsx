@@ -9,6 +9,7 @@ import PageErrorBoundary from "./components/common/PageErrorBoundary";
 
 // Auth Pages dynamic imports
 const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
+const ResetPassword = lazy(() => import("./pages/AuthPages/ResetPassword"));
 const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
 
 // Other Pages
@@ -1494,6 +1495,7 @@ export default function App() {
 
               {/* Auth Layout */}
               <Route path="/signin" element={<SignIn />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
               <Route path="/store-suspended" element={<StoreSuspended />} />

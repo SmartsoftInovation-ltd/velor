@@ -17,13 +17,27 @@ export interface OwnerInput {
   name: string;
   email: string;
   phone: string;
-  password?: string;
+  password: string;
+}
+
+export interface OwnerSummary {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+// Whether the owner's sign-in details went out by SMS (the only channel)
+export interface CredentialsNotice {
+  channel: "sms" | null;
+  sent: boolean;
 }
 
 export interface ProvisionResult {
   tenant: Tenant;
-  owner: { _id: string; name: string; email: string; phone: string; temporaryPassword?: string };
+  owner: OwnerSummary;
   loginUrl: string;
+  notification: CredentialsNotice;
 }
 
 export interface Webhooks {
@@ -52,6 +66,8 @@ export const tenantsApi = {
     data<Tenant>(api.patch(`/tenants/${id}`, body)),
   suspend: (id: string, reason: string) => data<Tenant>(api.post(`/tenants/${id}/suspend`, { reason })),
   activate: (id: string) => data<Tenant>(api.post(`/tenants/${id}/activate`, {})),
+  setOwnerPassword: (id: string, body: { password: string; notify: boolean }) =>
+    data<{ owner: OwnerSummary; notification: CredentialsNotice }>(api.post(`/tenants/${id}/owner/password`, body)),
   audit: (id: string, page = 1) => data<Page<AuditEntry>>(api.get(`/tenants/${id}/audit`, { params: { page, limit: 20 } })),
 };
 

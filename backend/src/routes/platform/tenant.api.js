@@ -8,6 +8,7 @@ const {
   createTenantSchema,
   updateTenantSchema,
   statusChangeSchema,
+  ownerPasswordSchema,
   listTenantsQuerySchema,
 } = require("../../validation/platform/tenant.validation");
 
@@ -22,6 +23,7 @@ _.get("/:tenantId", controller.getTenant);
 _.patch("/:tenantId", superadmin, validateBody(updateTenantSchema), controller.updateTenant);
 _.post("/:tenantId/suspend", superadmin, validateBody(statusChangeSchema), controller.suspendTenant);
 _.post("/:tenantId/activate", superadmin, validateBody(statusChangeSchema), controller.activateTenant);
+_.post("/:tenantId/owner/password", superadmin, validateBody(ownerPasswordSchema), controller.setOwnerPassword);
 
 _.get("/:tenantId/audit", controller.listTenantAudit);
 _.get("/:tenantId/settings", settingsController.getSettings);

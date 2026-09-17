@@ -14,6 +14,7 @@ const statusCodes = {
   UNPROCESSABLE: 422,
   TOO_MANY_REQUESTS: 429,
   SERVER_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503,
 };
 
 // Password policy — deliberately permissive on character content (any

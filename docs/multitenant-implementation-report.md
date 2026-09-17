@@ -108,7 +108,7 @@
 | `registry.js` | Lists the only global models: `Permission`, `Tenant`, `PlatformUser`, `PlatformAuditLog`, `TenantSettings`. A test fails if any other model lacks the plugin. |
 | `tenantResolver.js` | Cached tenant lookup by id/slug (30 s), `assertTenantActive` (→ `TENANT_SUSPENDED` / `TENANT_INACTIVE`). |
 | `rbac.js` | Owner detection, effective permissions, escalation guards, staff limit. |
-| `roleTemplate.js` | Default roles per store: `owner`, `admin`, `manager`, `salesmen`. |
+| `roleTemplate.js` | Default role per store: `owner` only; staff roles are created by the owner. |
 | `provisioning.js` | Creates a ready store in one transaction (tenant → roles → owner user → active). |
 | `queue.js` | `tenantAwareQueue` stamps `tenantId` on jobs; `tenantJob` runs workers inside that tenant. |
 

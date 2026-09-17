@@ -2,13 +2,8 @@ const Role = require("../models/role.model");
 const { runForTenant } = require("./context");
 
 // Roles every new store starts with. `owner` bypasses permission checks inside
-// its own store; the others start empty and are configured by the owner.
-const ROLE_TEMPLATE = [
-  { name: "owner", slug: "owner" },
-  { name: "admin", slug: "admin" },
-  { name: "manager", slug: "manager" },
-  { name: "salesmen", slug: "salesmen" },
-];
+// its own store; the owner creates any staff roles they need.
+const ROLE_TEMPLATE = [{ name: "owner", slug: "owner" }];
 
 // Idempotent: existing roles are kept. Returns roles keyed by slug.
 const seedTenantRoles = (tenantId, { session } = {}) =>

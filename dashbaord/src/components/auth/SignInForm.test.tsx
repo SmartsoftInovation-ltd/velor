@@ -43,7 +43,7 @@ describe("SignInForm", () => {
 
   it("marks a valid email and toggles password visibility", async () => {
     renderAt();
-    await userEvent.type(screen.getByLabelText(/^email/i), "staff@pizza.com");
+    await userEvent.type(screen.getByLabelText(/^email or phone/i), "Staff@Pizza.com");
     expect(screen.getByLabelText(/valid email/i)).toBeInTheDocument();
 
     const password = screen.getByLabelText(/^password/i);
@@ -54,7 +54,7 @@ describe("SignInForm", () => {
 
   it("requires a workspace", async () => {
     renderAt();
-    await userEvent.type(screen.getByLabelText(/^email/i), "staff@pizza.com");
+    await userEvent.type(screen.getByLabelText(/^email or phone/i), "Staff@Pizza.com");
     await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
     await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
@@ -67,7 +67,7 @@ describe("SignInForm", () => {
     renderAt();
 
     await userEvent.type(screen.getByLabelText(/^workspace/i), "PizzaShop");
-    await userEvent.type(screen.getByLabelText(/^email/i), "staff@pizza.com");
+    await userEvent.type(screen.getByLabelText(/^email or phone/i), "Staff@Pizza.com");
     await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
     await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
@@ -77,5 +77,28 @@ describe("SignInForm", () => {
     await waitFor(() => expect(setAccessToken).toHaveBeenCalledWith("token-1"));
     expect(getWorkspace()).toBe("pizzashop");
     expect(refreshAuth).toHaveBeenCalled();
+  });
+
+  it("signs in with a phone number instead of an email", async () => {
+    post.mockResolvedValue({ data: { data: { accessToken: "token-2", tenant: { slug: "pizzashop" } } } });
+    renderAt("/signin?workspace=pizzashop");
+
+    await userEvent.type(screen.getByLabelText(/^email or phone/i), "+880 1711-000000");
+    await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    expect(post.mock.calls[0][1]).toEqual({ workspace: "pizzashop", phone: "01711000000", password: "Pizza-Pass1" });
+  });
+
+  it("rejects input that is neither an email nor a phone number", async () => {
+    renderAt("/signin?workspace=pizzashop");
+
+    await userEvent.type(screen.getByLabelText(/^email or phone/i), "rahim");
+    await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    expect(await screen.findByText(/valid email or phone/i)).toBeInTheDocument();
+    expect(post).not.toHaveBeenCalled();
   });
 });

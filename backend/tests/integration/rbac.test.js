@@ -55,6 +55,11 @@ describe("per-tenant RBAC", () => {
 
     tenant = await Tenant.create({ name: "Pizza", slug: "pizzashop", status: "active", limits: { maxStaff: 4 } });
     roles = await seedTenantRoles(tenant._id);
+    // Staff roles are the owner's to create; add the ones these tests use
+    const staffRoles = await runForTenant(tenant._id, () =>
+      Role.insertMany(["admin", "manager", "salesmen"].map((slug) => ({ name: slug, slug, isActive: true, permissions: [] }))),
+    );
+    staffRoles.forEach((role) => { roles[role.slug] = role.toObject(); });
 
     await createStaff("owner@pizza.com", [roles.owner._id]);
     ownerToken = await login("owner@pizza.com", "Staff-Pass1");
@@ -79,8 +84,9 @@ describe("per-tenant RBAC", () => {
       Role.updateOne({ _id: role._id }, { permissions: grants.map(([name, actions]) => ({ permission: perms[name]._id, actions })) }),
     );
 
-  it("seeds the owner and default staff roles for a tenant", async () => {
-    expect(Object.keys(roles).sort()).toEqual(["admin", "manager", "owner", "salesmen"]);
+  it("seeds only the owner role for a tenant", async () => {
+    const seeded = await seedTenantRoles(tenant._id);
+    expect(Object.keys(seeded)).toEqual(["owner"]);
     const list = await runForTenant(tenant._id, () => Role.find().lean());
     expect(list.every((r) => r.tenantId.equals(tenant._id))).toBe(true);
   });

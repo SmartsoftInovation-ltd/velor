@@ -67,6 +67,8 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpires: {
       type: Date,
     },
+    // Wrong SMS reset codes entered; the code is discarded after too many
+    resetPasswordAttempts: { type: Number, default: 0 },
     // Email verification gets its own token pair. Sharing the reset-password
     // fields meant requesting a verification mail silently invalidated a
     // pending password reset, and an email-verify link doubled as a valid

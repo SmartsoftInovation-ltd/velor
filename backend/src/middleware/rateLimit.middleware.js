@@ -45,9 +45,9 @@ const loginLimiter = rateLimit({
   ),
 });
 
-// Password reset and email verification both send mail and both mint a token,
-// so they are rate limited on success too — otherwise the endpoint is an email
-// bomb and a token-generation oracle.
+// Password reset (SMS code) and email verification both send a message and mint
+// a token, so they are rate limited on success too — otherwise the endpoint is
+// an SMS/email bomb and a token-generation oracle.
 const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   limit: 5,
@@ -60,8 +60,8 @@ const passwordResetLimiter = rateLimit({
   ),
 });
 
-// Submitting a reset token. Guessing a 32-byte token is infeasible, but this
-// keeps the endpoint from being used to probe token validity at speed.
+// Submitting a reset code. Each code also burns after a few wrong guesses
+// (user.controller), this caps guessing across codes and accounts per IP.
 const resetSubmitLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,

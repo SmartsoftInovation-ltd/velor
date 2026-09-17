@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const { sendEmail } = require("../helpers/nodemailer");
 const { getGeneralConfig } = require("../integrations/config");
 const { getTenantId, runAsPlatform } = require("../tenancy/context");
+const { platformSmsAvailable, sendPlatformSms } = require("../service/platformSms.service");
 const { getTenantById, assertTenantActive } = require("../tenancy/tenantResolver");
 const { getFeatures } = require("../settings/settings.service");
 const rbac = require("../tenancy/rbac");
@@ -325,69 +326,87 @@ exports.verifyEmail = asynchandeler(async (req, res) => {
   apiResponse.sendSuccess(res, statusCodes.OK, "Email verified successfully");
 });
 
-//forgot password
-exports.forgotPassword = asynchandeler(async (req, res) => {
-  const email = req.body.email?.trim().toLowerCase();
-  const user = await User.findOne({ email });
+//forgot password: a one-time code by SMS (the platform SMS account)
+const RESET_CODE_TTL_MS = 10 * 60 * 1000;
+const RESET_CODE_MAX_ATTEMPTS = 5;
+const RESET_CODE_SENT_MESSAGE = "If that account has a phone number, a reset code has been sent by SMS";
 
-  // Same response whether or not the account exists — otherwise this endpoint
-  // reports which addresses are registered.
-  if (!user) {
-    return apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "If that email has an account, a reset link has been sent",
-    );
+// Only a keyed hash of the code is stored, bound to the account
+const hashResetCode = (user, code) =>
+  crypto.createHmac("sha256", process.env.ACCESS_TOKEN_SECRET || "reset-code").update(`${user._id}:${code}`).digest("hex");
+
+const findByEmailOrPhone = (body) => {
+  const email = body.email?.trim().toLowerCase();
+  const phone = body.phone?.trim();
+  return email || phone ? User.findOne(email ? { email } : { phone }) : null;
+};
+
+const clearResetCode = (user) => {
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  user.resetPasswordAttempts = 0;
+};
+
+exports.forgotPassword = asynchandeler(async (req, res) => {
+  if (!platformSmsAvailable()) {
+    throw new customError("Password reset by SMS is not available. Please contact support.", statusCodes.SERVICE_UNAVAILABLE, "SMS_NOT_CONFIGURED");
   }
 
-  const token = crypto.randomBytes(32).toString("hex");
-  user.resetPasswordToken = token;
-  user.resetPasswordExpires = Date.now() + 1000 * 60 * 60; // 1 hour
+  const user = await findByEmailOrPhone(req.body);
+
+  // Same response whether or not the account exists — otherwise this endpoint
+  // reports which accounts are registered.
+  if (!user?.phone) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, RESET_CODE_SENT_MESSAGE);
+  }
+
+  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+  user.resetPasswordToken = hashResetCode(user, code);
+  user.resetPasswordExpires = Date.now() + RESET_CODE_TTL_MS;
+  user.resetPasswordAttempts = 0;
   await user.save();
 
-  // Send reset email
-  const { storefrontUrl } = await getGeneralConfig();
-  const resetUrl = `${storefrontUrl}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
-  await sendEmail(
-    user.email,
-    "Reset your password",
-    `<a href="${resetUrl}">Click to reset your password</a>`,
-    { throwOnError: true },
+  const store = req.tenant?.name ? `${req.tenant.name} ` : "";
+  await sendPlatformSms(
+    user.phone,
+    `Your ${store}password reset code is ${code}. It expires in 10 minutes. Do not share this code with anyone.`,
   );
 
-  apiResponse.sendSuccess(
-    res,
-    statusCodes.OK,
-    "If that email has an account, a reset link has been sent",
-  );
+  apiResponse.sendSuccess(res, statusCodes.OK, RESET_CODE_SENT_MESSAGE);
 });
 
-// reset password
+// reset password with the SMS code
 exports.resetPassword = asynchandeler(async (req, res) => {
-  const { token, newPassword } = req.body;
-  const email = req.body.email?.trim().toLowerCase();
+  const { newPassword } = req.body;
+  const code = String(req.body.otp ?? "").trim();
 
-  // Same minimum as every other password entry point — this path used to skip
-  // the check entirely, which let a reset set a shorter password than
-  // registration would ever accept.
+  // Same minimum as every other password entry point
   if (!newPassword || newPassword.length < PASSWORD_MIN_LENGTH) {
     throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
   }
 
-  const user = await User.findOne({
-    email,
-    resetPasswordToken: token,
-    resetPasswordExpires: { $gt: Date.now() },
-  });
-  if (!user)
-    throw new customError("Invalid or expired token", statusCodes.BAD_REQUEST);
+  const invalid = () => new customError("Invalid or expired code", statusCodes.BAD_REQUEST);
+  const user = await findByEmailOrPhone(req.body);
+  if (!user?.resetPasswordToken || !user.resetPasswordExpires || user.resetPasswordExpires.getTime() < Date.now()) {
+    throw invalid();
+  }
+
+  const expected = Buffer.from(user.resetPasswordToken, "hex");
+  const given = Buffer.from(hashResetCode(user, code), "hex");
+  if (!/^\d{6}$/.test(code) || !crypto.timingSafeEqual(expected, given)) {
+    // A few guesses only: after that the code is burned and a new one is needed
+    user.resetPasswordAttempts = (user.resetPasswordAttempts || 0) + 1;
+    if (user.resetPasswordAttempts >= RESET_CODE_MAX_ATTEMPTS) clearResetCode(user);
+    await user.save();
+    throw invalid();
+  }
 
   user.password = newPassword;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
-  // A reset is how an account is recovered after a compromise, so drop any
+  clearResetCode(user);
+  // A reset is how an account is recovered after a compromise, so end every
   // session the previous password left open.
   user.refreshToken = null;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
 
   apiResponse.sendSuccess(res, statusCodes.OK, "Password reset successful");

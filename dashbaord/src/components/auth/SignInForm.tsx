@@ -1,34 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { FiArrowRight, FiCheck, FiEye, FiEyeOff, FiLock, FiMail, FiShield } from "react-icons/fi";
+import { FiArrowRight, FiCheck, FiEye, FiEyeOff, FiLock, FiShield, FiUser } from "react-icons/fi";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import axiosSecure, { setAccessToken } from "../../hooks/useAxiosSecure";
 import { useAuth } from "../../context/AuthContext";
 import { getWorkspace, setWorkspace, workspaceFromSearch } from "../../lib/session";
+import { loginIdentifier } from "../../lib/credentials";
 import BrandMark from "./BrandMark";
+import { fieldShell, inputClass } from "./authStyles";
 
 // Shown after the workspace input, e.g. "baig-digital.ecompos.app"
 const WORKSPACE_DOMAIN = import.meta.env.VITE_WORKSPACE_DOMAIN || "ecompos.app";
-const EMAIL_PATTERN = /\S+@\S+\.\S+/;
-
 type Errors = {
   workspace?: string;
-  email?: string;
+  identifier?: string;
   password?: string;
 };
-
-const fieldShell = (hasError: boolean) =>
-  `flex h-12 items-center gap-2.5 rounded-xl border bg-white px-3.5 transition focus-within:ring-4 dark:bg-white/[0.03] ${
-    hasError
-      ? "border-error-400 focus-within:border-error-500 focus-within:ring-error-500/10"
-      : "border-gray-200 focus-within:border-emerald-500 focus-within:ring-emerald-500/10 dark:border-gray-800"
-  }`;
-
-// auth-input: keeps the browser's autofill highlight off (see index.css)
-const inputClass =
-  "auth-input h-full w-full min-w-0 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-white/90 dark:placeholder:text-white/30";
 
 const RequiredDot = () => <span aria-hidden className="ml-1 inline-block size-1 translate-y-[-2px] rounded-full bg-emerald-500" />;
 
@@ -56,7 +45,7 @@ export default function SignInForm() {
   const [formData, setFormData] = useState({
     // Deep link (?workspace=) wins over the store this browser used last
     workspace: workspaceFromSearch(`?${searchParams.toString()}`) || getWorkspace() || "",
-    email: "",
+    identifier: "",
     password: "",
   });
   const [errors, setErrors] = useState<Errors>({});
@@ -72,8 +61,8 @@ export default function SignInForm() {
 
     if (!formData.workspace.trim()) newErrors.workspace = "Workspace is required.";
 
-    if (!formData.email) newErrors.email = "Email is required.";
-    else if (!EMAIL_PATTERN.test(formData.email)) newErrors.email = "Email is invalid.";
+    if (!formData.identifier.trim()) newErrors.identifier = "Email or phone is required.";
+    else if (!loginIdentifier(formData.identifier)) newErrors.identifier = "Enter a valid email or phone number (01XXXXXXXXX).";
 
     if (!formData.password) newErrors.password = "Password is required.";
     else if (formData.password.length < 4) newErrors.password = "Password must be at least 4 characters.";
@@ -93,7 +82,7 @@ export default function SignInForm() {
       setWorkspace(workspace);
       const response = await axiosSecure.post(
         `/auth/login`,
-        { ...formData, workspace },
+        { workspace, ...loginIdentifier(formData.identifier), password: formData.password },
         { headers: { "Content-Type": "application/json" }, withCredentials: true },
       );
       const { accessToken } = response.data.data;
@@ -114,7 +103,7 @@ export default function SignInForm() {
     }
   };
 
-  const emailValid = EMAIL_PATTERN.test(formData.email);
+  const identifierValid = Boolean(loginIdentifier(formData.identifier));
 
   return (
     <div className="w-full max-w-[404px]">
@@ -152,25 +141,26 @@ export default function SignInForm() {
         </div>
 
         <div>
-          <label htmlFor="signin-email" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-gray-300">
-            Email
+          <label htmlFor="signin-identifier" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-gray-300">
+            Email or phone
             <RequiredDot />
           </label>
-          <div className={fieldShell(Boolean(errors.email))}>
-            <FiMail aria-hidden className="size-4 shrink-0 text-gray-400" />
+          <div className={fieldShell(Boolean(errors.identifier))}>
+            <FiUser aria-hidden className="size-4 shrink-0 text-gray-400" />
             <input
-              id="signin-email"
-              type="email"
-              name="email"
+              id="signin-identifier"
+              name="identifier"
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               className={inputClass}
-              value={formData.email}
+              value={formData.identifier}
               onChange={handleChange}
-              placeholder="you@company.com"
+              placeholder="you@company.com or 01XXXXXXXXX"
             />
-            {emailValid && <FiCheck role="img" aria-label="Valid email" className="size-4 shrink-0 text-emerald-600" />}
+            {identifierValid && <FiCheck role="img" aria-label="Valid email or phone" className="size-4 shrink-0 text-emerald-600" />}
           </div>
-          {errors.email && <p className="mt-1.5 text-xs text-error-500">{errors.email}</p>}
+          {errors.identifier && <p className="mt-1.5 text-xs text-error-500">{errors.identifier}</p>}
         </div>
 
         <div>
@@ -179,9 +169,12 @@ export default function SignInForm() {
               Password
               <RequiredDot />
             </label>
-            <a href="/reset-password" className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
+            <Link
+              to={`/reset-password${formData.workspace.trim() ? `?workspace=${encodeURIComponent(formData.workspace.trim().toLowerCase())}` : ""}`}
+              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
+            >
               Forgot password?
-            </a>
+            </Link>
           </div>
           <div className={fieldShell(Boolean(errors.password))}>
             <FiLock aria-hidden className="size-4 shrink-0 text-gray-400" />

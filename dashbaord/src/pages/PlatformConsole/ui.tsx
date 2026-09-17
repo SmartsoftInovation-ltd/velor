@@ -267,3 +267,20 @@ export const formatDate = (value: string | null | undefined, withTime = false) =
         ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
       })
     : "—";
+
+// What happened to the owner's sign-in details after a create or password change
+export const CredentialsNoticeLine = ({ notice, owner }: {
+  notice: { channel: "sms" | null; sent: boolean };
+  owner: { phone: string };
+}) => {
+  const { channel, sent } = notice;
+  const tone = sent
+    ? "border-accent-200 bg-accent-50 text-accent-700 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-400"
+    : "border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400";
+  const text = sent
+    ? `Sign-in details sent by SMS to ${owner.phone}.`
+    : channel
+      ? "Could not send the sign-in details by SMS. Send them to the owner yourself."
+      : "Platform SMS is not set up, so nothing was sent. Send these details to the owner yourself.";
+  return <p role="status" className={`rounded-xl border px-3.5 py-2.5 text-sm ${tone}`}>{text}</p>;
+};

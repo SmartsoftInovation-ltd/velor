@@ -7,6 +7,9 @@ const { recordPlatformAudit } = require("../../service/platformAudit.service");
 const { invalidateTenantCache } = require("../../tenancy/tenantResolver");
 const { provisionTenant } = require("../../tenancy/provisioning");
 const PlatformAuditLog = require("../../models/platform/platformAuditLog.model");
+const User = require("../../models/user.model");
+const { runForTenant } = require("../../tenancy/context");
+const { sendOwnerCredentials } = require("../../service/ownerCredentials.service");
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
 
@@ -141,6 +144,42 @@ const changeStatus = (action) =>
 
 exports.suspendTenant = changeStatus("suspend");
 exports.activateTenant = changeStatus("activate");
+
+// Support sets a new password for the store owner (e.g. the owner forgot it).
+// Every open session of the owner is signed out.
+exports.setOwnerPassword = asynchandeler(async (req, res) => {
+  const tenant = await findTenantOr404(tenantIdParam(req));
+  if (!tenant.ownerUserId) throw new customError("This store has no owner account", statusCodes.CONFLICT);
+
+  const { password, notify } = req.body;
+  const owner = await runForTenant(tenant._id, async () => {
+    const user = await User.findById(tenant.ownerUserId);
+    if (!user) return null;
+    user.password = password;
+    user.refreshToken = null;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+    return user;
+  });
+  if (!owner) throw new customError("Owner account not found", statusCodes.NOT_FOUND);
+
+  const notification = notify
+    ? await sendOwnerCredentials({ tenant, owner, password, reason: "password" })
+    : { channel: null, sent: false };
+
+  await recordPlatformAudit({
+    req,
+    actor: req.platformUser,
+    action: "TENANT_OWNER_PASSWORD_SET",
+    tenantId: tenant._id,
+    metadata: { notifiedVia: notification.sent ? notification.channel : null },
+  });
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Owner password updated", {
+    owner: { _id: owner._id, name: owner.name, email: owner.email, phone: owner.phone },
+    notification,
+  });
+});
 
 exports.listTenantAudit = asynchandeler(async (req, res) => {
   const tenantId = tenantIdParam(req);

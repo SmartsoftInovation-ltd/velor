@@ -218,7 +218,7 @@
 
 **Implementation notes (as built):**
 - `owner` role (reserved slug, created only by `seedTenantRoles` / migration) bypasses permission checks inside its own store; legacy `superadmin` is treated the same until migration `005-owner-role` renames it.
-- Default roles per store: `owner`, `admin`, `manager`, `salesmen` (`src/tenancy/roleTemplate.js`).
+- Default roles per store: only `owner` (`src/tenancy/roleTemplate.js`); the owner creates staff roles.
 - Escalation guards (`src/tenancy/rbac.js`), applied to add/update user, add/remove user permission, bulk user permissions (`/userpermission`), role update/delete/permissions:
   - nobody assigns the owner role through the tenant API;
   - non-owners can only grant role/direct permissions they hold themselves;
@@ -282,7 +282,7 @@
 | 11.3 | Flip `TENANCY_MODE=strict`; make `tenantId` required; drop old global unique indexes; remove legacy tokens/routes |
 
 **Implementation notes (as built):**
-- `POST /api/v1/platform/tenants` with `owner: { name, email, phone, password? }` provisions a ready store in one transaction: tenant → default roles → owner user (`mustChangePassword` when no password given) → status `active`; then `general.invoicePrefix` from the slug. Response: `{ tenant, owner (temporaryPassword once), loginUrl }` (`APP_URL/signin?workspace=<slug>`). Without `owner` the old bare-tenant behaviour stays. `change-password` clears `mustChangePassword`.
+- `POST /api/v1/platform/tenants` with `owner: { name, email, phone, password }` (password required, set by the operator) provisions a ready store in one transaction: tenant → `owner` role → owner user → status `active`; then `general.invoicePrefix` from the slug, then the owner's sign-in details (login link, email/phone, password) are sent by SMS only, through the platform SMS account (`BULK_SMS_*`); no email. Response: `{ tenant, owner, loginUrl, notification: { channel, sent } }`. `POST /platform/tenants/:id/owner/password` `{ password, notify }` (superadmin) replaces the owner's password, signs them out everywhere and optionally re-sends the details. Without `owner` the old bare-tenant behaviour stays. Forgot password is SMS-only: `POST /auth/forgot-password` `{ email | phone }` sends a 6-digit code (10 min, HMAC-hashed, burned after 5 wrong tries) to the account's phone via the platform SMS account (503 `SMS_NOT_CONFIGURED` without it); `POST /auth/reset-password` `{ email | phone, otp, newPassword }` sets the password and signs out every session.
 - Plugin now scopes sub-pipelines: `$lookup` (localField/foreignField and let/pipeline), `$unionWith`, `$graphLookup` and `$facet` get a tenant `$match` when they read a tenant-scoped collection. This closed a real leak: supplier/purchase joins on the supplier mobile number. Requires MongoDB ≥ 5.0.
 - Isolation suite (`tests/integration/isolation.test.js`) runs the real app in **strict mode** with two provisioned stores holding identical data: suppliers (same mobile) incl. list/delete/summary+cache, delivery charges by id, users and roles lists, public endpoints via `x-tenant` incl. cache, settings, token vs another store, request without a store → `TENANT_CONTEXT_REQUIRED`.
 - Strict mode: `tenantId` is required on every tenant document; legacy single-tenant callback routes (`/payment/*`, `/courier/pathao-webhook`, `/courier/steadfast-webhook`) answer `410 LEGACY_ROUTE_REMOVED`.

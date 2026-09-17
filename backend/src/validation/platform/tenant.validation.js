@@ -4,12 +4,15 @@ const limits = joi.object({
   maxStaff: joi.number().integer().min(0).allow(null),
 });
 
-// Owner account created with the store; without a password a temporary one is issued
+// Owner account created with the store. The operator sets the first password;
+// the owner may keep it or change it later.
+const password = joi.string().min(8).max(128);
+
 const owner = joi.object({
   name: joi.string().trim().min(2).max(100).required(),
   email: joi.string().trim().lowercase().email({ tlds: { allow: false } }).required(),
   phone: joi.string().trim().pattern(/^01[0-9]{9}$/).required(),
-  password: joi.string().min(8),
+  password: password.required(),
 });
 
 // Slug format and reserved words are enforced by the Tenant model
@@ -34,6 +37,11 @@ const statusChangeSchema = joi.object({
   reason: joi.string().trim().max(500).allow(""),
 });
 
+const ownerPasswordSchema = joi.object({
+  password: password.required(),
+  notify: joi.boolean().default(true),
+});
+
 const listTenantsQuerySchema = joi.object({
   status: joi.string().valid("provisioning", "active", "suspended", "cancelled"),
   search: joi.string().trim().max(100).allow(""),
@@ -41,4 +49,4 @@ const listTenantsQuerySchema = joi.object({
   limit: joi.number().integer().min(1).max(100).default(20),
 });
 
-module.exports = { createTenantSchema, updateTenantSchema, statusChangeSchema, listTenantsQuerySchema };
+module.exports = { createTenantSchema, updateTenantSchema, statusChangeSchema, ownerPasswordSchema, listTenantsQuerySchema };

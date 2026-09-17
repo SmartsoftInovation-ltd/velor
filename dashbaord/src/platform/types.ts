@@ -9,6 +9,7 @@ export interface Tenant {
   limits?: { maxStaff?: number | null };
   webhookKey: string;
   statusReason?: string;
+  ownerUserId?: string | null;
   createdAt: string;
 }
 

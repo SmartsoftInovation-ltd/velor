@@ -146,7 +146,8 @@ describe("Velor migration", () => {
       expect((await Tenant.findById(velor._id)).ownerUserId.toString()).toBe(ownerUser._id.toString());
 
       const slugs = (await runForTenant(velor._id, () => Role.find().lean())).map((r) => r.slug).sort();
-      expect(slugs).toEqual(["admin", "manager", "owner", "salesmen"]);
+      // Existing roles are kept; only the owner role is guaranteed
+      expect(slugs).toEqual(["manager", "owner"]);
     });
 
     it("is idempotent: a second run skips everything", async () => {
