@@ -25,6 +25,7 @@ const sizeChartRoutes = require("./api/sizeChart.api");
 const chatRoutes = require("./api/chat.api");
 
 // All routes
+_.use("/platform", require("./platform"));
 _.use("/auth", userRoutes);
 _.use(categoryRoutes);
 _.use(subcategoryRoutes);

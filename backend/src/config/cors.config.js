@@ -1,9 +1,10 @@
 // Origins allowed to make credentialed cross-origin requests (HTTP + socket).
-// Set FRONTEND_URL / DASHBOARD_URL, plus any extras in CORS_ORIGINS (comma separated).
+// Set FRONTEND_URL / DASHBOARD_URL / PLATFORM_URL, plus any extras in CORS_ORIGINS (comma separated).
 const allowedOrigins = new Set(
   [
     process.env.FRONTEND_URL,
     process.env.DASHBOARD_URL,
+    process.env.PLATFORM_URL,
     ...(process.env.CORS_ORIGINS || "").split(","),
   ]
     .map((o) => o?.trim().replace(/\/+$/, ""))

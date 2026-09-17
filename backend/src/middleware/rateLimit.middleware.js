@@ -102,7 +102,22 @@ const changePasswordLimiter = rateLimit({
   ),
 });
 
+// Platform operator sign-in: same policy as tenant login, separate counter
+const platformLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `platform-login:${clientIp(req)}:${accountKey(req)}`,
+  handler: tooMany(
+    "Too many failed sign-in attempts. Please try again in 15 minutes.",
+  ),
+});
+
 module.exports = {
+  platformLoginLimiter,
   loginLimiter,
   passwordResetLimiter,
   resetSubmitLimiter,

@@ -36,6 +36,9 @@ const tenantSchema = new mongoose.Schema(
       enum: ["provisioning", "active", "suspended", "cancelled"],
       default: "provisioning",
     },
+    // Why the status last changed (e.g. suspension reason); cleared on activation
+    statusReason: { type: String, default: "", trim: true },
+    statusChangedAt: { type: Date, default: null },
     ownerUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     plan: { type: String, default: "standard", trim: true },
     limits: {

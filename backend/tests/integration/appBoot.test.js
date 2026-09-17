@@ -23,6 +23,11 @@ describe("app boot with tenancy plugin in shadow mode", () => {
     expect(res.status).toBe(404);
   });
 
+  it("mounts the platform API behind the platform guard", async () => {
+    await request(server).get("/api/v1/platform/tenants").expect(401);
+    await request(server).post("/api/v1/platform/auth/refresh").expect(401);
+  });
+
   it("serves an existing public endpoint without a tenant context", async () => {
     const res = await request(server).get("/api/v1/categories-active");
     expect(res.status).toBeLessThan(500);

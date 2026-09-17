@@ -35,7 +35,9 @@
     "worker:email": "node src/workers/email.worker.js",
     "worker:audit": "node src/workers/audit.worker.js",
     "worker:embedding": "node src/workers/embedding.worker.js",
-    "worker:all": "concurrently \"npm run worker:image\" \"npm run worker:sms\" \"npm run worker:email\" \"npm run worker:audit\" \"npm run worker:embedding\""
+    "worker:all": "concurrently \"npm run worker:image\" \"npm run worker:sms\" \"npm run worker:email\" \"npm run worker:audit\" \"npm run worker:embedding\"",
+    "seed:platform-admin": "node src/seeder/seedPlatformAdmin.js",
+    "tenant:create": "node src/scripts/createTenant.js"
   },
   "_moduleAliases": {
     "@": "src"

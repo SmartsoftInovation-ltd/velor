@@ -3,6 +3,8 @@
 const GLOBAL_MODELS = [
   "Permission", // module catalog shared by all tenants, managed by the platform
   "Tenant", // control plane
+  "PlatformUser", // platform operators, never tenant data
+  "PlatformAuditLog", // platform operator actions across tenants
 ];
 
 module.exports = { GLOBAL_MODELS };

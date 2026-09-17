@@ -18,7 +18,7 @@
 |---|---|---|---|
 | 1 | Safety net & security fixes | §9 S1–S4, §10 steps 1–2 | **done** (manual secret rotation pending) |
 | 2 | Tenancy core (context + plugin, shadow mode) | §2, §10 step 3 | **done** |
-| 3 | Platform identity & tenant API | §3.1, §8.2 (API only), §10 step 4 | todo |
+| 3 | Platform identity & tenant API | §3.1, §8.2 (API only), §10 step 4 | **done** |
 | 4 | Tenant settings core (encryption, service, platform endpoints) | §5.2–5.6, §10 step 5 | todo |
 | 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | todo |
 | 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | todo |
@@ -83,6 +83,35 @@
 | 3.6 | Create the `velor` tenant record (no data backfill yet) |
 
 **Done when:** platform admin can log in and create/list/suspend tenants via API; tenant tokens cannot reach platform routes.
+
+**Implementation notes (as built):**
+- Platform roles: `superadmin` (full control) and `support` (read-only: list/get tenants).
+- Access token 1h (`aud: platform`), refresh token 7d in httpOnly cookie `platformRefreshToken` scoped to `/api/v1/platform/auth` (`aud: platform-refresh`). Separate secrets, validated at request time (min 32 chars, must differ from staff secrets) — misconfiguration fails closed with 500.
+- Logout bumps `tokenVersion`, revoking every platform session of that operator (all devices).
+- New tenants start in `provisioning`; `POST /:id/activate` makes them `active`. Full provisioning (owner, roles, settings) is Sprint 11.
+- Suspending a tenant does not yet sign out its staff — that needs tenant-aware tokens (Sprint 7).
+- `twoFactorEnabled` / `twoFactorSecret` fields exist; TOTP verification is not implemented yet.
+- `PlatformUser` and `PlatformAuditLog` are global models (registry).
+
+**API quick reference** (base `/api/v1/platform`):
+
+| Method | Path | Role | Body / query |
+|---|---|---|---|
+| POST | `/auth/login` | — | `{ email, password }` → `data.accessToken` + refresh cookie |
+| POST | `/auth/refresh` | cookie | → `data.accessToken` |
+| POST | `/auth/logout` | cookie | revokes all sessions |
+| GET | `/auth/me` | any | current operator |
+| GET | `/tenants` | any | `?status=&search=&page=1&limit=20` |
+| GET | `/tenants/:tenantId` | any | |
+| POST | `/tenants` | superadmin | `{ name, slug, plan?, limits?: { maxStaff } }` |
+| PATCH | `/tenants/:tenantId` | superadmin | `{ name?, plan?, limits? }` (slug/status not editable) |
+| POST | `/tenants/:tenantId/suspend` | superadmin | `{ reason? }` |
+| POST | `/tenants/:tenantId/activate` | superadmin | `{ reason? }` |
+
+**First-time setup on the server:**
+1. Set `PLATFORM_ACCESS_TOKEN_SECRET`, `PLATFORM_REFRESH_TOKEN_SECRET` (e.g. `openssl rand -base64 48`), `PLATFORM_URL`.
+2. `PLATFORM_ADMIN_EMAIL=... PLATFORM_ADMIN_PASSWORD=... npm run seed:platform-admin`
+3. `npm run tenant:create -- --name Velor --slug velor --status active`
 
 ## Sprint 4 — Tenant settings core
 
