@@ -7,6 +7,7 @@ const helmet = require("helmet");
 const cookieparser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const http = require("http");
+const { corsOrigin } = require("./config/cors.config");
 
 const app = express();
 const server = http.createServer(app);
@@ -17,9 +18,7 @@ app.set("etag", false);
 app.use(helmet());
 app.use(
   cors({
-    origin: function (origin, callback) {
-      callback(null, true);
-    },
+    origin: corsOrigin,
     credentials: true,
   }),
 );
@@ -36,7 +35,7 @@ if (process.env.NODE_ENV === "development") {
 // 5. Rate Limiter -> Prevent brute-force / abuse
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 1000000000,
+  limit: Number(process.env.RATE_LIMIT_MAX) || 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: "Too many requests from this IP, please try again later.",

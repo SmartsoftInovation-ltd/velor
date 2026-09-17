@@ -1,14 +1,13 @@
 let io = null;
 const { Server } = require("socket.io");
 const { customError } = require("../lib/CustomError");
+const { corsOrigin } = require("../config/cors.config");
 
 module.exports = {
   initSocket: (server) => {
     io = new Server(server, {
       cors: {
-        origin: function (origin, callback) {
-          callback(null, true);
-        },
+        origin: corsOrigin,
         credentials: true,
       },
     });
