@@ -1,4 +1,12 @@
 const { cache } = require("@/config/redis.config");
+const { getTenantId } = require("@/tenancy/context");
+
+// Every key lives under its tenant: t:<tenantId>:<key>. Without a tenant
+// context (legacy single-tenant install) keys are unprefixed.
+const scoped = (key) => {
+  const tenantId = getTenantId();
+  return tenantId ? `t:${tenantId}:${key}` : key;
+};
 
 const safeJsonParse = (v) => {
   try {
@@ -9,22 +17,22 @@ const safeJsonParse = (v) => {
 };
 
 const getCache = async (key) => {
-  const data = await cache.get(key);
+  const data = await cache.get(scoped(key));
   return data ? safeJsonParse(data) : null;
 };
 
 const setCache = async (key, value, ttl = 60) => {
-  await cache.set(key, JSON.stringify(value), "EX", ttl);
+  await cache.set(scoped(key), JSON.stringify(value), "EX", ttl);
 };
 
 const deleteCache = async (key) => {
-  await cache.del(key);
+  await cache.del(scoped(key));
 };
 
 // ---- namespace versioning helpers ----
 
 const getNsVersion = async (ns) => {
-  const v = await cache.get(`${ns}:v`);
+  const v = await cache.get(scoped(`${ns}:v`));
   return v ? Number(v) : 1;
 };
 
@@ -51,9 +59,9 @@ const DASHBOARD_SOURCE_NAMESPACES = new Set([
 
 const bumpOne = async (ns) => {
   // atomic increment — all old versioned keys become unreachable
-  const v = await cache.incr(`${ns}:v`);
+  const v = await cache.incr(scoped(`${ns}:v`));
   if (v === 1) {
-    await cache.set(`${ns}:v`, 2);
+    await cache.set(scoped(`${ns}:v`), 2);
     return 2;
   }
   return v;

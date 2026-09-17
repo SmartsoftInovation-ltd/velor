@@ -4,6 +4,7 @@ const { connectTestDb, clearTestDb, disconnectTestDb } = require("../helpers/db"
 const { setSettingsEnv } = require("../helpers/settings");
 const TenantSettings = require("../../src/models/platform/tenantSettings.model");
 const service = require("../../src/settings/settings.service");
+const { waitFor } = require("../helpers/waitFor");
 
 const T = new mongoose.Types.ObjectId();
 const OTHER = new mongoose.Types.ObjectId();
@@ -171,10 +172,9 @@ describe("settings.service", () => {
 
       const otherProcess = new IORedis(process.env.REDIS_URL || "redis://127.0.0.1:6379");
       await otherProcess.publish(service.INVALIDATION_CHANNEL, JSON.stringify({ tenantId: T.toString(), version: 2 }));
-      await new Promise((resolve) => setTimeout(resolve, 100));
       await otherProcess.quit();
 
-      expect((await service.getSettings(T)).general.invoicePrefix).toBe("RAW");
+      await waitFor(async () => expect((await service.getSettings(T)).general.invoicePrefix).toBe("RAW"));
     });
   });
 

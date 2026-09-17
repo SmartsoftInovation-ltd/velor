@@ -17,7 +17,8 @@ const { sendEmail } = require("../helpers/nodemailer");
 const { orderTemplate } = require("../emailTemplate/orderTemplate");
 
 const { sendSMS } = require("../helpers/sms");
-const { getIO } = require("../socket/socket");
+const { emitToTenant } = require("../socket/socket");
+const { getTenantId } = require("../tenancy/context");
 const { statusCodes } = require("../constant/constant");
 const { logAudit } = require("@/service/audit.service");
 
@@ -391,8 +392,7 @@ exports.createOrder = asynchandeler(async (req, res) => {
       console.log("Redirecting to: ", gatewayUrl);
 
       // Emit order event
-      const io = getIO();
-      io.emit("orderPlaced", {
+      emitToTenant(getTenantId(), "orderPlaced", {
         message: "🛒New Order added",
         order: order,
       });

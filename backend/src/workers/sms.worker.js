@@ -11,7 +11,8 @@ const { connection } = require("@/config/redis.config");
 const { sendSMS } = require("@/helpers/sms");
 const SmsLog = require("@/models/smsLog.model");
 const { dbConnect } = require("@/database/db");
-const { getIO } = require("@/socket/socket");
+const { emitToTenant } = require("@/socket/socket");
+const { getTenantId } = require("@/tenancy/context");
 
 dbConnect()
   .then(() => {
@@ -97,8 +98,7 @@ function startSmsWorker() {
 
       // Notify connected admin via Socket.IO
       try {
-        const io = getIO();
-        io.emit("sms:bulk:done", {
+        emitToTenant(getTenantId(), "sms:bulk:done", {
           logId,
           status: finalStatus,
           sentCount,

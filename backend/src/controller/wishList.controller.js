@@ -2,7 +2,8 @@ const { customError } = require("../lib/CustomError");
 const WishList = require("../models/wishList.model");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
-const { getIO } = require("../socket/socket");
+const { emitToUserOrGuest } = require("../socket/socket");
+const { getTenantId } = require("../tenancy/context");
 const { statusCodes } = require("../constant/constant");
 //@desc add to wishlist
 exports.addToWishlist = asynchandeler(async (req, res) => {
@@ -42,8 +43,7 @@ exports.addToWishlist = asynchandeler(async (req, res) => {
       items: [newItem],
     });
 
-    const io = getIO();
-    io.to(userId || guestId).emit("addwishlist", {
+    emitToUserOrGuest(getTenantId(), { userId, guestId }, "addwishlist", {
       message: "🛒 Product added to your wishlist successfully",
       wishlist: wishlist,
     });
@@ -110,8 +110,7 @@ exports.getAllUserWishlist = asynchandeler(async (req, res) => {
     throw new customError("Wishlist not found", statusCodes.NOT_FOUND);
   }
 
-  const io = getIO();
-  io.to(userId || guestId).emit("getwishlist", {
+  emitToUserOrGuest(getTenantId(), { userId, guestId }, "getwishlist", {
     message: "📋 Wishlist fetched successfully",
     wishlist: wishlist,
   });
@@ -166,8 +165,7 @@ exports.deleteWishlistItem = asynchandeler(async (req, res) => {
   await wishlist.save();
 
   // Emit socket event (optional)
-  const io = getIO();
-  io.to(userId || guestId).emit("deletewishlist", {
+  emitToUserOrGuest(getTenantId(), { userId, guestId }, "deletewishlist", {
     message: "❌ Item removed from wishlist",
     wishlist: wishlist,
   });

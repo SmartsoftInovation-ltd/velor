@@ -24,7 +24,7 @@
 | 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | **done** |
 | 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | **done** |
 | 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | **done** |
-| 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | todo |
+| 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | **done** |
 | 10 | Dashboard multi-tenant | §7, §10 step 11 | todo |
 | 11 | Provisioning, isolation suite, fail-closed | §8.2, §12, §10 steps 12–13 | todo |
 | 12 | Platform console UI | §8.3, §10 step 14 | todo |
@@ -239,6 +239,14 @@
 | 9.3 | Audit worker writes through the model |
 | 9.4 | Socket.io handshake auth + tenant rooms; remove global `io.emit` |
 | 9.5 | Vector search `tenantId` filter; per-tenant auth rate-limit keys |
+
+**Implementation notes (as built):**
+- Cache: every Redis key and namespace version is stored as `t:<tenantId>:<key>` inside a tenant context (one change in `utils/cache.util.js`); legacy keys stay unprefixed.
+- Queues/workers and the audit worker were done in Sprint 5.
+- Socket.IO: handshake `auth: { token }` (staff/shoppers) or `auth: { tenant, guestId }` (guests); rooms `tenant:<id>`, `tenant:<id>:user:<id>`, `tenant:<id>:guest:<id>`. `emitToTenant` / `emitToUserOrGuest` replace the global `io.emit` / `io.to(userId)` calls (orders, wishlist, bulk SMS). Anonymous legacy clients still connect outside strict mode.
+- Vector search: the plugin adds `tenantId` to `$vectorSearch.filter`; the Atlas index must declare it — definition in `src/scripts/atlasVectorIndex.json`.
+- Login rate-limit keys include the workspace (Sprint 7).
+- Test stability: Jest `maxWorkers: 4` (shared in-memory replica set) and polling (`tests/helpers/waitFor.js`) instead of fixed sleeps.
 
 ## Sprint 10 — Dashboard
 

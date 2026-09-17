@@ -10,4 +10,6 @@ module.exports = {
     "^dotenv$": "<rootDir>/tests/mocks/dotenv.js",
   },
   testTimeout: 30000,
+  // All files share one in-memory replica set; unbounded parallelism starves it
+  maxWorkers: 4,
 };

@@ -10,6 +10,7 @@ const { validatePayment } = require("../../src/integrations/sslcommerz");
 const Tenant = require("../../src/models/platform/tenant.model");
 const Order = require("../../src/models/order.model");
 const service = require("../../src/settings/settings.service");
+const { waitFor } = require("../helpers/waitFor");
 
 describe("per-tenant webhook routes", () => {
   let app;
@@ -76,8 +77,7 @@ describe("per-tenant webhook routes", () => {
     const res = await request(app).post(`/api/v1/hooks/pathao/${pizza.webhookKey}`).set("x-pathao-signature", "pizza-pathao-secret").send(body).expect(202);
     expect(res.headers["x-pathao-merchant-webhook-integration-secret"]).toBe("pizza-pathao-secret");
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect((await orderOf(pizza)).courier.status).toBe("Delivered");
+    await waitFor(async () => expect((await orderOf(pizza)).courier.status).toBe("Delivered"));
     expect((await orderOf(burger)).courier.status).not.toBe("Delivered");
   });
 
