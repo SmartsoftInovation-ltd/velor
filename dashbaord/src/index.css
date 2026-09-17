@@ -1341,3 +1341,52 @@ body.printing-report.sheet-a5 th,
   }
 }
 
+
+/* Integration settings drawer */
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-drawer-in {
+  animation: drawer-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-drawer-in,
+  .animate-fade-in {
+    animation: none;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-modal-in {
+  animation: modal-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-modal-in {
+    animation: none;
+  }
+}
