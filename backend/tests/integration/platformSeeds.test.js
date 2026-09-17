@@ -20,21 +20,32 @@ describe("platform seed scripts", () => {
 
   describe("seedPlatformAdmin", () => {
     it("requires credentials and a strong password", async () => {
-      await expect(seedPlatformAdmin({ password: STRONG })).rejects.toThrow(/PLATFORM_ADMIN_EMAIL/);
-      await expect(seedPlatformAdmin({ email: "me@platform.test" })).rejects.toThrow(/PLATFORM_ADMIN_PASSWORD/);
+      await expect(seedPlatformAdmin({ password: STRONG })).rejects.toThrow(/--email/);
+      await expect(seedPlatformAdmin({ email: "me@platform.test" })).rejects.toThrow(/--password/);
       await expect(seedPlatformAdmin({ email: "me@platform.test", password: "short" })).rejects.toThrow(/at least 12/);
     });
 
-    it("creates an active superadmin and is idempotent", async () => {
+    it("creates an active superadmin and leaves an existing one alone", async () => {
       const first = await seedPlatformAdmin({ email: "Me@Platform.test", password: STRONG, name: "Owner" });
       const second = await seedPlatformAdmin({ email: "me@platform.test", password: "Different-Passw0rd!" });
 
       expect(first.created).toBe(true);
-      expect(second.created).toBe(false);
+      expect(second).toMatchObject({ created: false, updated: false });
       const users = await PlatformUser.find().select("+password");
       expect(users).toHaveLength(1);
       expect(users[0]).toMatchObject({ email: "me@platform.test", role: "superadmin", isActive: true, name: "Owner" });
       await expect(users[0].comparePassword(STRONG)).resolves.toBe(true);
+    });
+
+    it("--reset sets a new password and revokes open console sessions", async () => {
+      await seedPlatformAdmin({ email: "me@platform.test", password: STRONG, name: "Owner" });
+      const result = await seedPlatformAdmin({ email: "me@platform.test", password: "Different-Passw0rd!", reset: true });
+
+      expect(result).toMatchObject({ created: false, updated: true });
+      const user = await PlatformUser.findOne({ email: "me@platform.test" }).select("+password");
+      await expect(user.comparePassword("Different-Passw0rd!")).resolves.toBe(true);
+      await expect(user.comparePassword(STRONG)).resolves.toBe(false);
+      expect(user.tokenVersion).toBe(1);
     });
   });
 

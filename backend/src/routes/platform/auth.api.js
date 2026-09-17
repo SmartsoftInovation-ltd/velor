@@ -1,18 +1,23 @@
 const express = require("express");
 const controller = require("../../controller/platform/platformAuth.controller");
 const { platformGuard } = require("../../middleware/platformGuard.middleware");
-const { authGuard } = require("../../middleware/authMiddleware");
 const { platformLoginLimiter } = require("../../middleware/rateLimit.middleware");
 const { validateBody } = require("../../validation/platform/validateBody");
-const { platformLoginSchema } = require("../../validation/platform/auth.validation");
+const {
+  platformLoginSchema,
+  platformOtpSchema,
+  platformResendOtpSchema,
+} = require("../../validation/platform/auth.validation");
 
 const _ = express.Router();
 
+// Sign-in is two steps: the password starts a challenge, the SMS code opens the
+// session. There is no way into the console that skips the code.
 _.post("/login", platformLoginLimiter, validateBody(platformLoginSchema), controller.login);
+_.post("/verify-otp", platformLoginLimiter, validateBody(platformOtpSchema), controller.verifyOtp);
+_.post("/resend-otp", platformLoginLimiter, validateBody(platformResendOtpSchema), controller.resendOtp);
 _.post("/refresh", controller.refresh);
 _.post("/logout", controller.logout);
 _.get("/me", platformGuard, controller.me);
-// Dashboard session of the platform store's owner → platform session
-_.post("/console-access", authGuard, controller.consoleAccess);
 
 module.exports = _;

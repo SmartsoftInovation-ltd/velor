@@ -7,6 +7,7 @@ const PLATFORM_ENV = {
   REFRESH_TOKEN_SCCERET: "staff-refresh-secret-staff-refresh-secret-01",
   PLATFORM_ACCESS_TOKEN_SECRET: "platform-access-secret-platform-access-0001",
   PLATFORM_REFRESH_TOKEN_SECRET: "platform-refresh-secret-platform-refresh-01",
+  PLATFORM_ADMIN_PHONE: "01999878862",
 };
 
 const setPlatformEnv = () => Object.assign(process.env, PLATFORM_ENV);

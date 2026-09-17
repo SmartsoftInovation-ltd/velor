@@ -23,8 +23,8 @@ describe("seedSuperAdmin", () => {
 
   it("refuses to run without credentials", async () => {
     await seedPrerequisites();
-    await expect(seedSuperAdmin({ email: "", password: STRONG })).rejects.toThrow(/SUPERADMIN_EMAIL/);
-    await expect(seedSuperAdmin({ email: "root@example.com" })).rejects.toThrow(/SUPERADMIN_PASSWORD/);
+    await expect(seedSuperAdmin({ email: "", password: STRONG })).rejects.toThrow(/--email/);
+    await expect(seedSuperAdmin({ email: "root@example.com" })).rejects.toThrow(/--password/);
   });
 
   it("refuses a weak password", async () => {

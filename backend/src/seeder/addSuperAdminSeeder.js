@@ -8,21 +8,24 @@ dotenv.config();
 const MIN_PASSWORD_LENGTH = 12;
 
 /**
- * Creates the superadmin account. Credentials are never hardcoded:
- * the CLI reads SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD from the environment.
+ * Creates the superadmin account. Credentials are given on the command line and
+ * never kept in .env, so the only stored copy is the bcrypt hash in the database:
+ *
+ *   node src/seeder/addSuperAdminSeeder.js --email you@example.com --password '…'
+ *
  * Idempotent — an existing account is left untouched.
  */
 async function seedSuperAdmin({ email, password, name = "superadmin" } = {}) {
   const normalizedEmail = email?.trim().toLowerCase();
   if (!normalizedEmail) {
-    throw new Error("SUPERADMIN_EMAIL is required");
+    throw new Error("--email is required");
   }
   if (!password) {
-    throw new Error("SUPERADMIN_PASSWORD is required");
+    throw new Error("--password is required");
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new Error(
-      `SUPERADMIN_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
     );
   }
 
@@ -61,15 +64,21 @@ async function seedSuperAdmin({ email, password, name = "superadmin" } = {}) {
   return { created: true, user: superAdmin };
 }
 
+// --email a@b.c --password secret --name "Someone"
+const parseArgs = (argv) => {
+  const args = {};
+  for (const flag of ["email", "password", "name"]) {
+    const index = argv.indexOf(`--${flag}`);
+    if (index !== -1 && argv[index + 1]) args[flag] = argv[index + 1];
+  }
+  return args;
+};
+
 if (require.main === module) {
+  const { email, password, name } = parseArgs(process.argv.slice(2));
   mongoose
     .connect(process.env.DATABASE_URL)
-    .then(() =>
-      seedSuperAdmin({
-        email: process.env.SUPERADMIN_EMAIL,
-        password: process.env.SUPERADMIN_PASSWORD,
-      }),
-    )
+    .then(() => seedSuperAdmin({ email, password, ...(name ? { name } : {}) }))
     .then(() => mongoose.disconnect())
     .catch(async (err) => {
       console.error("Error seeding superadmin:", err.message);

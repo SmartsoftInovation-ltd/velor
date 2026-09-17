@@ -1,4 +1,3 @@
-import axiosSecure from "../hooks/useAxiosSecure";
 import { platformApi as api } from "./api";
 import type {
   AuditEntry,
@@ -48,10 +47,24 @@ export interface Webhooks {
 
 export type SellerPage = Page<Tenant> & { counts: Record<TenantStatus | "all", number> };
 
+export interface OtpChallenge {
+  challengeId: string;
+  /** Operator phone, masked: 01******62 */
+  phone: string;
+  expiresInSeconds: number;
+}
+
+export interface PlatformSession {
+  accessToken: string;
+  user: PlatformUser;
+}
+
 export const authApi = {
-  // Uses the signed-in dashboard session (owner of the platform workspace)
-  consoleAccess: () =>
-    data<{ accessToken: string; user: PlatformUser }>(axiosSecure.post("/platform/auth/console-access")),
+  // Step 1: the password only starts a challenge — the code opens the session
+  login: (body: { email: string; password: string }) => data<OtpChallenge>(api.post("/auth/login", body)),
+  verifyOtp: (body: { challengeId: string; code: string }) => data<PlatformSession>(api.post("/auth/verify-otp", body)),
+  resendOtp: (body: { email: string; password: string; challengeId?: string }) =>
+    data<OtpChallenge>(api.post("/auth/resend-otp", body)),
   me: () => data<PlatformUser>(api.get("/auth/me")),
   logout: () => api.post("/auth/logout"),
 };

@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const PLATFORM_AUDIT_ACTIONS = [
   "PLATFORM_LOGIN",
   "PLATFORM_LOGIN_FAILED",
+  // Second factor: the code was texted, and whether it was answered correctly
+  "PLATFORM_LOGIN_OTP_SENT",
+  "PLATFORM_LOGIN_OTP_FAILED",
   "PLATFORM_LOGOUT",
   "TENANT_CREATED",
   "TENANT_UPDATED",

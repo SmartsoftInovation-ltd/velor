@@ -2,27 +2,25 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { getPlatformToken, setPlatformSessionExpiredHandler, setPlatformToken } from "./api";
-import { isPlatformConsoleCode } from "./accessCode";
-import { authApi } from "./endpoints";
+import { authApi, type OtpChallenge } from "./endpoints";
 import type { PlatformUser } from "./types";
-
-export class WrongAccessCodeError extends Error {
-  constructor() {
-    super("Wrong access code");
-  }
-}
 
 interface PlatformAuthValue {
   operator: PlatformUser | null;
   loading: boolean;
   isSuperadmin: boolean;
-  unlock: (code: string) => Promise<void>;
+  /** Step 1: the password starts a challenge; the code is texted to the operator phone */
+  startSignIn: (credentials: { email: string; password: string }) => Promise<OtpChallenge>;
+  /** Step 2: the code opens the session */
+  verifyCode: (input: { challengeId: string; code: string }) => Promise<void>;
+  resendCode: (input: { email: string; password: string; challengeId?: string }) => Promise<OtpChallenge>;
 }
 
 const PlatformAuthContext = createContext<PlatformAuthValue | null>(null);
 
-// Platform Console session. Opened from the dashboard session of the platform
-// store owner plus the access code; ends with the dashboard session or the tab.
+// Platform Console session. Its own sign-in — the operator's email and password
+// plus a one-time code by SMS — kept separate from the dashboard session, and
+// closed when the dashboard session ends or the tab closes.
 export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
@@ -53,16 +51,24 @@ export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
     reset();
   }, [authLoading, user, reset]);
 
-  const unlock = async (code: string) => {
-    if (!isPlatformConsoleCode(code)) throw new WrongAccessCodeError();
-    const result = await authApi.consoleAccess();
-    setPlatformToken(result.accessToken);
-    queryClient.removeQueries({ queryKey: ["platform"] });
-    setOperator(result.user);
-  };
+  const startSignIn = useCallback((credentials: { email: string; password: string }) => authApi.login(credentials), []);
+
+  const verifyCode = useCallback(
+    async (input: { challengeId: string; code: string }) => {
+      const session = await authApi.verifyOtp(input);
+      setPlatformToken(session.accessToken);
+      queryClient.removeQueries({ queryKey: ["platform"] });
+      setOperator(session.user);
+    },
+    [queryClient],
+  );
+
+  const resendCode = useCallback((input: { email: string; password: string; challengeId?: string }) => authApi.resendOtp(input), []);
 
   return (
-    <PlatformAuthContext.Provider value={{ operator, loading, isSuperadmin: operator?.role === "superadmin", unlock }}>
+    <PlatformAuthContext.Provider
+      value={{ operator, loading, isSuperadmin: operator?.role === "superadmin", startSignIn, verifyCode, resendCode }}
+    >
       {children}
     </PlatformAuthContext.Provider>
   );

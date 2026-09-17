@@ -10,7 +10,7 @@ const {
   verifyPlatformRefreshToken,
 } = require("../../utils/platformTokens");
 const { recordPlatformAudit } = require("../../service/platformAudit.service");
-const { isOwner } = require("../../tenancy/rbac");
+const otp = require("../../service/platformOtp.service");
 
 const REFRESH_COOKIE = "platformRefreshToken";
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -44,6 +44,39 @@ exports.login = asynchandeler(async (req, res) => {
     throw new customError("Account is deactivated", statusCodes.FORBIDDEN);
   }
 
+  // The password is only the first factor: no session is issued here. A one-time
+  // code goes to the operator phone and /verify-otp exchanges it for the session.
+  let challenge;
+  try {
+    challenge = await otp.startChallenge(user);
+  } catch (error) {
+    console.error("Platform OTP could not be sent:", error.message);
+    throw new customError(
+      "Could not send the sign-in code. Please try again or contact support.",
+      statusCodes.SERVICE_UNAVAILABLE,
+      "OTP_SEND_FAILED",
+    );
+  }
+
+  await recordPlatformAudit({ req, actor: user, action: "PLATFORM_LOGIN_OTP_SENT" });
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "A sign-in code has been sent", challenge);
+});
+
+// Second factor: the code from the SMS is what actually opens the session
+exports.verifyOtp = asynchandeler(async (req, res) => {
+  getPlatformAuthConfig();
+  const { challengeId, code } = req.body;
+
+  const result = await otp.verifyChallenge(challengeId, code);
+  if (!result.ok) {
+    await recordPlatformAudit({ req, action: "PLATFORM_LOGIN_OTP_FAILED" });
+    throw new customError("Invalid or expired code", statusCodes.UNAUTHORIZED, "OTP_INVALID");
+  }
+
+  const user = await PlatformUser.findById(result.sub);
+  if (!user || !user.isActive) throw invalidCredentials();
+
   user.lastLoginAt = new Date();
   await user.save();
 
@@ -54,6 +87,41 @@ exports.login = asynchandeler(async (req, res) => {
     accessToken: signPlatformAccessToken(user),
     user: user.toJSON(),
   });
+});
+
+// A fresh code for the same sign-in attempt, rate-limited so it cannot be used
+// to flood the operator's phone
+exports.resendOtp = asynchandeler(async (req, res) => {
+  getPlatformAuthConfig();
+  const { email, password, challengeId } = req.body;
+
+  if (await otp.isTooSoonToResend(challengeId)) {
+    throw new customError(
+      `Please wait ${otp.RESEND_AFTER_SECONDS} seconds before asking for another code.`,
+      statusCodes.TOO_MANY_REQUESTS,
+      "OTP_RESEND_TOO_SOON",
+    );
+  }
+
+  const user = await PlatformUser.findOne({ email }).select("+password");
+  if (!user || !(await user.comparePassword(password)) || !user.isActive) throw invalidCredentials();
+
+  await otp.discardChallenge(challengeId);
+
+  let challenge;
+  try {
+    challenge = await otp.startChallenge(user);
+  } catch (error) {
+    console.error("Platform OTP could not be sent:", error.message);
+    throw new customError(
+      "Could not send the sign-in code. Please try again or contact support.",
+      statusCodes.SERVICE_UNAVAILABLE,
+      "OTP_SEND_FAILED",
+    );
+  }
+
+  await recordPlatformAudit({ req, actor: user, action: "PLATFORM_LOGIN_OTP_SENT" });
+  return apiResponse.sendSuccess(res, statusCodes.OK, "A new sign-in code has been sent", challenge);
 });
 
 exports.refresh = asynchandeler(async (req, res) => {
@@ -95,52 +163,3 @@ exports.logout = asynchandeler(async (req, res) => {
 exports.me = asynchandeler(async (req, res) =>
   apiResponse.sendSuccess(res, statusCodes.OK, "Current platform user", req.platformUser.toJSON()),
 );
-
-// Platform workspaces: stores whose owner may open the Platform Console from their
-// normal dashboard session (PLATFORM_WORKSPACES="velor,…").
-const platformWorkspaces = () =>
-  (process.env.PLATFORM_WORKSPACES || "")
-    .split(",")
-    .map((slug) => slug.trim().toLowerCase())
-    .filter(Boolean);
-
-// The operator account the console session acts as
-const consoleOperator = async () => {
-  const email = process.env.PLATFORM_CONSOLE_OPERATOR_EMAIL?.trim().toLowerCase();
-  const filter = email ? { email, isActive: true } : { role: "superadmin", isActive: true };
-  return PlatformUser.findOne(filter).sort({ createdAt: 1 });
-};
-
-exports.consoleAccess = asynchandeler(async (req, res) => {
-  getPlatformAuthConfig();
-
-  const workspace = req.tenant?.slug;
-  if (!workspace || !platformWorkspaces().includes(workspace) || !isOwner(req.user)) {
-    throw new customError("Only the platform store owner can open the Platform Console", statusCodes.FORBIDDEN);
-  }
-
-  const operator = await consoleOperator();
-  if (!operator) {
-    throw new customError(
-      "No platform operator account exists. Run npm run seed:platform-admin.",
-      statusCodes.SERVER_ERROR,
-      "PLATFORM_OPERATOR_MISSING",
-    );
-  }
-
-  operator.lastLoginAt = new Date();
-  await operator.save();
-
-  res.cookie(REFRESH_COOKIE, signPlatformRefreshToken(operator), { ...cookieOptions(), maxAge: REFRESH_MAX_AGE });
-  await recordPlatformAudit({
-    req,
-    actor: operator,
-    action: "PLATFORM_LOGIN",
-    metadata: { via: "console-access", staffEmail: req.user.email, workspace },
-  });
-
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Platform Console unlocked", {
-    accessToken: signPlatformAccessToken(operator),
-    user: operator.toJSON(),
-  });
-});

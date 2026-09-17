@@ -6,12 +6,16 @@ import { PlatformAuthProvider } from "./PlatformAuthContext";
 import PlatformGate from "./PlatformGate";
 import { getPlatformToken, setPlatformToken } from "./api";
 
-const consoleAccess = vi.fn();
+const login = vi.fn();
+const verifyOtp = vi.fn();
+const resendOtp = vi.fn();
 const me = vi.fn();
 const logout = vi.fn();
 vi.mock("./endpoints", () => ({
   authApi: {
-    consoleAccess: (...a: unknown[]) => consoleAccess(...a),
+    login: (...a: unknown[]) => login(...a),
+    verifyOtp: (...a: unknown[]) => verifyOtp(...a),
+    resendOtp: (...a: unknown[]) => resendOtp(...a),
     me: (...a: unknown[]) => me(...a),
     logout: (...a: unknown[]) => logout(...a),
   },
@@ -19,6 +23,7 @@ vi.mock("./endpoints", () => ({
 vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ user: { _id: "u1" }, isLoading: false }) }));
 
 const operator = { _id: "p1", name: "Owner", email: "owner@platform.test", role: "superadmin", isActive: true };
+const challenge = { challengeId: "11111111-2222-3333-4444-555555555555", phone: "01******62", expiresInSeconds: 300 };
 
 const renderGate = () =>
   render(
@@ -31,49 +36,76 @@ const renderGate = () =>
     </QueryClientProvider>,
   );
 
+const signIn = async (email = "owner@platform.test", password = "secret") => {
+  await userEvent.type(screen.getByLabelText(/email/i), email);
+  await userEvent.type(screen.getByLabelText(/password/i), password);
+  await userEvent.click(screen.getByRole("button", { name: /continue/i }));
+};
+
 const enterCode = async (code: string) => {
-  await userEvent.type(screen.getByLabelText(/access code/i), code);
+  await userEvent.type(await screen.findByLabelText(/sign-in code/i), code);
   await userEvent.click(screen.getByRole("button", { name: /enter platform console/i }));
 };
 
 describe("PlatformGate", () => {
   beforeEach(() => {
     setPlatformToken(null);
-    consoleAccess.mockReset();
+    login.mockReset();
+    verifyOtp.mockReset();
+    resendOtp.mockReset();
     me.mockReset();
     logout.mockReset();
   });
 
-  it("opens the console with the secret code using the signed-in dashboard session", async () => {
-    consoleAccess.mockResolvedValue({ accessToken: "platform-token", user: operator });
+  it("opens the console only after the password and the texted code", async () => {
+    login.mockResolvedValue(challenge);
+    verifyOtp.mockResolvedValue({ accessToken: "platform-token", user: operator });
     renderGate();
 
     expect(screen.queryByText("platform page")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
-    await enterCode("taufik");
+    await signIn();
+
+    // The password alone does not open a session
+    expect(screen.queryByText("platform page")).not.toBeInTheDocument();
+    expect(getPlatformToken()).toBeNull();
+    expect(await screen.findByText(/01\*+62/)).toBeInTheDocument();
+
+    await enterCode("123456");
 
     expect(await screen.findByText("platform page")).toBeInTheDocument();
-    expect(consoleAccess).toHaveBeenCalledTimes(1);
+    expect(verifyOtp).toHaveBeenCalledWith({ challengeId: challenge.challengeId, code: "123456" });
     expect(getPlatformToken()).toBe("platform-token");
-    expect(screen.queryByRole("button", { name: /lock/i })).not.toBeInTheDocument();
   });
 
-  it("rejects a wrong code without calling the API", async () => {
+  it("shows the API refusal when the credentials are wrong", async () => {
+    login.mockRejectedValue({ response: { data: { message: "Invalid credentials" } } });
     renderGate();
-    await enterCode("nope");
+    await signIn("nobody@platform.test", "wrong");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/wrong access code/i);
-    expect(consoleAccess).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/invalid credentials/i));
     expect(screen.queryByText("platform page")).not.toBeInTheDocument();
   });
 
-  it("shows the API refusal when the account is not the platform owner", async () => {
-    consoleAccess.mockImplementation(
-      () => new Promise((_, reject) => setTimeout(() => reject({ response: { data: { message: "Only the platform store owner can open the Platform Console" } } }), 5)),
-    );
+  it("keeps the code screen open when the code is wrong", async () => {
+    login.mockResolvedValue(challenge);
+    verifyOtp.mockRejectedValue({ response: { data: { message: "Invalid or expired code" } } });
     renderGate();
-    await enterCode("taufik");
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/only the platform store owner/i));
+    await signIn();
+    await enterCode("000000");
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/invalid or expired code/i));
+    expect(screen.queryByText("platform page")).not.toBeInTheDocument();
+    expect(getPlatformToken()).toBeNull();
+  });
+
+  it("sends a new code on request", async () => {
+    login.mockResolvedValue(challenge);
+    resendOtp.mockResolvedValue({ ...challenge, challengeId: "99999999-2222-3333-4444-555555555555" });
+    renderGate();
+    await signIn();
+    await userEvent.click(await screen.findByRole("button", { name: /send a new code/i }));
+
+    await waitFor(() => expect(resendOtp).toHaveBeenCalledTimes(1));
   });
 
   it("restores an open console session", async () => {
