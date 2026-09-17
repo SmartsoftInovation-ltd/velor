@@ -46,7 +46,7 @@ exports.updateSection = (sectionKey) =>
 
 exports.getWebhooks = asynchandeler(async (req, res) => {
   const tenant = await findTenant(req.params.tenantId);
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Webhook URLs", settings.getWebhookUrls(tenant));
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Webhook URLs", settings.getWebhookUrls(tenant, `${req.protocol}://${req.get("host")}`));
 });
 
 exports.testSection = (sectionKey) =>

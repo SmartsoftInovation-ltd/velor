@@ -140,7 +140,24 @@ describe("settings.service", () => {
       expect(JSON.stringify(ownerView)).not.toMatch(/pizzashop-real-api-key|cloud-secret-value/);
     });
 
+    it("email in platform mode only counts as configured when a platform sender exists", async () => {
+      const saved = { mail: process.env.HOST_MAIL, pass: process.env.HOST_APP_PASSWORD };
+      delete process.env.HOST_MAIL;
+      delete process.env.HOST_APP_PASSWORD;
+      try {
+        expect((await service.getFeatures(T)).email).toBe(false);
+        process.env.HOST_MAIL = "platform@mail.test";
+        process.env.HOST_APP_PASSWORD = "pass";
+        expect((await service.getFeatures(T)).email).toBe(true);
+      } finally {
+        if (saved.mail) process.env.HOST_MAIL = saved.mail; else delete process.env.HOST_MAIL;
+        if (saved.pass) process.env.HOST_APP_PASSWORD = saved.pass; else delete process.env.HOST_APP_PASSWORD;
+      }
+    });
+
     it("getFeatures reports which integrations are configured", async () => {
+      process.env.HOST_MAIL = "platform@mail.test";
+      process.env.HOST_APP_PASSWORD = "pass";
       expect(await service.getFeatures(T)).toEqual({
         sms: true,
         email: true,
@@ -179,6 +196,22 @@ describe("settings.service", () => {
   });
 
   describe("webhook URLs", () => {
+    it("fall back to the domain the request came in on when API_PUBLIC_URL is not set", () => {
+      const saved = process.env.API_PUBLIC_URL;
+      delete process.env.API_PUBLIC_URL;
+      try {
+        expect(service.getWebhookUrls({ webhookKey: "K" }, "https://api.live-store.com").pathao)
+          .toBe("https://api.live-store.com/api/v1/hooks/pathao/K");
+      } finally {
+        process.env.API_PUBLIC_URL = saved;
+      }
+    });
+
+    it("API_PUBLIC_URL wins over the request domain", () => {
+      expect(service.getWebhookUrls({ webhookKey: "K" }, "http://localhost:3000").pathao)
+        .toBe("https://api.example.test/api/v1/hooks/pathao/K");
+    });
+
     it("builds per-tenant callback URLs from API_PUBLIC_URL and the webhook key", () => {
       expect(service.getWebhookUrls({ webhookKey: "KEY123" })).toEqual({
         sslcommerz: {

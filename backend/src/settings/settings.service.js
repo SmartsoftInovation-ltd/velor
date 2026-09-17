@@ -243,8 +243,11 @@ const updateSection = async (tenantId, sectionKey, patch, { allowedFields, updat
 const featureNotConfigured = (code, label) =>
   new customError(`${label} is not configured for this store`, statusCodes.UNPROCESSABLE, code);
 
-const getWebhookUrls = (tenant) => {
-  const base = `${(process.env.API_PUBLIC_URL || "").replace(/\/+$/, "")}${process.env.BASE_URL || "/api/v1"}/hooks`;
+// Public API origin: API_PUBLIC_URL when set (required for payment callbacks),
+// otherwise the origin the current request came in on.
+const getWebhookUrls = (tenant, requestOrigin = "") => {
+  const origin = (process.env.API_PUBLIC_URL || requestOrigin).replace(/\/+$/, "");
+  const base = `${origin}${process.env.BASE_URL || "/api/v1"}/hooks`;
   const key = tenant.webhookKey;
   return {
     sslcommerz: Object.fromEntries(

@@ -72,6 +72,17 @@ describe("tenant settings controller", () => {
     expect(res.body.message).toMatch(/tenant not found/i);
   });
 
+  it("builds webhook URLs from the request's host when API_PUBLIC_URL is unset", async () => {
+    const saved = process.env.API_PUBLIC_URL;
+    delete process.env.API_PUBLIC_URL;
+    try {
+      const res = await as(request(app).get("/settings/webhooks")).set("Host", "api.live-store.com").expect(200);
+      expect(res.body.data.pathao).toMatch(/^http:\/\/api\.live-store\.com\/api\/v1\/hooks\/pathao\//);
+    } finally {
+      process.env.API_PUBLIC_URL = saved;
+    }
+  });
+
   it("returns webhook URLs for the tenant", async () => {
     const res = await as(request(app).get("/settings/webhooks")).expect(200);
     expect(res.body.data.steadfast).toContain(tenant.webhookKey);

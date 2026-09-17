@@ -32,19 +32,30 @@ describe("SignInForm", () => {
 
   it("prefills the workspace from a deep link, then from the remembered value", () => {
     renderAt("/signin?workspace=PizzaShop");
-    expect(screen.getByPlaceholderText(/store id/i)).toHaveValue("pizzashop");
+    expect(screen.getByLabelText(/^workspace/i)).toHaveValue("pizzashop");
   });
 
   it("prefills the remembered workspace", () => {
     setWorkspace("burgerhub");
     renderAt();
-    expect(screen.getByPlaceholderText(/store id/i)).toHaveValue("burgerhub");
+    expect(screen.getByLabelText(/^workspace/i)).toHaveValue("burgerhub");
+  });
+
+  it("marks a valid email and toggles password visibility", async () => {
+    renderAt();
+    await userEvent.type(screen.getByLabelText(/^email/i), "staff@pizza.com");
+    expect(screen.getByLabelText(/valid email/i)).toBeInTheDocument();
+
+    const password = screen.getByLabelText(/^password/i);
+    expect(password).toHaveAttribute("type", "password");
+    await userEvent.click(screen.getByRole("button", { name: /show password/i }));
+    expect(password).toHaveAttribute("type", "text");
   });
 
   it("requires a workspace", async () => {
     renderAt();
-    await userEvent.type(screen.getByPlaceholderText(/email/i), "staff@pizza.com");
-    await userEvent.type(screen.getByPlaceholderText(/password/i), "Pizza-Pass1");
+    await userEvent.type(screen.getByLabelText(/^email/i), "staff@pizza.com");
+    await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
     await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     expect(await screen.findByText(/workspace is required/i)).toBeInTheDocument();
@@ -55,9 +66,9 @@ describe("SignInForm", () => {
     post.mockResolvedValue({ data: { data: { accessToken: "token-1", tenant: { slug: "pizzashop" } } } });
     renderAt();
 
-    await userEvent.type(screen.getByPlaceholderText(/store id/i), "PizzaShop");
-    await userEvent.type(screen.getByPlaceholderText(/email/i), "staff@pizza.com");
-    await userEvent.type(screen.getByPlaceholderText(/password/i), "Pizza-Pass1");
+    await userEvent.type(screen.getByLabelText(/^workspace/i), "PizzaShop");
+    await userEvent.type(screen.getByLabelText(/^email/i), "staff@pizza.com");
+    await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
     await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());

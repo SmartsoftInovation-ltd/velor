@@ -18,7 +18,8 @@ const isOriginAllowed = (origin) => {
   // No Origin header: same-origin, curl, server-to-server, mobile apps
   if (!origin) return true;
   if (allowedOrigins.has(origin)) return true;
-  return process.env.NODE_ENV === "development" && isLocalhost(origin);
+  // "developement" is the spelling this codebase uses for NODE_ENV
+  return ["development", "developement"].includes(process.env.NODE_ENV) && isLocalhost(origin);
 };
 
 // Disallowed origins get no CORS headers (browser blocks) instead of a 500

@@ -83,6 +83,18 @@ describe("AuthContext", () => {
     expect(latest.features?.cloudinary).toBe(false);
   });
 
+  it("updateFeatures refreshes integration flags without reloading the session", async () => {
+    get.mockResolvedValue({ data: { data: { ...baseUser, effectivePermissions: {}, features: { sms: false, email: false, sslcommerz: false, couriers: { pathao: false, steadfast: false }, cloudinary: false, ai: false } } } });
+    renderAuth();
+    await screen.findByText("ready");
+
+    act(() => latest.updateFeatures({ sms: true, email: false, sslcommerz: false, couriers: { pathao: false, steadfast: false }, cloudinary: true, ai: false }));
+
+    await waitFor(() => expect(latest.features?.sms).toBe(true));
+    expect(latest.features?.cloudinary).toBe(true);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
   it("clearAuth drops cached server data and this store's local drafts", async () => {
     get.mockResolvedValue({ data: { data: { ...baseUser, effectivePermissions: {} } } });
     const queryClient = new QueryClient();

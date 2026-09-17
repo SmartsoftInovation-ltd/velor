@@ -1,21 +1,44 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
-import Label from "../form/Label";
-import Input from "../form/input/InputField";
-import Checkbox from "../form/input/Checkbox";
-import Button from "../ui/button/Button";
+import { useNavigate, useSearchParams } from "react-router";
 import toast from "react-hot-toast";
 import axios from "axios";
+import { FiArrowRight, FiCheck, FiEye, FiEyeOff, FiLock, FiMail, FiShield } from "react-icons/fi";
+import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import axiosSecure, { setAccessToken } from "../../hooks/useAxiosSecure";
 import { useAuth } from "../../context/AuthContext";
 import { getWorkspace, setWorkspace, workspaceFromSearch } from "../../lib/session";
+import BrandMark from "./BrandMark";
+
+// Shown after the workspace input, e.g. "baig-digital.ecompos.app"
+const WORKSPACE_DOMAIN = import.meta.env.VITE_WORKSPACE_DOMAIN || "ecompos.app";
+const EMAIL_PATTERN = /\S+@\S+\.\S+/;
+
+type Errors = {
+  workspace?: string;
+  email?: string;
+  password?: string;
+};
+
+const fieldShell = (hasError: boolean) =>
+  `flex h-12 items-center gap-2.5 rounded-xl border bg-white px-3.5 transition focus-within:ring-4 dark:bg-white/[0.03] ${
+    hasError
+      ? "border-error-400 focus-within:border-error-500 focus-within:ring-error-500/10"
+      : "border-gray-200 focus-within:border-emerald-500 focus-within:ring-emerald-500/10 dark:border-gray-800"
+  }`;
+
+// auth-input: keeps the browser's autofill highlight off (see index.css)
+const inputClass =
+  "auth-input h-full w-full min-w-0 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-white/90 dark:placeholder:text-white/30";
+
+const RequiredDot = () => <span aria-hidden className="ml-1 inline-block size-1 translate-y-[-2px] rounded-full bg-emerald-500" />;
 
 export default function SignInForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { refreshAuth } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   // The axios interceptor redirects here with ?sessionExpired=1 when the
   // refresh token is rejected, so the user is told why they were signed out
@@ -30,29 +53,18 @@ export default function SignInForm() {
 
   // Where the user was before the session died, so we can send them back.
   const redirectTo = searchParams.get("from") || "/";
-  const [isChecked, setIsChecked] = useState(false);
   const [formData, setFormData] = useState({
     // Deep link (?workspace=) wins over the store this browser used last
     workspace: workspaceFromSearch(`?${searchParams.toString()}`) || getWorkspace() || "",
     email: "",
     password: "",
   });
-
-  type Errors = {
-    workspace?: string;
-    email?: string;
-    password?: string;
-  };
-
   const [errors, setErrors] = useState<Errors>({});
 
-  const handleChange = (e: { target: { name: any; value: any } }) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
   const validate = () => {
@@ -61,229 +73,174 @@ export default function SignInForm() {
     if (!formData.workspace.trim()) newErrors.workspace = "Workspace is required.";
 
     if (!formData.email) newErrors.email = "Email is required.";
-    else if (!/\S+@\S+\.\S+/.test(formData.email))
-      newErrors.email = "Email is invalid.";
+    else if (!EMAIL_PATTERN.test(formData.email)) newErrors.email = "Email is invalid.";
 
     if (!formData.password) newErrors.password = "Password is required.";
-    else if (formData.password.length < 4)
-      newErrors.password = "Password must be at least 4 characters.";
+    else if (formData.password.length < 4) newErrors.password = "Password must be at least 4 characters.";
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
-  interface LoginResponse {
-    [key: string]: any;
-  }
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>
-  ): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    if (!validate()) return;
 
-    if (validate()) {
-      try {
-        const workspace = formData.workspace.trim().toLowerCase();
-        // Remember the store first: the request interceptor sends it as x-tenant
-        setWorkspace(workspace);
-        const response = await axiosSecure.post<LoginResponse>(
-          `/auth/login`,
-          { ...formData, workspace },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-            withCredentials: true,
-          }
-        );
-        const { accessToken } = response.data.data;
-        setAccessToken(accessToken);
-        toast.success("Login successful");
-        await refreshAuth();
-        setTimeout(() => {
-          navigate(redirectTo, { replace: true });
-        }, 500);
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.data?.message) {
-          toast.error(error.response.data.message);
-        } else {
-          toast.error("An error occurred during login.");
-        }
+    setSubmitting(true);
+    try {
+      const workspace = formData.workspace.trim().toLowerCase();
+      // Remember the store first: the request interceptor sends it as x-tenant
+      setWorkspace(workspace);
+      const response = await axiosSecure.post(
+        `/auth/login`,
+        { ...formData, workspace },
+        { headers: { "Content-Type": "application/json" }, withCredentials: true },
+      );
+      const { accessToken } = response.data.data;
+      setAccessToken(accessToken);
+      toast.success("Login successful");
+      await refreshAuth();
+      setTimeout(() => {
+        navigate(redirectTo, { replace: true });
+      }, 500);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("An error occurred during login.");
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const emailValid = EMAIL_PATTERN.test(formData.email);
+
   return (
-    <div className="flex flex-col flex-1">
-      <div className="w-full max-w-md pt-10 mx-auto">
-        <Link
-          to="/"
-          className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-        >
-          <ChevronLeftIcon className="size-5" />
-          Back to dashboard
-        </Link>
-      </div>
-      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+    <div className="w-full max-w-[404px]">
+      <BrandMark className="mb-7 size-10" />
+
+      <h1 className="text-[32px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white">Sign in</h1>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Enter your workspace and credentials to continue.</p>
+
+      <form onSubmit={handleSubmit} noValidate className="mt-7 space-y-5">
         <div>
-          <div className="mb-5 sm:mb-8">
-            <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
-              Sign In
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Enter your email and password to sign in!
-            </p>
+          <label htmlFor="signin-workspace" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-gray-300">
+            Workspace
+            <RequiredDot />
+          </label>
+          <div className={fieldShell(Boolean(errors.workspace))}>
+            <HiOutlineBuildingOffice2 aria-hidden className="size-4 shrink-0 text-gray-400" />
+            {/* auth-autosize: the input is exactly as wide as its text, so the
+                domain suffix sits right after the workspace name */}
+            <span className="flex h-full min-w-0 flex-1 items-center">
+              <input
+                id="signin-workspace"
+                name="workspace"
+                autoComplete="organization"
+                autoCapitalize="none"
+                spellCheck={false}
+                className={`${inputClass} auth-autosize`}
+                value={formData.workspace}
+                onChange={handleChange}
+                placeholder="your-store"
+              />
+              <span aria-hidden className="min-w-0 truncate text-sm text-gray-400 dark:text-white/30">.{WORKSPACE_DOMAIN}</span>
+            </span>
           </div>
-          <div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
-              <button className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M18.7511 10.1944C18.7511 9.47495 18.6915 8.94995 18.5626 8.40552H10.1797V11.6527H15.1003C15.0011 12.4597 14.4654 13.675 13.2749 14.4916L13.2582 14.6003L15.9087 16.6126L16.0924 16.6305C17.7788 15.1041 18.7511 12.8583 18.7511 10.1944Z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M10.1788 18.75C12.5895 18.75 14.6133 17.9722 16.0915 16.6305L13.274 14.4916C12.5201 15.0068 11.5081 15.3666 10.1788 15.3666C7.81773 15.3666 5.81379 13.8402 5.09944 11.7305L4.99473 11.7392L2.23868 13.8295L2.20264 13.9277C3.67087 16.786 6.68674 18.75 10.1788 18.75Z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.10014 11.7305C4.91165 11.186 4.80257 10.6027 4.80257 9.99992C4.80257 9.3971 4.91165 8.81379 5.09022 8.26935L5.08523 8.1534L2.29464 6.02954L2.20333 6.0721C1.5982 7.25823 1.25098 8.5902 1.25098 9.99992C1.25098 11.4096 1.5982 12.7415 2.20333 13.9277L5.10014 11.7305Z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M10.1789 4.63331C11.8554 4.63331 12.9864 5.34303 13.6312 5.93612L16.1511 3.525C14.6035 2.11528 12.5895 1.25 10.1789 1.25C6.68676 1.25 3.67088 3.21387 2.20264 6.07218L5.08953 8.26943C5.81381 6.15972 7.81776 4.63331 10.1789 4.63331Z"
-                    fill="#EB4335"
-                  />
-                </svg>
-                Sign in with Google
-              </button>
-              <button className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
-                <svg
-                  width="21"
-                  className="fill-current"
-                  height="20"
-                  viewBox="0 0 21 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M15.6705 1.875H18.4272L12.4047 8.75833L19.4897 18.125H13.9422L9.59717 12.4442L4.62554 18.125H1.86721L8.30887 10.7625L1.51221 1.875H7.20054L11.128 7.0675L15.6705 1.875ZM14.703 16.475H16.2305L6.37054 3.43833H4.73137L14.703 16.475Z" />
-                </svg>
-                Sign in with X
-              </button>
-            </div>
-            <div className="relative py-3 sm:py-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="p-2 text-gray-400 bg-white dark:bg-gray-900 sm:px-5 sm:py-2">
-                  Or
-                </span>
-              </div>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-6">
-                <div>
-                  <Label>
-                    Workspace<span className="text-error-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    name="workspace"
-                    value={formData.workspace}
-                    onChange={handleChange}
-                    placeholder="Store ID (e.g. pizzashop)"
-                  />
-                  {errors.workspace && (
-                    <p className="text-red-500 text-sm">{errors.workspace}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>
-                    Email<span className="text-error-500">*</span>
-                  </Label>
-                  <Input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Enter your email"
-                  />
-                  {errors.email && (
-                    <p className="text-red-500 text-sm">{errors.email}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>
-                    Password<span className="text-error-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Enter your password"
-                    />
-                    <span
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
-                    >
-                      {showPassword ? (
-                        <EyeIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      ) : (
-                        <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      )}
-                    </span>
-                  </div>
-                  {errors.password && (
-                    <p className="text-red-500 text-sm">{errors.password}</p>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Checkbox checked={isChecked} onChange={setIsChecked} />
-                    <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
-                      Keep me logged in
-                    </span>
-                  </div>
-                  <Link
-                    to="/reset-password"
-                    className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div>
-                  <Button className="w-full" size="sm">
-                    Sign in
-                  </Button>
-                </div>
-              </div>
-            </form>
-
-            <div className="mt-5">
-              <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
-                Don&apos;t have an account? {""}
-                <Link
-                  to="/signup"
-                  className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
-                >
-                  Sign Up
-                </Link>
-              </p>
-            </div>
-          </div>
+          {errors.workspace && <p className="mt-1.5 text-xs text-error-500">{errors.workspace}</p>}
         </div>
-      </div>
+
+        <div>
+          <label htmlFor="signin-email" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-gray-300">
+            Email
+            <RequiredDot />
+          </label>
+          <div className={fieldShell(Boolean(errors.email))}>
+            <FiMail aria-hidden className="size-4 shrink-0 text-gray-400" />
+            <input
+              id="signin-email"
+              type="email"
+              name="email"
+              autoComplete="username"
+              className={inputClass}
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="you@company.com"
+            />
+            {emailValid && <FiCheck role="img" aria-label="Valid email" className="size-4 shrink-0 text-emerald-600" />}
+          </div>
+          {errors.email && <p className="mt-1.5 text-xs text-error-500">{errors.email}</p>}
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label htmlFor="signin-password" className="block text-[13px] font-medium text-gray-700 dark:text-gray-300">
+              Password
+              <RequiredDot />
+            </label>
+            <a href="/reset-password" className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
+              Forgot password?
+            </a>
+          </div>
+          <div className={fieldShell(Boolean(errors.password))}>
+            <FiLock aria-hidden className="size-4 shrink-0 text-gray-400" />
+            <input
+              id="signin-password"
+              type={showPassword ? "text" : "password"}
+              name="password"
+              autoComplete="current-password"
+              className={`${inputClass} ${showPassword ? "" : "tracking-[0.2em]"}`}
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Your password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="shrink-0 text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              {showPassword ? <FiEye className="size-4" /> : <FiEyeOff className="size-4" />}
+            </button>
+          </div>
+          {errors.password && <p className="mt-1.5 text-xs text-error-500">{errors.password}</p>}
+        </div>
+
+        <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-gray-600 dark:text-gray-400">
+          <input
+            type="checkbox"
+            checked={keepSignedIn}
+            onChange={(e) => setKeepSignedIn(e.target.checked)}
+            className="size-[18px] cursor-pointer rounded-[5px] accent-emerald-600"
+          />
+          Keep me signed in on this device
+        </label>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0F9D63] text-sm font-semibold text-white shadow-[0_8px_20px_-6px_rgba(15,157,99,0.55)] transition hover:bg-[#0C8653] disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {submitting ? "Signing in…" : "Sign in"}
+          {!submitting && <FiArrowRight aria-hidden className="size-4" />}
+        </button>
+
+        <div className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
+          <FiShield aria-hidden className="size-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+          Protected workspace. You are signed out automatically when your session expires.
+        </div>
+      </form>
+
+      <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
+        Don&apos;t have a workspace?{" "}
+        <a
+          href="mailto:smartsoftinnovationbd@gmail.com?subject=Workspace%20access%20request"
+          className="font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
+        >
+          Request access
+        </a>
+      </p>
     </div>
   );
 }

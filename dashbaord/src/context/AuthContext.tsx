@@ -67,6 +67,8 @@ interface AuthContextType {
   can: (module: string, action: string) => boolean;
   refreshAuth: () => Promise<void>;
   clearAuth: () => void;
+  /** Replace integration flags after settings change (no session reload) */
+  updateFeatures: (features: Features) => void;
 }
 
 const LEGACY_OWNER_SLUGS = ["owner", "superadmin"];
@@ -146,6 +148,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     disconnectSocket();
   }, [queryClient]);
 
+  const updateFeatures = useCallback((features: Features) => {
+    setUser((current) => (current ? { ...current, features } : current));
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -158,6 +164,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         can,
         refreshAuth,
         clearAuth,
+        updateFeatures,
       }}
     >
       {children}

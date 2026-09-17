@@ -33,7 +33,9 @@ const SECTIONS = {
   email: {
     path: "email",
     isActive: (s) => s.mode === "smtp",
-    isConfigured: (s) => s.mode !== "disabled",
+    // "platform" sends through the platform's own mailbox, which must exist
+    isConfigured: (s) =>
+      s.mode === "smtp" || (s.mode === "platform" && Boolean(process.env.HOST_MAIL && process.env.HOST_APP_PASSWORD)),
     fields: {
       mode: { type: "enum", values: ["platform", "smtp", "disabled"], default: "platform" },
       fromName: { type: "string", default: "" },

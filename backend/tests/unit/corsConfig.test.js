@@ -29,5 +29,7 @@ describe("cors config", () => {
     expect(load({ NODE_ENV: "production" }).isOriginAllowed(undefined)).toBe(true);
     expect(load({ NODE_ENV: "production" }).isOriginAllowed("http://localhost:5173")).toBe(false);
     expect(load({ NODE_ENV: "development" }).isOriginAllowed("http://localhost:5173")).toBe(true);
+    // The codebase's own spelling (see GlobalErrorHandeler)
+    expect(load({ NODE_ENV: "developement" }).isOriginAllowed("http://localhost:5173")).toBe(true);
   });
 });
