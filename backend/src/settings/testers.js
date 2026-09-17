@@ -18,12 +18,10 @@ const TESTERS = {
   },
 
   email: async (s) => {
-    if (s.mode === "disabled") throw new Error("Email is disabled");
-    const transport =
-      s.mode === "smtp"
-        ? { host: s.smtpHost, port: s.smtpPort, secure: s.smtpSecure, auth: { user: s.smtpUser, pass: s.smtpPassword } }
-        : { service: "gmail", auth: { user: process.env.HOST_MAIL, pass: process.env.HOST_APP_PASSWORD } };
-    await nodemailer.createTransport(transport).verify();
+    if (s.mode !== "smtp") throw new Error("Email is disabled");
+    await nodemailer
+      .createTransport({ host: s.smtpHost, port: s.smtpPort, secure: s.smtpSecure, auth: { user: s.smtpUser, pass: s.smtpPassword } })
+      .verify();
     return { mode: s.mode };
   },
 

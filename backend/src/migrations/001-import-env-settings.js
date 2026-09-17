@@ -22,8 +22,19 @@ const sectionPatches = async (env) => {
     sms: present(env.BULK_SMS_URL, env.BULK_SMS_API_KEY, env.BULK_SMS_SENDER_ID)
       ? { enabled: true, apiUrl: env.BULK_SMS_URL, apiKey: env.BULK_SMS_API_KEY, senderId: env.BULK_SMS_SENDER_ID }
       : null,
+    // The legacy .env mailbox was a Gmail account, imported as this store's own
+    // SMTP sender — every store sends its own email.
     email: present(env.HOST_MAIL, env.HOST_APP_PASSWORD)
-      ? { mode: "platform", ...(env.MAIL_FROM_NAME ? { fromName: env.MAIL_FROM_NAME } : {}) }
+      ? {
+          mode: "smtp",
+          smtpHost: "smtp.gmail.com",
+          smtpPort: 587,
+          smtpSecure: false,
+          smtpUser: env.HOST_MAIL,
+          smtpPassword: env.HOST_APP_PASSWORD,
+          fromEmail: env.HOST_MAIL,
+          ...(env.MAIL_FROM_NAME ? { fromName: env.MAIL_FROM_NAME } : {}),
+        }
       : null,
     sslcommerz: present(env.SSLC_STORE_ID, env.SSLC_STORE_PASSWORD)
       ? { enabled: true, storeId: env.SSLC_STORE_ID, storePassword: env.SSLC_STORE_PASSWORD, isLive: env.NODE_ENV === "production" }

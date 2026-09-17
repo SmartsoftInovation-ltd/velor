@@ -23,7 +23,7 @@ const email: SectionSchema = {
   path: "email",
   testable: true,
   fields: [
-    { name: "mode", type: "enum", required: false, default: "platform", values: ["platform", "smtp", "disabled"] },
+    { name: "mode", type: "enum", required: false, default: "smtp", values: ["smtp", "disabled"] },
     { name: "fromName", type: "string", required: false, default: "" },
     { name: "smtpHost", type: "string", required: true, default: "" },
     { name: "smtpPassword", type: "secret", required: true },
@@ -102,11 +102,11 @@ describe("IntegrationForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Cannot enable sms: missing apiUrl");
   });
 
-  it("only shows SMTP fields when the email mode is SMTP", async () => {
-    renderForm({ schema: email, values: { mode: "platform", fromName: "", smtpHost: "", smtpPassword: { isSet: false, last4: "" } } });
+  it("only shows SMTP fields when email sending is on", async () => {
+    renderForm({ schema: email, values: { mode: "disabled", fromName: "", smtpHost: "", smtpPassword: { isSet: false, last4: "" } } });
     expect(screen.queryByLabelText(/smtp host/i)).not.toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByLabelText(/sending method/i), "smtp");
+    await userEvent.selectOptions(screen.getByLabelText(/email sending/i), "smtp");
     expect(screen.getByLabelText(/smtp host/i)).toBeInTheDocument();
   });
 

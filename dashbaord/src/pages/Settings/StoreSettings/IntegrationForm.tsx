@@ -246,19 +246,33 @@ const IntegrationForm = ({ schema, values, canEdit, onSave, onTest }: Props) => 
         );
       }
     } else {
+      // A datalist offers the common values without closing the field: an
+      // unusual provider port or host can still be typed in.
+      const suggestions = meta?.fields[field.name]?.suggestions;
+      const listId = suggestions ? `${id}-options` : undefined;
       control = (
-        <input
-          id={id}
-          type={field.type === "number" || field.type === "integer" ? "number" : field.type === "email" ? "email" : "text"}
-          step={field.type === "number" ? "0.1" : undefined}
-          min={field.min}
-          max={field.max}
-          className={inputClass}
-          value={String(draft[field.name])}
-          disabled={!canEdit}
-          placeholder={placeholder}
-          onChange={(e) => set(field.name, e.target.value)}
-        />
+        <>
+          <input
+            id={id}
+            type={field.type === "number" || field.type === "integer" ? "number" : field.type === "email" ? "email" : "text"}
+            step={field.type === "number" ? "0.1" : undefined}
+            min={field.min}
+            max={field.max}
+            list={listId}
+            className={inputClass}
+            value={String(draft[field.name])}
+            disabled={!canEdit}
+            placeholder={placeholder}
+            onChange={(e) => set(field.name, e.target.value)}
+          />
+          {suggestions && (
+            <datalist id={listId}>
+              {suggestions.map((option) => (
+                <option key={option.value} value={option.value} label={option.label} />
+              ))}
+            </datalist>
+          )}
+        </>
       );
     }
 

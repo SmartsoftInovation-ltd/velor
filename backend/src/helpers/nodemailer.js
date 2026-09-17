@@ -21,11 +21,10 @@ const resetMailTransport = () => transports.clear();
 const sendEmail = async (to, subject, template, { throwOnError = false } = {}) => {
   try {
     const config = await integrationConfig.getMailConfig();
-    if (!config) throw new Error("Mail is not configured: set HOST_MAIL and HOST_APP_PASSWORD");
+    if (!config) throw new Error("Mail is not configured: set up SMTP in Store Settings → Email");
 
     const info = await getMailTransport(config.transport).sendMail({
       from: config.from,
-      replyTo: config.replyTo,
       to,
       subject,
       html: template,

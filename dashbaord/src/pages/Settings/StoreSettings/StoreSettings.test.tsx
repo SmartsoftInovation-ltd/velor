@@ -21,7 +21,7 @@ vi.mock("../../../context/AuthContext", () => ({
 
 const schema = [
   { key: "sms", path: "sms", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }, { name: "apiKey", type: "secret", required: true }, { name: "senderId", type: "string", required: true, default: "" }] },
-  { key: "email", path: "email", testable: true, fields: [{ name: "mode", type: "enum", required: false, default: "platform", values: ["platform", "smtp", "disabled"] }] },
+  { key: "email", path: "email", testable: true, fields: [{ name: "mode", type: "enum", required: false, default: "smtp", values: ["smtp", "disabled"] }] },
   { key: "sslcommerz", path: "payment/sslcommerz", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }, { name: "storeId", type: "string", required: true, default: "" }] },
   { key: "pathao", path: "couriers/pathao", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }] },
   { key: "steadfast", path: "couriers/steadfast", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }] },
@@ -35,7 +35,7 @@ const settingsResponse = (canManageIntegrations: boolean) => ({
   settings: {
     general: { invoicePrefix: "VR" },
     sms: { enabled: true, apiKey: { isSet: true, last4: "9876" }, senderId: "880" },
-    email: { mode: "platform" },
+    email: { mode: "disabled" },
     sslcommerz: { enabled: false, storeId: "" },
     pathao: { enabled: false },
     steadfast: { enabled: false },

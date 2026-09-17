@@ -33,15 +33,15 @@ const SECTIONS = {
   email: {
     path: "email",
     isActive: (s) => s.mode === "smtp",
-    // "platform" sends through the platform's own mailbox, which must exist
-    isConfigured: (s) =>
-      s.mode === "smtp" || (s.mode === "platform" && Boolean(process.env.HOST_MAIL && process.env.HOST_APP_PASSWORD)),
     fields: {
-      mode: { type: "enum", values: ["platform", "smtp", "disabled"], default: "platform" },
+      // Every store sends through its own mail server. The platform mailbox is
+      // not an option: a store's email must come from the store.
+      mode: { type: "enum", values: ["smtp", "disabled"], default: "smtp" },
       fromName: { type: "string", default: "" },
       fromEmail: { type: "email", default: "" },
-      replyTo: { type: "email", default: "" },
-      smtpHost: { type: "string", default: "", required: true },
+      smtpHost: { type: "string", default: "smtp.gmail.com", required: true },
+      // Free-form so an unusual provider port still works; the dashboard offers
+      // 587 and 465 as the two that matter.
       smtpPort: { type: "integer", min: 1, max: 65535, default: 587 },
       smtpSecure: { type: "boolean", default: false },
       smtpUser: { type: "string", default: "", required: true },

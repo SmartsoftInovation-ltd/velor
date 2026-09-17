@@ -33,7 +33,6 @@ describe("helpers/nodemailer", () => {
     });
     expect(sendMail).toHaveBeenCalledWith({
       from: "Velor <store@example.com>",
-      replyTo: undefined,
       to: "to@example.com",
       subject: "Subject",
       html: "<p>hi</p>",
@@ -65,12 +64,11 @@ describe("helpers/nodemailer", () => {
     ).rejects.toThrow(/mail is not configured/i);
   });
 
-  it("uses the resolved tenant config (from, replyTo, SMTP transport) and one transport per config", async () => {
+  it("uses the resolved tenant config (from, SMTP transport) and one transport per config", async () => {
     const config = require("../../src/integrations/config");
     const spy = jest.spyOn(config, "getMailConfig").mockResolvedValue({
       transport: { host: "smtp.pizza.test", port: 465, secure: true, auth: { user: "shop@pizza.test", pass: "p" } },
       from: "Pizza Shop <shop@pizza.test>",
-      replyTo: "hello@pizza.test",
     });
 
     await sendEmail("to@example.com", "S", "h");
@@ -81,7 +79,7 @@ describe("helpers/nodemailer", () => {
       host: "smtp.pizza.test", port: 465, secure: true, auth: { user: "shop@pizza.test", pass: "p" },
     });
     expect(sendMail).toHaveBeenLastCalledWith({
-      from: "Pizza Shop <shop@pizza.test>", replyTo: "hello@pizza.test", to: "to2@example.com", subject: "S", html: "h",
+      from: "Pizza Shop <shop@pizza.test>", to: "to2@example.com", subject: "S", html: "h",
     });
     spy.mockRestore();
   });

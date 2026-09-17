@@ -119,21 +119,20 @@ describe("integrations/config", () => {
       await expect(inTenant(() => config.getCourierConfig("steadfast"))).rejects.toMatchObject({ code: "COURIER_NOT_CONFIGURED" });
     });
 
-    it("getMailConfig: smtp mode uses tenant SMTP, platform mode uses the platform sender with tenant branding, disabled throws", async () => {
-      Object.assign(process.env, { HOST_MAIL: "platform@mail.test", HOST_APP_PASSWORD: "platform-pass", MAIL_FROM_NAME: "Platform" });
-
-      await service.updateSection(T, "email", { mode: "platform", fromName: "Pizza Shop", replyTo: "hello@pizza.test" });
-      await expect(inTenant(() => config.getMailConfig())).resolves.toEqual({
-        transport: { service: "gmail", auth: { user: "platform@mail.test", pass: "platform-pass" } },
-        from: "Pizza Shop <platform@mail.test>",
-        replyTo: "hello@pizza.test",
+    it("getMailConfig: sends through the store's own SMTP, falls back to the SMTP user as sender, disabled throws", async () => {
+      await service.updateSection(T, "email", {
+        mode: "smtp", fromName: "Pizza Shop", smtpHost: "smtp.pizza.test", smtpPort: 465,
+        smtpSecure: true, smtpUser: "shop@pizza.test", smtpPassword: "smtp-pass", fromEmail: "orders@pizza.test",
       });
-
-      await service.updateSection(T, "email", { mode: "smtp", smtpHost: "smtp.pizza.test", smtpPort: 465, smtpSecure: true, smtpUser: "shop@pizza.test", smtpPassword: "smtp-pass", fromEmail: "shop@pizza.test" });
       await expect(inTenant(() => config.getMailConfig())).resolves.toEqual({
         transport: { host: "smtp.pizza.test", port: 465, secure: true, auth: { user: "shop@pizza.test", pass: "smtp-pass" } },
+        from: "Pizza Shop <orders@pizza.test>",
+      });
+
+      // No sender address: the SMTP user is the From, so replies still reach the store
+      await service.updateSection(T, "email", { fromEmail: null });
+      await expect(inTenant(() => config.getMailConfig())).resolves.toMatchObject({
         from: "Pizza Shop <shop@pizza.test>",
-        replyTo: "hello@pizza.test",
       });
 
       await service.updateSection(T, "email", { mode: "disabled" });

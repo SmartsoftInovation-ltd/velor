@@ -8,6 +8,8 @@ export interface FieldMeta {
   help?: string;
   placeholder?: string;
   options?: Record<string, string>;
+  /** Offered in a dropdown, but the field still accepts any other value */
+  suggestions?: { value: string; label?: string }[];
   /** Field is only relevant when this returns true */
   visible?: (values: SectionValues) => boolean;
 }
@@ -48,18 +50,38 @@ export const INTEGRATIONS: Record<string, IntegrationMeta> = {
     connected: (f) => f.email,
     fields: {
       mode: {
-        label: "Sending method",
-        options: { smtp: "Your own mail server (SMTP)", platform: "Platform mailbox", disabled: "Don't send email" },
-        help: "SMTP works with Gmail app passwords, Zoho, Mailgun and most providers.",
+        label: "Email sending",
+        options: { smtp: "On — send from this mail server", disabled: "Off — don't send email" },
+        help: "Your store sends its own email. Works with Gmail app passwords, Zoho, Mailgun and most providers.",
       },
       fromName: { label: "Sender name", placeholder: "Velor" },
-      fromEmail: { label: "Sender email", placeholder: "orders@yourstore.com" },
-      replyTo: { label: "Reply-to email", placeholder: "support@yourstore.com" },
-      smtpHost: { label: "SMTP host", placeholder: "smtp.gmail.com", visible: smtpOnly },
-      smtpPort: { label: "SMTP port", placeholder: "587", visible: smtpOnly },
-      smtpSecure: { label: "Use SSL/TLS (port 465)", visible: smtpOnly },
-      smtpUser: { label: "SMTP username", placeholder: "orders@yourstore.com", visible: smtpOnly },
-      smtpPassword: { label: "SMTP password", help: "For Gmail, use an app password.", visible: smtpOnly },
+      fromEmail: { label: "Sender email", placeholder: "orders@yourstore.com", help: "Shown as the sender, and where replies go. Leave empty to use the SMTP username." },
+      smtpHost: {
+        label: "SMTP host",
+        placeholder: "smtp.gmail.com",
+        help: "Your provider's server. Pick one or type your own.",
+        suggestions: [
+          { value: "smtp.gmail.com", label: "smtp.gmail.com (Gmail, Workspace)" },
+          { value: "smtp.zoho.com", label: "smtp.zoho.com (Zoho)" },
+          { value: "smtp.office365.com", label: "smtp.office365.com (Outlook, Microsoft 365)" },
+          { value: "smtp.mailgun.org", label: "smtp.mailgun.org (Mailgun)" },
+          { value: "smtp.sendgrid.net", label: "smtp.sendgrid.net (SendGrid)" },
+        ],
+        visible: smtpOnly,
+      },
+      smtpPort: {
+        label: "SMTP port",
+        placeholder: "587",
+        help: "587 with SSL/TLS off, or 465 with it on. Port 25 is blocked by most hosts.",
+        suggestions: [
+          { value: "587", label: "587 — STARTTLS (usual)" },
+          { value: "465", label: "465 — SSL/TLS" },
+        ],
+        visible: smtpOnly,
+      },
+      smtpSecure: { label: "Use SSL/TLS (port 465)", help: "Turn on only when the port is 465.", visible: smtpOnly },
+      smtpUser: { label: "SMTP username", placeholder: "orders@yourstore.com", help: "Usually the full mailbox address. Some providers use a different username.", visible: smtpOnly },
+      smtpPassword: { label: "SMTP password", help: "For Gmail and Zoho, generate an app password — your normal login password will not work.", visible: smtpOnly },
     },
   },
   sslcommerz: {

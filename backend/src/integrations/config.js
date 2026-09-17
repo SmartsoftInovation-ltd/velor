@@ -56,46 +56,34 @@ const platformMailSender = () => {
 
 const formatFrom = (name, address) => (name ? `${name} <${address}>` : address);
 
-// Returns { transport, from, replyTo }, or null when legacy mail is not configured
+// Returns { transport, from }, or null when legacy mail is not configured.
+// Replies go to the From address; there is no separate reply-to.
 const getMailConfig = async () => {
   const tenant = await tenantSettings();
-  const sender = platformMailSender();
 
   if (!tenant) {
+    const sender = platformMailSender();
     if (!sender) return null;
     return {
       transport: { service: "gmail", auth: sender },
       from: formatFrom(process.env.MAIL_FROM_NAME, sender.user),
-      replyTo: undefined,
     };
   }
 
   const email = tenant.values.email;
-  const replyTo = email.replyTo || email.fromEmail || undefined;
 
-  if (email.mode === "smtp") {
-    await requireConfigured(tenant.tenantId, "email", "EMAIL_NOT_CONFIGURED", "Email");
-    return {
-      transport: {
-        host: email.smtpHost,
-        port: email.smtpPort,
-        secure: email.smtpSecure,
-        auth: { user: email.smtpUser, pass: email.smtpPassword },
-      },
-      from: formatFrom(email.fromName, email.fromEmail || email.smtpUser),
-      replyTo,
-    };
-  }
+  if (email.mode !== "smtp") throw settings.featureNotConfigured("EMAIL_NOT_CONFIGURED", "Email");
+  await requireConfigured(tenant.tenantId, "email", "EMAIL_NOT_CONFIGURED", "Email");
 
-  if (email.mode === "platform" && sender) {
-    return {
-      transport: { service: "gmail", auth: sender },
-      from: formatFrom(email.fromName, sender.user),
-      replyTo,
-    };
-  }
-
-  throw settings.featureNotConfigured("EMAIL_NOT_CONFIGURED", "Email");
+  return {
+    transport: {
+      host: email.smtpHost,
+      port: email.smtpPort,
+      secure: email.smtpSecure,
+      auth: { user: email.smtpUser, pass: email.smtpPassword },
+    },
+    from: formatFrom(email.fromName, email.fromEmail || email.smtpUser),
+  };
 };
 
 const getSslCommerzConfig = async () => {

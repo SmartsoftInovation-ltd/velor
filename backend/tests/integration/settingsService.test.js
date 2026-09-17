@@ -33,7 +33,7 @@ describe("settings.service", () => {
       const settings = await service.getSettings(T);
       expect(settings.general).toMatchObject({ invoicePrefix: "INV", currency: "BDT", timezone: "Asia/Dhaka" });
       expect(settings.sms).toMatchObject({ enabled: false, provider: "bulksmsbd" });
-      expect(settings.email.mode).toBe("platform");
+      expect(settings.email.mode).toBe("smtp");
       expect(settings.cloudinary.enabled).toBe(false);
       expect(settings.groq).toMatchObject({ enabled: false, model: "llama-3.3-70b-versatile", temperature: 0.3 });
     });
