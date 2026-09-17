@@ -24,11 +24,12 @@ Create a `.env` file in the root (it is gitignored):
 ```
 VITE_API_URL=http://<backend-host>/api/v1
 VITE_SOCKET_URL=http://<backend-host>
+VITE_PLATFORM_WORKSPACES=velor   # platform workspace(s); their owner sees the Platform Console
 ```
 
 ## Multi-tenancy
 
-One build serves every store. Sign-in asks for a **workspace** (store slug, remembered in localStorage, or `?workspace=` deep link); `useAxiosSecure` sends it as `x-tenant` on every request. `AuthContext` exposes `tenant`, `features` (which integrations the platform configured), `isOwner` and `can()` built from the API's effective permissions. Wrap pages that need an integration in `FeatureGate`. Per-store local drafts use `scopedStorageKey()` (`src/lib/session.ts`); sign-out clears the query cache, the store's drafts and the socket.
+One build serves every store. Sign-in asks for a **workspace** (store slug, remembered in localStorage, or `?workspace=` deep link); `useAxiosSecure` sends it as `x-tenant` on every request. `AuthContext` exposes `tenant`, `features` (which integrations the platform configured), `isOwner` and `can()` built from the API's effective permissions. Wrap pages that need an integration in `FeatureGate`. **Platform Console** (sidebar module: Sellers, Store Settings, Operators) is visible only to the **owner** of a workspace in `VITE_PLATFORM_WORKSPACES`; sellers get every other module and find Store Settings under Settings. Console pages sit behind `PlatformGate`: an access code (`src/platform/accessCode.ts`, frontend constant for now) then `POST /platform/auth/console-access` with the normal store token returns a platform token (own axios instance in `src/platform/api.ts`, sessionStorage, cleared on dashboard sign-out). Console UI kit: `src/pages/PlatformConsole/ui.tsx`, accent color tokens `accent-*` (`#0F9D63`). Per-store local drafts use `scopedStorageKey()` (`src/lib/session.ts`); sign-out clears the query cache, the store's drafts and the socket.
 
 `useAxiosSecure` (`src/hooks/useAxiosSecure.tsx`) creates a shared Axios instance using this URL with `withCredentials: true`. It intercepts 401 responses, attempts a token refresh at `/auth/refresh-token`, and redirects to `/signin` on failure.
 

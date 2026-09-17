@@ -109,6 +109,14 @@ describe("platform tenants API", () => {
       expect(bySearch.body.data.items.map((t) => t.slug)).toEqual(["burgerhub"]);
     });
 
+    it("returns per-status counts for the current search, regardless of the status filter", async () => {
+      const res = await request(app).get(`${BASE}?status=suspended`).set(supportAuth).expect(200);
+      expect(res.body.data.counts).toEqual({ all: 3, active: 2, provisioning: 0, suspended: 1, cancelled: 0 });
+
+      const searched = await request(app).get(`${BASE}?search=pizza`).set(supportAuth).expect(200);
+      expect(searched.body.data.counts).toMatchObject({ all: 1, active: 1 });
+    });
+
     it("treats search text literally", async () => {
       const res = await request(app).get(`${BASE}?search=.*`).set(supportAuth).expect(200);
       expect(res.body.data.total).toBe(0);

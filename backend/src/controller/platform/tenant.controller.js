@@ -70,12 +70,21 @@ exports.listTenants = asynchandeler(async (req, res) => {
     filter.$or = [{ name: pattern }, { slug: pattern }];
   }
 
-  const [items, total] = await Promise.all([
+  // Counts per status for the filter pills: follow the search, ignore the status filter
+  const { status: _status, ...searchFilter } = filter;
+  const [items, total, grouped] = await Promise.all([
     Tenant.find(filter).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit),
     Tenant.countDocuments(filter),
+    Tenant.aggregate([{ $match: searchFilter }, { $group: { _id: "$status", count: { $sum: 1 } } }]),
   ]);
 
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenants fetched", { items, total, page, limit });
+  const counts = { all: 0, active: 0, provisioning: 0, suspended: 0, cancelled: 0 };
+  for (const { _id, count } of grouped) {
+    counts[_id] = count;
+    counts.all += count;
+  }
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenants fetched", { items, total, page, limit, counts });
 });
 
 exports.getTenant = asynchandeler(async (req, res) => {

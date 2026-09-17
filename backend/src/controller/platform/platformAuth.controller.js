@@ -10,6 +10,7 @@ const {
   verifyPlatformRefreshToken,
 } = require("../../utils/platformTokens");
 const { recordPlatformAudit } = require("../../service/platformAudit.service");
+const { isOwner } = require("../../tenancy/rbac");
 
 const REFRESH_COOKIE = "platformRefreshToken";
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -94,3 +95,52 @@ exports.logout = asynchandeler(async (req, res) => {
 exports.me = asynchandeler(async (req, res) =>
   apiResponse.sendSuccess(res, statusCodes.OK, "Current platform user", req.platformUser.toJSON()),
 );
+
+// Platform workspaces: stores whose owner may open the Platform Console from their
+// normal dashboard session (PLATFORM_WORKSPACES="velor,…").
+const platformWorkspaces = () =>
+  (process.env.PLATFORM_WORKSPACES || "")
+    .split(",")
+    .map((slug) => slug.trim().toLowerCase())
+    .filter(Boolean);
+
+// The operator account the console session acts as
+const consoleOperator = async () => {
+  const email = process.env.PLATFORM_CONSOLE_OPERATOR_EMAIL?.trim().toLowerCase();
+  const filter = email ? { email, isActive: true } : { role: "superadmin", isActive: true };
+  return PlatformUser.findOne(filter).sort({ createdAt: 1 });
+};
+
+exports.consoleAccess = asynchandeler(async (req, res) => {
+  getPlatformAuthConfig();
+
+  const workspace = req.tenant?.slug;
+  if (!workspace || !platformWorkspaces().includes(workspace) || !isOwner(req.user)) {
+    throw new customError("Only the platform store owner can open the Platform Console", statusCodes.FORBIDDEN);
+  }
+
+  const operator = await consoleOperator();
+  if (!operator) {
+    throw new customError(
+      "No platform operator account exists. Run npm run seed:platform-admin.",
+      statusCodes.SERVER_ERROR,
+      "PLATFORM_OPERATOR_MISSING",
+    );
+  }
+
+  operator.lastLoginAt = new Date();
+  await operator.save();
+
+  res.cookie(REFRESH_COOKIE, signPlatformRefreshToken(operator), { ...cookieOptions(), maxAge: REFRESH_MAX_AGE });
+  await recordPlatformAudit({
+    req,
+    actor: operator,
+    action: "PLATFORM_LOGIN",
+    metadata: { via: "console-access", staffEmail: req.user.email, workspace },
+  });
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Platform Console unlocked", {
+    accessToken: signPlatformAccessToken(operator),
+    user: operator.toJSON(),
+  });
+});

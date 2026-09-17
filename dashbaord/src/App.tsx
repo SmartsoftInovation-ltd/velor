@@ -16,6 +16,10 @@ const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
 const Unauthorized = lazy(() => import("./pages/OtherPage/Unauthorized"));
 const StoreSuspended = lazy(() => import("./pages/OtherPage/StoreSuspended"));
 const StoreSettingsPage = lazy(() => import("./pages/Settings/StoreSettings/StoreSettingsPage"));
+const PlatformSellersPage = lazy(() => import("./pages/PlatformConsole/SellersPage"));
+const PlatformSellerDetail = lazy(() => import("./pages/PlatformConsole/SellerDetailRoute"));
+const PlatformOperatorsPage = lazy(() => import("./pages/PlatformConsole/OperatorsPage"));
+import PlatformGate from "./platform/PlatformGate";
 import FeatureGate from "./components/routes/FeatureGate";
 const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 const Blank = lazy(() => import("./pages/Blank"));
@@ -826,8 +830,11 @@ export default function App() {
                   }
                 />
 
-                {/* Store settings (multi-tenant) */}
+                {/* Platform Console (platform store owner + access code): sellers and operators */}
                 <Route path="/store-settings" element={<ProtectedRoute module="store-settings" action="view"><StoreSettingsPage /></ProtectedRoute>} />
+                <Route path="/platform/sellers" element={<PlatformGate><PlatformSellersPage /></PlatformGate>} />
+                <Route path="/platform/sellers/:tenantId" element={<PlatformGate><PlatformSellerDetail /></PlatformGate>} />
+                <Route path="/platform/operators" element={<PlatformGate><PlatformOperatorsPage /></PlatformGate>} />
 
                 {/* Role & Permission Layout */}
                 <Route path="/create-role" element={<ProtectedRoute module="create-role" action="add"><CreateRole /></ProtectedRoute>} />

@@ -54,6 +54,20 @@ layer(base);
   --color-brand-900: #262e89;
   --color-brand-950: #161950;
 
+  /* Platform Console accent: ECOMPOS green rgb(15, 157, 99) */
+  --color-accent-25: #f3fbf7;
+  --color-accent-50: #e7f6ef;
+  --color-accent-100: #c9ebdb;
+  --color-accent-200: #97d8bb;
+  --color-accent-300: #5fc196;
+  --color-accent-400: #2fae78;
+  --color-accent-500: #0f9d63;
+  --color-accent-600: #0c8553;
+  --color-accent-700: #0a6b43;
+  --color-accent-800: #085536;
+  --color-accent-900: #06432b;
+  --color-accent-950: #032518;
+
   --color-blue-light-25: #f5fbff;
   --color-blue-light-50: #f0f9ff;
   --color-blue-light-100: #e0f2fe;

@@ -308,3 +308,6 @@ Tenants list, create wizard (Cloudinary required step), tenant detail tabs (over
 - Backend additions: `GET /platform/settings/schema`, `GET /platform/tenants/:id/audit`, `GET/POST/PATCH /platform/users` (deactivation and password reset revoke that operator's sessions; operators cannot deactivate or demote themselves).
 - Not built: TOTP two-factor for operators (fields exist), impersonation, billing.
 
+**Update:** the standalone `platform-console/` app was removed. Its pages now live inside the dashboard as the **Platform Console** sidebar module (Store Settings, Stores, Permission Catalog, Operators) behind a separate platform operator login (`dashbaord/src/platform/`, `dashbaord/src/pages/PlatformConsole/`). See `multitenant-implementation-report.md` §7.
+
+**Update 2:** no separate operator login. The platform store owner (workspace in `PLATFORM_WORKSPACES`) signs in to the dashboard normally and enters an access code (frontend constant for now); `POST /platform/auth/console-access` exchanges the store session for a platform token. Permission Catalog page removed; sidebar is Sellers / Store Settings / Operators; `GET /platform/tenants` returns status `counts`; UI redesigned (ECOMPOS style, `#0F9D63`).

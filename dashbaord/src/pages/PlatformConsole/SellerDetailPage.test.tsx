@@ -1,0 +1,109 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter, Route, Routes } from "react-router";
+import SellerDetailPage from "./SellerDetailPage";
+
+const tenant = { _id: "t1", name: "Pizza Shop", slug: "pizzashop", status: "active", plan: "standard", limits: { maxStaff: 5 }, webhookKey: "K", createdAt: "2026-09-17T00:00:00Z" };
+const features = { sms: true, email: false, sslcommerz: false, couriers: { pathao: false, steadfast: false }, cloudinary: true, ai: false };
+
+const tenants = {
+  get: vi.fn(async () => tenant),
+  suspend: vi.fn(async () => ({ ...tenant, status: "suspended" })),
+  activate: vi.fn(),
+  update: vi.fn(async () => tenant),
+  audit: vi.fn(async () => ({ items: [{ _id: "a1", action: "TENANT_SETTINGS_UPDATED", actorEmail: "owner@platform.test", changes: ["sms.apiKey"], createdAt: "2026-09-17T00:00:00Z" }], total: 1, page: 1, limit: 20 })),
+};
+const settings = {
+  schema: vi.fn(async () => [
+    { key: "general", path: "general", testable: false, fields: [{ name: "invoicePrefix", type: "string", required: false, default: "INV", pattern: "^[A-Z0-9]{2,8}$" }] },
+    { key: "sms", path: "sms", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }, { name: "senderId", type: "string", required: true, default: "" }] },
+    { key: "sslcommerz", path: "payment/sslcommerz", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }, { name: "storeId", type: "string", required: true, default: "" }] },
+  ]),
+  get: vi.fn(async () => ({ settings: { general: { invoicePrefix: "PIZZAS" }, sms: { enabled: true, senderId: "880" }, sslcommerz: { enabled: false, storeId: "" } }, features, version: 3 })),
+  update: vi.fn(async () => ({ changes: ["x"], version: 4 })),
+  test: vi.fn(async () => ({ ok: true })),
+  webhooks: vi.fn(async () => ({ sslcommerz: { ipn: "https://api/hooks/sslcommerz/K/ipn" }, pathao: "https://api/hooks/pathao/K", steadfast: "https://api/hooks/steadfast/K" })),
+};
+
+vi.mock("../../platform/endpoints", () => {
+  // Resolved lazily: the mock factory is hoisted above the mocks it forwards to
+  const forward = (pick: () => Record<string, (...a: unknown[]) => unknown>) =>
+    new Proxy({}, { get: (_, key: string) => (...args: unknown[]) => pick()[key](...args) });
+  return { tenantsApi: forward(() => tenants as never), settingsApi: forward(() => settings as never) };
+});
+vi.mock("../../platform/PlatformAuthContext", () => ({ usePlatformAuth: () => ({ isSuperadmin: true }) }));
+vi.mock("react-hot-toast", () => ({ default: { success: vi.fn(), error: vi.fn() } }));
+
+const renderPage = () =>
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={["/platform/sellers/t1"]}>
+        <Routes><Route path="/platform/sellers/:tenantId" element={<SellerDetailPage />} /></Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+describe("SellerDetailPage (Platform Console)", () => {
+  it("suspends a seller with a reason", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: "Pizza Shop" });
+
+    await userEvent.click(screen.getByRole("button", { name: /^suspend seller$/i }));
+    const dialog = await screen.findByRole("dialog", { name: /suspend pizza shop/i });
+    await userEvent.type(within(dialog).getByLabelText(/reason/i), "Unpaid");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^suspend seller$/i }));
+
+    await waitFor(() => expect(tenants.suspend).toHaveBeenCalledWith("t1", "Unpaid"));
+  });
+
+  it("updates the seller information", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: "Pizza Shop" });
+
+    const name = screen.getByLabelText(/seller name/i);
+    await userEvent.clear(name);
+    await userEvent.type(name, "Pizza Palace");
+    const maxStaff = screen.getByLabelText(/max staff/i);
+    await userEvent.clear(maxStaff);
+    await userEvent.type(maxStaff, "8");
+    await userEvent.click(screen.getByRole("button", { name: /save seller info/i }));
+
+    await waitFor(() => expect(tenants.update).toHaveBeenCalledWith("t1", { name: "Pizza Palace", plan: "standard", limits: { maxStaff: 8 } }));
+  });
+
+  it("configures a seller integration through the platform API", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /integrations/i }));
+
+    const card = await screen.findByRole("article", { name: "SSLCommerz" });
+    await userEvent.click(within(card).getByRole("button", { name: /configure/i }));
+    const panel = await screen.findByRole("dialog", { name: /sslcommerz/i });
+    await userEvent.type(within(panel).getByLabelText(/store id/i), "pizza_live");
+    await userEvent.click(within(panel).getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "payment/sslcommerz", { storeId: "pizza_live" }));
+  });
+
+  it("lets the platform change the invoice prefix", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /integrations/i }));
+
+    const prefix = await screen.findByLabelText(/invoice prefix/i);
+    await userEvent.clear(prefix);
+    await userEvent.type(prefix, "PZS");
+    await userEvent.click(screen.getByRole("button", { name: /save prefix/i }));
+
+    await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { invoicePrefix: "PZS" }));
+  });
+
+  it("shows webhook URLs and the audit trail", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /webhooks/i }));
+    expect(await screen.findByText("https://api/hooks/pathao/K")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: /audit/i }));
+    expect(await screen.findByText("TENANT_SETTINGS_UPDATED")).toBeInTheDocument();
+  });
+});

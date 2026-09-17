@@ -16,12 +16,15 @@ import {
   TbBuildingStore,
   TbSettings,
   TbShieldLock,
+  TbBuildingCommunity,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
 import { Link, useLocation } from "react-router";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
+import { canSeePlatformConsole, PLATFORM_WORKSPACES } from "../platform/visibility";
+import { getWorkspace } from "../lib/session";
 import { ChevronDownIcon, GridIcon, HorizontaLDots } from "../icons";
 import {
   PERMISSIONS,
@@ -46,6 +49,10 @@ type SubSubItem = {
 type SubItem = {
   name: string;
   path?: string;
+  // Platform Console page: only the platform store owner sees it
+  platformOnly?: boolean;
+  // Seller-side page that moves into the Platform Console for the platform store
+  hideOnPlatform?: boolean;
   module?: string;
   // Page covering several modules — visible when the user has any one of them.
   anyOfModules?: string[];
@@ -75,7 +82,8 @@ type SubmenuType =
   | "analyticsUsers"
   | "generalSettings"
   | "others"
-  | "hrManage";
+  | "hrManage"
+  | "platformConsole";
 
 // ---------- NAV DATA ----------
 const navItems: NavItem[] = [
@@ -536,6 +544,7 @@ const othersItems: NavItem[] = [
         name: "Store Settings",
         path: "/store-settings",
         module: PERMISSIONS.STORE_SETTINGS,
+        hideOnPlatform: true,
         pro: false,
       },
       {
@@ -873,11 +882,25 @@ const otherSidebarItems: NavItem[] = [
   ),
 ];
 
+const platformConsoleItems: NavItem[] = [
+  {
+    name: "Platform Console",
+    icon: <TbBuildingCommunity />,
+    subItems: [
+      { name: "Sellers", path: "/platform/sellers", platformOnly: true, pro: false },
+      { name: "Store Settings", path: "/store-settings", platformOnly: true, pro: false },
+      { name: "Operators", path: "/platform/operators", platformOnly: true, pro: false },
+    ],
+  },
+];
+
 // ---------- COMPONENT ----------
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleSidebar } =
     useSidebar();
-  const { can, isSuperAdmin, isLoading } = useAuth();
+  const { can, isSuperAdmin, isOwner, isLoading } = useAuth();
+  const showPlatformPages =
+    !isLoading && canSeePlatformConsole({ workspace: getWorkspace(), isOwner, allowed: PLATFORM_WORKSPACES });
   const location = useLocation();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
@@ -913,6 +936,8 @@ const AppSidebar: React.FC = () => {
           : undefined,
       }))
       .filter((item) => {
+        if (item.platformOnly) return showPlatformPages;
+        if (item.hideOnPlatform && showPlatformPages) return false;
         if (item.subSubItems !== undefined) return item.subSubItems.length > 0;
         if (item.anyOfModules)
           return item.anyOfModules.some((m) => isItemVisible(m, item.action));
@@ -969,6 +994,7 @@ const AppSidebar: React.FC = () => {
     (item) => item.name !== "Reports & Analytics" || canViewAnyReport,
   );
   const visibleGeneralSettingsItems = filterNavItems(generalSettingsItems);
+  const visiblePlatformConsoleItems = filterNavItems(platformConsoleItems);
   const visibleOthersItems = filterNavItems(otherSidebarItems);
   const visibleHrManage = filterNavItems(
     hrManage.filter(
@@ -1018,6 +1044,11 @@ const AppSidebar: React.FC = () => {
       type: "analyticsUsers",
       label: "Analytics & Users",
       items: visibleAnalyticsUsersItems,
+    },
+    {
+      type: "platformConsole",
+      label: "Platform Console",
+      items: visiblePlatformConsoleItems,
     },
     {
       type: "generalSettings",
