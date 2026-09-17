@@ -27,7 +27,7 @@
 | 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | **done** |
 | 10 | Dashboard multi-tenant | §7, §10 step 11 | **done** |
 | 11 | Provisioning, isolation suite, fail-closed | §8.2, §12, §10 steps 12–13 | **done** |
-| 12 | Platform console UI | §8.3, §10 step 14 | todo |
+| 12 | Platform console UI | §8.3, §10 step 14 | **done** |
 
 ---
 
@@ -301,3 +301,10 @@
 ## Sprint 12 — Platform console UI
 
 Tenants list, create wizard (Cloudinary required step), tenant detail tabs (overview, settings with test buttons, webhooks, staff, audit), permissions catalog, platform users.
+
+**Implementation notes (as built):**
+- New app `platform-console/` (Vite, React 19, TanStack Query, Tailwind v4), 18 Vitest tests. See its README.
+- Pages: login; stores list (search, status filter, paging) with **New store** form (provisioning with owner, shows the temporary password and login link once); store detail tabs — Overview (status, suspend with reason, activate, staff limit), Settings (one generated form per section with write-only secrets and **Test connection**), Webhooks, Audit; permission catalog; operators (superadmin only).
+- Backend additions: `GET /platform/settings/schema`, `GET /platform/tenants/:id/audit`, `GET/POST/PATCH /platform/users` (deactivation and password reset revoke that operator's sessions; operators cannot deactivate or demote themselves).
+- Not built: TOTP two-factor for operators (fields exist), impersonation, billing.
+

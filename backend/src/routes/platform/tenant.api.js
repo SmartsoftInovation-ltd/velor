@@ -23,6 +23,7 @@ _.patch("/:tenantId", superadmin, validateBody(updateTenantSchema), controller.u
 _.post("/:tenantId/suspend", superadmin, validateBody(statusChangeSchema), controller.suspendTenant);
 _.post("/:tenantId/activate", superadmin, validateBody(statusChangeSchema), controller.activateTenant);
 
+_.get("/:tenantId/audit", controller.listTenantAudit);
 _.get("/:tenantId/settings", settingsController.getSettings);
 _.get("/:tenantId/settings/webhooks", settingsController.getWebhooks);
 const { hasTester } = require("../../settings/testers");

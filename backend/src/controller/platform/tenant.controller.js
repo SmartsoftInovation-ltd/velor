@@ -6,6 +6,7 @@ const { statusCodes } = require("../../constant/constant");
 const { recordPlatformAudit } = require("../../service/platformAudit.service");
 const { invalidateTenantCache } = require("../../tenancy/tenantResolver");
 const { provisionTenant } = require("../../tenancy/provisioning");
+const PlatformAuditLog = require("../../models/platform/platformAuditLog.model");
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
 
@@ -131,3 +132,17 @@ const changeStatus = (action) =>
 
 exports.suspendTenant = changeStatus("suspend");
 exports.activateTenant = changeStatus("activate");
+
+exports.listTenantAudit = asynchandeler(async (req, res) => {
+  const tenantId = tenantIdParam(req);
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const filter = { tenantId };
+
+  const [items, total] = await Promise.all([
+    PlatformAuditLog.find(filter).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    PlatformAuditLog.countDocuments(filter),
+  ]);
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenant audit log", { items, total, page, limit });
+});
