@@ -44,7 +44,6 @@ describe("platform tenant settings API", () => {
     ["couriers/pathao", { enabled: true, baseUrl: "https://api-hermes.pathao.com", clientId: "cid", clientSecret: "csecret-123", username: "u@example.com", password: "pathao-pass", storeId: "123" }],
     ["couriers/steadfast", { enabled: true, baseUrl: "https://portal.packzy.com/api/v1", apiKey: "sf-key", secretKey: "sf-secret-1" }],
     ["cloudinary", { enabled: true, cloudName: "pizza-cdn", apiKey: "123456789012345", apiSecret: "cloud-secret-1" }],
-    ["ai/groq", { enabled: true, apiKey: "gsk_testkey12345" }],
   ])("PATCH %s assigns the section and never echoes secrets", async (path, body) => {
     const res = await request(app).patch(url(`/${path}`)).set(adminAuth).send(body).expect(200);
 

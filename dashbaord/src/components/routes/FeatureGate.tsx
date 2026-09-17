@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useAuth, type Features } from "../../context/AuthContext";
 
-type FeaturePath = "sms" | "email" | "sslcommerz" | "cloudinary" | "ai" | "couriers" | "couriers.pathao" | "couriers.steadfast";
+type FeaturePath = "sms" | "email" | "sslcommerz" | "cloudinary" | "couriers" | "couriers.pathao" | "couriers.steadfast";
 
 // No feature list means an API without multi-tenant settings: nothing is gated
 export const isFeatureEnabled = (features: Features | null | undefined, feature: FeaturePath): boolean => {

@@ -32,7 +32,6 @@ export interface Features {
   sslcommerz: boolean;
   couriers: { pathao: boolean; steadfast: boolean };
   cloudinary: boolean;
-  ai: boolean;
 }
 
 export interface AuthUser {

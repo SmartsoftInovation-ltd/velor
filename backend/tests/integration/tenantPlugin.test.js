@@ -295,14 +295,6 @@ describe("tenantPlugin", () => {
       ]);
     });
 
-    it("scopePipeline adds the tenant to $vectorSearch.filter instead of a leading $match", () => {
-      const pipeline = [{ $vectorSearch: { index: "v", filter: { isActive: true } } }, { $limit: 3 }];
-      expect(scopePipeline(pipeline, A)).toEqual([
-        { $vectorSearch: { index: "v", filter: { $and: [{ isActive: true }, { tenantId: A }] } } },
-        { $limit: 3 },
-      ]);
-    });
-
     it("scopePipeline adds the tenant to $geoNear.query", () => {
       const pipeline = [{ $geoNear: { near: [0, 0], distanceField: "d" } }];
       expect(scopePipeline(pipeline, A)[0].$geoNear.query).toEqual({ tenantId: A });

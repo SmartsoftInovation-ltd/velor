@@ -61,7 +61,6 @@ const sectionPatches = async (env) => {
     cloudinary: present(env.CLOUD_NAME, env.CLOUDINARY_API_KEY, env.CLOUDINARY_API_SECRET)
       ? { enabled: true, cloudName: env.CLOUD_NAME, apiKey: env.CLOUDINARY_API_KEY, apiSecret: env.CLOUDINARY_API_SECRET }
       : null,
-    groq: /^gsk_/.test(env.GROQ_API_KEY || "") ? { enabled: true, apiKey: env.GROQ_API_KEY } : null,
   };
 };
 

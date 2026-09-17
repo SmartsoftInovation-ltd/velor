@@ -93,16 +93,6 @@ const SECTIONS = {
       apiSecret: { type: "secret", required: true },
     },
   },
-  groq: {
-    path: "ai/groq",
-    isActive: (s) => s.enabled,
-    fields: {
-      enabled: { type: "boolean", default: false },
-      apiKey: { type: "secret", pattern: /^gsk_/, required: true },
-      model: { type: "string", default: "llama-3.3-70b-versatile" },
-      temperature: { type: "number", min: 0, max: 1, default: 0.3 },
-    },
-  },
 };
 
 module.exports = { SECTIONS };

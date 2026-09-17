@@ -105,16 +105,6 @@ describe("POST /platform/tenants/:id/settings/:section/test", () => {
     expect(cloudinary.api.ping).toHaveBeenCalledWith({ cloud_name: "cdn", api_key: "1", api_secret: "s" });
   });
 
-  it("groq: lists models with the tenant key and reports provider errors without secrets", async () => {
-    await service.updateSection(tenant._id, "groq", { enabled: true, apiKey: "gsk_secret" });
-    axios.get.mockRejectedValue(Object.assign(new Error("Request failed with status code 401"), { response: { status: 401, data: { error: { message: "Invalid API Key" } } } }));
-
-    const res = await test("ai/groq").expect(200);
-    expect(res.body.data).toEqual({ ok: false, error: "Invalid API Key" });
-    expect(axios.get).toHaveBeenCalledWith("https://api.groq.com/openai/v1/models", { headers: { Authorization: "Bearer gsk_secret" } });
-    expect(JSON.stringify(res.body)).not.toContain("gsk_secret");
-  });
-
   it("has no test for general settings", async () => {
     await test("general").expect(404);
   });

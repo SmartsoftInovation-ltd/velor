@@ -67,17 +67,24 @@ const variantSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Unique per store, enforced by the database as well as by the pre-save
+    // duplicate check below: two requests racing to claim the same SKU both pass
+    // that check, and only a unique index stops the second write.
+    // tenantPlugin turns these into { tenantId, sku } and { tenantId, barCode },
+    // partial on the field so variants without one do not collide as null.
     sku: {
       type: String,
       trim: true,
-      index: true,
+      unique: true,
+      sparse: true,
       match: [/^\d+$/, "SKU must contain only numbers"],
     },
     qrCode: { type: String },
     barCode: {
       type: String,
       trim: true,
-      index: true,
+      unique: true,
+      sparse: true,
       match: [/^\d+$/, "Barcode must contain only numbers"],
     },
 
@@ -160,10 +167,6 @@ const variantSchema = new mongoose.Schema(
       ref: "SizeChart",
       default: null,
     },
-
-    // RAG সার্চের জন্য embedding vector (all-MiniLM-L6-v2 → 384-dim)। select: false রাখা হয়েছে
-    // যাতে সাধারণ variant API response এ এই বড় array টা এমনিতে চলে না আসে।
-    embedding: { type: [Number], select: false, default: undefined },
   },
   {
     timestamps: true,
@@ -178,9 +181,10 @@ variantSchema.index({
   sku: "text",
   // barCode: "text",
 });
-variantSchema.index({ slug: 1 });
-variantSchema.index({ sku: 1 });
-variantSchema.index({ barCode: 1 });
+// tenantPlugin prefixes each index with tenantId: every lookup runs inside one
+// store, so an index that does not lead with tenantId can never serve a query.
+// slug, sku and barCode need no entry here — their unique constraints already
+// become { tenantId, <field> }.
 variantSchema.index({ product: 1 });
 variantSchema.index({ product: 1, isActive: 1 });
 

@@ -3,7 +3,6 @@ import { Outlet } from "react-router";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
-import ChatBox from "../components/common/ChatBox";
 import IntegrationNotice from "../components/common/IntegrationNotice";
 
 const LayoutContent: React.FC = () => {
@@ -28,7 +27,6 @@ const LayoutContent: React.FC = () => {
           <Outlet />
         </div>
       </div>
-      <ChatBox />
     </div>
   );
 };

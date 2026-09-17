@@ -1,5 +1,16 @@
 # Multi-Tenant Architecture — Backend + Dashboard
 
+> **Removed (2026-09-17):** the RAG chat / vector search feature described in
+> this document no longer exists. `utils/retrieve.js`, `utils/embedding.js`,
+> `utils/llm.js`, `chat.controller.js`, the `/chat` route, the embedding queue
+> and worker, `scripts/backfill.js`, `scripts/atlasVectorIndex.json`, the
+> `embedding` field on Product/Variant, and the dashboard ChatBox were all
+> deleted; the Atlas `vector_index` was never created. Sections below that
+> describe vector search, embeddings or the chat widget are kept as a record of
+> the original design and no longer reflect the codebase.
+
+
+
 > Companion to [`multi-tenant-plan.md`](./multi-tenant-plan.md). That file is the big-picture plan; **this file is the build guide for the backend and the dashboard only.** The Next.js storefront is the next stage and is only referenced where the backend must be ready for it.
 >
 > Status: **Implemented (backend + dashboard + platform console)** — build log and cutover checklist in [`multitenant-sprints.md`](./multitenant-sprints.md). Date: 2026-09-17

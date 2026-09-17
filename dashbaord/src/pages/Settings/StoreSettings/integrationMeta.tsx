@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { FiCloud, FiCpu, FiCreditCard, FiMail, FiMessageSquare, FiTruck } from "react-icons/fi";
+import { FiCloud, FiCreditCard, FiMail, FiMessageSquare, FiTruck } from "react-icons/fi";
 import type { Features } from "../../../context/AuthContext";
 import type { SectionValues } from "./types";
 
@@ -17,7 +17,7 @@ export interface FieldMeta {
 export interface IntegrationMeta {
   title: string;
   description: string;
-  group: "Messaging" | "Payments" | "Delivery" | "Media & AI";
+  group: "Messaging" | "Payments" | "Delivery" | "Media";
   icon: ReactNode;
   connected: (features: Features) => boolean;
   fields: Record<string, FieldMeta>;
@@ -131,7 +131,7 @@ export const INTEGRATIONS: Record<string, IntegrationMeta> = {
   cloudinary: {
     title: "Cloudinary",
     description: "Stores product, banner and profile images.",
-    group: "Media & AI",
+    group: "Media",
     icon: <FiCloud />,
     connected: (f) => f.cloudinary,
     fields: {
@@ -141,22 +141,9 @@ export const INTEGRATIONS: Record<string, IntegrationMeta> = {
       apiSecret: { label: "API secret" },
     },
   },
-  groq: {
-    title: "AI assistant (Groq)",
-    description: "Answers product questions in the shopping assistant.",
-    group: "Media & AI",
-    icon: <FiCpu />,
-    connected: (f) => f.ai,
-    fields: {
-      enabled: { label: "Enable AI assistant" },
-      apiKey: { label: "Groq API key", placeholder: "gsk_…" },
-      model: { label: "Model", placeholder: "llama-3.3-70b-versatile" },
-      temperature: { label: "Creativity (0–1)", help: "Lower is more precise." },
-    },
-  },
 };
 
-export const GROUP_ORDER: IntegrationMeta["group"][] = ["Messaging", "Payments", "Delivery", "Media & AI"];
+export const GROUP_ORDER: IntegrationMeta["group"][] = ["Messaging", "Payments", "Delivery", "Media"];
 
 export const fieldLabel = (sectionKey: string, name: string) =>
   INTEGRATIONS[sectionKey]?.fields[name]?.label ??

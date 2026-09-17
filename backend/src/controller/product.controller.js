@@ -18,7 +18,6 @@ const {
   buildCacheKey,
 } = require("@/utils/cache.util");
 const { imageQueue } = require("@/queues/image.queue");
-const { embeddingQueue } = require("@/queues/embedding.queue");
 const { logAudit } = require("@/service/audit.service");
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -249,11 +248,6 @@ class ProductController {
     }
 
     await imageQueue.addBulk(jobs);
-
-    // ব্যাকগ্রাউন্ডে embedding generate করার জন্য enqueue করা হচ্ছে (RAG সার্চের জন্য)
-    await embeddingQueue.add("embed-product", {
-      productId: product._id.toString(),
-    });
 
     await bumpNsVersion(NS);
 
@@ -505,11 +499,6 @@ class ProductController {
     if (jobs.length > 0) {
       await imageQueue.addBulk(jobs);
     }
-
-    // ব্যাকগ্রাউন্ডে embedding নতুন করে generate করার জন্য enqueue করা হচ্ছে
-    await embeddingQueue.add("embed-product", {
-      productId: product._id.toString(),
-    });
 
     await bumpNsVersion(NS);
 

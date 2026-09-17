@@ -20,7 +20,6 @@ const {
   buildCacheKey,
 } = require("@/utils/cache.util");
 const { imageQueue } = require("@/queues/image.queue");
-const { embeddingQueue } = require("@/queues/embedding.queue");
 
 const NS = "variant";
 const CACHE_TTL = 60 * 60; // 1 hour
@@ -186,16 +185,6 @@ exports.createVariant = asynchandeler(async (req, res) => {
 
   if (jobs.length > 0) {
     await imageQueue.addBulk(jobs);
-  }
-
-  // প্রতিটা নতুন variant এর জন্য ব্যাকগ্রাউন্ডে embedding generate করার জন্য enqueue করা হচ্ছে
-  if (savedVariants.length > 0) {
-    await embeddingQueue.addBulk(
-      savedVariants.map((v) => ({
-        name: "embed-variant",
-        data: { variantId: v._id.toString() },
-      })),
-    );
   }
 
   await bumpNsVersion(NS);
@@ -490,11 +479,6 @@ exports.updateVariant = asynchandeler(async (req, res) => {
     await imageQueue.addBulk(jobs);
   }
 
-  // ব্যাকগ্রাউন্ডে embedding নতুন করে generate করার জন্য enqueue করা হচ্ছে
-  await embeddingQueue.add("embed-variant", {
-    variantId: existingVariant._id.toString(),
-  });
-
   await bumpNsVersion(NS);
   await bumpNsVersion("product");
 
@@ -678,14 +662,6 @@ exports.deleteVariant = asynchandeler(async (req, res) => {
   await product.findByIdAndUpdate(deletedVariant.product, {
     $pull: { variant: deletedVariant._id },
   });
-
-  // variant ডিলিট হলে তার embedding ও ডকুমেন্টের সাথে চলে যায়, কিন্তু parent product এর
-  // embed text এ এই variant এর line ছিল — তাই product কে re-embed করার জন্য enqueue করা হচ্ছে
-  if (deletedVariant.product) {
-    await embeddingQueue.add("embed-product", {
-      productId: deletedVariant.product.toString(),
-    });
-  }
 
   const publicIds = collectVariantPublicIds(deletedVariant);
   if (publicIds.length > 0) {

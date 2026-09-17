@@ -1,5 +1,16 @@
 # Multi-Tenant SaaS + Multi-Website Plan
 
+> **Removed (2026-09-17):** the RAG chat / vector search feature described in
+> this document no longer exists. `utils/retrieve.js`, `utils/embedding.js`,
+> `utils/llm.js`, `chat.controller.js`, the `/chat` route, the embedding queue
+> and worker, `scripts/backfill.js`, `scripts/atlasVectorIndex.json`, the
+> `embedding` field on Product/Variant, and the dashboard ChatBox were all
+> deleted; the Atlas `vector_index` was never created. Sections below that
+> describe vector search, embeddings or the chat widget are kept as a record of
+> the original design and no longer reflect the codebase.
+
+
+
 > Status: **PLAN ONLY — awaiting review.** No implementation code has been written.
 > Scope: `backend/` (Express + Mongoose), `dashbaord/` (Vite admin SPA), `frontend/` (Next.js storefront).
 > Date: 2026-09-17

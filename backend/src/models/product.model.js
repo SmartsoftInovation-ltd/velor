@@ -180,10 +180,6 @@ const productSchema = new mongoose.Schema(
     courierReturn: [
       { type: mongoose.Schema.Types.ObjectId, ref: "CourierReturn" },
     ],
-
-    // RAG সার্চের জন্য embedding vector (all-MiniLM-L6-v2 → 384-dim)। select: false রাখা হয়েছে
-    // যাতে সাধারণ product API response এ এই বড় array টা এমনিতে চলে না আসে।
-    embedding: { type: [Number], select: false, default: undefined },
   },
   {
     timestamps: true,

@@ -1,5 +1,16 @@
 # Multi-Tenant Build — Sprint Plan (TDD)
 
+> **Removed (2026-09-17):** the RAG chat / vector search feature described in
+> this document no longer exists. `utils/retrieve.js`, `utils/embedding.js`,
+> `utils/llm.js`, `chat.controller.js`, the `/chat` route, the embedding queue
+> and worker, `scripts/backfill.js`, `scripts/atlasVectorIndex.json`, the
+> `embedding` field on Product/Variant, and the dashboard ChatBox were all
+> deleted; the Atlas `vector_index` was never created. Sections below that
+> describe vector search, embeddings or the chat widget are kept as a record of
+> the original design and no longer reflect the codebase.
+
+
+
 > Source of truth for *what* to build: [`dashboard-backend-multitenant-architecture.md`](./dashboard-backend-multitenant-architecture.md).
 > This file says *in what order*, and how each sprint is proven done.
 > Branch: `developement`. Scope: backend + dashboard. Storefront is a later sprint series.

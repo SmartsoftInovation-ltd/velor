@@ -35,7 +35,6 @@ describe("settings.service", () => {
       expect(settings.sms).toMatchObject({ enabled: false, provider: "bulksmsbd" });
       expect(settings.email.mode).toBe("smtp");
       expect(settings.cloudinary.enabled).toBe(false);
-      expect(settings.groq).toMatchObject({ enabled: false, model: "llama-3.3-70b-versatile", temperature: 0.3 });
     });
   });
 
@@ -95,7 +94,6 @@ describe("settings.service", () => {
     it("validates field formats and rejects unknown fields and sections", async () => {
       await expect(service.updateSection(T, "general", { invoicePrefix: "TOO-LONG-PREFIX" })).rejects.toMatchObject({ statusCode: 400 });
       await expect(service.updateSection(T, "general", { orderHotline: "12345" })).rejects.toMatchObject({ statusCode: 400 });
-      await expect(service.updateSection(T, "groq", { apiKey: "sk-not-groq" })).rejects.toMatchObject({ statusCode: 400 });
       await expect(service.updateSection(T, "sms", { password: "x" })).rejects.toMatchObject({ statusCode: 400 });
       await expect(service.updateSection(T, "nope", {})).rejects.toMatchObject({ statusCode: 404 });
     });
@@ -164,7 +162,6 @@ describe("settings.service", () => {
         sslcommerz: false,
         couriers: { pathao: false, steadfast: false },
         cloudinary: true,
-        ai: false,
       });
     });
   });

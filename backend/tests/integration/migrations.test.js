@@ -29,7 +29,6 @@ const LEGACY_ENV = {
   CLOUD_NAME: "velor-cloud",
   CLOUDINARY_API_KEY: "123456",
   CLOUDINARY_API_SECRET: "velor-cloud-secret",
-  GROQ_API_KEY: "gsk_velor",
 };
 
 describe("Velor migration", () => {
@@ -105,7 +104,6 @@ describe("Velor migration", () => {
       expect(s.sslcommerz).toMatchObject({ enabled: true, storeId: "velorstore", storePassword: "velorpass", isLive: false });
       expect(s.email).toMatchObject({ mode: "platform", fromName: "Velor" });
       expect(s.cloudinary).toMatchObject({ enabled: true, cloudName: "velor-cloud", apiSecret: "velor-cloud-secret" });
-      expect(s.groq).toMatchObject({ enabled: true, apiKey: "gsk_velor" });
       expect(s.steadfast).toMatchObject({ enabled: true, apiKey: "sf-api-key", secretKey: "sf-secret-key", webhookToken: "velor-steadfast-webhook" });
       // Pathao needs the merchant login, which legacy data does not have: imported but left disabled
       expect(s.pathao).toMatchObject({ enabled: false, clientId: "pathao-client", clientSecret: "pathao-secret", storeId: "148890", webhookSecret: "velor-pathao-webhook" });

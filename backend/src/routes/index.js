@@ -22,7 +22,6 @@ const courierRoutes = require("./api/courier.api");
 const stockAdjustRoutes = require("./api/stockAdjust.api");
 const purchaseRoutes = require("./api/purchase.api");
 const sizeChartRoutes = require("./api/sizeChart.api");
-const chatRoutes = require("./api/chat.api");
 
 // All routes
 _.use("/platform", require("./platform"));
@@ -53,7 +52,6 @@ _.use("/stock", stockAdjustRoutes);
 _.use("/purchase", purchaseRoutes);
 _.use("/purchase-return", require("./api/purchase-return.api"));
 _.use("/sizechart", sizeChartRoutes);
-_.use(chatRoutes);
 _.use("/sales-return", require("./api/salesReturn.api"));
 _.use("/byretrun-Sale", require("./api/byretrunSale.api"));
 _.use("/transaction-category", require("./api/transitionCategory.api"));

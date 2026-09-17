@@ -60,7 +60,7 @@ describe("owner-managed integrations (dashboard API)", () => {
     const res = await request(app.server).get("/api/v1/settings/schema").set(ownerAuth).expect(200);
     const keys = res.body.data.map((section) => section.key);
 
-    expect(keys).toEqual(["sms", "email", "sslcommerz", "pathao", "steadfast", "cloudinary", "groq"]);
+    expect(keys).toEqual(["sms", "email", "sslcommerz", "pathao", "steadfast", "cloudinary"]);
     expect(res.body.data.find((s) => s.key === "sslcommerz")).toMatchObject({ path: "payment/sslcommerz", testable: true });
   });
 

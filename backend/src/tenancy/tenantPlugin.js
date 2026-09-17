@@ -121,11 +121,6 @@ const scopePipeline = (pipeline, tenantId, isScoped = isTenantCollection) => {
 
   if (!first) return [match];
 
-  if (first.$vectorSearch) {
-    const { filter, ...stage } = first.$vectorSearch;
-    return [{ $vectorSearch: { ...stage, filter: withTenant(filter, tenantId) } }, ...rest];
-  }
-
   if (first.$geoNear) {
     const { query, ...stage } = first.$geoNear;
     return [{ $geoNear: { ...stage, query: withTenant(query, tenantId) } }, ...rest];
@@ -138,11 +133,21 @@ const scopePipeline = (pipeline, tenantId, isScoped = isTenantCollection) => {
   return [match, first, ...rest];
 };
 
+// An index that a tenant-scoped query can never use on its own. Every query
+// carries tenantId, so MongoDB can only use an index whose leading key is
+// tenantId — anything else scans other tenants' entries and throws them away.
+//
+// Two kinds must stay unscoped:
+//   TTL: expireAfterSeconds only works on a single-field index.
+//   text: MongoDB rejects a text index with a leading non-text key.
+const mustStayUnscoped = (fields, options = {}) =>
+  options.expireAfterSeconds !== undefined || Object.values(fields).includes("text");
+
 // Unique constraints are per tenant: { field } becomes { tenantId, field }.
 // sparse (and optional fields) become a partial filter, because a compound index
 // always contains tenantId and would otherwise treat every missing value as a
 // duplicate null.
-const scopeUniqueIndexes = (schema) => {
+const scopeIndexes = (schema) => {
   const scopedOptions = (fields, { sparse, ...options }) =>
     sparse
       ? {
@@ -152,19 +157,26 @@ const scopeUniqueIndexes = (schema) => {
       : options;
 
   schema.eachPath((name, type) => {
-    if (name === "tenantId" || !type._index?.unique) return;
+    if (name === "tenantId" || !type._index) return;
     const { unique, sparse, ...rest } = type._index;
+    if (mustStayUnscoped({ [name]: 1 }, rest)) return;
     type._index = null;
+
+    if (!unique) {
+      schema.index({ tenantId: 1, [name]: 1 }, rest);
+      return;
+    }
     // An optional field is effectively sparse: documents without it must not collide
     const partial = sparse || !type.isRequired;
     schema.index({ tenantId: 1, [name]: 1 }, { ...scopedOptions({ [name]: 1 }, { sparse: partial, ...rest }), unique: true });
   });
 
-  schema._indexes = schema._indexes.map(([fields, options]) =>
-    options?.unique && !("tenantId" in fields)
+  schema._indexes = schema._indexes.map(([fields, options]) => {
+    if ("tenantId" in fields || mustStayUnscoped(fields, options)) return [fields, options];
+    return options?.unique
       ? [{ tenantId: 1, ...fields }, scopedOptions(fields, options)]
-      : [fields, options],
-  );
+      : [{ tenantId: 1, ...fields }, options];
+  });
 };
 
 function tenantPlugin(schema) {
@@ -181,7 +193,7 @@ function tenantPlugin(schema) {
     });
   }
 
-  scopeUniqueIndexes(schema);
+  scopeIndexes(schema);
 
   function stampDocument(next) {
     try {

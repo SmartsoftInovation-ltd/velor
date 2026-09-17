@@ -166,16 +166,6 @@ const getCloudinaryConfig = async () => {
   return { cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret };
 };
 
-const getGroqConfig = async () => {
-  const tenant = await tenantSettings();
-  if (!tenant) {
-    return { apiKey: process.env.GROQ_API_KEY, model: "llama-3.3-70b-versatile", temperature: 0.3 };
-  }
-  await requireConfigured(tenant.tenantId, "ai", "AI_NOT_CONFIGURED", "AI assistant");
-  const { apiKey, model, temperature } = tenant.values.groq;
-  return { apiKey, model, temperature };
-};
-
 module.exports = {
   getGeneralConfig,
   getInvoicePrefix,
@@ -184,5 +174,4 @@ module.exports = {
   getSslCommerzConfig,
   getCourierConfig,
   getCloudinaryConfig,
-  getGroqConfig,
 };

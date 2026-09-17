@@ -181,7 +181,6 @@ const getFeatures = async (tenantId) => {
     sslcommerz: configured("sslcommerz"),
     couriers: { pathao: configured("pathao"), steadfast: configured("steadfast") },
     cloudinary: configured("cloudinary"),
-    ai: configured("groq"),
   };
 };
 

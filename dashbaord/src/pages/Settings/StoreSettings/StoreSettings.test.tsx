@@ -26,10 +26,9 @@ const schema = [
   { key: "pathao", path: "couriers/pathao", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }] },
   { key: "steadfast", path: "couriers/steadfast", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }] },
   { key: "cloudinary", path: "cloudinary", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }] },
-  { key: "groq", path: "ai/groq", testable: true, fields: [{ name: "enabled", type: "boolean", required: false, default: false }] },
 ];
 
-const features = { sms: true, email: false, sslcommerz: false, couriers: { pathao: false, steadfast: false }, cloudinary: true, ai: false };
+const features = { sms: true, email: false, sslcommerz: false, couriers: { pathao: false, steadfast: false }, cloudinary: true };
 
 const settingsResponse = (canManageIntegrations: boolean) => ({
   settings: {
@@ -40,7 +39,6 @@ const settingsResponse = (canManageIntegrations: boolean) => ({
     pathao: { enabled: false },
     steadfast: { enabled: false },
     cloudinary: { enabled: true },
-    groq: { enabled: false },
   },
   features,
   canManageIntegrations,

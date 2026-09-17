@@ -69,13 +69,6 @@ const TESTERS = {
     const result = await cloudinary.api.ping({ cloud_name: s.cloudName, api_key: s.apiKey, api_secret: s.apiSecret });
     return { status: result?.status };
   },
-
-  groq: async (s) => {
-    const { data } = await axios.get("https://api.groq.com/openai/v1/models", {
-      headers: { Authorization: `Bearer ${s.apiKey}` },
-    });
-    return { models: Array.isArray(data?.data) ? data.data.length : undefined };
-  },
 };
 
 const requiredFor = (sectionKey, values) => {

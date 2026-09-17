@@ -88,7 +88,7 @@ describe("AuthContext", () => {
     renderAuth();
     await screen.findByText("ready");
 
-    act(() => latest.updateFeatures({ sms: true, email: false, sslcommerz: false, couriers: { pathao: false, steadfast: false }, cloudinary: true, ai: false }));
+    act(() => latest.updateFeatures({ sms: true, email: false, sslcommerz: false, couriers: { pathao: false, steadfast: false }, cloudinary: true }));
 
     await waitFor(() => expect(latest.features?.sms).toBe(true));
     expect(latest.features?.cloudinary).toBe(true);

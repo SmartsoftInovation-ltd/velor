@@ -28,12 +28,12 @@ describe("integrations/config", () => {
   const inTenant = (fn) => runForTenant(T, fn);
 
   describe("without a tenant context (legacy env)", () => {
-    it("reads general, sms, sslcommerz, cloudinary and groq from env", async () => {
+    it("reads general, sms, sslcommerz and cloudinary from env", async () => {
       Object.assign(process.env, {
         INVOICE_PREFIX: "VLR", ORDER_HOT_LINE_NUMBER: "01700000000", FACEBOOK_URL: "https://fb.com/velor",
         FRONTEND_URL: "https://velor.test", BULK_SMS_URL: "http://sms.test", BULK_SMS_API_KEY: "envkey", BULK_SMS_SENDER_ID: "880",
         SSLC_STORE_ID: "envstore", SSLC_STORE_PASSWORD: "envpass", BACKEND_URL: "https://api.velor.test/api/v1", NODE_ENV: "production",
-        CLOUD_NAME: "envcloud", CLOUDINARY_API_KEY: "111", CLOUDINARY_API_SECRET: "envsecret", GROQ_API_KEY: "gsk_env",
+        CLOUD_NAME: "envcloud", CLOUDINARY_API_KEY: "111", CLOUDINARY_API_SECRET: "envsecret",
       });
 
       await expect(config.getGeneralConfig()).resolves.toEqual({
@@ -50,7 +50,6 @@ describe("integrations/config", () => {
         },
       });
       await expect(config.getCloudinaryConfig()).resolves.toEqual({ cloud_name: "envcloud", api_key: "111", api_secret: "envsecret", folder: "" });
-      await expect(config.getGroqConfig()).resolves.toEqual({ apiKey: "gsk_env", model: "llama-3.3-70b-versatile", temperature: 0.3 });
     });
 
     it("defaults the invoice prefix to INV", async () => {
@@ -65,7 +64,6 @@ describe("integrations/config", () => {
       await service.updateSection(T, "general", { invoicePrefix: "PZS", orderHotline: "01711000000", storefrontUrl: "https://pizza.test" });
       await service.updateSection(T, "sms", { enabled: true, apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" });
       await service.updateSection(T, "cloudinary", { enabled: true, cloudName: "pizza-cdn", apiKey: "222", apiSecret: "pizza-secret", folder: "pizza" });
-      await service.updateSection(T, "groq", { enabled: true, apiKey: "gsk_pizza", model: "llama-3.1-8b-instant" });
       await service.updateSection(T, "sslcommerz", { enabled: true, isLive: false, storeId: "pizzastore", storePassword: "pizzapass" });
 
       await inTenant(async () => {
@@ -73,7 +71,6 @@ describe("integrations/config", () => {
         await expect(config.getGeneralConfig()).resolves.toMatchObject({ orderHotline: "01711000000", storefrontUrl: "https://pizza.test" });
         await expect(config.getSmsConfig()).resolves.toMatchObject({ apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" });
         await expect(config.getCloudinaryConfig()).resolves.toEqual({ cloud_name: "pizza-cdn", api_key: "222", api_secret: "pizza-secret", folder: "pizza" });
-        await expect(config.getGroqConfig()).resolves.toMatchObject({ apiKey: "gsk_pizza", model: "llama-3.1-8b-instant" });
       });
     });
 
@@ -91,7 +88,6 @@ describe("integrations/config", () => {
       ["getSmsConfig", "SMS_NOT_CONFIGURED"],
       ["getSslCommerzConfig", "SSLCOMMERZ_NOT_CONFIGURED"],
       ["getCloudinaryConfig", "CLOUDINARY_NOT_CONFIGURED"],
-      ["getGroqConfig", "AI_NOT_CONFIGURED"],
     ])("%s throws 422 %s when the tenant has not configured it", async (getter, code) => {
       process.env.BULK_SMS_API_KEY = "envkey";
       process.env.CLOUD_NAME = "envcloud";
