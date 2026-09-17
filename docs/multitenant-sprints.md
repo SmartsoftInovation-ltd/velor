@@ -26,7 +26,7 @@
 | 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | **done** |
 | 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | **done** |
 | 10 | Dashboard multi-tenant | §7, §10 step 11 | **done** |
-| 11 | Provisioning, isolation suite, fail-closed | §8.2, §12, §10 steps 12–13 | todo |
+| 11 | Provisioning, isolation suite, fail-closed | §8.2, §12, §10 steps 12–13 | **done** |
 | 12 | Platform console UI | §8.3, §10 step 14 | todo |
 
 ---
@@ -280,6 +280,23 @@
 | 11.1 | `POST /platform/tenants` full provisioning (owner, roles, settings, store info) in one transaction |
 | 11.2 | Isolation test suite: two tenants with identical names/SKUs/emails across all route families |
 | 11.3 | Flip `TENANCY_MODE=strict`; make `tenantId` required; drop old global unique indexes; remove legacy tokens/routes |
+
+**Implementation notes (as built):**
+- `POST /api/v1/platform/tenants` with `owner: { name, email, phone, password? }` provisions a ready store in one transaction: tenant → default roles → owner user (`mustChangePassword` when no password given) → status `active`; then `general.invoicePrefix` from the slug. Response: `{ tenant, owner (temporaryPassword once), loginUrl }` (`APP_URL/signin?workspace=<slug>`). Without `owner` the old bare-tenant behaviour stays. `change-password` clears `mustChangePassword`.
+- Plugin now scopes sub-pipelines: `$lookup` (localField/foreignField and let/pipeline), `$unionWith`, `$graphLookup` and `$facet` get a tenant `$match` when they read a tenant-scoped collection. This closed a real leak: supplier/purchase joins on the supplier mobile number. Requires MongoDB ≥ 5.0.
+- Isolation suite (`tests/integration/isolation.test.js`) runs the real app in **strict mode** with two provisioned stores holding identical data: suppliers (same mobile) incl. list/delete/summary+cache, delivery charges by id, users and roles lists, public endpoints via `x-tenant` incl. cache, settings, token vs another store, request without a store → `TENANT_CONTEXT_REQUIRED`.
+- Strict mode: `tenantId` is required on every tenant document; legacy single-tenant callback routes (`/payment/*`, `/courier/pathao-webhook`, `/courier/steadfast-webhook`) answer `410 LEGACY_ROUTE_REMOVED`.
+
+**Production cutover checklist**
+1. Backup database; set `SETTINGS_ENCRYPTION_KEYS`, `API_PUBLIC_URL`, platform secrets, `APP_URL`.
+2. Deploy backend + dashboard (Sprint 10) with `TENANCY_MODE=shadow`, `DEFAULT_TENANT_SLUG=velor`, `LEGACY_TOKEN_GRACE_UNTIL=<now + 15 days>`.
+3. `npm run seed:platform-admin` → `npm run tenant:create -- --name Velor --slug velor --status active` → `npm run migrate -- --tenant velor`.
+4. In the platform API: add Pathao username/password and enable it; press each settings **test** endpoint.
+5. Register the new webhook URLs (`GET /platform/tenants/:id/settings/webhooks`) at Pathao, Steadfast and SSLCommerz.
+6. Update the Atlas `vector_index` with `src/scripts/atlasVectorIndex.json`.
+7. `npm run migrate:cutover` (drops old global unique indexes).
+8. Run with `TENANCY_LOG_UNSCOPED=true` for a few days; when no warnings appear, set `TENANCY_MODE=strict` and remove `DEFAULT_TENANT_SLUG`.
+9. After the grace date, remove `LEGACY_TOKEN_GRACE_UNTIL`.
 
 ## Sprint 12 — Platform console UI
 

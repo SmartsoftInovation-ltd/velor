@@ -28,6 +28,20 @@ describe("app boot with tenancy plugin in shadow mode", () => {
     await request(server).post("/api/v1/platform/auth/refresh").expect(401);
   });
 
+  it("retires the single-tenant webhook routes in strict mode", async () => {
+    const saved = process.env.TENANCY_MODE;
+    process.env.TENANCY_MODE = "strict";
+    try {
+      for (const path of ["/api/v1/payment/ipn", "/api/v1/courier/pathao-webhook", "/api/v1/courier/steadfast-webhook"]) {
+        const res = await request(server).post(path).send({});
+        expect(res.status).toBe(410);
+        expect(res.body.code).toBe("LEGACY_ROUTE_REMOVED");
+      }
+    } finally {
+      process.env.TENANCY_MODE = saved;
+    }
+  });
+
   it("serves an existing public endpoint without a tenant context", async () => {
     const res = await request(server).get("/api/v1/categories-active");
     expect(res.status).toBeLessThan(500);

@@ -77,9 +77,46 @@ const scopeQuery = (query, tenantId) => {
 const withTenant = (filter, tenantId) =>
   filter && Object.keys(filter).length ? { $and: [filter, { tenantId }] } : { tenantId };
 
+// Collections whose model applies this plugin (looked up lazily: models register over time)
+const isTenantCollection = (collectionName) =>
+  mongoose.modelNames().some((name) => {
+    const Model = mongoose.model(name);
+    return Model.collection.collectionName === collectionName && Model.schema.plugins.some((p) => p.fn === tenantPlugin);
+  });
+
+// Joins into tenant-scoped collections get their own tenant $match, so a join on a
+// non-ObjectId key (mobile number, sku, ...) can never pull another tenant's documents.
+const scopeSubPipelines = (stages, tenantId, isScoped) =>
+  stages.map((stage) => {
+    const scope = (collection, pipeline = []) => [
+      ...(isScoped(collection) ? [{ $match: { tenantId } }] : []),
+      ...scopeSubPipelines(pipeline, tenantId, isScoped),
+    ];
+
+    if (stage.$lookup) {
+      return { $lookup: { ...stage.$lookup, pipeline: scope(stage.$lookup.from, stage.$lookup.pipeline) } };
+    }
+    if (stage.$unionWith) {
+      const union = typeof stage.$unionWith === "string" ? { coll: stage.$unionWith } : stage.$unionWith;
+      return { $unionWith: { ...union, pipeline: scope(union.coll, union.pipeline) } };
+    }
+    if (stage.$graphLookup && isScoped(stage.$graphLookup.from)) {
+      const graph = stage.$graphLookup;
+      return { $graphLookup: { ...graph, restrictSearchWithMatch: withTenant(graph.restrictSearchWithMatch, tenantId) } };
+    }
+    if (stage.$facet) {
+      return {
+        $facet: Object.fromEntries(
+          Object.entries(stage.$facet).map(([name, pipeline]) => [name, scopeSubPipelines(pipeline, tenantId, isScoped)]),
+        ),
+      };
+    }
+    return stage;
+  });
+
 // Pure: returns a copy of the pipeline limited to tenantId
-const scopePipeline = (pipeline, tenantId) => {
-  const [first, ...rest] = pipeline;
+const scopePipeline = (pipeline, tenantId, isScoped = isTenantCollection) => {
+  const [first, ...rest] = scopeSubPipelines(pipeline, tenantId, isScoped);
   const match = { $match: { tenantId } };
 
   if (!first) return [match];
@@ -98,7 +135,7 @@ const scopePipeline = (pipeline, tenantId) => {
     return [first, match, ...rest];
   }
 
-  return [match, ...pipeline];
+  return [match, first, ...rest];
 };
 
 // Unique constraints are per tenant: { field } becomes { tenantId, field }.
@@ -138,6 +175,8 @@ function tenantPlugin(schema) {
         ref: "Tenant",
         index: true,
         immutable: true,
+        // Optional while legacy data is migrated (shadow); mandatory in strict mode
+        required: [isStrict, "tenantId is required"],
       },
     });
   }

@@ -409,6 +409,7 @@ exports.changePassword = asynchandeler(async (req, res) => {
   }
 
   user.password = newPassword;
+  user.mustChangePassword = false;
   // Sessions opened with the old password are no longer valid.
   user.refreshToken = null;
   await user.save();

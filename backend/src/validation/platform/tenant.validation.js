@@ -4,12 +4,21 @@ const limits = joi.object({
   maxStaff: joi.number().integer().min(0).allow(null),
 });
 
+// Owner account created with the store; without a password a temporary one is issued
+const owner = joi.object({
+  name: joi.string().trim().min(2).max(100).required(),
+  email: joi.string().trim().lowercase().email({ tlds: { allow: false } }).required(),
+  phone: joi.string().trim().pattern(/^01[0-9]{9}$/).required(),
+  password: joi.string().min(8),
+});
+
 // Slug format and reserved words are enforced by the Tenant model
 const createTenantSchema = joi.object({
   name: joi.string().trim().min(2).max(100).required(),
   slug: joi.string().trim().lowercase().required(),
   plan: joi.string().trim().max(50),
   limits,
+  owner,
 });
 
 // slug, status and webhookKey are deliberately not updatable here

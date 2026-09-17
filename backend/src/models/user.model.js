@@ -89,6 +89,8 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
     },
+    // Set for accounts created with a temporary password (store provisioning)
+    mustChangePassword: { type: Boolean, default: false },
     // Incremented to revoke every issued token (deactivation, role or password change)
     tokenVersion: { type: Number, default: 0 },
   },

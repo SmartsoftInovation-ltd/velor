@@ -14,6 +14,10 @@ const itemSchema = new mongoose.Schema({ name: String, sku: String, qty: Number 
 itemSchema.plugin(tenantPlugin);
 const Item = mongoose.model("TpItem", itemSchema);
 
+const paymentSchema = new mongoose.Schema({ sku: String, amount: Number });
+paymentSchema.plugin(tenantPlugin);
+const Payment = mongoose.model("TpPayment", paymentSchema);
+
 const orderSchema = new mongoose.Schema({ item: { type: mongoose.Schema.Types.ObjectId, ref: "TpItem" } });
 orderSchema.plugin(tenantPlugin);
 const Order = mongoose.model("TpOrder", orderSchema);
@@ -223,6 +227,67 @@ describe("tenantPlugin", () => {
       expect(row.total).toBe(9);
     });
 
+    describe("sub-pipelines", () => {
+      beforeEach(async () => {
+        await runAsPlatform(() => Payment.deleteMany({}));
+        // Same sku "S1" in both tenants: a join on a non-ObjectId key
+        await inA(() => Payment.create({ sku: "S1", amount: 10 }));
+        await inB(() => Payment.create({ sku: "S1", amount: 900 }));
+        await runAsPlatform(() => mongoose.connection.collection("tp_globals").deleteMany({}));
+        await mongoose.connection.collection("tp_globals").insertOne({ sku: "S1", label: "shared" });
+      });
+
+      const amounts = (row) => row.payments.map((p) => p.amount);
+
+      it("$lookup on a string key only joins the same tenant's documents", async () => {
+        const rows = await inA(() =>
+          Item.aggregate([
+            { $match: { sku: "S1" } },
+            { $lookup: { from: "tppayments", localField: "sku", foreignField: "sku", as: "payments" } },
+          ]),
+        );
+        expect(rows.map(amounts)).toEqual([[10]]);
+      });
+
+      it("$lookup with let/pipeline, $facet and $unionWith are scoped too", async () => {
+        const [row] = await inA(() =>
+          Item.aggregate([
+            { $match: { sku: "S1" } },
+            {
+              $facet: {
+                joined: [
+                  {
+                    $lookup: {
+                      from: "tppayments",
+                      let: { sku: "$sku" },
+                      pipeline: [{ $match: { $expr: { $eq: ["$sku", "$$sku"] } } }],
+                      as: "payments",
+                    },
+                  },
+                ],
+              },
+            },
+          ]),
+        );
+        expect(row.joined.map(amounts)).toEqual([[10]]);
+
+        const union = await inA(() =>
+          Item.aggregate([{ $match: { sku: "S1" } }, { $project: { amount: "$qty" } }, { $unionWith: { coll: "tppayments", pipeline: [{ $project: { amount: 1 } }] } }]),
+        );
+        expect(union.map((r) => r.amount).sort((x, y) => x - y)).toEqual([1, 10]);
+      });
+
+      it("does not filter lookups into collections that are not tenant-scoped", async () => {
+        const [row] = await inA(() =>
+          Item.aggregate([
+            { $match: { sku: "S1" } },
+            { $lookup: { from: "tp_globals", localField: "sku", foreignField: "sku", as: "globals" } },
+          ]),
+        );
+        expect(row.globals.map((g) => g.label)).toEqual(["shared"]);
+      });
+    });
+
     it("scopePipeline prepends a tenant $match", () => {
       expect(scopePipeline([{ $sort: { qty: 1 } }], A)).toEqual([
         { $match: { tenantId: A } },
@@ -274,6 +339,12 @@ describe("tenantPlugin", () => {
       await expect(Item.find()).rejects.toThrow(/tenant context/i);
       await expect(Item.create({ name: "x" })).rejects.toThrow(/tenant context/i);
       await expect(Item.aggregate([{ $match: {} }])).rejects.toThrow(/tenant context/i);
+    });
+
+    it("strict mode requires tenantId even for platform-scope writes", async () => {
+      process.env.TENANCY_MODE = "strict";
+      await expect(runAsPlatform(() => Item.create({ name: "orphan" }))).rejects.toThrow(/tenantId.*required/i);
+      await expect(inA(() => Item.create({ name: "owned" }))).resolves.toBeDefined();
     });
 
     it("platform scope is unscoped even in strict mode", async () => {

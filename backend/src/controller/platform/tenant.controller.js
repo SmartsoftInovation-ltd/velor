@@ -5,6 +5,7 @@ const { apiResponse } = require("../../utils/apiResponse");
 const { statusCodes } = require("../../constant/constant");
 const { recordPlatformAudit } = require("../../service/platformAudit.service");
 const { invalidateTenantCache } = require("../../tenancy/tenantResolver");
+const { provisionTenant } = require("../../tenancy/provisioning");
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
 
@@ -37,16 +38,24 @@ const updatePaths = (input, prefix = "") =>
   );
 
 exports.createTenant = asynchandeler(async (req, res) => {
+  const audit = (tenantId) =>
+    recordPlatformAudit({
+      req,
+      actor: req.platformUser,
+      action: "TENANT_CREATED",
+      tenantId,
+      changes: Object.keys(req.body),
+    });
+
+  // With an owner: a ready-to-use store (roles, owner account, settings)
+  if (req.body.owner) {
+    const result = await provisionTenant(req.body, { createdBy: req.platformUser._id });
+    await audit(result.tenant._id);
+    return apiResponse.sendSuccess(res, statusCodes.CREATED, "Store provisioned", result);
+  }
+
   const tenant = await Tenant.create({ ...req.body, createdBy: req.platformUser._id });
-
-  await recordPlatformAudit({
-    req,
-    actor: req.platformUser,
-    action: "TENANT_CREATED",
-    tenantId: tenant._id,
-    changes: Object.keys(req.body),
-  });
-
+  await audit(tenant._id);
   return apiResponse.sendSuccess(res, statusCodes.CREATED, "Tenant created", tenant);
 });
 
