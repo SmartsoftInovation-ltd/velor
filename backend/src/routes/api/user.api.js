@@ -14,20 +14,22 @@ const {
   registerLimiter,
   changePasswordLimiter,
 } = require("../../middleware/rateLimit.middleware");
+const { workspaceTenant } = require("../../middleware/requestTenant.middleware");
 
-_.post("/registeruser", registerLimiter, authController.registerUser);
-_.post("/login", loginLimiter, authController.login);
+_.post("/registeruser", registerLimiter, workspaceTenant, authController.registerUser);
+_.post("/login", loginLimiter, workspaceTenant, authController.login);
 _.post("/refresh-token", authController.refreshToken);
 _.post("/logout", authController.logout);
 // user control
 _.post(
   "/send-email-verification",
   passwordResetLimiter,
+  workspaceTenant,
   authController.sendEmailVerification,
 );
-_.post("/verify-email", resetSubmitLimiter, authController.verifyEmail);
-_.post("/forgot-password", passwordResetLimiter, authController.forgotPassword);
-_.post("/reset-password", resetSubmitLimiter, authController.resetPassword);
+_.post("/verify-email", resetSubmitLimiter, workspaceTenant, authController.verifyEmail);
+_.post("/forgot-password", passwordResetLimiter, workspaceTenant, authController.forgotPassword);
+_.post("/reset-password", resetSubmitLimiter, workspaceTenant, authController.resetPassword);
 _.get("/getallusers", authGuard, authorize("create-user", "view"), authController.getAllUser);
 _.post(
   "/change-password",

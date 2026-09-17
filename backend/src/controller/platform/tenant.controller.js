@@ -4,6 +4,7 @@ const { asynchandeler } = require("../../lib/asyncHandeler");
 const { apiResponse } = require("../../utils/apiResponse");
 const { statusCodes } = require("../../constant/constant");
 const { recordPlatformAudit } = require("../../service/platformAudit.service");
+const { invalidateTenantCache } = require("../../tenancy/tenantResolver");
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
 
@@ -113,6 +114,7 @@ const changeStatus = (action) =>
       throw new customError(`Cannot ${action} a tenant that is ${existing.status}`, statusCodes.CONFLICT);
     }
 
+    invalidateTenantCache(tenant._id);
     await recordPlatformAudit({ req, actor: req.platformUser, action: audit, tenantId: tenant._id });
 
     return apiResponse.sendSuccess(res, statusCodes.OK, `Tenant ${to}`, tenant);

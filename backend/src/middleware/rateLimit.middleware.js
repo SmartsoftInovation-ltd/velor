@@ -39,7 +39,7 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: true,
   statusCode: statusCodes.TOO_MANY_REQUESTS,
-  keyGenerator: (req) => `login:${clientIp(req)}:${accountKey(req)}`,
+  keyGenerator: (req) => `login:${clientIp(req)}:${req.body?.workspace || "-"}:${accountKey(req)}`,
   handler: tooMany(
     "Too many failed sign-in attempts. Please try again in 15 minutes.",
   ),

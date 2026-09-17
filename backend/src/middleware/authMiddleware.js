@@ -2,38 +2,85 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 require("../models/permisson.model");
 const { customError } = require("../lib/CustomError");
-const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { statusCodes } = require("../constant/constant");
+const { runForTenant, runAsPlatform, getTenantId } = require("../tenancy/context");
+const { getTenantById, assertTenantActive } = require("../tenancy/tenantResolver");
+
+const unauthorized = (message = "Unauthorized") => new customError(message, statusCodes.UNAUTHORIZED);
+
+const readToken = (req) => {
+  const token = req.headers?.authorization?.replace("Bearer ", "") || req.body?.token;
+  return token && token !== "null" && token !== "undefined" ? token : null;
+};
+
+const legacyGraceActive = () => {
+  const until = Date.parse(process.env.LEGACY_TOKEN_GRACE_UNTIL || "");
+  return Number.isFinite(until) && Date.now() <= until;
+};
+
+/**
+ * Verifies an access token and resolves its tenant.
+ * Tokens carry { sub, tid, tv }. Tokens issued before multi-tenancy carry only
+ * { id, email, ... }: they are accepted for users already moved into a tenant
+ * until LEGACY_TOKEN_GRACE_UNTIL, and for not-yet-migrated users outside strict mode.
+ */
+const resolveTokenSession = async (token, loadUser) => {
+  const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+  const userId = decoded.sub || decoded.id;
+  if (!userId) throw unauthorized("Invalid token");
+
+  let tenantId = decoded.tid;
+  if (!tenantId) {
+    const legacy = await runAsPlatform(() => User.findById(userId).select("tenantId").lean());
+    if (!legacy) throw unauthorized("User not found");
+    if (legacy.tenantId) {
+      if (!legacyGraceActive()) throw unauthorized("Session expired. Please sign in again.");
+      tenantId = legacy.tenantId;
+    } else if (process.env.TENANCY_MODE === "strict") {
+      throw unauthorized("Session expired. Please sign in again.");
+    }
+  }
+
+  const tenant = tenantId ? assertTenantActive(await getTenantById(tenantId)) : null;
+
+  const requestTenant = getTenantId();
+  if (requestTenant && tenant && !requestTenant.equals(tenant._id)) {
+    throw unauthorized("This session belongs to a different store");
+  }
+
+  const user = tenant ? await runForTenant(tenant._id, () => loadUser(userId)) : await loadUser(userId);
+  if (!user) throw unauthorized("User not found");
+  if (decoded.tid && (decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
+    throw unauthorized("Session expired. Please sign in again.");
+  }
+
+  return { user, tenant };
+};
+
+// Continues the request inside the session's tenant
+const continueInTenant = (tenant, next) => (tenant ? runForTenant(tenant._id, () => next()) : next());
+
+exports.resolveTokenSession = resolveTokenSession;
 
 exports.authGuard = asynchandeler(async (req, res, next) => {
-  let token =
-    req.headers?.authorization?.replace("Bearer ", "") || req.body?.token;
-
-  if (!token || token === "null" || token === "undefined") {
+  const token = readToken(req);
+  if (!token) {
     throw new customError("Token not found or Invalid / Token Required", 401);
   }
 
-  const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
-  if (!decoded) {
-    throw new customError("Invalid token", 401);
-  }
-  const user = await User.findOne({
-    $or: [{ email: decoded.email }, { phone: decoded.phone }],
-  })
-    .populate({
-      path: "roles",
-      populate: { path: "permissions.permission" },
-    })
-    .populate("permissions.permission")
-    .populate("createdBy")
-    .select(
-      "-__v -wishList -cart -newsLetterSubscribe -refreshToken -password -twoFactorEnabled"
-    );
-
-  if (!user) {
-    throw new customError("User not found", 401);
-  }
+  const { user, tenant } = await resolveTokenSession(token, (id) =>
+    User.findById(id)
+      .populate({
+        path: "roles",
+        populate: { path: "permissions.permission" },
+      })
+      .populate("permissions.permission")
+      .populate("createdBy")
+      .select(
+        "-__v -wishList -cart -newsLetterSubscribe -refreshToken -password -twoFactorEnabled",
+      ),
+  );
 
   // Revoke live sessions the moment an account is deactivated or blocked.
   // 401 (not 403) so the client's interceptor treats it as an auth failure:
@@ -43,5 +90,9 @@ exports.authGuard = asynchandeler(async (req, res, next) => {
   }
 
   req.user = user;
-  next();
+  if (tenant) req.tenant = tenant;
+  continueInTenant(tenant, next);
 });
+
+exports.continueInTenant = continueInTenant;
+exports.readToken = readToken;

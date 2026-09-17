@@ -112,7 +112,20 @@ const normalizeDatabaseError = (error) => {
   return error;
 };
 
+// A tenant-scoped query ran without a tenant (strict mode): the request did not
+// name its store
+const normalizeTenancyError = (error) => {
+  if (error.name === "TenancyError") {
+    error.statusCode = 400;
+    error.isOperationalError = true;
+    error.code = "TENANT_CONTEXT_REQUIRED";
+    error.message = "This request must identify a store";
+  }
+  return error;
+};
+
 exports.globalErrorHandeler = (error, req, res, next) => {
+  error = normalizeTenancyError(error);
   error = normalizeAuthError(error);
   error = normalizeDatabaseError(error);
   error.statusCode = error.statusCode || 500;

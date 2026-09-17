@@ -1,31 +1,22 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { resolveTokenSession, continueInTenant, readToken } = require("./authMiddleware");
 
 exports.guestOrAuth = asynchandeler(async (req, res, next) => {
-  let token = req.headers?.authorization?.replace("Bearer ", "") || req.body?.token;
-  let guestId = req.headers["x-guest-id"] || req.body?.guestId;
+  const token = readToken(req);
+  const guestId = req.headers["x-guest-id"] || req.body?.guestId;
 
-  if (token && token !== "null" && token !== "undefined") {
+  if (token) {
+    let session;
     try {
-      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-      if (!decoded) {
-        throw new customError("Invalid token", 401);
-      }
-      const user = await User.findOne({
-        $or: [{ email: decoded.email }, { phone: decoded.phone }],
-      }).select("_id"); // We only need the user ID for cart logic
-      
-      if (!user) {
-        throw new customError("User not found", 401);
-      }
-      
-      req.user = user;
-      return next();
+      session = await resolveTokenSession(token, (id) => User.findById(id).select("_id tokenVersion"));
     } catch (error) {
-      throw new customError("Invalid or expired token", 401);
+      throw new customError(error.code ? error.message : "Invalid or expired token", 401, error.code);
     }
+    req.user = session.user;
+    if (session.tenant) req.tenant = session.tenant;
+    return continueInTenant(session.tenant, next);
   }
 
   // If no valid token, check for guestId

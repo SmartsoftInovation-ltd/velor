@@ -27,6 +27,10 @@ const chatRoutes = require("./api/chat.api");
 // All routes
 _.use("/platform", require("./platform"));
 _.use("/hooks", require("./api/hooks.api"));
+
+// Everything below is tenant business data: open the store's context when the
+// request names it (x-tenant header or DEFAULT_TENANT_SLUG)
+_.use(require("../middleware/requestTenant.middleware").resolveRequestTenant);
 _.use("/auth", userRoutes);
 _.use(categoryRoutes);
 _.use(subcategoryRoutes);

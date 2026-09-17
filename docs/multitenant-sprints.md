@@ -22,7 +22,7 @@
 | 4 | Tenant settings core (encryption, service, platform endpoints) | §5.2–5.6, §10 step 5 | **done** |
 | 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | **done** |
 | 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | **done** |
-| 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | todo |
+| 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | **done** |
 | 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | todo |
 | 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | todo |
 | 10 | Dashboard multi-tenant | §7, §10 step 11 | todo |
@@ -195,6 +195,16 @@
 | 7.5 | Request pipeline opens tenant context (`runForTenant`) for staff routes |
 | 7.6 | `getme` returns `user`, `tenant`, effective `permissions`, `features` |
 | 7.7 | Cookie `sameSite: lax`, path-scoped |
+
+**Implementation notes (as built):**
+- Request tenant: `x-tenant` header (store slug) or `DEFAULT_TENANT_SLUG` opens the context for every non-platform, non-hook route (`resolveRequestTenant`); unknown store → 404 `TENANT_NOT_FOUND`, inactive → 403 `TENANT_SUSPENDED` / `TENANT_INACTIVE`.
+- Auth routes accept `workspace` in the body (`workspaceTenant`): login, register, forgot/reset password, email verification. Unknown workspace answers "Invalid credentials". With a workspace, only staff accounts (at least one role) may sign in.
+- Tokens: `{ id, sub, tid, tv }` (email/name/phone removed). `authGuard` loads the user by `sub` inside tenant `tid`, checks the tenant is active (cached 30 s, invalidated on suspend/activate) and `tokenVersion`, rejects a token used with another store's `x-tenant`, and runs the rest of the request in that tenant.
+- Legacy tokens `{ id, email, ... }`: accepted for migrated users until `LEGACY_TOKEN_GRACE_UNTIL`, and for not-yet-migrated users outside strict mode.
+- Refresh: token lookup is platform-scoped (the token is the secret); suspended store → 401 `TENANT_SUSPENDED`.
+- `GET /auth/getme` keeps the user fields at the top level and adds `tenant`, `effectivePermissions` (roles ∪ direct grants), `features`, `isOwner`.
+- Strict mode: login without a workspace → 400 `WORKSPACE_REQUIRED`; a tenant-scoped query without context → 400 `TENANT_CONTEXT_REQUIRED`.
+- Cookie `SameSite` configurable with `AUTH_COOKIE_SAMESITE` (path kept at `/` so existing cookies still clear).
 
 ## Sprint 8 — Per-tenant RBAC
 

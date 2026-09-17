@@ -5,6 +5,9 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendEmail } = require("../helpers/nodemailer");
 const { getGeneralConfig } = require("../integrations/config");
+const { getTenantId, runAsPlatform } = require("../tenancy/context");
+const { getTenantById, assertTenantActive } = require("../tenancy/tenantResolver");
+const { getFeatures } = require("../settings/settings.service");
 const { apiResponse } = require("../utils/apiResponse");
 const { customError } = require("../lib/CustomError");
 const { validateUser } = require("../validation/user.validation");
@@ -80,9 +83,19 @@ exports.registerUser = asynchandeler(async (req, res) => {
 });
 
 // user login and send a refresh token and access token
+const cookieSameSite = () =>
+  process.env.AUTH_COOKIE_SAMESITE || (process.env.NODE_ENV === "production" ? "none" : "lax");
+
+const tenantSummary = (tenant) =>
+  tenant ? { _id: tenant._id, name: tenant.name, slug: tenant.slug, status: tenant.status } : null;
+
 exports.login = asynchandeler(async (req, res) => {
   const { password, phone } = req.body;
   const email = req.body.email?.trim().toLowerCase();
+
+  if (!getTenantId() && process.env.TENANCY_MODE === "strict") {
+    throw new customError("Workspace is required", statusCodes.BAD_REQUEST, "WORKSPACE_REQUIRED");
+  }
 
   const user = await User.findOne({ $or: [{ email }, { phone }] })
     .populate("roles")
@@ -123,6 +136,14 @@ exports.login = asynchandeler(async (req, res) => {
     );
   }
 
+  // Dashboard sign-in (workspace given) is for staff accounts only
+  if (req.workspace && !(await User.exists({ _id: user._id, "roles.0": { $exists: true } }))) {
+    throw new customError(
+      "This account cannot sign in to the dashboard",
+      statusCodes.FORBIDDEN,
+    );
+  }
+
   // generate access token and refresh token
   const accessToken = await user.generateJwtAccessToken();
   const refreshToken = await user.generateJwtRefreshToken();
@@ -156,7 +177,7 @@ exports.login = asynchandeler(async (req, res) => {
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    sameSite: cookieSameSite(),
     path: "/",
     maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days — matches REFRESH_TOKEN_EXPIRY
   });
@@ -164,6 +185,7 @@ exports.login = asynchandeler(async (req, res) => {
   return apiResponse.sendSuccess(res, statusCodes.OK, "Login successful", {
     accessToken,
     user: userData,
+    tenant: tenantSummary(req.tenant),
   });
 });
 
@@ -176,14 +198,22 @@ exports.refreshToken = asynchandeler(async (req, res) => {
     throw new customError("Refresh token not found", statusCodes.UNAUTHORIZED);
   }
 
-  // check refresh token in database — ensures token was not revoked on logout
-  const user = await User.findOne({ refreshToken });
+  // check refresh token in database — ensures token was not revoked on logout.
+  // The token itself is the secret, so the lookup is not tenant-scoped.
+  const user = await runAsPlatform(() => User.findOne({ refreshToken }));
   if (!user) {
     throw new customError("Invalid refresh token", statusCodes.UNAUTHORIZED);
   }
 
   // verify signature + expiry
-  jwt.verify(user.refreshToken, process.env.REFRESH_TOKEN_SCCERET);
+  const decoded = jwt.verify(user.refreshToken, process.env.REFRESH_TOKEN_SCCERET);
+
+  // A suspended store signs its staff out at the next refresh
+  const tenantId = decoded.tid || user.tenantId;
+  if (tenantId) assertTenantActive(await getTenantById(tenantId));
+  if (decoded.tid && (decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
+    throw new customError("Session expired. Please sign in again.", statusCodes.UNAUTHORIZED);
+  }
 
   // Deactivated / blocked accounts may not refresh into a new session
   if (user.isBlocked || !user.isActive) {
@@ -211,11 +241,7 @@ exports.logout = asynchandeler(async (req, res) => {
 
   if (refreshToken) {
     // Revoke the token in DB so it cannot be used for refresh
-    const user = await User.findOne({ refreshToken });
-    if (user) {
-      user.refreshToken = null;
-      await user.save();
-    }
+    await runAsPlatform(() => User.updateOne({ refreshToken }, { $set: { refreshToken: null } }));
   }
 
   // remove refresh token from cookie
@@ -223,7 +249,7 @@ exports.logout = asynchandeler(async (req, res) => {
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    sameSite: cookieSameSite(),
     path: "/",
   });
 
@@ -463,12 +489,25 @@ exports.getMe = asynchandeler(async (req, res) => {
 
   if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
 
-  apiResponse.sendSuccess(
-    res,
-    statusCodes.OK,
-    "User fetched successfully",
-    user,
-  );
+  // Effective permissions = active roles ∪ direct grants (same rule as authorize())
+  const effectivePermissions = {};
+  const grant = (entry) => {
+    const slug = entry.permission?.slug;
+    if (!slug || entry.permission.isActive === false) return;
+    effectivePermissions[slug] = [...new Set([...(effectivePermissions[slug] || []), ...(entry.actions || [])])];
+  };
+  (user.roles || []).filter((role) => role.isActive !== false).forEach((role) => (role.permissions || []).forEach(grant));
+  (user.permissions || []).forEach(grant);
+
+  const tenant = req.tenant || null;
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "User fetched successfully", {
+    ...user.toObject(),
+    tenant: tenant ? { ...tenantSummary(tenant), limits: tenant.limits } : null,
+    effectivePermissions,
+    features: tenant ? await getFeatures(tenant._id) : null,
+    isOwner: (user.roles || []).some((role) => ["owner", "superadmin"].includes(role.slug)),
+  });
 });
 
 // search a user andd add permissin in  permission array

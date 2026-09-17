@@ -89,6 +89,8 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
     },
+    // Incremented to revoke every issued token (deactivation, role or password change)
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
@@ -144,7 +146,15 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   }
 };
 
-// Generate JWT token
+// Token claims: sub = user, tid = tenant, tv = token version. `id` is kept for
+// clients that still read it.
+const sessionClaims = (user) => ({
+  id: user._id,
+  sub: user._id.toString(),
+  ...(user.tenantId ? { tid: user.tenantId.toString() } : {}),
+  tv: user.tokenVersion || 0,
+});
+
 // Generate JWT token
 userSchema.methods.generateJwtRefreshToken = function () {
   try {
@@ -155,7 +165,7 @@ userSchema.methods.generateJwtRefreshToken = function () {
       );
     }
 
-    return jwt.sign({ id: this._id }, process.env.REFRESH_TOKEN_SCCERET, {
+    return jwt.sign(sessionClaims(this), process.env.REFRESH_TOKEN_SCCERET, {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "7d",
     });
   } catch (error) {
@@ -177,12 +187,7 @@ userSchema.methods.generateJwtAccessToken = function () {
     }
 
     return jwt.sign(
-      {
-        id: this._id,
-        email: this.email,
-        name: this.name,
-        phone: this.phone,
-      },
+      sessionClaims(this),
       process.env.ACCESS_TOKEN_SECRET,
       {
         expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1d",
