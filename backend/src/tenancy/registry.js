@@ -5,6 +5,7 @@ const GLOBAL_MODELS = [
   "Tenant", // control plane
   "PlatformUser", // platform operators, never tenant data
   "PlatformAuditLog", // platform operator actions across tenants
+  "TenantSettings", // keyed by tenantId; accessed only through settings.service
 ];
 
 module.exports = { GLOBAL_MODELS };

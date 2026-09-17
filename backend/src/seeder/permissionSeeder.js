@@ -129,6 +129,8 @@ const permissionList = [
   { permissionName: "Dashboard Day Cash Summary" },
   { permissionName: "Dashboard Payment Status" },
   { permissionName: "Dashboard Low Stock Alert" },
+  // Store settings (multi-tenant)
+  { permissionName: "Store Settings" },
 ];
 
 async function seedPermission() {

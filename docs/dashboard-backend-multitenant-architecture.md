@@ -302,8 +302,8 @@ Each seller needs different SMS keys, invoice prefix, SSLCommerz store, order ho
 | | `senderId` | string | | required when enabled |
 | **email** | `mode` | enum | | `platform` (use platform SMTP) · `smtp` (tenant's own) · `disabled` |
 | | `fromName`, `fromEmail`, `replyTo` | string | | email format |
-| | `smtp.host`, `smtp.port`, `smtp.secure`, `smtp.user` | mixed | | required when `mode=smtp` |
-| | `smtp.password` | secret | ✔ | required when `mode=smtp` |
+| | `smtpHost`, `smtpPort`, `smtpSecure`, `smtpUser` | mixed | | required when `mode=smtp` |
+| | `smtpPassword` | secret | ✔ | required when `mode=smtp` |
 | **payment.sslcommerz** | `enabled`, `isLive` | boolean | | |
 | | `storeId` | string | | required when enabled |
 | | `storePassword` | secret | ✔ | required when enabled |
@@ -311,8 +311,8 @@ Each seller needs different SMS keys, invoice prefix, SSLCommerz store, order ho
 | | `baseUrl` | string | | sandbox/live URL |
 | | `clientId`, `username`, `storeId` | string | | |
 | | `clientSecret`, `password`, `webhookSecret` | secret | ✔ | |
-| **couriers.steadfast** | `enabled`, `baseUrl`, `apiKey` | mixed | | |
-| | `secretKey`, `webhookToken` | secret | ✔ | |
+| **couriers.steadfast** | `enabled`, `baseUrl` | mixed | | |
+| | `apiKey`, `secretKey`, `webhookToken` | secret | ✔ | |
 | **couriers.redx / paperfly / ecourier** | same pattern, when those integrations are built | | | |
 | **cloudinary** | `enabled` | boolean | | |
 | | `cloudName` | string | | `^[a-z0-9_-]+$`, required when enabled |

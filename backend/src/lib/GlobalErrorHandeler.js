@@ -5,6 +5,7 @@ const productionError = (error, res) => {
     return res.status(error.statusCode).json({
       statusCode: error.statusCode,
       message: error.message,
+      ...(typeof error.code === "string" ? { code: error.code } : {}),
     });
   } else {
     return res.status(error.statusCode).json({
@@ -18,6 +19,7 @@ const developementError = (error, res) => {
   return res.status(error.statusCode).json({
     statusCode: error.statusCode,
     message: error.message,
+    ...(typeof error.code === "string" ? { code: error.code } : {}),
     status: error.status,
     isOperationalError: error.isOperationalError,
     data: error.data,

@@ -8,6 +8,7 @@ const PLATFORM_AUDIT_ACTIONS = [
   "TENANT_UPDATED",
   "TENANT_SUSPENDED",
   "TENANT_ACTIVATED",
+  "TENANT_SETTINGS_UPDATED",
 ];
 
 // Records what platform operators did. `changes` holds field names only —

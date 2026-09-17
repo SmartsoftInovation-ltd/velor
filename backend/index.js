@@ -6,10 +6,14 @@ const { server } = require("./src/app");
 const { dbConnect } = require("./src/database/db");
 const { customError } = require("./src/lib/CustomError");
 const { scheduleTempCleanup } = require("./src/jobs/cleanTempFiles.job");
+const { startSettingsInvalidationListener } = require("./src/settings/settings.service");
 
 dbConnect()
   .then(() => {
     scheduleTempCleanup();
+    startSettingsInvalidationListener().catch((err) =>
+      console.error("Settings invalidation listener failed:", err.message),
+    );
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {
       console.log(`🚀 Server is running on http://localhost:${PORT}`);

@@ -19,7 +19,7 @@
 | 1 | Safety net & security fixes | §9 S1–S4, §10 steps 1–2 | **done** (manual secret rotation pending) |
 | 2 | Tenancy core (context + plugin, shadow mode) | §2, §10 step 3 | **done** |
 | 3 | Platform identity & tenant API | §3.1, §8.2 (API only), §10 step 4 | **done** |
-| 4 | Tenant settings core (encryption, service, platform endpoints) | §5.2–5.6, §10 step 5 | todo |
+| 4 | Tenant settings core (encryption, service, platform endpoints) | §5.2–5.6, §10 step 5 | **done** |
 | 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | todo |
 | 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | todo |
 | 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | todo |
@@ -125,6 +125,14 @@
 | 4.6 | Tenant endpoints `GET /settings`, `PATCH /settings/general` (owner fields), `GET /settings/webhooks` |
 
 **Done when:** secrets never appear in responses/logs/audit; PATCH semantics tested; invalidation reaches a second process in a test.
+
+**Implementation notes (as built):**
+- One definition file (`src/settings/definitions.js`) drives validation, storage, masking, features and owner-editable fields. Sections: `general`, `sms`, `email` (flat `smtpHost`/`smtpPort`/`smtpSecure`/`smtpUser`/`smtpPassword`), `sslcommerz`, `pathao`, `steadfast` (`apiKey` is also a secret), `cloudinary`, `groq`.
+- Platform: `GET /platform/tenants/:id/settings` (masked + features + version), `PATCH /platform/tenants/:id/settings/{general|sms|email|payment/sslcommerz|couriers/pathao|couriers/steadfast|cloudinary|ai/groq}` (superadmin), `GET /platform/tenants/:id/settings/webhooks`.
+- Tenant: `GET /api/v1/settings`, `PATCH /api/v1/settings/general` (only `orderHotline`, `facebookUrl`), `GET /api/v1/settings/webhooks` — permission `store-settings`. They return `400 TENANT_CONTEXT_REQUIRED` until Sprint 7 opens a tenant context per request.
+- Errors can carry a machine-readable `code` (e.g. `SMS_NOT_CONFIGURED`), returned in the JSON body.
+- Cache holds raw (encrypted) documents for 60 s; `startSettingsInvalidationListener()` runs in the API process (workers added in Sprint 5).
+- `test` endpoints per section are part of Sprint 5.
 
 ## Sprint 5 — Integrations read settings
 
