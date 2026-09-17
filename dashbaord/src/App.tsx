@@ -14,6 +14,9 @@ const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
 // Other Pages
 const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
 const Unauthorized = lazy(() => import("./pages/OtherPage/Unauthorized"));
+const StoreSuspended = lazy(() => import("./pages/OtherPage/StoreSuspended"));
+const StoreSettingsPage = lazy(() => import("./pages/Settings/StoreSettings/StoreSettingsPage"));
+import FeatureGate from "./components/routes/FeatureGate";
 const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 const Blank = lazy(() => import("./pages/Blank"));
 
@@ -743,7 +746,7 @@ export default function App() {
                 />
                 <Route
                   path="/create-courier-delivery"
-                  element={<CreateCourierDelivery />}
+                  element={<FeatureGate feature="couriers" label="Courier delivery"><CreateCourierDelivery /></FeatureGate>}
                 />
                 <Route
                   path="/courier-return-list"
@@ -778,7 +781,7 @@ export default function App() {
                   path="/sendsms"
                   element={
                     <ProtectedRoute module="send-sms" action="view">
-                      <SendSms />
+                      <FeatureGate feature="sms" label="SMS"><SendSms /></FeatureGate>
                     </ProtectedRoute>
                   }
                 />
@@ -786,7 +789,7 @@ export default function App() {
                   path="/sendbluksms"
                   element={
                     <ProtectedRoute module="send-bulk-sms" action="view">
-                      <SendBlukSms />
+                      <FeatureGate feature="sms" label="SMS"><SendBlukSms /></FeatureGate>
                     </ProtectedRoute>
                   }
                 />
@@ -794,7 +797,7 @@ export default function App() {
                   path="/smsinfo"
                   element={
                     <ProtectedRoute module="sms-info" action="view">
-                      <SmsInfo />
+                      <FeatureGate feature="sms" label="SMS"><SmsInfo /></FeatureGate>
                     </ProtectedRoute>
                   }
                 />
@@ -802,7 +805,7 @@ export default function App() {
                   path="/due-sms"
                   element={
                     <ProtectedRoute module="send-sms" action="view">
-                      <DueSms />
+                      <FeatureGate feature="sms" label="SMS"><DueSms /></FeatureGate>
                     </ProtectedRoute>
                   }
                 />
@@ -822,6 +825,9 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                {/* Store settings (multi-tenant) */}
+                <Route path="/store-settings" element={<ProtectedRoute module="store-settings" action="view"><StoreSettingsPage /></ProtectedRoute>} />
 
                 {/* Role & Permission Layout */}
                 <Route path="/create-role" element={<ProtectedRoute module="create-role" action="add"><CreateRole /></ProtectedRoute>} />
@@ -1483,6 +1489,7 @@ export default function App() {
               <Route path="/signin" element={<SignIn />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
+              <Route path="/store-suspended" element={<StoreSuspended />} />
 
               {/* Fallback Route */}
               <Route path="*" element={<NotFound />} />

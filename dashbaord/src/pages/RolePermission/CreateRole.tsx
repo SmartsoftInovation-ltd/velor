@@ -10,6 +10,7 @@ import CreateRoleForm from "../../components/rolepermission/CreateRoleForm";
 import RoleTable from "../../components/tables/RolePermissionTable/RoleTable";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Loader from "../../components/common/Loader";
+import { assignableRoles } from "../../lib/roles";
 
 export interface Role {
   _id: string;
@@ -33,7 +34,7 @@ const CreateRole = () => {
     queryKey: ["roles"],
     queryFn: async () => {
       const { data } = await axiosSecure.get("/all-role");
-      return data?.data || [];
+      return assignableRoles(data?.data);
     },
     staleTime: 2 * 60 * 1000,
   });

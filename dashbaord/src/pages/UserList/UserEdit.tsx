@@ -15,6 +15,7 @@ import Button from "../../components/ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { User } from "../../components/tables/UserTable/UserTable";
 import { showApiError } from "../../utils/apiError";
+import { assignableRoles } from "../../lib/roles";
 
 interface Role {
   _id: string;
@@ -83,7 +84,7 @@ const UserEdit = () => {
   useEffect(() => {
     axiosSecure
       .get("/all-role")
-      .then((res) => setRoles(res.data?.data || []))
+      .then((res) => setRoles(assignableRoles(res.data?.data)))
       .catch((error) => showApiError(error, "Failed to fetch roles"));
   }, []);
 

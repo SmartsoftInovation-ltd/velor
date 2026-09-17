@@ -14,6 +14,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import axios from "axios";
 import { FaUpload, FaTimes, FaEye, FaEyeSlash, FaPlus } from "react-icons/fa";
 import { showApiError } from "../../utils/apiError";
+import { assignableRoles } from "../../lib/roles";
 
 interface Role {
   _id: string;
@@ -56,7 +57,7 @@ const AddUser = () => {
   useEffect(() => {
     axiosSecure
       .get("/all-role")
-      .then((res) => setRoles(res.data?.data || []))
+      .then((res) => setRoles(assignableRoles(res.data?.data)))
       .catch((error) => showApiError(error, "Failed to fetch roles"));
   }, []);
 

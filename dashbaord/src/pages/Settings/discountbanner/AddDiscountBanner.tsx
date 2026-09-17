@@ -10,6 +10,7 @@ import Input from "../../../components/form/input/InputField";
 import Button from "../../../components/ui/button/Button";
 import { TrashBinIcon } from "../../../icons";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { scopedStorageKey } from "../../../lib/session";
 
 interface DiscountBannerForm {
   title: string;
@@ -34,7 +35,7 @@ const Req = () => <span className="text-red-500 ml-0.5">*</span>;
 const AddDiscountBanner = () => {
   const [formData, setFormData] = useState<DiscountBannerForm>(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_KEY);
+      const saved = localStorage.getItem(scopedStorageKey(DRAFT_KEY));
       return saved ? (JSON.parse(saved) as DiscountBannerForm) : initialForm;
     } catch {
       return initialForm;
@@ -47,7 +48,7 @@ const AddDiscountBanner = () => {
 
   // Auto-save text fields to localStorage on every change
   useEffect(() => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+    localStorage.setItem(scopedStorageKey(DRAFT_KEY), JSON.stringify(formData));
   }, [formData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -119,7 +120,7 @@ const AddDiscountBanner = () => {
 
       if ([200, 201, 202].includes(res.status)) {
         toast.success("Discount banner created successfully!");
-        localStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem(scopedStorageKey(DRAFT_KEY));
         setFormData(initialForm);
         setImage(null);
         setPreview(null);

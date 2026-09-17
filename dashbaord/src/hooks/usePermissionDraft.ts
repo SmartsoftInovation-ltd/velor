@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { scopedStorageKey } from "../lib/session";
 
 // Drafts are keyed per target (a user id or a role id) so switching between
 // targets never leaks one target's unsaved edits into another.
 const draftKey = (namespace: string, targetId: string): string =>
-  `permission-draft:${namespace}:${targetId}`;
+  scopedStorageKey(`permission-draft:${namespace}:${targetId}`);
 
 export interface DraftMeta {
   savedAt: number;

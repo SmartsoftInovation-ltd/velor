@@ -4,6 +4,7 @@ import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
 import ChatBox from "../components/common/ChatBox";
+import IntegrationNotice from "../components/common/IntegrationNotice";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -21,6 +22,7 @@ const LayoutContent: React.FC = () => {
         } ${isMobileOpen ? "ml-0" : ""}`}
       >
         <AppHeader />
+        <IntegrationNotice />
         <div id="app-content-portal-target" />
         <div className="mx-auto w-full p-3 md:p-4 print:p-0">
           <Outlet />

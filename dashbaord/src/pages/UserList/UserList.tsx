@@ -10,6 +10,7 @@ import UserTable, { User } from "../../components/tables/UserTable/UserTable";
 import Button from "../../components/ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Loader from "../../components/common/Loader";
+import { useAuth } from "../../context/AuthContext";
 
 const UserList = () => {
   const navigate = useNavigate();
@@ -25,6 +26,10 @@ const UserList = () => {
     },
     staleTime: 2 * 60 * 1000,
   });
+
+  const { tenant } = useAuth();
+  const maxStaff = tenant?.limits?.maxStaff;
+  const activeStaff = (allUsers ?? []).filter((u) => u.isActive).length;
 
   const sorted = [...(allUsers ?? [])].reverse();
 
@@ -58,6 +63,11 @@ const UserList = () => {
         hideTitle
         actions={
           <div className="flex items-center gap-2">
+            {maxStaff != null && (
+              <span className="text-xs text-gray-500 dark:text-gray-400" title="Active staff / plan limit">
+                Staff {activeStaff} / {maxStaff}
+              </span>
+            )}
             <Button
               onClick={() => navigate(-1)}
               size="sm"

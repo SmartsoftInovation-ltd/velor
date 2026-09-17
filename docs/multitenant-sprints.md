@@ -25,7 +25,7 @@
 | 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | **done** |
 | 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | **done** |
 | 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | **done** |
-| 10 | Dashboard multi-tenant | §7, §10 step 11 | todo |
+| 10 | Dashboard multi-tenant | §7, §10 step 11 | **done** |
 | 11 | Provisioning, isolation suite, fail-closed | §8.2, §12, §10 steps 12–13 | todo |
 | 12 | Platform console UI | §8.3, §10 step 14 | todo |
 
@@ -260,6 +260,18 @@
 | 10.6 | Role/user screens: hide owner, disable permissions not held, staff limit |
 | 10.7 | Query cache + tenant-namespaced drafts cleared per session; suspended page |
 | 10.8 | Socket client with `VITE_SOCKET_URL` + token auth |
+
+**Implementation notes (as built):**
+- Vitest + Testing Library (`npm test` in `dashbaord/`), 26 tests.
+- Sign-in has a **Workspace** field (prefilled from `?workspace=` or the last store used); the workspace is stored and sent as `x-tenant` on every request (including token refresh).
+- `AuthContext` keeps its name/API and adds `tenant`, `features`, `isOwner` (`isSuperAdmin` is an alias); `can()` uses the API's `effectivePermissions` (falls back to direct grants for an older API). Sign-in and sign-out clear the TanStack Query cache; sign-out also clears the store's drafts and disconnects the socket.
+- API `TENANT_SUSPENDED` → `/store-suspended` page (no refresh loop).
+- `FeatureGate` / `useFeature`: SMS pages gated on `sms`, courier delivery on any courier; a banner explains disabled image uploads when Cloudinary is not configured.
+- New **Store Settings** page (`/store-settings`, permission `store-settings`): invoice prefix (read-only), owner-editable hotline and Facebook page, integration status, webhook URLs.
+- Role pickers (add/edit user, create role, assign role permissions) hide the owner role; user list shows `Staff n / max`.
+- Drafts (product, variant, banners, discount, sales, permission drafts) are namespaced per store with `scopedStorageKey()`.
+- Socket client authenticates with the access token; URL from `VITE_SOCKET_URL`.
+- The dashboard has no "create permission" route; the tenant API already rejects permission writes.
 
 ## Sprint 11 — Provisioning & isolation
 

@@ -13,6 +13,7 @@ import SearchableSelect from "../form/SearchableSelect";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { showApiError } from "../../utils/apiError";
+import { scopedStorageKey } from "../../lib/session";
 
 // Interfaces
 interface Category { _id: string; name: string; slug: string; }
@@ -227,7 +228,7 @@ const CreateProductForm = () => {
 
   const [retailMarginType, setRetailMarginType] = useState<"Percentage" | "TK">((() => {
     try {
-      const savedDraft = localStorage.getItem("product_form_draft");
+      const savedDraft = localStorage.getItem(scopedStorageKey("product_form_draft"));
       if (savedDraft) {
         const parsed = JSON.parse(savedDraft);
         if (parsed && parsed.retailMarginType) {
@@ -240,7 +241,7 @@ const CreateProductForm = () => {
 
   const [wholesaleMarginType, setWholesaleMarginType] = useState<"Percentage" | "TK">((() => {
     try {
-      const savedDraft = localStorage.getItem("product_form_draft");
+      const savedDraft = localStorage.getItem(scopedStorageKey("product_form_draft"));
       if (savedDraft) {
         const parsed = JSON.parse(savedDraft);
         if (parsed && parsed.wholesaleMarginType) {
@@ -270,7 +271,7 @@ const CreateProductForm = () => {
       setOgImagePreview(null);
       setTagInput("");
       setMetaKeywordInput("");
-      localStorage.removeItem("product_form_draft");
+      localStorage.removeItem(scopedStorageKey("product_form_draft"));
       clearProductDraftFiles();
     },
     onError: (error: any) => {
@@ -287,7 +288,7 @@ const CreateProductForm = () => {
 
   const [formData, setFormData] = useState<FormValues>(() => {
     try {
-      const savedDraft = localStorage.getItem("product_form_draft");
+      const savedDraft = localStorage.getItem(scopedStorageKey("product_form_draft"));
       if (savedDraft) {
         const parsed = JSON.parse(savedDraft);
         if (parsed && parsed.formData) {
@@ -345,7 +346,7 @@ const CreateProductForm = () => {
         retailMarginType,
         wholesaleMarginType,
       };
-      localStorage.setItem("product_form_draft", JSON.stringify(draftToSave));
+      localStorage.setItem(scopedStorageKey("product_form_draft"), JSON.stringify(draftToSave));
 
       // Save files to IndexedDB
       saveProductDraftFiles({

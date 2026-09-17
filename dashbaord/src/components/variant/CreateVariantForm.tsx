@@ -14,6 +14,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { MdDelete, MdOutlineQrCodeScanner } from "react-icons/md";
 import { showApiError } from "../../utils/apiError";
+import { scopedStorageKey } from "../../lib/session";
 
 type VariantFormData = {
   product?: string;
@@ -412,7 +413,7 @@ const CreateVariantForm = ({
     // Attempt to load draft from localStorage for new variants
     if (!isUpdate) {
       try {
-        const savedDraft = localStorage.getItem("variant_form_draft");
+        const savedDraft = localStorage.getItem(scopedStorageKey("variant_form_draft"));
         if (savedDraft) {
           const parsedDraft = JSON.parse(savedDraft);
           if (Array.isArray(parsedDraft) && parsedDraft.length > 0) {
@@ -583,7 +584,7 @@ const CreateVariantForm = ({
         ogImagePreview: null,
         thumbnailPreview: null, // Don't save preview blob URLs
       }));
-      localStorage.setItem("variant_form_draft", JSON.stringify(draftToSave));
+      localStorage.setItem(scopedStorageKey("variant_form_draft"), JSON.stringify(draftToSave));
 
       // Save binary file objects to IndexedDB
       const filesToSave = variantForms.map((form) => ({
@@ -1033,7 +1034,7 @@ const CreateVariantForm = ({
         });
         toast.success("Variants created successfully!");
         await queryClient.invalidateQueries({ queryKey: ["variants"] });
-        localStorage.removeItem("variant_form_draft");
+        localStorage.removeItem(scopedStorageKey("variant_form_draft"));
         clearDraftFiles();
 
         // Reset form

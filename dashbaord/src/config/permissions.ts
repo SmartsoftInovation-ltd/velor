@@ -93,6 +93,7 @@ export const PERMISSIONS = {
   FUND_HANDOVER: "fund-handover",
   CREATE_BANNER: "create-banner",
   SITE_INFORMATION: "site-information",
+  STORE_SETTINGS: "store-settings",
   OUTLET_INFORMATION: "outlet-information",
   CREATE_USER: "create-user",
   CREATE_ROLE: "create-role",

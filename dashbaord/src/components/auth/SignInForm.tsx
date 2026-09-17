@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import axiosSecure, { setAccessToken } from "../../hooks/useAxiosSecure";
 import { useAuth } from "../../context/AuthContext";
+import { getWorkspace, setWorkspace, workspaceFromSearch } from "../../lib/session";
 
 export default function SignInForm() {
   const navigate = useNavigate();
@@ -31,11 +32,14 @@ export default function SignInForm() {
   const redirectTo = searchParams.get("from") || "/";
   const [isChecked, setIsChecked] = useState(false);
   const [formData, setFormData] = useState({
+    // Deep link (?workspace=) wins over the store this browser used last
+    workspace: workspaceFromSearch(`?${searchParams.toString()}`) || getWorkspace() || "",
     email: "",
     password: "",
   });
 
   type Errors = {
+    workspace?: string;
     email?: string;
     password?: string;
   };
@@ -53,6 +57,8 @@ export default function SignInForm() {
 
   const validate = () => {
     const newErrors: Errors = {};
+
+    if (!formData.workspace.trim()) newErrors.workspace = "Workspace is required.";
 
     if (!formData.email) newErrors.email = "Email is required.";
     else if (!/\S+@\S+\.\S+/.test(formData.email))
@@ -77,9 +83,12 @@ export default function SignInForm() {
 
     if (validate()) {
       try {
+        const workspace = formData.workspace.trim().toLowerCase();
+        // Remember the store first: the request interceptor sends it as x-tenant
+        setWorkspace(workspace);
         const response = await axiosSecure.post<LoginResponse>(
           `/auth/login`,
-          formData,
+          { ...formData, workspace },
           {
             headers: {
               "Content-Type": "application/json",
@@ -87,7 +96,6 @@ export default function SignInForm() {
             withCredentials: true,
           }
         );
-        console.log(response.data.data);
         const { accessToken } = response.data.data;
         setAccessToken(accessToken);
         toast.success("Login successful");
@@ -181,6 +189,22 @@ export default function SignInForm() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="space-y-6">
+                <div>
+                  <Label>
+                    Workspace<span className="text-error-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    name="workspace"
+                    value={formData.workspace}
+                    onChange={handleChange}
+                    placeholder="Store ID (e.g. pizzashop)"
+                  />
+                  {errors.workspace && (
+                    <p className="text-red-500 text-sm">{errors.workspace}</p>
+                  )}
+                </div>
+
                 <div>
                   <Label>
                     Email<span className="text-error-500">*</span>

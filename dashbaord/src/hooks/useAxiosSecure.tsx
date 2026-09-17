@@ -3,6 +3,7 @@ import axios, {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from "axios";
+import { getWorkspace } from "../lib/session";
 
 const REFRESH_URL = "/auth/refresh-token";
 const ACCESS_TOKEN_KEY = "accessToken";
@@ -58,13 +59,32 @@ const forceLogout = () => {
   window.location.replace(`/signin?sessionExpired=1&from=${from}`);
 };
 
+// The store this dashboard is signed into. The API uses it to resolve the
+// tenant for requests without a token and rejects a token from another store.
+const workspaceHeaders = (): Record<string, string> => {
+  const workspace = getWorkspace();
+  return workspace ? { "x-tenant": workspace } : {};
+};
+
 axiosSecure.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  Object.entries(workspaceHeaders()).forEach(([name, value]) => config.headers.set(name, value));
   return config;
 });
+
+// A suspended store signs everyone out to a dedicated page; refreshing cannot help.
+const isTenantSuspended = (error: AxiosError) =>
+  (error.response?.data as { code?: string } | undefined)?.code === "TENANT_SUSPENDED";
+
+const showStoreSuspended = () => {
+  clearAccessToken();
+  if (window.location.pathname !== "/store-suspended") {
+    window.location.replace("/store-suspended");
+  }
+};
 
 /**
  * Single-flight refresh.
@@ -88,7 +108,7 @@ const refreshAccessToken = (): Promise<string> => {
     const { data } = await axios.post(
       `${import.meta.env.VITE_API_URL}${REFRESH_URL}`,
       {},
-      { withCredentials: true },
+      { withCredentials: true, headers: workspaceHeaders() },
     );
 
     const token: string | undefined = data?.data?.accessToken;
@@ -117,6 +137,11 @@ axiosSecure.interceptors.response.use(
     const originalRequest = error.config as RetryableRequest | undefined;
     const status = error.response?.status;
 
+    if (isTenantSuspended(error)) {
+      showStoreSuspended();
+      return Promise.reject(error);
+    }
+
     // Not an auth problem, or nothing to replay — surface untouched. A network
     // failure has no `error.response` at all; refreshing would not help and
     // would only mask the real cause.
@@ -143,6 +168,10 @@ axiosSecure.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${token}`;
       return axiosSecure(originalRequest as AxiosRequestConfig);
     } catch (refreshError) {
+      if (axios.isAxiosError(refreshError) && isTenantSuspended(refreshError)) {
+        showStoreSuspended();
+        return Promise.reject(refreshError);
+      }
       // Refresh token expired/revoked, or the account was blocked.
       forceLogout();
       return Promise.reject(refreshError);

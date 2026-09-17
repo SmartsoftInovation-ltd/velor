@@ -533,6 +533,12 @@ const othersItems: NavItem[] = [
         ],
       },
       {
+        name: "Store Settings",
+        path: "/store-settings",
+        module: PERMISSIONS.STORE_SETTINGS,
+        pro: false,
+      },
+      {
         name: "Site Information",
         subSubItems: [
           {

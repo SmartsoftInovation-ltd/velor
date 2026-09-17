@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import axiosSecure from "../hooks/useAxiosSecure";
+import { clearTenantStorage } from "../lib/session";
+import { disconnectSocket } from "../socket/socket";
 
 // ---------- Types ----------
 interface PermissionEntry {
@@ -15,6 +18,23 @@ interface AuthRole {
   permissions?: PermissionEntry[];
 }
 
+export interface TenantSummary {
+  _id: string;
+  name: string;
+  slug: string;
+  status: string;
+  limits?: { maxStaff?: number | null };
+}
+
+export interface Features {
+  sms: boolean;
+  email: boolean;
+  sslcommerz: boolean;
+  couriers: { pathao: boolean; steadfast: boolean };
+  cloudinary: boolean;
+  ai: boolean;
+}
+
 export interface AuthUser {
   _id: string;
   name: string;
@@ -27,12 +47,21 @@ export interface AuthUser {
   Reports: string[];
   discountLimit?: number;
   isActive: boolean;
+  // Multi-tenant API (older API versions omit these)
+  tenant?: TenantSummary | null;
+  effectivePermissions?: Record<string, string[]>;
+  features?: Features | null;
+  isOwner?: boolean;
 }
 
 type PermissionMap = Record<string, Set<string>>;
 
 interface AuthContextType {
   user: AuthUser | null;
+  tenant: TenantSummary | null;
+  features: Features | null;
+  isOwner: boolean;
+  /** @deprecated use isOwner — kept for existing callers */
   isSuperAdmin: boolean;
   isLoading: boolean;
   can: (module: string, action: string) => boolean;
@@ -40,11 +69,19 @@ interface AuthContextType {
   clearAuth: () => void;
 }
 
-// Build permission map from user's direct permissions only.
-// Role membership is used solely to detect superadmin — it does NOT grant permissions.
-// Access is controlled per-user via the "Create User Permission" page in the dashboard.
+const LEGACY_OWNER_SLUGS = ["owner", "superadmin"];
+
+// The API computes effective permissions (active roles ∪ direct grants), the same
+// rule authorize() enforces. Older APIs only return direct grants.
 function buildPermissionMap(user: AuthUser): PermissionMap {
   const map: PermissionMap = {};
+
+  if (user.effectivePermissions) {
+    for (const [slug, actions] of Object.entries(user.effectivePermissions)) {
+      map[slug] = new Set(actions);
+    }
+    return map;
+  }
 
   for (const p of user.permissions) {
     const slug = p.permission?.slug;
@@ -60,11 +97,13 @@ function buildPermissionMap(user: AuthUser): PermissionMap {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [permissionMap, setPermissionMap] = useState<PermissionMap>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  const isSuperAdmin = user?.roles?.some((r) => r.slug === "superadmin") ?? false;
+  const isOwner =
+    user?.isOwner ?? (user?.roles?.some((r) => LEGACY_OWNER_SLUGS.includes(r.slug)) || false);
 
   const fetchUser = useCallback(async () => {
     const token = localStorage.getItem("accessToken");
@@ -74,8 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const fetchedUser: AuthUser = res.data?.data;
       if (fetchedUser) {
         setUser(fetchedUser);
-        const builtMap = buildPermissionMap(fetchedUser);
-        setPermissionMap(builtMap);
+        setPermissionMap(buildPermissionMap(fetchedUser));
       }
     } catch (err) {
       console.error("[Auth] getme FAILED:", err);
@@ -89,22 +127,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => { fetchUser(); }, [fetchUser]);
 
   const can = useCallback((module: string, action: string): boolean => {
-    if (isSuperAdmin) return true;
+    if (isOwner) return true;
     return permissionMap[module.toLowerCase()]?.has(action) ?? false;
-  }, [isSuperAdmin, permissionMap]);
+  }, [isOwner, permissionMap]);
 
   const refreshAuth = useCallback(async () => {
     setIsLoading(true);
+    // A new session must never see the previous session's cached server data
+    queryClient.clear();
     await fetchUser();
-  }, [fetchUser]);
+  }, [fetchUser, queryClient]);
 
   const clearAuth = useCallback(() => {
     setUser(null);
     setPermissionMap({});
-  }, []);
+    queryClient.clear();
+    clearTenantStorage();
+    disconnectSocket();
+  }, [queryClient]);
 
   return (
-    <AuthContext.Provider value={{ user, isSuperAdmin, isLoading, can, refreshAuth, clearAuth }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        tenant: user?.tenant ?? null,
+        features: user?.features ?? null,
+        isOwner,
+        isSuperAdmin: isOwner,
+        isLoading,
+        can,
+        refreshAuth,
+        clearAuth,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

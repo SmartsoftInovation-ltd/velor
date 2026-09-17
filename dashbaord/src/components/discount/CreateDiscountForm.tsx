@@ -10,6 +10,7 @@ import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
 import { TrashBinIcon } from "../../icons";
 import { showApiError } from "../../utils/apiError";
+import { scopedStorageKey } from "../../lib/session";
 
 const Req = () => <span className="text-red-500 ml-0.5">*</span>;
 
@@ -52,7 +53,7 @@ const emptyFormData: DiscountFormData = {
 
 const loadDraft = (): DiscountFormDraft | null => {
   try {
-    const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    const raw = sessionStorage.getItem(scopedStorageKey(DRAFT_STORAGE_KEY));
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -89,7 +90,7 @@ const CreateDiscountForm = () => {
   // refresh doesn't wipe out an in-progress draft.
   useEffect(() => {
     sessionStorage.setItem(
-      DRAFT_STORAGE_KEY,
+      scopedStorageKey(DRAFT_STORAGE_KEY),
       JSON.stringify({ formData, selectedType, selectedItemId }),
     );
   }, [formData, selectedType, selectedItemId]);
@@ -259,7 +260,7 @@ const CreateDiscountForm = () => {
       setImage(null);
       setPreview(null);
       setErrors({});
-      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      sessionStorage.removeItem(scopedStorageKey(DRAFT_STORAGE_KEY));
     } catch (error: any) {
       showApiError(error, "Failed to create discount.");
     } finally {

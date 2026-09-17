@@ -19,6 +19,7 @@ import { HiOutlineAdjustments } from "react-icons/hi";
 import { TbPackage } from "react-icons/tb";
 import { FaShield } from "react-icons/fa6";
 import { showApiError } from "../../utils/apiError";
+import { assignableRoles } from "../../lib/roles";
 
 // ---------- Types ----------
 interface Role {
@@ -416,7 +417,7 @@ const AssignRolePermission = () => {
 
   useEffect(() => {
     axiosSecure.get("/all-role")
-      .then((r) => setRoles(r.data.data || []))
+      .then((r) => setRoles(assignableRoles(r.data.data)))
       .catch((error) => showApiError(error, "Failed to fetch roles"));
     axiosSecure.get("/permission/allpermissions")
       .then((r) => setPerms(r.data.data || []))

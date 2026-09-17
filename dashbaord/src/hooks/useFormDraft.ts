@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { scopedStorageKey } from "../lib/session";
 
 // Keeps an in-progress form alive across a page reload.
 //
@@ -14,7 +15,7 @@ const PREFIX = "sales-draft:";
 
 export const loadDraft = <T,>(key: string): Partial<T> | null => {
   try {
-    const raw = sessionStorage.getItem(PREFIX + key);
+    const raw = sessionStorage.getItem(scopedStorageKey(PREFIX + key));
     return raw ? (JSON.parse(raw) as Partial<T>) : null;
   } catch {
     // Corrupt or unreadable draft is not worth failing the page over.
@@ -24,7 +25,7 @@ export const loadDraft = <T,>(key: string): Partial<T> | null => {
 
 export const clearDraft = (key: string) => {
   try {
-    sessionStorage.removeItem(PREFIX + key);
+    sessionStorage.removeItem(scopedStorageKey(PREFIX + key));
   } catch {
     // Storage blocked — nothing to clear.
   }
@@ -53,7 +54,7 @@ export const useFormDraft = <T extends Record<string, unknown>>(
       return;
     }
     try {
-      sessionStorage.setItem(PREFIX + key, JSON.stringify(values));
+      sessionStorage.setItem(scopedStorageKey(PREFIX + key), JSON.stringify(values));
     } catch {
       // Quota exceeded or storage blocked — the form still works, it just
       // will not survive a reload.
