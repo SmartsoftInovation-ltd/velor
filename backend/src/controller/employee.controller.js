@@ -176,6 +176,7 @@ exports.updateEmployee = asynchandeler(async (req, res, next) => {
 
   if (imageFile) {
     const oldPublicId = employee.image?.publicId || null;
+    const oldCloudName = employee.image?.cloudName || null;
 
     rest["image.status"] = "pending";
     rest["image.localPath"] = imageFile.path;
@@ -187,6 +188,7 @@ exports.updateEmployee = asynchandeler(async (req, res, next) => {
       documentId: employee._id,
       localPath: imageFile.path,
       oldPublicId,
+      oldCloudName,
     });
   }
 
@@ -196,6 +198,7 @@ exports.updateEmployee = asynchandeler(async (req, res, next) => {
   for (const [idxStr, certFile] of Object.entries(certImageFiles)) {
     const idx = Number(idxStr);
     const oldPublicId = employee.certifications?.[idx]?.image?.publicId || null;
+    const oldCloudName = employee.certifications?.[idx]?.image?.cloudName || null;
     certImageUpdate[`certifications.${idx}.image.status`] = "pending";
     certImageUpdate[`certifications.${idx}.image.localPath`] = certFile.path;
     certImageUpdate[`certifications.${idx}.image.tries`] = 0;
@@ -207,6 +210,7 @@ exports.updateEmployee = asynchandeler(async (req, res, next) => {
       localPath: certFile.path,
       fieldName: `certifications.${idx}.image`,
       oldPublicId,
+      oldCloudName,
     });
   }
 

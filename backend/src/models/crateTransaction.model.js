@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 const crateTransactionSchema = new mongoose.Schema(
   {
     // Sequential, never-reused display serial — e.g. TRXID-INV-01
@@ -116,7 +115,7 @@ crateTransactionSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.transactionSerialId = `TRXID-${env.INVOICE_PREFIX}-${padded}`;
+    doc.transactionSerialId = `TRXID-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { transactionSerialId: doc.transactionSerialId } },

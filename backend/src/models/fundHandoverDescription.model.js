@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 const fundHandoverDescriptionSchema = new mongoose.Schema(
   {
     // Sequential, never-reused display serial — e.g. MH-INV-01
@@ -60,7 +59,7 @@ fundHandoverDescriptionSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.handoverSerialId = `MH-${env.INVOICE_PREFIX}-${padded}`;
+    doc.handoverSerialId = `MH-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { handoverSerialId: doc.handoverSerialId } },

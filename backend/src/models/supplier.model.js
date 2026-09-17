@@ -3,8 +3,7 @@ const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 const supplierSchema = new mongoose.Schema(
   {
     // Sequential, never-reused display serial — e.g. SUPL-INV-01
@@ -143,7 +142,7 @@ supplierSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.supplierSerialId = `SUPL-${env.INVOICE_PREFIX}-${padded}`;
+    doc.supplierSerialId = `SUPL-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { supplierSerialId: doc.supplierSerialId } },
@@ -272,7 +271,7 @@ supplierDuePaymentSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.supplierPaymentSerialId = `SUPLP-${env.INVOICE_PREFIX}-${padded}`;
+    doc.supplierPaymentSerialId = `SUPLP-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { supplierPaymentSerialId: doc.supplierPaymentSerialId } },

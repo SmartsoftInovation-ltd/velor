@@ -1,7 +1,7 @@
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
-const SSLCommerzPayment = require("sslcommerz-lts");
+const { validatePayment } = require("../integrations/sslcommerz");
 const Order = require("../models/order.model");
 const { statusCodes } = require("../constant/constant");
 // @desc success payment
@@ -82,15 +82,8 @@ exports.ipnPayment = asynchandeler(async (req, res) => {
     throw new customError("Validation ID missing", statusCodes.BAD_REQUEST);
   }
 
-  // Init SSLCommerz
-  const sslcz = new SSLCommerzPayment(
-    process.env.SSLC_STORE_ID,
-    process.env.SSLC_STORE_PASSWORD,
-    process.env.NODE_ENV === "production" ? true : false,
-  );
-
-  // Validate payment
-  const validationResponse = await sslcz.validate({ val_id });
+  // Validate with the current tenant's store credentials
+  const validationResponse = await validatePayment(val_id);
   console.log("Validation Response:", validationResponse);
 
   if (

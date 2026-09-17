@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 const moneyTransferSchema = new mongoose.Schema({
   // Sequential, never-reused display serial — e.g. MTRF-INV-01
   transferSerialId: {
@@ -55,7 +54,7 @@ moneyTransferSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.transferSerialId = `MTRF-${env.INVOICE_PREFIX}-${padded}`;
+    doc.transferSerialId = `MTRF-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { transferSerialId: doc.transferSerialId } },

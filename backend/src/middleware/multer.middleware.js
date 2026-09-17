@@ -2,6 +2,30 @@ const multer = require("multer");
 const path = require("path");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
+const fs = require("fs");
+const { getTenantId } = require("../tenancy/context");
+const settings = require("../settings/settings.service");
+
+// Uploaded files are pushed to the tenant's Cloudinary account in the background.
+// Reject them up front when that account is not configured, so the record is not
+// saved with an image that can never upload.
+const guardUploads = async (req, next) => {
+  const files = [
+    ...(req.file ? [req.file] : []),
+    ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat()),
+  ];
+  const tenantId = getTenantId();
+  if (!files.length || !tenantId) return next();
+
+  try {
+    const { cloudinary } = await settings.getFeatures(tenantId);
+    if (cloudinary) return next();
+    await Promise.all(files.map((file) => fs.promises.unlink(file.path).catch(() => {})));
+    next(settings.featureNotConfigured("CLOUDINARY_NOT_CONFIGURED", "Image storage (Cloudinary)"));
+  } catch (error) {
+    next(error);
+  }
+};
 
 // Allowed file types
 const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
@@ -62,7 +86,7 @@ const singleFileUpload = (fieldName) => (req, res, next) => {
         new customError(err || "Multer error", statusCodes.SERVER_ERROR),
       );
     }
-    next();
+    guardUploads(req, next);
   });
 };
 
@@ -91,7 +115,7 @@ const multipleFileUpload =
           message: err.message || "Internal Server Error",
         });
       }
-      next();
+      guardUploads(req, next);
     });
   };
 
@@ -113,7 +137,7 @@ const multipleFileUploadWithFields = (fields) => (req, res, next) => {
         new customError(err || "Multer error", statusCodes.SERVER_ERROR),
       );
     }
-    next();
+    guardUploads(req, next);
   });
 };
 const anyFileUpload = () => (req, res, next) => {
@@ -135,7 +159,7 @@ const anyFileUpload = () => (req, res, next) => {
         ),
       );
     }
-    next();
+    guardUploads(req, next);
   });
 };
 

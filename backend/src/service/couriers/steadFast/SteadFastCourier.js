@@ -113,6 +113,28 @@ class SteadFastCourier extends BaseCourier {
     }
   }
 
+  // True when the Authorization header carries the expected bearer token
+  static isValidWebhookToken(authHeader, expected) {
+    if (!expected || !authHeader?.startsWith("Bearer ")) return false;
+    return authHeader.slice("Bearer ".length) === expected;
+  }
+
+  // Applies a Steadfast status update to the matching order (current tenant)
+  async applyWebhook(data) {
+    const { invoice, status, tracking_code } = data;
+    if (!invoice) throw new customError("Invoice ID missing in webhook", 400);
+
+    const order = await Order.findOne({ invoiceId: invoice });
+    if (!order) throw new customError("Order not found for invoice: " + invoice, 404);
+
+    order.courier = order.courier || {};
+    order.courier.status = status || order.courier.status;
+    order.courier.trackingId = tracking_code || order.courier.trackingId;
+    order.courier.rawResponse = { ...order.courier.rawResponse, ...data };
+    await order.save();
+    return order;
+  }
+
   // steadfast webhook handler
   async handleSteadFastWebhook(req, res) {
     try {

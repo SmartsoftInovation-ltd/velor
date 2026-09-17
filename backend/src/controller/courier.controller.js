@@ -4,12 +4,20 @@ const { asynchandeler } = require("../lib/asyncHandeler");
 const { customError } = require("../lib/CustomError");
 const PathaoCourier = require("../service/couriers/PathaoCourier");
 const cityZoneService = require("../service/couriers/courierCityZone");
+const { getCourierConfig } = require("../integrations/config");
+
+// Tenant settings when a tenant context exists; legacy Merchant document otherwise
+const resolveMerchant = async (provider, merchantId) => {
+  const configured = await getCourierConfig(provider);
+  if (configured) return configured;
+  return Merchant.findById(merchantId);
+};
 
 // Create single order
 exports.createPathaoOrder = asynchandeler(async (req, res) => {
   const { merchantId, orderId } = req.body;
 
-  const merchant = await Merchant.findById(merchantId);
+  const merchant = await resolveMerchant("pathao", merchantId);
   if (!merchant)
     throw new customError("Merchant not found", statusCodes.NOT_FOUND);
 
@@ -30,7 +38,7 @@ exports.createPathaoOrder = asynchandeler(async (req, res) => {
 
 exports.bulkPathaoOrder = asynchandeler(async (req, res) => {
   const { orderIds, merchantId } = req.body;
-  const merchant = await Merchant.findById(merchantId);
+  const merchant = await resolveMerchant("pathao", merchantId);
   if (!merchant)
     throw new customError("Merchant not found", statusCodes.NOT_FOUND);
   const courier = new PathaoCourier(merchant);
@@ -53,7 +61,7 @@ exports.bulkPathaoOrder = asynchandeler(async (req, res) => {
 exports.getPathaoOrderShortInfo = asynchandeler(async (req, res) => {
   const { id } = req.params;
   if (!id) throw new customError("Order ID is required", 400);
-  const merchant = await Merchant.findById(req.body.merchantId);
+  const merchant = await resolveMerchant("pathao", req.body.merchantId);
   if (!merchant) throw new customError("Merchant not found", 404);
   const courier = new PathaoCourier(merchant);
   const orderInfo = await courier.getOrderInfo(id);
@@ -105,7 +113,7 @@ const { statusCodes } = require("../constant/constant");
 // Create single order
 exports.createSteadFastOrder = asynchandeler(async (req, res) => {
   const { merchantId, orderId } = req.body;
-  const merchant = await Merchant.findById(merchantId);
+  const merchant = await resolveMerchant("steadfast", merchantId);
   if (!merchant) throw new customError("Merchant not found", 404);
   const courier = new SteadFastCourier(merchant);
   const order = await courier.createOrder(orderId);
@@ -116,7 +124,7 @@ exports.createSteadFastOrder = asynchandeler(async (req, res) => {
 // create bulk order
 exports.bulkSteadFastOrder = asynchandeler(async (req, res) => {
   const { orderIds, merchantId } = req.body;
-  const merchant = await Merchant.findById(merchantId);
+  const merchant = await resolveMerchant("steadfast", merchantId);
   if (!merchant) throw new customError("Merchant not found", 404);
   const courier = new SteadFastCourier(merchant);
   const orders = await courier.bulkCreateOrders(orderIds);
@@ -133,4 +141,33 @@ exports.handleSteadFastWebhook = asynchandeler(async (req, res) => {
   const courier = new SteadFastCourier(merchant);
   const response = await courier.handleSteadFastWebhook(req, res);
   apiResponse.sendSuccess(res, 200, "Webhook handled", response);
+});
+
+// ---------- per-tenant webhooks (/api/v1/hooks/:provider/:webhookKey) ----------
+// The tenant context is opened from the webhook key; the provider secret proves the caller.
+
+const { getSettings } = require("../settings/settings.service");
+const { getTenantId } = require("../tenancy/context");
+
+exports.handlePathaoHook = asynchandeler(async (req, res) => {
+  const { pathao } = await getSettings(getTenantId());
+  const courier = new PathaoCourier({ ...pathao, tenantId: getTenantId() });
+  await courier.handlePathaoWebhook(req, res, pathao.enabled ? pathao.webhookSecret : null);
+});
+
+exports.handleSteadfastHook = asynchandeler(async (req, res) => {
+  const { steadfast } = await getSettings(getTenantId());
+  const expected = steadfast.enabled ? steadfast.webhookToken : null;
+  if (!SteadFastCourier.isValidWebhookToken(req.headers.authorization, expected)) {
+    return res.status(401).json({ status: "error", message: "Invalid API token" });
+  }
+
+  try {
+    const courier = new SteadFastCourier({ baseURL: steadfast.baseUrl });
+    await courier.applyWebhook(req.body);
+    return res.status(200).json({ status: "success", message: "Webhook received successfully." });
+  } catch (error) {
+    console.error("❌ Steadfast webhook error:", error.message);
+    return res.status(200).json({ status: "error", message: error.message });
+  }
 });

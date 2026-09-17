@@ -33,6 +33,7 @@ describe("helpers/nodemailer", () => {
     });
     expect(sendMail).toHaveBeenCalledWith({
       from: "Velor <store@example.com>",
+      replyTo: undefined,
       to: "to@example.com",
       subject: "Subject",
       html: "<p>hi</p>",
@@ -62,6 +63,37 @@ describe("helpers/nodemailer", () => {
     await expect(
       sendEmail("to@example.com", "S", "h", { throwOnError: true }),
     ).rejects.toThrow(/mail is not configured/i);
+  });
+
+  it("uses the resolved tenant config (from, replyTo, SMTP transport) and one transport per config", async () => {
+    const config = require("../../src/integrations/config");
+    const spy = jest.spyOn(config, "getMailConfig").mockResolvedValue({
+      transport: { host: "smtp.pizza.test", port: 465, secure: true, auth: { user: "shop@pizza.test", pass: "p" } },
+      from: "Pizza Shop <shop@pizza.test>",
+      replyTo: "hello@pizza.test",
+    });
+
+    await sendEmail("to@example.com", "S", "h");
+    await sendEmail("to2@example.com", "S", "h");
+
+    expect(nodemailer.createTransport).toHaveBeenCalledTimes(1);
+    expect(nodemailer.createTransport).toHaveBeenCalledWith({
+      host: "smtp.pizza.test", port: 465, secure: true, auth: { user: "shop@pizza.test", pass: "p" },
+    });
+    expect(sendMail).toHaveBeenLastCalledWith({
+      from: "Pizza Shop <shop@pizza.test>", replyTo: "hello@pizza.test", to: "to2@example.com", subject: "S", html: "h",
+    });
+    spy.mockRestore();
+  });
+
+  it("surfaces EMAIL_NOT_CONFIGURED only with throwOnError", async () => {
+    const config = require("../../src/integrations/config");
+    const error = Object.assign(new Error("Email is not configured for this store"), { code: "EMAIL_NOT_CONFIGURED" });
+    const spy = jest.spyOn(config, "getMailConfig").mockRejectedValue(error);
+
+    await expect(sendEmail("to@example.com", "S", "h")).resolves.toBeNull();
+    await expect(sendEmail("to@example.com", "S", "h", { throwOnError: true })).rejects.toMatchObject({ code: "EMAIL_NOT_CONFIGURED" });
+    spy.mockRestore();
   });
 
   it("swallows send failures by default and rethrows with throwOnError", async () => {

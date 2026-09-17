@@ -126,6 +126,7 @@ exports.updateBrand = asynchandeler(async (req, res) => {
 
   if (req.files?.length) {
     const oldPublicId = brand.image?.publicId || null;
+    const oldCloudName = brand.image?.cloudName || null;
 
     brand.image.status = "pending";
     brand.image.localPath = req.files[0].path;
@@ -137,6 +138,7 @@ exports.updateBrand = asynchandeler(async (req, res) => {
       documentId: brand._id,
       localPath: req.files[0].path,
       oldPublicId,
+      oldCloudName,
     });
   }
 
@@ -166,7 +168,7 @@ exports.deleteBrand = asynchandeler(async (req, res) => {
   const publicId = brand.image?.publicId;
   if (publicId) {
     setImmediate(() =>
-      deleteCloudinaryFile(publicId).catch((e) =>
+      deleteCloudinaryFile(publicId, brand.image?.cloudName).catch((e) =>
         console.error("[Cloudinary] Brand image delete failed:", e.message),
       ),
     );

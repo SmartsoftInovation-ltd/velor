@@ -20,6 +20,8 @@ exports.createSiteInformation = asynchandeler(async (req, res) => {
   if (existing) {
     const oldPublicId =
       typeof existing.image === "object" ? existing.image?.publicId || null : null;
+    const oldCloudName =
+      typeof existing.image === "object" ? existing.image?.cloudName || null : null;
 
     const updated = await SiteInformation.findByIdAndUpdate(
       existing._id,
@@ -42,6 +44,7 @@ exports.createSiteInformation = asynchandeler(async (req, res) => {
       documentId: updated._id,
       localPath: image.path,
       oldPublicId,
+      oldCloudName,
     });
 
     await bumpNsVersion(NS);
@@ -170,6 +173,7 @@ exports.updateSiteInformation = asynchandeler(async (req, res) => {
 
   if (req.file) {
     const oldPublicId = site.image?.publicId || null;
+    const oldCloudName = site.image?.cloudName || null;
     site.image.status = "pending";
     site.image.localPath = req.file.path;
     site.image.tries = 0;
@@ -180,6 +184,7 @@ exports.updateSiteInformation = asynchandeler(async (req, res) => {
       documentId: site._id,
       localPath: req.file.path,
       oldPublicId,
+      oldCloudName,
     });
   }
 
@@ -208,7 +213,7 @@ exports.deleteSiteInformation = asynchandeler(async (req, res) => {
   const publicId = site.image?.publicId;
   if (publicId) {
     setImmediate(() =>
-      deleteCloudinaryFile(publicId).catch((e) =>
+      deleteCloudinaryFile(publicId, site.image?.cloudName).catch((e) =>
         console.error("[Cloudinary] SiteInformation image delete failed:", e.message),
       ),
     );

@@ -1,47 +1,31 @@
 const nodemailer = require("nodemailer");
+const integrationConfig = require("../integrations/config");
 
-// Credentials come from the environment only. Never hardcode them here.
-let transporter = null;
+// One transport per distinct configuration (tenants may bring their own SMTP)
+const transports = new Map();
 
-const getMailConfig = () => {
-  const user = process.env.HOST_MAIL;
-  const pass = process.env.HOST_APP_PASSWORD;
-  if (!user || !pass) return null;
-  return { user, pass, fromName: process.env.MAIL_FROM_NAME || "" };
+const getMailTransport = (transportOptions) => {
+  const key = JSON.stringify(transportOptions);
+  if (!transports.has(key)) transports.set(key, nodemailer.createTransport(transportOptions));
+  return transports.get(key);
 };
 
-const getMailTransport = (config) => {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: config.user, pass: config.pass },
-    });
-  }
-  return transporter;
-};
-
-// Test hook: forget the cached transport so a new config takes effect
-const resetMailTransport = () => {
-  transporter = null;
-};
+// Test hook: forget cached transports so a new config takes effect
+const resetMailTransport = () => transports.clear();
 
 /**
- * Sends an HTML email.
- * By default failures are logged and resolve to null (fire-and-forget callers);
- * pass { throwOnError: true } when the caller must surface the failure.
+ * Sends an HTML email with the current tenant's mail settings (or the legacy
+ * env sender). By default failures are logged and resolve to null; pass
+ * { throwOnError: true } when the caller must surface the failure.
  */
 const sendEmail = async (to, subject, template, { throwOnError = false } = {}) => {
-  const config = getMailConfig();
-  if (!config) {
-    const error = new Error("Mail is not configured: set HOST_MAIL and HOST_APP_PASSWORD");
-    if (throwOnError) throw error;
-    console.error(error.message);
-    return null;
-  }
-
   try {
-    const info = await getMailTransport(config).sendMail({
-      from: config.fromName ? `${config.fromName} <${config.user}>` : config.user,
+    const config = await integrationConfig.getMailConfig();
+    if (!config) throw new Error("Mail is not configured: set HOST_MAIL and HOST_APP_PASSWORD");
+
+    const info = await getMailTransport(config.transport).sendMail({
+      from: config.from,
+      replyTo: config.replyTo,
       to,
       subject,
       html: template,

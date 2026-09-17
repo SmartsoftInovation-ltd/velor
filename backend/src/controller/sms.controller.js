@@ -1,13 +1,12 @@
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
-const { sendSMS } = require("../helpers/sms");
+const { sendSMS, getSmsBalance } = require("../helpers/sms");
 const User = require("../models/user.model");
 const Order = require("../models/order.model");
 const { customerModel } = require("../models/customer.model");
 const SmsLog = require("../models/smsLog.model");
 const { smsQueue } = require("../queues/sms.queue");
-const { default: axios } = require("axios");
 const { statusCodes } = require("../constant/constant");
 const {
   RECIPIENT_TYPES,
@@ -54,19 +53,12 @@ exports.sendBulkSMS = asynchandeler(async (req, res) => {
 
 // @desc check sms balace
 exports.smsBlance = asynchandeler(async (req, res) => {
-  const response = await axios.get(
-    `http://bulksmsbd.net/api/getBalanceApi?api_key=${process.env.BULK_SMS_API_KEY}`,
-  );
-  if (response.data.error) {
-    throw new customError(response.data.error, statusCodes.BAD_REQUEST);
+  const balance = await getSmsBalance();
+  if (balance.error) {
+    throw new customError(balance.error, statusCodes.BAD_REQUEST);
   }
 
-  return apiResponse.sendSuccess(
-    res,
-    statusCodes.OK,
-    "SMS balace",
-    response.data,
-  );
+  return apiResponse.sendSuccess(res, statusCodes.OK, "SMS balace", balance);
 });
 
 // @desc get all user phone number

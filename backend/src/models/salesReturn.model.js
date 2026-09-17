@@ -3,8 +3,7 @@ const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 const salesReturnSchema = new mongoose.Schema(
   {
     returnId: {
@@ -121,7 +120,7 @@ salesReturnSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.returnId = `RET-${env.INVOICE_PREFIX}-${padded}`;
+    doc.returnId = `RET-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { returnId: doc.returnId } },

@@ -5,6 +5,7 @@ const { apiResponse } = require("../../utils/apiResponse");
 const { statusCodes } = require("../../constant/constant");
 const settings = require("../../settings/settings.service");
 const { recordPlatformAudit } = require("../../service/platformAudit.service");
+const { runSettingsTest } = require("../../settings/testers");
 
 const findTenant = async (tenantId) => {
   if (!/^[a-f0-9]{24}$/i.test(tenantId)) throw new customError("Invalid tenantId", statusCodes.BAD_REQUEST);
@@ -47,3 +48,11 @@ exports.getWebhooks = asynchandeler(async (req, res) => {
   const tenant = await findTenant(req.params.tenantId);
   return apiResponse.sendSuccess(res, statusCodes.OK, "Webhook URLs", settings.getWebhookUrls(tenant));
 });
+
+exports.testSection = (sectionKey) =>
+  asynchandeler(async (req, res) => {
+    const tenant = await findTenant(req.params.tenantId);
+    const values = (await settings.getSettings(tenant._id))[sectionKey];
+    const result = await runSettingsTest(sectionKey, values);
+    return apiResponse.sendSuccess(res, statusCodes.OK, result.ok ? "Connection OK" : "Connection failed", result);
+  });

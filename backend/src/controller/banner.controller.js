@@ -147,6 +147,7 @@ exports.updateBanner = asynchandeler(async (req, res, next) => {
   // Step 3: Handle image update via queue if file present
   if (req.file) {
     const oldPublicId = banner.image?.publicId || null;
+    const oldCloudName = banner.image?.cloudName || null;
 
     // Update status to pending
     banner.image.status = "pending";
@@ -159,6 +160,7 @@ exports.updateBanner = asynchandeler(async (req, res, next) => {
       documentId: banner._id,
       localPath: req.file.path,
       oldPublicId,
+      oldCloudName,
     });
   }
 
@@ -195,7 +197,10 @@ exports.deleteBanner = asynchandeler(async (req, res) => {
   // Step 3: Delete image from Cloudinary via queue
   const publicId = banner.image?.publicId;
   if (publicId) {
-    await imageQueue.add("delete-cloudinary-image", { publicId });
+    await imageQueue.add("delete-cloudinary-image", {
+      publicId,
+      cloudName: banner.image?.cloudName,
+    });
   }
 
   apiResponse.sendSuccess(

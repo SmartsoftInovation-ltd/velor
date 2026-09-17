@@ -9,7 +9,8 @@ const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { customError } = require("../lib/CustomError");
 const { v4: uuidv4 } = require("uuid");
-const SSLCommerzPayment = require("sslcommerz-lts");
+const { createPaymentSession } = require("../integrations/sslcommerz");
+const { getGeneralConfig } = require("../integrations/config");
 const cartModel = require("../models/cart.model");
 const Variant = require("../models/variant.model");
 const { sendEmail } = require("../helpers/nodemailer");
@@ -19,7 +20,6 @@ const { sendSMS } = require("../helpers/sms");
 const { getIO } = require("../socket/socket");
 const { statusCodes } = require("../constant/constant");
 const { logAudit } = require("@/service/audit.service");
-const { env } = require("@/config/env.config");
 
 // applyDeliveryCharge
 const applyDeliveryCharge = async (deliveryChargeID) => {
@@ -224,7 +224,8 @@ exports.createOrder = asynchandeler(async (req, res) => {
     : totalPriceofProducts + deliveryChargeAmount.deliveryCharge;
 
   // Step 6: Create the Order
-  const invoiceId = `${env.INVOICE_PREFIX}-${uuidv4().slice(0, 8).toUpperCase()}`;
+  const general = await getGeneralConfig();
+  const invoiceId = `${general.invoicePrefix}-${uuidv4().slice(0, 8).toUpperCase()}`;
 
   let order = null;
   try {
@@ -325,6 +326,7 @@ exports.createOrder = asynchandeler(async (req, res) => {
         shippingInfo,
         invoice,
         totalProductInfo,
+        general,
       );
       const data = await sendEmail(
         shippingInfo?.email,
@@ -341,7 +343,7 @@ exports.createOrder = asynchandeler(async (req, res) => {
     📦 আপনার অর্ডার #${order?.invoiceId} সফলভাবে সম্পন্ন হয়েছে ✅
     💰 মোট দাম: ৳ ${order?.finalAmount}
     আমাদের সাথে থাকার জন্য ধন্যবাদ!
-    ☎ সহায়তার জন্য কল করুন: ${process.env.ORDER_HOT_LINE_NUMBER}`;
+    ☎ সহায়তার জন্য কল করুন: ${general.orderHotline}`;
 
       const data = await sendSMS(shippingInfo?.phone, message);
       if (data.response_code == 202) {
@@ -366,14 +368,9 @@ exports.createOrder = asynchandeler(async (req, res) => {
 
     // Step 11: SSLCommerz or COD Success
     if (paymentMethod === "sslcommerz") {
-      const data = {
+      const gatewayUrl = await createPaymentSession({
         total_amount: Math.round(finalAmount),
-        currency: "BDT",
         tran_id: invoiceId, // required, must be unique per transaction
-        success_url: `${process.env.BACKEND_URL}/payment/success`,
-        fail_url: `${process.env.BACKEND_URL}/payment/fail`,
-        cancel_url: `${process.env.BACKEND_URL}/payment/cancel`,
-        ipn_url: `${process.env.BACKEND_URL}/payment/ipn`,
         product_name:
           (totalProductInfo && totalProductInfo?.map((item) => item.name)).join(
             ",",
@@ -387,21 +384,11 @@ exports.createOrder = asynchandeler(async (req, res) => {
         ship_city: "Dhaka",
         ship_country: "Bangladesh",
         cus_name: shippingInfo.fullName, // required
-        cus_email: shippingInfo.email || "taufikislam172@gmail.com", // required
+        cus_email: shippingInfo.email, // required; a placeholder is used for guests without email
         cus_add1: shippingInfo.address, // required
         cus_phone: shippingInfo.phone, // required
-      };
-
-      const is_live = process.env.NODE_ENV === "production" ? true : false;
-      const sslcz = new SSLCommerzPayment(
-        process.env.SSLC_STORE_ID,
-        process.env.SSLC_STORE_PASSWORD,
-        is_live,
-      );
-      const response = await sslcz.init(data);
-      // Redirect the user to payment gateway
-
-      console.log("Redirecting to: ", response.GatewayPageURL);
+      });
+      console.log("Redirecting to: ", gatewayUrl);
 
       // Emit order event
       const io = getIO();
@@ -415,7 +402,7 @@ exports.createOrder = asynchandeler(async (req, res) => {
         statusCodes.CREATED,
         "Order placed successfully",
         {
-          url: response.GatewayPageURL,
+          url: gatewayUrl,
           order,
         },
       );

@@ -101,6 +101,32 @@ const scopePipeline = (pipeline, tenantId) => {
   return [match, ...pipeline];
 };
 
+// Unique constraints are per tenant: { field } becomes { tenantId, field }.
+// sparse becomes a partial filter, because a compound index always contains
+// tenantId and would otherwise treat every missing value as a duplicate null.
+const scopeUniqueIndexes = (schema) => {
+  const scopedOptions = (fields, { sparse, ...options }) =>
+    sparse
+      ? {
+          ...options,
+          partialFilterExpression: Object.fromEntries(Object.keys(fields).map((f) => [f, { $exists: true }])),
+        }
+      : options;
+
+  schema.eachPath((name, type) => {
+    if (name === "tenantId" || !type._index?.unique) return;
+    const { unique, sparse, ...rest } = type._index;
+    type._index = null;
+    schema.index({ tenantId: 1, [name]: 1 }, { ...scopedOptions({ [name]: 1 }, { sparse, ...rest }), unique: true });
+  });
+
+  schema._indexes = schema._indexes.map(([fields, options]) =>
+    options?.unique && !("tenantId" in fields)
+      ? [{ tenantId: 1, ...fields }, scopedOptions(fields, options)]
+      : [fields, options],
+  );
+};
+
 function tenantPlugin(schema) {
   if (!schema.path("tenantId")) {
     schema.add({
@@ -112,6 +138,8 @@ function tenantPlugin(schema) {
       },
     });
   }
+
+  scopeUniqueIndexes(schema);
 
   function stampDocument(next) {
     try {

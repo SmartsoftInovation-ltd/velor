@@ -11,6 +11,8 @@ const imageSchema = new mongoose.Schema(
   {
     url: { type: String, default: "" },
     publicId: { type: String, default: "" },
+    // Cloudinary account the asset lives in (tenants can change accounts)
+    cloudName: { type: String, default: "" },
     status: {
       type: String,
       enum: ["pending", "processing", "uploaded", "failed"],

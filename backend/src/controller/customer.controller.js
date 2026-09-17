@@ -473,6 +473,7 @@ exports.updateCustomer = asynchandeler(async (req, res) => {
   // 3) Handle image update via queue
   if (req.files?.length) {
     const oldPublicId = customer.image?.publicId || null;
+    const oldCloudName = customer.image?.cloudName || null;
 
     // Set status to pending while worker uploads
     customer.image.status = "pending";
@@ -485,6 +486,7 @@ exports.updateCustomer = asynchandeler(async (req, res) => {
       documentId: customer._id,
       localPath: req.files[0].path,
       oldPublicId,
+      oldCloudName,
     });
   }
 
@@ -557,7 +559,10 @@ exports.deleteCustomer = asynchandeler(async (req, res) => {
   // Delete image from Cloudinary via queue
   const publicId = customer.image?.publicId;
   if (publicId) {
-    await imageQueue.add("delete-cloudinary-image", { publicId });
+    await imageQueue.add("delete-cloudinary-image", {
+      publicId,
+      cloudName: customer.image?.cloudName,
+    });
   }
 
   logAudit({

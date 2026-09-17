@@ -20,7 +20,7 @@
 | 2 | Tenancy core (context + plugin, shadow mode) | §2, §10 step 3 | **done** |
 | 3 | Platform identity & tenant API | §3.1, §8.2 (API only), §10 step 4 | **done** |
 | 4 | Tenant settings core (encryption, service, platform endpoints) | §5.2–5.6, §10 step 5 | **done** |
-| 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | todo |
+| 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | **done** |
 | 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | todo |
 | 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | todo |
 | 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | todo |
@@ -149,6 +149,16 @@
 | 5.9 | Order hotline and Facebook URL from settings |
 
 **Done when:** grep finds none of the per-seller env vars in `src/`; two tenants with different settings produce different outbound calls in tests (HTTP mocked).
+
+**Implementation notes (as built):**
+- `src/integrations/config.js` is the single resolver: inside a tenant context it returns that tenant's settings (422 with `SMS_NOT_CONFIGURED`, `EMAIL_NOT_CONFIGURED`, `SSLCOMMERZ_NOT_CONFIGURED`, `COURIER_NOT_CONFIGURED`, `CLOUDINARY_NOT_CONFIGURED`, `AI_NOT_CONFIGURED`); without a context it falls back to the legacy `.env` values so Velor keeps working until migration. Per-seller env reads now live only there, in legacy webhook routes (removed in Sprint 11) and in the platform mail sender (`HOST_MAIL`, platform-level by design).
+- Pulled forward from later sprints because this sprint needs them: per-tenant unique indexes (plugin rewrites every unique index to `{ tenantId, field }`; sparse becomes a partial filter) and BullMQ tenant propagation (`tenantAwareQueue`, `tenantJob`; workers start the settings invalidation listener).
+- Serial numbers: 14 model hooks + order invoice id use the tenant `invoicePrefix`; counters are per tenant.
+- Cloudinary: credentials passed per call (no global `cloudinary.config`); images store `cloudName`; deletes for another account are skipped; uploads are rejected with 422 before the controller runs when the tenant has no Cloudinary (temp files removed).
+- SSLCommerz via `src/integrations/sslcommerz.js`; callbacks `/api/v1/hooks/sslcommerz/:webhookKey/{success,fail,cancel,ipn}`.
+- Couriers: `resolveMerchant` uses tenant settings (legacy `Merchant` docs otherwise); Pathao tokens per tenant in Redis (`t:{tenantId}:courier:pathao:token`); Pathao login uses the merchant's own username/password; webhooks `/api/v1/hooks/pathao/:webhookKey` and `/api/v1/hooks/steadfast/:webhookKey` verify that tenant's secret.
+- `POST /platform/tenants/:id/settings/<section path>/test` for sms, email, payment/sslcommerz, couriers/pathao, couriers/steadfast, cloudinary, ai/groq — returns `{ ok, detail | error }`, secrets scrubbed.
+- Email links, order e-mail footer, order SMS hotline come from `general` settings.
 
 ## Sprint 6 — Velor data migration
 

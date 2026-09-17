@@ -4,6 +4,8 @@ require("dotenv").config();
 require("module-alias/register");
 
 const { Worker } = require("bullmq");
+const { tenantJob } = require("@/tenancy/queue");
+const { startSettingsInvalidationListener } = require("@/settings/settings.service");
 const { embeddingQueue, EMBEDDING_QUEUE_NAME } = require("@/queues/embedding.queue");
 const { connection } = require("@/config/redis.config");
 const { dbConnect } = require("@/database/db");
@@ -21,6 +23,9 @@ require("@/models/sizeChart.model");
 
 dbConnect()
   .then(() => {
+    startSettingsInvalidationListener().catch((err) =>
+      console.error("Settings invalidation listener failed:", err.message),
+    );
     console.log("✅ Embedding Worker DB connected");
     startEmbeddingWorker();
   })
@@ -66,7 +71,7 @@ async function embedVariant(variantId) {
 function startEmbeddingWorker() {
   const worker = new Worker(
     EMBEDDING_QUEUE_NAME,
-    async (job) => {
+    tenantJob(async (job) => {
       if (job.name === "embed-product") {
         return embedProduct(job.data.productId);
       }
@@ -74,7 +79,7 @@ function startEmbeddingWorker() {
         return embedVariant(job.data.variantId);
       }
       return { skipped: true, reason: `unknown job name: ${job.name}` };
-    },
+    }),
     { connection, concurrency: 2 },
   );
 

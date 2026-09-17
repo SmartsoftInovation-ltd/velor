@@ -161,6 +161,7 @@ class CategoryController {
 
     if (req.files?.length) {
       const oldPublicId = category.image?.publicId || null;
+      const oldCloudName = category.image?.cloudName || null;
 
       // Keep old URL visible until worker finishes uploading the new one
       category.image.status = "pending";
@@ -173,6 +174,7 @@ class CategoryController {
         documentId: category._id,
         localPath: req.files[0].path,
         oldPublicId,
+        oldCloudName,
       });
     }
 
@@ -202,7 +204,7 @@ class CategoryController {
     const publicId = category.image?.publicId;
     if (publicId) {
       setImmediate(() =>
-        deleteCloudinaryFile(publicId).catch((e) =>
+        deleteCloudinaryFile(publicId, category.image?.cloudName).catch((e) =>
           console.error("[Cloudinary] Delete failed:", e.message),
         ),
       );

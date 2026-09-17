@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { getGroqConfig } = require("../integrations/config");
 
 // retrieve() থেকে পাওয়া প্রোডাক্টগুলোকে LLM এর জন্য readable context text এ রূপান্তর করে
 function buildContext(products) {
@@ -14,8 +15,9 @@ function buildContext(products) {
 // উত্তর জেনারেট করতে বলে — এটাই RAG এর "generation" অংশ। শুধু দেওয়া প্রোডাক্ট তথ্য থেকে উত্তর
 // দিতে বলা হয়েছে, যাতে LLM নিজে থেকে প্রোডাক্ট/দাম বানিয়ে না বলে (hallucination আটকানোর জন্য)
 async function generateAnswer(userQuestion, retrievedProducts) {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is not configured");
+  const { apiKey, model, temperature } = await getGroqConfig();
+  if (!apiKey) {
+    throw new Error("AI assistant is not configured");
   }
 
   const context = retrievedProducts.length
@@ -34,17 +36,17 @@ ${context}`;
     const { data } = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama-3.3-70b-versatile",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userQuestion },
         ],
-        temperature: 0.3,
+        temperature,
       },
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         timeout: 30000,
       },

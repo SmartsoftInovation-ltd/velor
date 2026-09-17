@@ -180,6 +180,7 @@ exports.updateStoreInformation = asynchandeler(async (req, res) => {
 
   if (req.file) {
     const oldPublicId = store.image?.publicId || null;
+    const oldCloudName = store.image?.cloudName || null;
     store.image.status = "pending";
     store.image.localPath = req.file.path;
     store.image.tries = 0;
@@ -190,6 +191,7 @@ exports.updateStoreInformation = asynchandeler(async (req, res) => {
       documentId: store._id,
       localPath: req.file.path,
       oldPublicId,
+      oldCloudName,
     });
   }
 
@@ -218,7 +220,7 @@ exports.deleteStoreInformation = asynchandeler(async (req, res) => {
   const publicId = store.image?.publicId;
   if (publicId) {
     setImmediate(() =>
-      deleteCloudinaryFile(publicId).catch((e) =>
+      deleteCloudinaryFile(publicId, store.image?.cloudName).catch((e) =>
         console.error("[Cloudinary] StoreInformation image delete failed:", e.message),
       ),
     );

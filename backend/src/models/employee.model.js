@@ -2,13 +2,15 @@ const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
+const { getInvoicePrefix } = require("../integrations/config");
 const { statusCodes } = require("../constant/constant");
 
 const imageSchema = new mongoose.Schema(
   {
     url: { type: String, default: "" },
     publicId: { type: String, default: "" },
+    // Cloudinary account the asset lives in (tenants can change accounts)
+    cloudName: { type: String, default: "" },
     status: {
       type: String,
       enum: ["pending", "processing", "uploaded", "failed"],
@@ -158,7 +160,7 @@ employeeSchema.post("save", async function (doc, next) {
     const padded = String(counter.seq).padStart(2, "0");
     await doc.constructor.updateOne(
       { _id: doc._id },
-      { $set: { employeeId: `EMP-${env.INVOICE_PREFIX}-${padded}` } },
+      { $set: { employeeId: `EMP-${await getInvoicePrefix()}-${padded}` } },
     );
     next();
   } catch (error) {

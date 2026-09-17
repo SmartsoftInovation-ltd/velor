@@ -199,9 +199,8 @@ class PathaoCourier extends BaseCourier {
   }
 
   // Handle Pathao webhook
-  async handlePathaoWebhook(req, res) {
+  async handlePathaoWebhook(req, res, secret = process.env.WEBHOOK_SECRET) {
     try {
-      const secret = process.env.WEBHOOK_SECRET;
       const signature = req.headers["x-pathao-signature"];
       // 1. Verify signature — an unset secret must reject, never fall back
       if (!secret || signature !== secret) {

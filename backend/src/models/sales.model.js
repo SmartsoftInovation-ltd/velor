@@ -2,8 +2,7 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 /** -------------------------
  * Sub Schemas
  * ------------------------*/
@@ -198,7 +197,7 @@ salesSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.invoiceNumber = `INV-${env.INVOICE_PREFIX}-${padded}`;
+    doc.invoiceNumber = `INV-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { invoiceNumber: doc.invoiceNumber } },

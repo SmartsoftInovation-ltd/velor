@@ -3,8 +3,7 @@ const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 const purchaseSchema = new mongoose.Schema(
   {
     serial: {
@@ -231,7 +230,7 @@ purchaseSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.serial = `PUR-${env.INVOICE_PREFIX}-${padded}`;
+    doc.serial = `PUR-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { serial: doc.serial } },

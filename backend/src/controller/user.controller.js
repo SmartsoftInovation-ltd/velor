@@ -4,6 +4,7 @@ const Permission = require("../models/permisson.model");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendEmail } = require("../helpers/nodemailer");
+const { getGeneralConfig } = require("../integrations/config");
 const { apiResponse } = require("../utils/apiResponse");
 const { customError } = require("../lib/CustomError");
 const { validateUser } = require("../validation/user.validation");
@@ -251,7 +252,8 @@ exports.sendEmailVerification = asynchandeler(async (req, res) => {
   user.emailVerificationExpires = Date.now() + 1000 * 60 * 60; // 1 hour
   await user.save();
 
-  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
+  const { storefrontUrl } = await getGeneralConfig();
+  const verifyUrl = `${storefrontUrl}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
   await sendEmail(
     user.email,
     "Verify your email",
@@ -317,7 +319,8 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
   await user.save();
 
   // Send reset email
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
+  const { storefrontUrl } = await getGeneralConfig();
+  const resetUrl = `${storefrontUrl}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
   await sendEmail(
     user.email,
     "Reset your password",
@@ -722,6 +725,7 @@ exports.updateUser = asynchandeler(async (req, res) => {
   // Handle image update via queue if file present
   if (req.file) {
     const oldPublicId = updatedUser.image?.publicId || null;
+    const oldCloudName = updatedUser.image?.cloudName || null;
 
     // Update status to pending
     updatedUser.image.status = "pending";
@@ -735,6 +739,7 @@ exports.updateUser = asynchandeler(async (req, res) => {
       documentId: updatedUser._id,
       localPath: req.file.path,
       oldPublicId,
+      oldCloudName,
     });
   }
 
@@ -809,7 +814,10 @@ exports.deleteUser = asynchandeler(async (req, res) => {
   // Delete image from Cloudinary via queue
   const publicId = user.image?.publicId;
   if (publicId) {
-    await imageQueue.add("delete-cloudinary-image", { publicId });
+    await imageQueue.add("delete-cloudinary-image", {
+      publicId,
+      cloudName: user.image?.cloudName,
+    });
   }
 
   // Delete user from DB

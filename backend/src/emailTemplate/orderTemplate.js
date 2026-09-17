@@ -5,7 +5,13 @@
  * @param {object} invoice - The invoice object for the order.
  * @returns {string} The complete HTML string for the email.
  */
-exports.orderTemplate = (order, shippingInfo, invoice, totalProductInfo) => {
+exports.orderTemplate = (
+  order,
+  shippingInfo,
+  invoice,
+  totalProductInfo,
+  { storefrontUrl = process.env.FRONTEND_URL, facebookUrl = process.env.FACEBOOK_URL } = {},
+) => {
   // A simple way to generate HTML without a dedicated templating engine
   // This can be improved with a library like Handlebars for more complex templates
   let productRows = "";
@@ -158,11 +164,7 @@ exports.orderTemplate = (order, shippingInfo, invoice, totalProductInfo) => {
                 <tr>
                     <td class="footer">
                         <p style="margin: 0; font-size: 14px; color: #cccccc;">© ${new Date().getFullYear()} আপনার কোম্পানি। সর্বস্বত্ব সংরক্ষিত।</p>
-                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #cccccc;"><a href="${
-                          process.env.FRONTEND_URL
-                        }" style="color: #ffffff;">ওয়েবসাইট</a> | <a href="${
-    process.env.FACEBOOK_URL
-  }" style="color: #ffffff;">ফেসবুক</a></p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #cccccc;"><a href="${storefrontUrl}" style="color: #ffffff;">ওয়েবসাইট</a> | <a href="${facebookUrl}" style="color: #ffffff;">ফেসবুক</a></p>
                     </td>
                 </tr>
             </table>

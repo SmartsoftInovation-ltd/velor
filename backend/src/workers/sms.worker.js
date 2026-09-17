@@ -4,6 +4,8 @@ require("dotenv").config();
 require("module-alias/register");
 
 const { Worker } = require("bullmq");
+const { tenantJob } = require("@/tenancy/queue");
+const { startSettingsInvalidationListener } = require("@/settings/settings.service");
 const { SMS_QUEUE_NAME } = require("@/queues/sms.queue");
 const { connection } = require("@/config/redis.config");
 const { sendSMS } = require("@/helpers/sms");
@@ -13,6 +15,9 @@ const { getIO } = require("@/socket/socket");
 
 dbConnect()
   .then(() => {
+    startSettingsInvalidationListener().catch((err) =>
+      console.error("Settings invalidation listener failed:", err.message),
+    );
     console.log("✅ SMS Worker DB connected");
     startSmsWorker();
   })
@@ -24,7 +29,7 @@ dbConnect()
 function startSmsWorker() {
   const worker = new Worker(
     SMS_QUEUE_NAME,
-    async (job) => {
+    tenantJob(async (job) => {
       const { logId, recipients, message } = job.data;
 
       await SmsLog.updateOne({ _id: logId }, { $set: { status: "processing" } });
@@ -105,7 +110,7 @@ function startSmsWorker() {
       }
 
       return { logId, sentCount, failedCount, status: finalStatus };
-    },
+    }),
     { connection, concurrency: 2 },
   );
 

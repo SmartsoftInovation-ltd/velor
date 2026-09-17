@@ -378,6 +378,7 @@ exports.updateVariant = asynchandeler(async (req, res) => {
   if (thumbnailFiles.length > 0) {
     const thumbnailFile = thumbnailFiles[0];
     const oldPublicId = existingVariant.thumbnail?.publicId || null;
+    const oldCloudName = existingVariant.thumbnail?.cloudName || null;
 
     existingVariant.thumbnail = {
       status: "pending",
@@ -396,6 +397,7 @@ exports.updateVariant = asynchandeler(async (req, res) => {
         localPath: thumbnailFile.path,
         fieldName: "thumbnail",
         oldPublicId,
+        oldCloudName,
       },
     });
   }
@@ -425,6 +427,7 @@ exports.updateVariant = asynchandeler(async (req, res) => {
   if (ogFiles.length > 0) {
     const ogFile = ogFiles[0];
     const oldPublicId = existingVariant.seo?.ogImage?.publicId || null;
+    const oldCloudName = existingVariant.seo?.ogImage?.cloudName || null;
 
     if (!existingVariant.seo) existingVariant.seo = {};
     existingVariant.seo.ogImage = {
@@ -441,6 +444,7 @@ exports.updateVariant = asynchandeler(async (req, res) => {
         localPath: ogFile.path,
         fieldName: "seo.ogImage",
         oldPublicId,
+        oldCloudName,
       },
     });
   }

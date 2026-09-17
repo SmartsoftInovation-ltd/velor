@@ -1,35 +1,36 @@
-require("dotenv").config(); // .env লোড করার জন্য
 const axios = require("axios");
+const { getSmsConfig } = require("../integrations/config");
 
+// Sends through the current tenant's SMS provider (or the legacy env account)
 async function sendSMS(numbers, message) {
-  const BULK_SMS_API_KEY = process.env.BULK_SMS_API_KEY;
-  const BULK_SMS_SENDER_ID = process.env.BULK_SMS_SENDER_ID;
-  const BULK_SMS_URL = process.env.BULK_SMS_URL;
+  const numberList = Array.isArray(numbers) ? numbers.filter(Boolean).join(",") : numbers;
+  if (!numberList) throw new Error("At least one phone number is required");
+
+  const { apiUrl, apiKey, senderId } = await getSmsConfig();
+  if (!apiUrl || !apiKey || !senderId) {
+    throw new Error("SMS provider is not configured");
+  }
 
   try {
-    if (!BULK_SMS_API_KEY || !BULK_SMS_SENDER_ID || !BULK_SMS_URL) {
-      throw new Error("Missing required environment variables");
-    }
-
-    const numberList = Array.isArray(numbers) ? numbers.join(",") : numbers;
-
-    const payload = {
-      api_key: BULK_SMS_API_KEY,
-      senderid: BULK_SMS_SENDER_ID,
-      number: numberList || "01747237518",
-      message: message || "Hello, this is a test message",
-    };
-
-    const { data } = await axios.post(BULK_SMS_URL, payload);
+    const { data } = await axios.post(apiUrl, {
+      api_key: apiKey,
+      senderid: senderId,
+      number: numberList,
+      message,
+    });
     console.log("✅ SMS Sent Successfully:", data);
     return data;
   } catch (error) {
-    console.error(
-      "❌ Error sending SMS:",
-      error.response?.data || error.message,
-    );
+    console.error("❌ Error sending SMS:", error.response?.data || error.message);
     throw error;
   }
 }
 
-module.exports = { sendSMS };
+async function getSmsBalance() {
+  const { balanceUrl, apiKey } = await getSmsConfig();
+  if (!apiKey) throw new Error("SMS provider is not configured");
+  const { data } = await axios.get(balanceUrl, { params: { api_key: apiKey } });
+  return data;
+}
+
+module.exports = { sendSMS, getSmsBalance };

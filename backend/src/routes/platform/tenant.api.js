@@ -25,8 +25,12 @@ _.post("/:tenantId/activate", superadmin, validateBody(statusChangeSchema), cont
 
 _.get("/:tenantId/settings", settingsController.getSettings);
 _.get("/:tenantId/settings/webhooks", settingsController.getWebhooks);
+const { hasTester } = require("../../settings/testers");
 for (const [key, { path }] of Object.entries(SECTIONS)) {
   _.patch(`/:tenantId/settings/${path}`, superadmin, settingsController.updateSection(key));
+  if (hasTester(key)) {
+    _.post(`/:tenantId/settings/${path}/test`, superadmin, settingsController.testSection(key));
+  }
 }
 _.patch("/:tenantId/settings/*", superadmin, (req, res, next) => {
   const { customError } = require("../../lib/CustomError");

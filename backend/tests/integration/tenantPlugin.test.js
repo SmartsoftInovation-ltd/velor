@@ -21,6 +21,44 @@ const Order = mongoose.model("TpOrder", orderSchema);
 const inA = (fn) => runForTenant(A, fn);
 const inB = (fn) => runForTenant(B, fn);
 
+const codeSchema = new mongoose.Schema({
+  code: { type: String, unique: true },
+  serial: { type: String, unique: true, sparse: true },
+  a: String,
+  b: String,
+});
+codeSchema.index({ a: 1, b: 1 }, { unique: true, sparse: true });
+codeSchema.plugin(tenantPlugin);
+const Code = mongoose.model("TpCode", codeSchema);
+
+describe("tenantPlugin unique indexes", () => {
+  beforeAll(async () => {
+    await connectTestDb();
+    await Code.init();
+  });
+  afterAll(disconnectTestDb);
+
+  it("rewrites every unique index to be unique per tenant", () => {
+    const unique = Code.schema.indexes().filter(([, options]) => options.unique);
+    expect(unique.map(([fields]) => Object.keys(fields)).sort()).toEqual([
+      ["tenantId", "a", "b"],
+      ["tenantId", "code"],
+      ["tenantId", "serial"],
+    ]);
+  });
+
+  it("allows the same value in two tenants but not twice in one", async () => {
+    await runForTenant(A, () => Code.create({ code: "X1" }));
+    await expect(runForTenant(B, () => Code.create({ code: "X1" }))).resolves.toBeDefined();
+    await expect(runForTenant(A, () => Code.create({ code: "X1" }))).rejects.toThrow(/duplicate key/);
+  });
+
+  it("keeps sparse semantics: documents without the field do not collide", async () => {
+    await runForTenant(A, () => Code.create({ code: "S1" }));
+    await expect(runForTenant(A, () => Code.create({ code: "S2" }))).resolves.toBeDefined();
+  });
+});
+
 describe("tenantPlugin", () => {
   let a1, b1;
   const envBackup = { ...process.env };

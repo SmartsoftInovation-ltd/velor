@@ -5,7 +5,7 @@ const { statusCodes } = require("../constant/constant");
 
 const { default: slugify } = require("slugify");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
+const { getInvoicePrefix } = require("../integrations/config");
 const customerTypeSchema = mongoose.Schema({
   customerType: {
     type: String,
@@ -177,6 +177,8 @@ const customerSchema = new mongoose.Schema(
     image: {
       url: { type: String, default: "" },
       publicId: { type: String, default: "" },
+      // Cloudinary account the asset lives in (tenants can change accounts)
+      cloudName: { type: String, default: "" },
       status: {
         type: String,
         enum: ["pending", "processing", "uploaded", "failed"],
@@ -292,7 +294,7 @@ customerSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.customSerialId = `CUS-${env.INVOICE_PREFIX}-${padded}`;
+    doc.customSerialId = `CUS-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { customSerialId: doc.customSerialId } },
@@ -410,7 +412,7 @@ customerPaymentRecivedSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.paymentId = `CPR-${env.INVOICE_PREFIX}-${padded}`;
+    doc.paymentId = `CPR-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { paymentId: doc.paymentId } },
@@ -508,7 +510,7 @@ customerAdvancePaymentRecivedSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.paymentId = `CAP-${env.INVOICE_PREFIX}-${padded}`;
+    doc.paymentId = `CAP-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { paymentId: doc.paymentId } },

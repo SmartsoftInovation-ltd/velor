@@ -31,6 +31,17 @@ describe("tenancy registry", () => {
     expect(unregistered).toEqual([]);
   });
 
+  it("every unique index on a tenant-scoped model is unique per tenant", () => {
+    const offenders = appModels()
+      .filter((name) => !GLOBAL_MODELS.includes(name))
+      .flatMap((name) =>
+        mongoose.model(name).schema.indexes()
+          .filter(([fields, options]) => options.unique && Object.keys(fields)[0] !== "tenantId")
+          .map(([fields]) => `${name}(${Object.keys(fields).join(",")})`),
+      );
+    expect(offenders).toEqual([]);
+  });
+
   it("global models do not carry the tenant plugin", () => {
     for (const name of GLOBAL_MODELS) {
       const { schema } = mongoose.model(name);

@@ -4,6 +4,8 @@ require("dotenv").config();
 require("module-alias/register");
 
 const { Worker } = require("bullmq");
+const { tenantJob } = require("@/tenancy/queue");
+const { startSettingsInvalidationListener } = require("@/settings/settings.service");
 const { EMAIL_QUEUE_NAME } = require("@/queues/email.queue");
 const { connection } = require("@/config/redis.config");
 const { sendEmail } = require("@/helpers/nodemailer");
@@ -11,6 +13,9 @@ const { dbConnect } = require("@/database/db");
 
 dbConnect()
   .then(() => {
+    startSettingsInvalidationListener().catch((err) =>
+      console.error("Settings invalidation listener failed:", err.message),
+    );
     console.log("✅ Email Worker DB connected");
     startEmailWorker();
   })
@@ -22,7 +27,7 @@ dbConnect()
 function startEmailWorker() {
   const worker = new Worker(
     EMAIL_QUEUE_NAME,
-    async (job) => {
+    tenantJob(async (job) => {
       const { to, subject, html } = job.data;
       if (!to) {
         // Nothing to send — treat as a no-op success so the job doesn't retry.
@@ -30,7 +35,7 @@ function startEmailWorker() {
       }
       const messageId = await sendEmail(to, subject, html);
       return { to, messageId: messageId || null };
-    },
+    }),
     { connection, concurrency: 3 },
   );
 

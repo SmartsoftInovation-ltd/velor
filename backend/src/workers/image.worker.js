@@ -4,6 +4,8 @@ require("dotenv").config();
 require("module-alias/register");
 
 const { Worker } = require("bullmq");
+const { tenantJob } = require("@/tenancy/queue");
+const { startSettingsInvalidationListener } = require("@/settings/settings.service");
 const fs = require("fs/promises");
 const { IMAGE_QUEUE_NAME } = require("@/queues/image.queue");
 const { connection } = require("@/config/redis.config");
@@ -41,6 +43,9 @@ const MODELS = {
 
 dbConnect()
   .then(() => {
+    startSettingsInvalidationListener().catch((err) =>
+      console.error("Settings invalidation listener failed:", err.message),
+    );
     console.log("✅ Worker DB connected");
     startImageWorker();
   })
@@ -52,11 +57,11 @@ dbConnect()
 function startImageWorker() {
   const worker = new Worker(
     IMAGE_QUEUE_NAME,
-    async (job) => {
+    tenantJob(async (job) => {
       if (job.name === "delete-cloudinary-image") {
-        const { publicId } = job.data;
+        const { publicId, cloudName } = job.data;
         console.log(`[Worker] Deleting image from Cloudinary: ${publicId}`);
-        await deleteCloudinaryFile(publicId);
+        await deleteCloudinaryFile(publicId, cloudName);
         return { publicId, deleted: true };
       }
 
@@ -65,6 +70,7 @@ function startImageWorker() {
         documentId,
         localPath,
         oldPublicId,
+        oldCloudName,
         fieldName = "image",
         index,
       } = job.data;
@@ -113,6 +119,7 @@ function startImageWorker() {
             $set: {
               [`${targetField}.url`]: uploaded.optimizeUrl,
               [`${targetField}.publicId`]: uploaded.result.public_id,
+              [`${targetField}.cloudName`]: uploaded.cloudName,
               [`${targetField}.status`]: "uploaded",
               [`${targetField}.localPath`]: "",
               [`${targetField}.tries`]: job.attemptsMade + 1,
@@ -128,7 +135,7 @@ function startImageWorker() {
 
         // Delete old Cloudinary image (update case) — non-blocking, non-critical
         if (oldPublicId) {
-          deleteCloudinaryFile(oldPublicId).catch((e) =>
+          deleteCloudinaryFile(oldPublicId, oldCloudName).catch((e) =>
             console.error("[Worker] Old image delete failed:", e.message),
           );
         }
@@ -160,7 +167,7 @@ function startImageWorker() {
         // Re-throw so BullMQ retries according to defaultJobOptions
         throw err;
       }
-    },
+    }),
     { connection, concurrency: 3 },
   );
 

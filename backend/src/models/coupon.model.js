@@ -4,8 +4,7 @@ const slugify = require("slugify").default || require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const Counter = require("./counter.model");
-const { env } = require("../config/env.config");
-
+const { getInvoicePrefix } = require("../integrations/config");
 const couponSchema = new mongoose.Schema(
   {
     customSerialId: {
@@ -142,7 +141,7 @@ couponSchema.post("save", async function (doc, next) {
     );
 
     const padded = String(counter.seq).padStart(2, "0");
-    doc.customSerialId = `COU-${env.INVOICE_PREFIX}-${padded}`;
+    doc.customSerialId = `COU-${await getInvoicePrefix()}-${padded}`;
     await doc.constructor.updateOne(
       { _id: doc._id },
       { $set: { customSerialId: doc.customSerialId } },
