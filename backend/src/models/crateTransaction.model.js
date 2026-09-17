@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
 const { env } = require("../config/env.config");
 
@@ -127,6 +128,7 @@ crateTransactionSchema.post("save", async function (doc, next) {
   }
 });
 
+crateTransactionSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.CrateTransaction ||
   mongoose.model("CrateTransaction", crateTransactionSchema);

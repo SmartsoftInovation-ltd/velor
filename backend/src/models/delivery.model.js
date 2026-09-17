@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const { Schema } = mongoose;
@@ -34,6 +35,7 @@ deliverySchema.pre("save", async function (next) {
   }
 });
 
+deliverySchema.plugin(tenantPlugin);
 const Delivery =
   mongoose.models.Delivery || mongoose.model("Delivery", deliverySchema);
 module.exports = Delivery;

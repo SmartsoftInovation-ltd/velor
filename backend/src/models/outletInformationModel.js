@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -102,6 +103,7 @@ outletInformationSchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
+outletInformationSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.OutletInformation ||
   mongoose.model("OutletInformation", outletInformationSchema);

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const reviewSchema = new mongoose.Schema(
   {
@@ -33,5 +34,6 @@ const reviewSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+reviewSchema.plugin(tenantPlugin);
 const Review = mongoose.models.Review || mongoose.model("Review", reviewSchema);
 module.exports = Review;

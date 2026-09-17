@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -111,6 +112,7 @@ discountSchema.pre("save", async function (next) {
   }
 });
 
+discountSchema.plugin(tenantPlugin);
 const Discount =
   mongoose.models.Discount || mongoose.model("Discount", discountSchema);
 

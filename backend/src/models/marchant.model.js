@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 
@@ -40,5 +41,6 @@ merchantSchema.pre("save", async function (next) {
   }
 });
 
+merchantSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.Merchant || mongoose.model("Merchant", merchantSchema);

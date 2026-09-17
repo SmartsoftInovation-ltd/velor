@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const cartSchema = new mongoose.Schema(
   {
@@ -81,4 +82,5 @@ cartSchema.pre("save", function (next) {
   next();
 });
 
+cartSchema.plugin(tenantPlugin);
 module.exports = mongoose.models.Cart || mongoose.model("Cart", cartSchema);

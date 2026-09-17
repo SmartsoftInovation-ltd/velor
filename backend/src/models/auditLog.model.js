@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const AUDIT_ACTIONS = [
   "CREATE",
@@ -81,6 +82,7 @@ auditLogSchema.pre(
   },
 );
 
+auditLogSchema.plugin(tenantPlugin);
 module.exports = {
   auditLogModel: mongoose.model("auditlog", auditLogSchema),
   AUDIT_ACTIONS,

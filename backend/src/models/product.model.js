@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 
@@ -300,6 +301,7 @@ productSchema.virtual("sizeWiseStock").get(function () {
 // request. To compute purchase totals, use a dedicated endpoint or aggregation
 // only when explicitly needed.
 
+productSchema.plugin(tenantPlugin);
 const Product =
   mongoose.models.Product || mongoose.model("Product", productSchema);
 module.exports = Product;

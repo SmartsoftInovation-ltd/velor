@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -75,6 +76,7 @@ const employeeAdvancePaymentSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+employeeAdvancePaymentSchema.plugin(tenantPlugin);
 const employeeAdvancePayment =
   mongoose.models.EmployeeAdvancePayment ||
   mongoose.model("EmployeeAdvancePayment", employeeAdvancePaymentSchema);
@@ -140,6 +142,7 @@ employeeDesignationSchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
+employeeDesignationSchema.plugin(tenantPlugin);
 const employeeDesignationModel =
   mongoose.models.EmployeeDesignation ||
   mongoose.model("EmployeeDesignation", employeeDesignationSchema);
@@ -205,6 +208,7 @@ departmentSchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
+departmentSchema.plugin(tenantPlugin);
 const departmentModel =
   mongoose.models.Department || mongoose.model("Department", departmentSchema);
 
@@ -268,6 +272,7 @@ sectionSchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
+sectionSchema.plugin(tenantPlugin);
 const sectionModel =
   mongoose.models.Section || mongoose.model("Section", sectionSchema);
 

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const slugify = require("slugify").default || require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -153,5 +154,6 @@ couponSchema.post("save", async function (doc, next) {
   }
 });
 
+couponSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.Coupon || mongoose.model("Coupon", couponSchema);

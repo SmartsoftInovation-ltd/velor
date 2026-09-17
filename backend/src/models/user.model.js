@@ -1,5 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { customError } = require("../lib/CustomError");
@@ -205,4 +206,5 @@ userSchema.methods.verifyJwtRefreshToken = function (token) {
   }
 };
 
+userSchema.plugin(tenantPlugin);
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);

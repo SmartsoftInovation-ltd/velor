@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const Counter = require("./counter.model");
@@ -154,6 +155,7 @@ supplierSchema.post("save", async function (doc, next) {
   }
 });
 
+supplierSchema.plugin(tenantPlugin);
 const SupplierModel =
   mongoose.models.Supplier || mongoose.model("Supplier", supplierSchema);
 
@@ -282,6 +284,7 @@ supplierDuePaymentSchema.post("save", async function (doc, next) {
   }
 });
 
+supplierDuePaymentSchema.plugin(tenantPlugin);
 const SupplierDuePayment =
   mongoose.models.SupplierDuePayment ||
   mongoose.model("SupplierDuePayment", supplierDuePaymentSchema);

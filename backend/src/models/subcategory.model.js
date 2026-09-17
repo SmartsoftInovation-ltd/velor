@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -72,6 +73,7 @@ subcategorySchema.pre("save", async function (next) {
   }
 });
 
+subcategorySchema.plugin(tenantPlugin);
 const Subcategory =
   mongoose.models.Subcategory ||
   mongoose.model("Subcategory", subcategorySchema);

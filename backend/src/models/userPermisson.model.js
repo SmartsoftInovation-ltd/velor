@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const userPermissionSchema = new mongoose.Schema(
   {
@@ -12,6 +13,7 @@ const userPermissionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+userPermissionSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.UserPermission ||
   mongoose.model("UserPermission", userPermissionSchema);

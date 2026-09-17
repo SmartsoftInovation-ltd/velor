@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -76,6 +77,7 @@ brandSchema.pre("save", async function (next) {
     next(error);
   }
 });
+brandSchema.plugin(tenantPlugin);
 const Brand = mongoose.models.Brand || mongoose.model("Brand", brandSchema);
 
 module.exports = Brand;

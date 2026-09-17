@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { Schema } = mongoose;
 
 // Define the schema for the invoice model
@@ -54,6 +55,7 @@ const invoiceSchema = new Schema(
   }
 );
 
+invoiceSchema.plugin(tenantPlugin);
 // Create the Invoice model from the schema
 const Invoice =
   mongoose.models.Invoice || mongoose.model("Invoice", invoiceSchema);

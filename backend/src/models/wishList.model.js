@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const wishlistSchema = new mongoose.Schema(
   {
@@ -35,5 +36,6 @@ const wishlistSchema = new mongoose.Schema(
   },
 );
 
+wishlistSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.Wishlist || mongoose.model("Wishlist", wishlistSchema);

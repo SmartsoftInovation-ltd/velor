@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -103,6 +104,7 @@ discountBannerSchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
+discountBannerSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.discountBanner ||
   mongoose.model("discountBanner", discountBannerSchema);

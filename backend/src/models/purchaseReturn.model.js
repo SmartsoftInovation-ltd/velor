@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
 const { env } = require("../config/env.config");
 
@@ -102,6 +103,7 @@ purchaseReturnSchema.post("save", async function (doc, next) {
   }
 });
 
+purchaseReturnSchema.plugin(tenantPlugin);
 const PurchaseReturn =
   mongoose.models.PurchaseReturn ||
   mongoose.model("PurchaseReturn", purchaseReturnSchema);

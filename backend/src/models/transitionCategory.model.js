@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -73,6 +74,7 @@ transitionCategorySchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
+transitionCategorySchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.TransitionCategory ||
   mongoose.model("TransitionCategory", transitionCategorySchema);

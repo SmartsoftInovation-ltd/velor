@@ -1,5 +1,6 @@
 const { statusCodes } = require("../constant/constant");
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const purchaseModel = require("./purchase.model");
 const slugify = require("slugify");
 const { customError } = require("../lib/CustomError");
@@ -356,5 +357,6 @@ variantSchema.virtual("totalSalesReturnQuantity").get(function () {
     0,
   );
 });
+variantSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.Variant || mongoose.model("Variant", variantSchema);

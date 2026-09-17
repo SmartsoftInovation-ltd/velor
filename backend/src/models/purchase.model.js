@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const Counter = require("./counter.model");
@@ -242,6 +243,7 @@ purchaseSchema.post("save", async function (doc, next) {
   }
 });
 
+purchaseSchema.plugin(tenantPlugin);
 const Purchase =
   mongoose.models.Purchase || mongoose.model("Purchase", purchaseSchema);
 

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const courierReturnSchema = new mongoose.Schema(
   {
@@ -19,6 +20,7 @@ const courierReturnSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+courierReturnSchema.plugin(tenantPlugin);
 const CourierReturn =
   mongoose.models.CourierReturn ||
   mongoose.model("CourierReturn", courierReturnSchema);

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const Counter = require("./counter.model");
 const { env } = require("../config/env.config");
@@ -190,5 +191,6 @@ employeeSchema.pre("save", function (next) {
   }
 });
 
+employeeSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.Employee || mongoose.model("Employee", employeeSchema);

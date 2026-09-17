@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 // One row per calendar day. `date` is stored at midnight (local server time)
 // so a day's row can be looked up with a plain equality match instead of a
@@ -38,6 +39,7 @@ const dailyCashSummarySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+dailyCashSummarySchema.plugin(tenantPlugin);
 const DailyCashSummary =
   mongoose.models.DailyCashSummary ||
   mongoose.model("DailyCashSummary", dailyCashSummarySchema);

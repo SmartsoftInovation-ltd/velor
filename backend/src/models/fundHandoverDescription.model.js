@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
 const { env } = require("../config/env.config");
 
@@ -71,6 +72,7 @@ fundHandoverDescriptionSchema.post("save", async function (doc, next) {
   }
 });
 
+fundHandoverDescriptionSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.FundHandoverDescription ||
   mongoose.model("FundHandoverDescription", fundHandoverDescriptionSchema);

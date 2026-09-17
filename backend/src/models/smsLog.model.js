@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const smsLogSchema = new mongoose.Schema(
   {
@@ -46,6 +47,7 @@ const smsLogSchema = new mongoose.Schema(
 
 smsLogSchema.index({ recipientType: 1, createdAt: -1 });
 
+smsLogSchema.plugin(tenantPlugin);
 const SmsLog =
   mongoose.models.SmsLog || mongoose.model("SmsLog", smsLogSchema);
 

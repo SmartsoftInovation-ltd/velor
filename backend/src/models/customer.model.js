@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 
@@ -61,6 +62,7 @@ customerTypeSchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
+customerTypeSchema.plugin(tenantPlugin);
 const CustomerType =
   mongoose.models.CustomerType ||
   mongoose.model("CustomerType", customerTypeSchema);
@@ -302,6 +304,7 @@ customerSchema.post("save", async function (doc, next) {
   }
 });
 
+customerSchema.plugin(tenantPlugin);
 const customerModel =
   mongoose.models.Customer || mongoose.model("Customer", customerSchema);
 
@@ -419,6 +422,7 @@ customerPaymentRecivedSchema.post("save", async function (doc, next) {
   }
 });
 
+customerPaymentRecivedSchema.plugin(tenantPlugin);
 const customerPaymentRecived =
   mongoose.models.CustomerPaymentRecived ||
   mongoose.model("CustomerPaymentRecived", customerPaymentRecivedSchema);
@@ -516,6 +520,7 @@ customerAdvancePaymentRecivedSchema.post("save", async function (doc, next) {
   }
 });
 
+customerAdvancePaymentRecivedSchema.plugin(tenantPlugin);
 const customerAdvancePaymentModel =
   mongoose.models.CustomerAdvancePaymentRecived ||
   mongoose.model(

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { Schema } = mongoose;
 
 const stockAdjustSchema = new Schema({
@@ -29,6 +30,7 @@ const stockAdjustSchema = new Schema({
   },
 });
 
+stockAdjustSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.StockAdjust ||
   mongoose.model("StockAdjust", stockAdjustSchema);

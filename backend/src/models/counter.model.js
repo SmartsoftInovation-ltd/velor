@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 
 const counterSchema = new mongoose.Schema(
   {
@@ -16,5 +17,6 @@ const counterSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+counterSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.Counter || mongoose.model("Counter", counterSchema);

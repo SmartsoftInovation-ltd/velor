@@ -1,5 +1,6 @@
 const { string } = require("joi");
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const slugify = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -98,4 +99,5 @@ roleSchema.pre("save", async function (next) {
     next(error);
   }
 });
+roleSchema.plugin(tenantPlugin);
 module.exports = mongoose.models.Role || mongoose.model("Role", roleSchema);

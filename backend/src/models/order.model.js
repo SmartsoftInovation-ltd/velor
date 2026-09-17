@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Product = require("./product.model");
 const { required } = require("joi");
 
@@ -173,4 +174,5 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+orderSchema.plugin(tenantPlugin);
 module.exports = mongoose.models.Order || mongoose.model("Order", orderSchema);

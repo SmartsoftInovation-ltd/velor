@@ -1,5 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const Counter = require("./counter.model");
 const { env } = require("../config/env.config");
 
@@ -209,6 +210,7 @@ salesSchema.post("save", async function (doc, next) {
   }
 });
 
+salesSchema.plugin(tenantPlugin);
 const Sales = mongoose.models.Sales || mongoose.model("Sales", salesSchema);
 
 module.exports = Sales;
