@@ -26,8 +26,16 @@ const actionsForModule = (user, moduleName) => {
   return effectiveActions;
 };
 
-const isSuperAdminUser = (user) =>
-  (user?.roles || []).some((role) => role?.slug === "superadmin");
+const { OWNER_ROLE_SLUGS } = require("../tenancy/rbac");
+const { getTenantId } = require("../tenancy/context");
+
+// The store owner bypasses permission checks — only inside their own store
+const isSuperAdminUser = (user) => {
+  const owner = (user?.roles || []).some((role) => OWNER_ROLE_SLUGS.includes(role?.slug));
+  if (!owner) return false;
+  const tenantId = getTenantId();
+  return !tenantId || !user.tenantId || tenantId.equals(user.tenantId);
+};
 
 const authorize = (moduleName, action) =>
   asynchandeler(async (req, res, next) => {

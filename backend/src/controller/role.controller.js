@@ -5,6 +5,16 @@ const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { bumpNsVersion } = require("../utils/cache.util");
+const rbac = require("../tenancy/rbac");
+
+const findRoleForEdit = async (req) => {
+  const { slug } = req.params;
+  if (!slug) throw new customError("Role slug not provided", statusCodes.BAD_REQUEST);
+  const role = await Role.findOne({ slug }).populate("permissions.permission");
+  if (!role) throw new customError("Role not found", statusCodes.NOT_FOUND);
+  rbac.assertCanEditRole(req.user, role);
+  return role;
+};
 
 const NS = "role";
 
@@ -31,8 +41,12 @@ exports.getRoleByslug = asynchandeler(async (req, res) => {
 
 exports.updateRole = asynchandeler(async (req, res) => {
   const { slug } = req.params;
-  if (!slug) throw new customError("Role slug not provided", statusCodes.BAD_REQUEST);
-  const role = await Role.findOneAndUpdate({ slug }, req.body, { new: true });
+  await findRoleForEdit(req);
+  // Permissions change only through assignPermissionsToRole (escalation-checked)
+  const changes = {};
+  if (req.body.name !== undefined) changes.name = req.body.name;
+  if (req.body.isActive !== undefined) changes.isActive = req.body.isActive;
+  const role = await Role.findOneAndUpdate({ slug }, changes, { new: true });
   if (!role) throw new customError("Role not found", statusCodes.NOT_FOUND);
   await bumpNsVersion(NS);
   apiResponse.sendSuccess(res, statusCodes.OK, "Role updated successfully", role);
@@ -40,7 +54,7 @@ exports.updateRole = asynchandeler(async (req, res) => {
 
 exports.deleteRole = asynchandeler(async (req, res) => {
   const { slug } = req.params;
-  if (!slug) throw new customError("Role slug not provided", statusCodes.BAD_REQUEST);
+  await findRoleForEdit(req);
   const role = await Role.findOneAndDelete({ slug });
   if (!role) throw new customError("Role not found", statusCodes.NOT_FOUND);
   await bumpNsVersion(NS);
@@ -58,8 +72,15 @@ exports.getRolePermissions = asynchandeler(async (req, res) => {
 // PUT /role/:slug/permissions — replaces role's full permission set
 exports.assignPermissionsToRole = asynchandeler(async (req, res) => {
   const { permissions } = req.body; // [{ permissionId, actions: ["view","add",...] }]
-  const role = await Role.findOne({ slug: req.params.slug });
-  if (!role) throw new customError("Role not found", statusCodes.NOT_FOUND);
+  const role = await findRoleForEdit(req);
+  await rbac.assertCanGrantPermissions(req.user, permissions || []);
+  if (!rbac.isOwner(req.user)) {
+    const ids = (permissions || []).map((p) => p.permissionId).filter(Boolean);
+    const privileged = await Permission.exists({ _id: { $in: ids }, slug: { $in: ["create-user", "create-role"] } });
+    if (privileged) {
+      throw new customError("Only the store owner can give roles user or role management", statusCodes.FORBIDDEN);
+    }
+  }
 
   // Validate each permissionId exists
   const rolePermissions = [];

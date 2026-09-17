@@ -8,6 +8,7 @@ const { getGeneralConfig } = require("../integrations/config");
 const { getTenantId, runAsPlatform } = require("../tenancy/context");
 const { getTenantById, assertTenantActive } = require("../tenancy/tenantResolver");
 const { getFeatures } = require("../settings/settings.service");
+const rbac = require("../tenancy/rbac");
 const { apiResponse } = require("../utils/apiResponse");
 const { customError } = require("../lib/CustomError");
 const { validateUser } = require("../validation/user.validation");
@@ -514,6 +515,8 @@ exports.getMe = asynchandeler(async (req, res) => {
 exports.addPermissionToUser = asynchandeler(async (req, res) => {
   const { userId, permissionId, actions } = req.body;
 
+  await rbac.assertCanManageUser(req.user, userId);
+
   // Check if user exists
   const user = await User.findById(userId);
   if (!user) throw new customError("User not found", statusCodes.NOT_FOUND);
@@ -537,6 +540,10 @@ exports.addPermissionToUser = asynchandeler(async (req, res) => {
       statusCodes.BAD_REQUEST,
     );
   }
+
+  await rbac.assertCanGrantPermissions(req.user, [
+    { permission, actions: requestedActions },
+  ]);
 
   const existing = user.permissions.find(
     (p) => p.permission?.toString() === permission._id.toString(),
@@ -567,6 +574,8 @@ exports.addPermissionToUser = asynchandeler(async (req, res) => {
 // remove permission from user
 exports.removePermissionFromUser = asynchandeler(async (req, res) => {
   const { userId, permissionId } = req.body;
+
+  await rbac.assertCanManageUser(req.user, userId);
 
   // Check if user exists
   const user = await User.findById(userId);
@@ -614,7 +623,7 @@ exports.isSuperAdmin = asynchandeler(async (req, res) => {
   }
 
   const isSuperAdmin =
-    user?.roles?.some((role) => role?.slug === "superadmin") || false;
+    user?.roles?.some((role) => rbac.OWNER_ROLE_SLUGS.includes(role?.slug)) || false;
   return apiResponse.sendSuccess(
     res,
     statusCodes.OK,
@@ -629,6 +638,11 @@ exports.isSuperAdmin = asynchandeler(async (req, res) => {
 exports.addUser = asynchandeler(async (req, res) => {
   const value = await validateUser(req);
   const { image: imageFile, ...rest } = value;
+
+  if (value.role) {
+    await rbac.assertStaffCapacity(req.tenant);
+    await rbac.assertCanAssignRole(req.user, value.role);
+  }
 
   // Create user first with pending image status if image provided
   const user = await User.create({
@@ -708,6 +722,11 @@ exports.updateUser = asynchandeler(async (req, res) => {
   const { id } = req.params;
   const data = req.body;
 
+  const target = await rbac.assertCanManageUser(req.user, id);
+  const currentRole = target.roles?.[0]?._id?.toString();
+  const roleChanged = Boolean(data.role) && String(data.role) !== currentRole;
+  if (roleChanged) await rbac.assertCanAssignRole(req.user, data.role);
+
   //  Manual basic field validation
   const requiredFields = ["name", "email", "phone"];
   for (const field of requiredFields) {
@@ -745,6 +764,11 @@ exports.updateUser = asynchandeler(async (req, res) => {
   }
 
   //  Handle image upload & old image deletion (handled by queue after findByIdAndUpdate)
+
+  // A new role or password ends the user's existing sessions
+  if (roleChanged || updateData.password) {
+    updateData.$inc = { tokenVersion: 1 };
+  }
 
   //  Update user in DB
   const updatedUser = await User.findByIdAndUpdate(id, updateData, {
@@ -798,6 +822,8 @@ const setUserActiveStatus = (isActive) =>
   asynchandeler(async (req, res) => {
     const { id } = req.params;
 
+    await rbac.assertCanManageUser(req.user, id);
+
     const user = await User.findById(id);
     if (!user) {
       throw new customError("User not found", statusCodes.NOT_FOUND);
@@ -813,7 +839,13 @@ const setUserActiveStatus = (isActive) =>
 
     const before = { isActive: user.isActive };
 
+    if (isActive && !user.isActive && user.roles?.length) {
+      await rbac.assertStaffCapacity(req.tenant);
+    }
+
     user.isActive = isActive;
+    // Deactivation ends every live session at once
+    if (!isActive) user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
     logAudit({
@@ -843,6 +875,11 @@ exports.deactivateUser = setUserActiveStatus(false);
 // delte user
 exports.deleteUser = asynchandeler(async (req, res) => {
   const { id } = req.params;
+
+  if (req.user._id.toString() === id) {
+    throw new customError("You cannot delete your own account", statusCodes.BAD_REQUEST);
+  }
+  await rbac.assertCanManageUser(req.user, id);
 
   // Find user first
   const user = await User.findById(id);

@@ -4,6 +4,7 @@ const Permission = require("../models/permisson.model");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
 require("../models/role.model");
+const rbac = require("../tenancy/rbac");
 
 // get all permissions
 exports.getAllPermissions = asynchandeler(async (req, res) => {
@@ -53,7 +54,7 @@ exports.getUserPermissions = asynchandeler(async (req, res) => {
 
   const allPermissions = await Permission.find({ isActive: true }).sort({ permissionName: 1 });
 
-  const isSuperAdmin = user.roles?.some((r) => r.slug === "superadmin");
+  const isSuperAdmin = user.roles?.some((r) => rbac.OWNER_ROLE_SLUGS.includes(r.slug));
 
   const formattedPermissions = allPermissions.map((permission) => {
     const userPerm = user.permissions.find(
@@ -101,6 +102,9 @@ exports.updateUserPermissions = asynchandeler(async (req, res) => {
   if (!permissions || !Array.isArray(permissions)) {
     throw new customError("Permissions array is required", 400);
   }
+
+  await rbac.assertCanManageUser(req.user, userId);
+  await rbac.assertCanGrantPermissions(req.user, permissions);
 
   const user = await User.findById(userId);
   if (!user) throw new customError("User not found", 404);

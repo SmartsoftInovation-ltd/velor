@@ -9,6 +9,7 @@ const Product = require("../../src/models/product.model");
 const User = require("../../src/models/user.model");
 const Counter = require("../../src/models/counter.model");
 const Merchant = require("../../src/models/marchant.model");
+const Role = require("../../src/models/role.model");
 
 const LEGACY_ENV = {
   INVOICE_PREFIX: "VLR",
@@ -58,6 +59,11 @@ describe("Velor migration", () => {
       { name: "Staff", email: "staff@velor.test", password: "x" },
     ]);
     await raw(Counter).insertOne({ key: "SALES_INVOICE", seq: 41 });
+    const { insertedIds } = await raw(Role).insertMany([
+      { name: "superAdmin", slug: "superadmin", isActive: true, permissions: [] },
+      { name: "manager", slug: "manager", isActive: true, permissions: [] },
+    ]);
+    await raw(User).updateOne({ email: "owner@velor.test" }, { $set: { roles: [insertedIds[0]] } });
     await raw(Merchant).insertMany([
       { merchantID: "pathao-client", merchantSecret: "pathao-secret", baseURL: "https://api-hermes.pathao.com", serviceProvider: "pathao", store_id: 148890 },
       { merchantID: "sf-api-key", merchantSecret: "sf-secret-key", baseURL: "https://portal.packzy.com/api/v1", serviceProvider: "steadfast" },
@@ -86,6 +92,7 @@ describe("Velor migration", () => {
         ["002-backfill-tenant-id", "applied"],
         ["003-create-tenant-indexes", "applied"],
         ["004-backfill-cloud-name", "applied"],
+        ["005-owner-role", "applied"],
       ]);
     });
 
@@ -128,6 +135,18 @@ describe("Velor migration", () => {
       expect(shirt.image[1].cloudName).toBeUndefined();
       const pant = await raw(Product).findOne({ slug: "pant" });
       expect(pant.thumbnail.cloudName).toBeUndefined();
+    });
+
+    it("turns the legacy superadmin role into the store owner role and records the owner", async () => {
+      const owner = await runForTenant(velor._id, () => Role.findOne({ slug: "owner" }).lean());
+      expect(owner).toMatchObject({ name: "owner" });
+      expect(await raw(Role).countDocuments({ slug: "superadmin" })).toBe(0);
+
+      const ownerUser = await raw(User).findOne({ email: "owner@velor.test" });
+      expect((await Tenant.findById(velor._id)).ownerUserId.toString()).toBe(ownerUser._id.toString());
+
+      const slugs = (await runForTenant(velor._id, () => Role.find().lean())).map((r) => r.slug).sort();
+      expect(slugs).toEqual(["admin", "manager", "owner", "salesmen"]);
     });
 
     it("is idempotent: a second run skips everything", async () => {

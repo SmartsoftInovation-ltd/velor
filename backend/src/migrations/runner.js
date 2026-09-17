@@ -9,6 +9,7 @@ const MIGRATIONS = [
   require("./002-backfill-tenant-id"),
   require("./003-create-tenant-indexes"),
   require("./004-backfill-cloud-name"),
+  require("./005-owner-role"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

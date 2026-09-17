@@ -23,7 +23,7 @@ const roleSchema = new mongoose.Schema(
 // Slugs are security-relevant: authorize() grants a blanket bypass to any role
 // whose slug is exactly "superadmin", so the slug must never be attacker-
 // controlled. It is always derived from `name`, never accepted from input.
-const RESERVED_ROLE_SLUGS = ["superadmin"];
+const RESERVED_ROLE_SLUGS = ["superadmin", "owner"];
 
 const deriveSlug = (name) => slugify(name, { lower: true, strict: true });
 

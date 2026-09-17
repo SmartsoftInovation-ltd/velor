@@ -23,7 +23,7 @@
 | 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | **done** |
 | 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | **done** |
 | 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | **done** |
-| 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | todo |
+| 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | **done** |
 | 9 | Cross-cutting (cache, queues, sockets, audit, vector search) | §6, §10 step 10 | todo |
 | 10 | Dashboard multi-tenant | §7, §10 step 11 | todo |
 | 11 | Provisioning, isolation suite, fail-closed | §8.2, §12, §10 steps 12–13 | todo |
@@ -215,6 +215,20 @@
 | 8.3 | Escalation guard for role/permission assignment |
 | 8.4 | Staff limit; deactivate bumps `tokenVersion` |
 | 8.5 | Permission CRUD moved to platform routes; retire `UserPermission` |
+
+**Implementation notes (as built):**
+- `owner` role (reserved slug, created only by `seedTenantRoles` / migration) bypasses permission checks inside its own store; legacy `superadmin` is treated the same until migration `005-owner-role` renames it.
+- Default roles per store: `owner`, `admin`, `manager`, `salesmen` (`src/tenancy/roleTemplate.js`).
+- Escalation guards (`src/tenancy/rbac.js`), applied to add/update user, add/remove user permission, bulk user permissions (`/userpermission`), role update/delete/permissions:
+  - nobody assigns the owner role through the tenant API;
+  - non-owners can only grant role/direct permissions they hold themselves;
+  - only the owner changes the owner account or roles holding `create-user` / `create-role`;
+  - the owner role cannot be edited or deleted; `updaterole` only changes `name`/`isActive`.
+- Staff limit (`tenant.limits.maxStaff`) on add and re-activation → 403 `STAFF_LIMIT_REACHED`.
+- Deactivation, role change and password change bump `tokenVersion` (sessions end immediately).
+- Permission catalog: tenant write routes return 403; platform CRUD at `/api/v1/platform/permissions`.
+- The `/userpermission` routes stay: they edit `User.permissions` (used by the dashboard); only the `UserPermission` model is unused.
+- **Deploy note:** migration `005-owner-role` renames `superadmin` → `owner`; deploy the Sprint 10 dashboard (which reads `isOwner` from `getme`) together with running the migration.
 
 ## Sprint 9 — Cross-cutting subsystems
 
