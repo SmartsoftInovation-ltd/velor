@@ -2,7 +2,7 @@
 
 > Companion to [`multi-tenant-plan.md`](./multi-tenant-plan.md). That file is the big-picture plan; **this file is the build guide for the backend and the dashboard only.** The Next.js storefront is the next stage and is only referenced where the backend must be ready for it.
 >
-> Status: **Design — no code written yet.** Date: 2026-09-17
+> Status: **Implemented (backend + dashboard + platform console)** — build log and cutover checklist in [`multitenant-sprints.md`](./multitenant-sprints.md). Date: 2026-09-17
 
 ---
 

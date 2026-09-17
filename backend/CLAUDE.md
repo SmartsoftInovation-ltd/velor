@@ -24,7 +24,7 @@ Tests never load the real `.env` (`dotenv` is mocked in `jest.config.js`).
 
 ## Multi-tenancy
 
-Work in progress, tracked in `../docs/multitenant-sprints.md`. Every business model applies `src/tenancy/tenantPlugin.js`; queries are scoped to the tenant set with `runForTenant()` (`src/tenancy/context.js`). New models must apply the plugin or be listed in `src/tenancy/registry.js` — a test enforces this. `TENANCY_MODE=shadow` (default) leaves code without a tenant context unscoped.
+Implemented; build notes and production cutover checklist in `../docs/multitenant-sprints.md`. Every business model applies `src/tenancy/tenantPlugin.js`; queries are scoped to the tenant set with `runForTenant()` (`src/tenancy/context.js`). New models must apply the plugin or be listed in `src/tenancy/registry.js` — a test enforces this. `TENANCY_MODE=shadow` (default) leaves code without a tenant context unscoped.
 
 
 ## Environment Variables
