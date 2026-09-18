@@ -160,6 +160,33 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: "complete", // complete or partialit
     },
+
+    /**
+     * Where the order was taken.
+     *
+     * Both the storefront and the dashboard write into this one collection, so
+     * every report, invoice, courier booking and SMS keeps working on a single
+     * query. This field is what lets a report still say "web vs counter" when
+     * that split is wanted, without splitting the data to get it.
+     *
+     * `web`  — a shopper checking out on the store's own site
+     * `pos`  — a staff member entering an order (phone, walk-in)
+     *
+     * Defaults to `pos` because that is what existed before the storefront: old
+     * rows were all entered by staff, so the default describes them correctly.
+     */
+    channel: {
+      type: String,
+      enum: ["web", "pos"],
+      default: "pos",
+      index: true,
+    },
+    // The staff member who entered a counter order; null for a web order
+    placedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     followUp: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

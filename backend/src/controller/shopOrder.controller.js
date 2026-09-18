@@ -192,6 +192,8 @@ exports.createOrder = asynchandeler(async (req, res) => {
     orderStatus: "Pending",
     invoiceId,
     totalQuantity,
+    // Taken on the storefront, so reports can tell it apart from a counter sale
+    channel: "web",
   });
 
   /**

@@ -1,0 +1,476 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
+import { FiMinus, FiPlus, FiSearch, FiShoppingCart, FiTrash2, FiUser } from "react-icons/fi";
+import { HiOutlineReceiptPercent } from "react-icons/hi2";
+import axiosSecure from "../../hooks/useAxiosSecure";
+import PageMeta from "../../components/common/PageMeta";
+import {
+  ConsoleHeader,
+  EmptyState,
+  Field,
+  cardClass,
+  inputClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "../PlatformConsole/ui";
+
+/**
+ * Taking an order at the counter — over the phone, or for someone standing
+ * there.
+ *
+ * The totals shown here are never computed in the browser. Every change asks
+ * the server to price the order, so the figure on screen is the figure that
+ * will be charged and stored; a rounding rule or a discount cap can never drift
+ * between the two. The same endpoint prices storefront orders, so a counter
+ * sale and a web sale of the same basket come to the same number.
+ */
+
+interface ProductHit {
+  _id: string;
+  name: string;
+  retailPrice: number;
+  stock?: number;
+  sku?: string;
+}
+
+interface CartLine {
+  productId: string;
+  name: string;
+  retailPrice: number;
+  quantity: number;
+  stock: number;
+}
+
+interface DeliveryOption {
+  _id: string;
+  name: string;
+  deliveryCharge: number;
+}
+
+interface Quote {
+  subtotal: number;
+  discountAmount: number;
+  deliveryCharge: number;
+  finalAmount: number;
+  totalQuantity: number;
+  couponError: string | null;
+}
+
+const money = (value: number) => `৳${value.toLocaleString("en-BD", { minimumFractionDigits: 0 })}`;
+
+const emptyCustomer = { fullName: "", phone: "", address: "" };
+
+const CounterOrder = () => {
+  const [search, setSearch] = useState("");
+  const [hits, setHits] = useState<ProductHit[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const [lines, setLines] = useState<CartLine[]>([]);
+  const [customer, setCustomer] = useState(emptyCustomer);
+  const [couponCode, setCouponCode] = useState("");
+  const [deliveryChargeId, setDeliveryChargeId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "sslcommerz">("cod");
+
+  const [deliveryOptions, setDeliveryOptions] = useState<DeliveryOption[]>([]);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [placing, setPlacing] = useState(false);
+
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    axiosSecure
+      .get("/delivery-charge/get-delivery-charge")
+      .then((res) => setDeliveryOptions(Array.isArray(res.data?.data) ? res.data.data : []))
+      .catch(() => setDeliveryOptions([]));
+  }, []);
+
+  // Debounced so typing a product name does not fire a request per keystroke
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const term = search.trim();
+    if (term.length < 2) {
+      setHits([]);
+      return;
+    }
+
+    searchTimer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        // The endpoint searches by name, barCode, sku or slug; name is what an
+        // operator types at the counter.
+        const res = await axiosSecure.get("/product/search-product", { params: { name: term } });
+        const found = res.data?.data?.products ?? [];
+        setHits(Array.isArray(found) ? found.slice(0, 8) : []);
+      } catch {
+        setHits([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [search]);
+
+  const addLine = (hit: ProductHit) => {
+    setLines((current) => {
+      const existing = current.find((line) => line.productId === hit._id);
+      if (existing) {
+        return current.map((line) =>
+          line.productId === hit._id ? { ...line, quantity: line.quantity + 1 } : line,
+        );
+      }
+      return [
+        ...current,
+        {
+          productId: hit._id,
+          name: hit.name,
+          retailPrice: hit.retailPrice,
+          quantity: 1,
+          stock: hit.stock ?? 0,
+        },
+      ];
+    });
+    setSearch("");
+    setHits([]);
+  };
+
+  const setQuantity = (productId: string, quantity: number) =>
+    setLines((current) =>
+      quantity < 1
+        ? current.filter((line) => line.productId !== productId)
+        : current.map((line) => (line.productId === productId ? { ...line, quantity } : line)),
+    );
+
+  const removeLine = (productId: string) =>
+    setLines((current) => current.filter((line) => line.productId !== productId));
+
+  const payload = useMemo(
+    () => ({
+      items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+      couponCode: couponCode.trim() || undefined,
+      deliveryChargeId: deliveryChargeId || undefined,
+    }),
+    [lines, couponCode, deliveryChargeId],
+  );
+
+  /**
+   * Re-prices on every change. The server is the only thing that decides what
+   * the order costs, so the screen asks rather than calculating.
+   */
+  const refreshQuote = useCallback(async () => {
+    if (lines.length === 0) {
+      setQuote(null);
+      return;
+    }
+    try {
+      const res = await axiosSecure.post("/order/pos/quote", payload);
+      setQuote(res.data?.data ?? null);
+    } catch {
+      setQuote(null);
+    }
+  }, [lines.length, payload]);
+
+  useEffect(() => {
+    const timer = setTimeout(refreshQuote, 250);
+    return () => clearTimeout(timer);
+  }, [refreshQuote]);
+
+  const canPlace = lines.length > 0 && customer.fullName.trim() && customer.phone.trim() && !placing;
+
+  const placeOrder = async () => {
+    if (!canPlace) return;
+    setPlacing(true);
+    try {
+      const res = await axiosSecure.post("/order/pos", {
+        ...payload,
+        shippingInfo: customer,
+        paymentMethod,
+      });
+      const order = res.data?.data?.order;
+      toast.success(`Order ${order?.invoiceId ?? ""} placed — ${money(order?.finalAmount ?? 0)}`);
+
+      setLines([]);
+      setCustomer(emptyCustomer);
+      setCouponCode("");
+      setDeliveryChargeId("");
+      setQuote(null);
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Could not place the order";
+      toast.error(message);
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  return (
+    <>
+      <PageMeta title="Counter Order" description="Take an order at the counter or over the phone" />
+
+      <ConsoleHeader
+        crumbs={[{ label: "Orders", to: "/order-list" }, { label: "Counter order" }]}
+        title="Counter order"
+        subtitle="Take an order over the phone or for a walk-in customer. Prices come from your catalogue."
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+        {/* Products and the basket */}
+        <div className="space-y-6">
+          <div className={cardClass}>
+            <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white/90">Add products</h2>
+            </div>
+            <div className="relative px-5 py-4">
+              <div className="relative">
+                <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by product name…"
+                  aria-label="Search products"
+                  className={`${inputClass} pl-10`}
+                />
+              </div>
+
+              {search.trim().length >= 2 && (
+                <div className="absolute inset-x-5 z-20 mt-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+                  {searching && <p className="px-4 py-3 text-sm text-gray-500">Searching…</p>}
+                  {!searching && hits.length === 0 && (
+                    <p className="px-4 py-3 text-sm text-gray-500">No product found</p>
+                  )}
+                  {hits.map((hit) => (
+                    <button
+                      key={hit._id}
+                      type="button"
+                      onClick={() => addLine(hit)}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition hover:bg-accent-50 dark:hover:bg-white/5"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-gray-800 dark:text-white/90">
+                          {hit.name}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          Stock {hit.stock ?? 0}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold text-gray-900 tabular-nums dark:text-white/90">
+                        {money(hit.retailPrice)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={cardClass}>
+            <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white/90">
+                Basket{lines.length > 0 && <span className="ml-1.5 text-gray-400">({lines.length})</span>}
+              </h2>
+            </div>
+
+            {lines.length === 0 ? (
+              <EmptyState
+                icon={<FiShoppingCart />}
+                title="Nothing added yet"
+                text="Search for a product above to start building this order."
+              />
+            ) : (
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+                {lines.map((line) => (
+                  <li key={line.productId} className="flex items-center gap-3 px-5 py-3.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-800 dark:text-white/90">{line.name}</p>
+                      <p className="text-xs text-gray-500">{money(line.retailPrice)} each</p>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Reduce ${line.name}`}
+                        onClick={() => setQuantity(line.productId, line.quantity - 1)}
+                        className="inline-flex size-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400"
+                      >
+                        <FiMinus className="size-3.5" />
+                      </button>
+                      <input
+                        value={line.quantity}
+                        onChange={(event) => setQuantity(line.productId, Number(event.target.value) || 1)}
+                        aria-label={`Quantity for ${line.name}`}
+                        className="h-8 w-12 rounded-lg border border-gray-200 text-center text-sm tabular-nums dark:border-gray-800 dark:bg-gray-900 dark:text-white/90"
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Add one ${line.name}`}
+                        onClick={() => setQuantity(line.productId, line.quantity + 1)}
+                        className="inline-flex size-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400"
+                      >
+                        <FiPlus className="size-3.5" />
+                      </button>
+                    </div>
+
+                    <p className="w-20 shrink-0 text-right text-sm font-semibold text-gray-900 tabular-nums dark:text-white/90">
+                      {money(line.retailPrice * line.quantity)}
+                    </p>
+
+                    <button
+                      type="button"
+                      aria-label={`Remove ${line.name}`}
+                      onClick={() => removeLine(line.productId)}
+                      className="inline-flex size-8 items-center justify-center rounded-lg text-error-500 transition hover:bg-error-50 dark:hover:bg-error-500/15"
+                    >
+                      <FiTrash2 className="size-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Customer, discounts and the total */}
+        <div className="space-y-6">
+          <div className={cardClass}>
+            <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+              <FiUser className="size-4 text-accent-600" />
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white/90">Customer</h2>
+            </div>
+            <div className="space-y-4 px-5 py-4">
+              <Field id="pos-name" label="Name">
+                <input
+                  id="pos-name"
+                  value={customer.fullName}
+                  onChange={(event) => setCustomer({ ...customer, fullName: event.target.value })}
+                  placeholder="Customer name"
+                  className={inputClass}
+                />
+              </Field>
+              <Field id="pos-phone" label="Phone">
+                <input
+                  id="pos-phone"
+                  value={customer.phone}
+                  onChange={(event) => setCustomer({ ...customer, phone: event.target.value })}
+                  placeholder="01XXXXXXXXX"
+                  className={inputClass}
+                />
+              </Field>
+              <Field id="pos-address" label="Address" hint="Optional for a walk-in customer">
+                <input
+                  id="pos-address"
+                  value={customer.address}
+                  onChange={(event) => setCustomer({ ...customer, address: event.target.value })}
+                  placeholder="Delivery address"
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className={cardClass}>
+            <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+              <HiOutlineReceiptPercent className="size-4 text-accent-600" />
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white/90">Discount & delivery</h2>
+            </div>
+            <div className="space-y-4 px-5 py-4">
+              <Field id="pos-coupon" label="Coupon code">
+                <input
+                  id="pos-coupon"
+                  value={couponCode}
+                  onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                  placeholder="SAVE10"
+                  className={inputClass}
+                />
+              </Field>
+              {quote?.couponError && (
+                <p role="status" className="rounded-xl border border-warning-200 bg-warning-50 px-3.5 py-2.5 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+                  {quote.couponError}
+                </p>
+              )}
+
+              <Field id="pos-delivery" label="Delivery">
+                <select
+                  id="pos-delivery"
+                  value={deliveryChargeId}
+                  onChange={(event) => setDeliveryChargeId(event.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">No delivery charge</option>
+                  {deliveryOptions.map((option) => (
+                    <option key={option._id} value={option._id}>
+                      {option.name} — {money(option.deliveryCharge)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field id="pos-payment" label="Payment">
+                <select
+                  id="pos-payment"
+                  value={paymentMethod}
+                  onChange={(event) => setPaymentMethod(event.target.value as "cod" | "sslcommerz")}
+                  className={inputClass}
+                >
+                  <option value="cod">Cash on delivery</option>
+                  <option value="sslcommerz">Online (SSLCommerz)</option>
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          <div className={cardClass}>
+            <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white/90">Summary</h2>
+            </div>
+            <div className="space-y-2.5 px-5 py-4 text-sm">
+              {/* Every figure here came from the server, not from this screen */}
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Subtotal{quote ? ` (${quote.totalQuantity} items)` : ""}</span>
+                <span className="tabular-nums">{money(quote?.subtotal ?? 0)}</span>
+              </div>
+              {(quote?.discountAmount ?? 0) > 0 && (
+                <div className="flex justify-between text-accent-600 dark:text-accent-400">
+                  <span>Discount</span>
+                  <span className="tabular-nums">−{money(quote?.discountAmount ?? 0)}</span>
+                </div>
+              )}
+              {(quote?.deliveryCharge ?? 0) > 0 && (
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Delivery</span>
+                  <span className="tabular-nums">{money(quote?.deliveryCharge ?? 0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-gray-100 pt-3 text-base font-semibold text-gray-900 dark:border-gray-800 dark:text-white/90">
+                <span>Total</span>
+                <span className="tabular-nums">{money(quote?.finalAmount ?? 0)}</span>
+              </div>
+            </div>
+            <div className="flex gap-2 border-t border-gray-100 px-5 py-4 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setLines([]);
+                  setCustomer(emptyCustomer);
+                  setCouponCode("");
+                  setDeliveryChargeId("");
+                }}
+                className={secondaryButtonClass}
+                disabled={lines.length === 0 && !customer.fullName}
+              >
+                Clear
+              </button>
+              <button type="button" onClick={placeOrder} disabled={!canPlace} className={`${primaryButtonClass} flex-1`}>
+                {placing ? "Placing…" : `Place order ${quote ? money(quote.finalAmount) : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default CounterOrder;

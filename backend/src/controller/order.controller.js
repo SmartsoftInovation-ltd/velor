@@ -249,6 +249,9 @@ exports.createOrder = asynchandeler(async (req, res) => {
       orderType: orderType,
       productWeight: 0,
       isAutoPlaced: isAutoPlaced,
+      // Entered at the counter by a staff member, not by a shopper on the site
+      channel: "pos",
+      placedBy: req.user?._id ?? null,
     });
 
     // Step 7: Update stock and coupon usage after successful order creation

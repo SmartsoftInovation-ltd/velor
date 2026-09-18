@@ -1,10 +1,16 @@
 const express = require("express");
 const _ = express.Router();
 const orderController = require("../../controller/order.controller");
+const posOrderController = require("../../controller/posOrder.controller");
 const { authGuard } = require("../../middleware/authMiddleware");
 const { authorize } = require("../../middleware/checkPermission.middleware");
 
 _.route("/createorder").post(authGuard, authorize("order", "add"), orderController.createOrder);
+
+// Counter orders taken by staff. Lines come in the request (there is no shopper
+// cart to read), but every amount is still priced from the database.
+_.route("/pos").post(authGuard, authorize("order", "add"), posOrderController.createPosOrder);
+_.route("/pos/quote").post(authGuard, authorize("order", "add"), posOrderController.quotePosOrder);
 _.route("/allorders").get(authGuard, authorize("order", "view"), orderController.getAllOrders);
 _.route("/single-order/:id").get(authGuard, authorize("order", "view"), orderController.getSingleOrder);
 _.route("/order-update/:id").put(authGuard, authorize("order", "edit"), orderController.updateOrder);
