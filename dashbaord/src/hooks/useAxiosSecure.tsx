@@ -71,7 +71,11 @@ axiosSecure.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  Object.entries(workspaceHeaders()).forEach(([name, value]) => config.headers.set(name, value));
+  // A caller that named its own store (sign-in, workspace switch) wins: the
+  // remembered workspace is still the previous store's at that moment.
+  if (!config.headers.get("x-tenant")) {
+    Object.entries(workspaceHeaders()).forEach(([name, value]) => config.headers.set(name, value));
+  }
   return config;
 });
 

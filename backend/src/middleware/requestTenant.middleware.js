@@ -5,13 +5,14 @@ const { runForTenant, getTenantId } = require("../tenancy/context");
 const { getTenantBySlug, assertTenantActive } = require("../tenancy/tenantResolver");
 
 /**
- * Opens the tenant context for requests that name their store:
- * the `x-tenant` header (dashboard / storefront), or DEFAULT_TENANT_SLUG for a
- * single-store deployment. Authenticated requests are bound to the token's
- * tenant later by authGuard, which rejects a mismatch.
+ * Opens the tenant context for requests that name their store in the `x-tenant`
+ * header (dashboard / storefront). There is no default store: a request that
+ * names none runs without a context, which strict mode rejects at query time.
+ * Authenticated requests are bound to the token's tenant later by authGuard,
+ * which rejects a mismatch.
  */
 const resolveRequestTenant = asynchandeler(async (req, res, next) => {
-  const slug = req.headers["x-tenant"] || process.env.DEFAULT_TENANT_SLUG;
+  const slug = req.headers["x-tenant"];
   if (!slug) return next();
 
   const tenant = await getTenantBySlug(slug);

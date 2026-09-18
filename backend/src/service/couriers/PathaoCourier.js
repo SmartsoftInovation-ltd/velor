@@ -4,6 +4,7 @@ const Order = require("../../models/order.model");
 const { customError } = require("../../lib/CustomError");
 const PathaoAuth = require("./PathaoAuth");
 const { apiResponse } = require("../../utils/apiResponse");
+const { secretEquals } = require("../../utils/secretCompare");
 
 class PathaoCourier extends BaseCourier {
   constructor(merchant) {
@@ -199,11 +200,13 @@ class PathaoCourier extends BaseCourier {
   }
 
   // Handle Pathao webhook
-  async handlePathaoWebhook(req, res, secret = process.env.WEBHOOK_SECRET) {
+  // `secret` is the store's own webhook secret; there is no global fallback,
+  // so one store's secret can never authenticate another store's hook.
+  async handlePathaoWebhook(req, res, secret) {
     try {
       const signature = req.headers["x-pathao-signature"];
       // 1. Verify signature — an unset secret must reject, never fall back
-      if (!secret || signature !== secret) {
+      if (!secretEquals(signature, secret)) {
         return res.status(401).json({ error: "Invalid signature" });
       }
       console.log("Pathao webhook received:", req.body);

@@ -9,11 +9,28 @@
 > describe vector search, embeddings or the chat widget are kept as a record of
 > the original design and no longer reflect the codebase.
 
+> **Removed (2026-09-18):** the **Groq / AI integration** described in this
+> document no longer exists. There is no `groq.client.js`, no `ai.groq` settings
+> section, no `GROQ_API_KEY` read and no `AI_NOT_CONFIGURED` code anywhere in
+> the source or `package.json`. Per-tenant settings ship seven sections only:
+> `general`, `sms`, `email`, `sslcommerz`, `pathao`, `steadfast`, `cloudinary`.
+> Sections below that describe Groq, AI chat or per-tenant LLM keys are kept as
+> a record of the original design and no longer reflect the codebase.
+>
+> **Changed (2026-09-18):** the Platform Console **access code** design was
+> removed in commit `0c8f82e`. `POST /platform/auth/console-access` and
+> `src/platform/accessCode.ts` no longer exist. The console now uses a platform
+> operator login: email + password (`POST /platform/auth/login`, which returns
+> an OTP challenge only) followed by a 6-digit SMS code
+> (`POST /platform/auth/verify-otp`, with `/auth/resend-otp` throttled to 60s).
+> Codes are stored HMAC-hashed, compared with `crypto.timingSafeEqual`, expire
+> in 5 minutes and burn after 5 wrong attempts.
 
 
 > Status: **PLAN ONLY — awaiting review.** No implementation code has been written.
 > Scope: `backend/` (Express + Mongoose), `dashbaord/` (Vite admin SPA), `frontend/` (Next.js storefront).
 > Date: 2026-09-17
+
 
 ---
 

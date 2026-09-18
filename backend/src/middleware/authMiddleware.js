@@ -22,8 +22,9 @@ const legacyGraceActive = () => {
 /**
  * Verifies an access token and resolves its tenant.
  * Tokens carry { sub, tid, tv }. Tokens issued before multi-tenancy carry only
- * { id, email, ... }: they are accepted for users already moved into a tenant
- * until LEGACY_TOKEN_GRACE_UNTIL, and for not-yet-migrated users outside strict mode.
+ * { id, email, ... }: they are accepted until LEGACY_TOKEN_GRACE_UNTIL for users
+ * already moved into a tenant, and never for users without one — a session with
+ * no tenant would read and write across every store.
  */
 const resolveTokenSession = async (token, loadUser) => {
   const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
@@ -34,24 +35,24 @@ const resolveTokenSession = async (token, loadUser) => {
   if (!tenantId) {
     const legacy = await runAsPlatform(() => User.findById(userId).select("tenantId").lean());
     if (!legacy) throw unauthorized("User not found");
-    if (legacy.tenantId) {
-      if (!legacyGraceActive()) throw unauthorized("Session expired. Please sign in again.");
-      tenantId = legacy.tenantId;
-    } else if (process.env.TENANCY_MODE === "strict") {
+    if (!legacy.tenantId || !legacyGraceActive()) {
       throw unauthorized("Session expired. Please sign in again.");
     }
+    tenantId = legacy.tenantId;
   }
 
-  const tenant = tenantId ? assertTenantActive(await getTenantById(tenantId)) : null;
+  const tenant = assertTenantActive(await getTenantById(tenantId));
 
   const requestTenant = getTenantId();
-  if (requestTenant && tenant && !requestTenant.equals(tenant._id)) {
+  if (requestTenant && !requestTenant.equals(tenant._id)) {
     throw unauthorized("This session belongs to a different store");
   }
 
-  const user = tenant ? await runForTenant(tenant._id, () => loadUser(userId)) : await loadUser(userId);
+  const user = await runForTenant(tenant._id, () => loadUser(userId));
   if (!user) throw unauthorized("User not found");
-  if (decoded.tid && (decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
+  // Checked for legacy tokens too (tv absent reads as 0), so bumping tokenVersion
+  // revokes every live session, not only the ones carrying a tenant claim.
+  if ((decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
     throw unauthorized("Session expired. Please sign in again.");
   }
 

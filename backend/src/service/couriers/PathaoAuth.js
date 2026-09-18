@@ -1,6 +1,7 @@
 const axios = require("axios");
 const { customError } = require("../../lib/CustomError");
 const { MerchantTokenStore, RedisTokenStore } = require("./pathaoTokenStore");
+const { isProduction } = require("../../config/nodeEnv");
 
 class PathaoAuth {
   /**
@@ -30,7 +31,7 @@ class PathaoAuth {
       };
     }
 
-    return process.env.NODE_ENV === "production"
+    return isProduction()
       ? { base_url: this.baseURL, client_id: this.client_id, client_secret: this.client_secret }
       : {
           base_url: this.baseURL,

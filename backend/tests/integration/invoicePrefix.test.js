@@ -39,9 +39,12 @@ describe("serial numbers use the tenant invoice prefix and per-tenant counters",
     expect(b1.supplierSerialId).toBe("SUPL-BRG-01");
   });
 
-  it("falls back to INVOICE_PREFIX without a tenant context", async () => {
+  // The prefix is a store setting; there is no env fallback that would stamp one
+  // store's serial format onto another's documents.
+  it("refuses to build a serial without a tenant context", async () => {
     process.env.INVOICE_PREFIX = "VLR";
-    const legacy = await Supplier.create({ supplierName: "Legacy Traders", mobile: "01711000009" });
-    expect(legacy.supplierSerialId).toBe("SUPL-VLR-01");
+    await expect(
+      Supplier.create({ supplierName: "Legacy Traders", mobile: "01711000009" }),
+    ).rejects.toMatchObject({ name: "TenancyError" });
   });
 });

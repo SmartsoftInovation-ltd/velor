@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clearTenantStorage, getWorkspace, scopedStorageKey, setWorkspace, workspaceFromSearch } from "./session";
+import { clearTenantStorage, clearWorkspace, getWorkspace, scopedStorageKey, setWorkspace, workspaceFromSearch } from "./session";
 
 describe("session storage helpers", () => {
   it("remembers the workspace, normalized", () => {
@@ -17,6 +17,14 @@ describe("session storage helpers", () => {
     expect(scopedStorageKey("product_form_draft")).toBe("product_form_draft");
     setWorkspace("pizzashop");
     expect(scopedStorageKey("product_form_draft")).toBe("t:pizzashop:product_form_draft");
+  });
+
+  // Left behind, the workspace would put a stale x-tenant on the next sign-in
+  it("forgets the workspace", () => {
+    setWorkspace("pizzashop");
+    clearWorkspace();
+    expect(getWorkspace()).toBeNull();
+    expect(scopedStorageKey("product_form_draft")).toBe("product_form_draft");
   });
 
   it("clears only the given workspace's keys", () => {

@@ -2,6 +2,11 @@ jest.mock("nodemailer", () => ({ createTransport: jest.fn() }));
 
 const nodemailer = require("nodemailer");
 const { sendEmail, resetMailTransport } = require("../../src/helpers/nodemailer");
+const { runAsPlatform } = require("../../src/tenancy/context");
+
+// The platform console's own mail account (.env). A store never reaches it:
+// outside a platform context getMailConfig reads the store's SMTP settings.
+const asPlatform = (fn) => runAsPlatform(fn);
 
 describe("helpers/nodemailer", () => {
   const sendMail = jest.fn();
@@ -24,8 +29,8 @@ describe("helpers/nodemailer", () => {
     jest.restoreAllMocks();
   });
 
-  it("builds the transport from environment credentials", async () => {
-    await sendEmail("to@example.com", "Subject", "<p>hi</p>");
+  it("builds the platform transport from environment credentials", async () => {
+    await asPlatform(() => sendEmail("to@example.com", "Subject", "<p>hi</p>"));
 
     expect(nodemailer.createTransport).toHaveBeenCalledWith({
       service: "gmail",
@@ -40,19 +45,19 @@ describe("helpers/nodemailer", () => {
   });
 
   it("returns the message id", async () => {
-    await expect(sendEmail("to@example.com", "S", "h")).resolves.toBe("msg-1");
+    await expect(asPlatform(() => sendEmail("to@example.com", "S", "h"))).resolves.toBe("msg-1");
   });
 
   it("reuses one transport across sends", async () => {
-    await sendEmail("a@example.com", "S", "h");
-    await sendEmail("b@example.com", "S", "h");
+    await asPlatform(() => sendEmail("a@example.com", "S", "h"));
+    await asPlatform(() => sendEmail("b@example.com", "S", "h"));
     expect(nodemailer.createTransport).toHaveBeenCalledTimes(1);
   });
 
   it("does not send when credentials are missing", async () => {
     delete process.env.HOST_APP_PASSWORD;
 
-    await expect(sendEmail("to@example.com", "S", "h")).resolves.toBeNull();
+    await expect(asPlatform(() => sendEmail("to@example.com", "S", "h"))).resolves.toBeNull();
     expect(nodemailer.createTransport).not.toHaveBeenCalled();
   });
 
@@ -60,8 +65,15 @@ describe("helpers/nodemailer", () => {
     delete process.env.HOST_MAIL;
 
     await expect(
-      sendEmail("to@example.com", "S", "h", { throwOnError: true }),
+      asPlatform(() => sendEmail("to@example.com", "S", "h", { throwOnError: true })),
     ).rejects.toThrow(/mail is not configured/i);
+  });
+
+  it("never falls back to the platform account outside a platform context", async () => {
+    await expect(
+      sendEmail("to@example.com", "S", "h", { throwOnError: true }),
+    ).rejects.toThrow(/no store context/i);
+    expect(nodemailer.createTransport).not.toHaveBeenCalled();
   });
 
   it("uses the resolved tenant config (from, SMTP transport) and one transport per config", async () => {
@@ -97,9 +109,9 @@ describe("helpers/nodemailer", () => {
   it("swallows send failures by default and rethrows with throwOnError", async () => {
     sendMail.mockRejectedValue(new Error("smtp down"));
 
-    await expect(sendEmail("to@example.com", "S", "h")).resolves.toBeNull();
+    await expect(asPlatform(() => sendEmail("to@example.com", "S", "h"))).resolves.toBeNull();
     await expect(
-      sendEmail("to@example.com", "S", "h", { throwOnError: true }),
+      asPlatform(() => sendEmail("to@example.com", "S", "h", { throwOnError: true })),
     ).rejects.toThrow("smtp down");
   });
 });

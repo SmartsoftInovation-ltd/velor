@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { connectTestDb, clearTestDb, disconnectTestDb } = require("../helpers/db");
 const { setSettingsEnv } = require("../helpers/settings");
-const { runForTenant } = require("../../src/tenancy/context");
+const { runForTenant, runAsPlatform } = require("../../src/tenancy/context");
 const service = require("../../src/settings/settings.service");
 const config = require("../../src/integrations/config");
 
@@ -27,34 +27,58 @@ describe("integrations/config", () => {
 
   const inTenant = (fn) => runForTenant(T, fn);
 
-  describe("without a tenant context (legacy env)", () => {
-    it("reads general, sms, sslcommerz and cloudinary from env", async () => {
+  describe("without a tenant context", () => {
+    // Every store integration is per-store. Reading .env here would let one store
+    // spend the platform's SMS credit, send from its address or bill its payment
+    // account, so there is no fallback at all.
+    it.each([
+      ["getGeneralConfig"],
+      ["getInvoicePrefix"],
+      ["getSmsConfig"],
+      ["getMailConfig"],
+      ["getSslCommerzConfig"],
+      ["getCloudinaryConfig"],
+    ])("%s refuses to fall back to env", async (getter) => {
       Object.assign(process.env, {
-        INVOICE_PREFIX: "VLR", ORDER_HOT_LINE_NUMBER: "01700000000", FACEBOOK_URL: "https://fb.com/velor",
-        FRONTEND_URL: "https://velor.test", BULK_SMS_URL: "http://sms.test", BULK_SMS_API_KEY: "envkey", BULK_SMS_SENDER_ID: "880",
-        SSLC_STORE_ID: "envstore", SSLC_STORE_PASSWORD: "envpass", BACKEND_URL: "https://api.velor.test/api/v1", NODE_ENV: "production",
+        INVOICE_PREFIX: "VLR", BULK_SMS_URL: "http://sms.test", BULK_SMS_API_KEY: "envkey", BULK_SMS_SENDER_ID: "880",
+        HOST_MAIL: "platform@velor.test", HOST_APP_PASSWORD: "app-pass",
+        SSLC_STORE_ID: "envstore", SSLC_STORE_PASSWORD: "envpass", BACKEND_URL: "https://api.velor.test/api/v1",
         CLOUD_NAME: "envcloud", CLOUDINARY_API_KEY: "111", CLOUDINARY_API_SECRET: "envsecret",
       });
 
-      await expect(config.getGeneralConfig()).resolves.toEqual({
-        invoicePrefix: "VLR", orderHotline: "01700000000", facebookUrl: "https://fb.com/velor", storefrontUrl: "https://velor.test",
+      await expect(config[getter]()).rejects.toMatchObject({ name: "TenancyError" });
+    });
+  });
+
+  describe("platform context", () => {
+    const asPlatform = (fn) => runAsPlatform(fn);
+
+    // The platform console has no store to read from: its own SMS and email — and
+    // only those two — come from .env.
+    it("reads SMS and email from env, and nothing else", async () => {
+      Object.assign(process.env, {
+        BULK_SMS_URL: "http://sms.test", BULK_SMS_API_KEY: "envkey", BULK_SMS_SENDER_ID: "880",
+        HOST_MAIL: "platform@velor.test", HOST_APP_PASSWORD: "app-pass", MAIL_FROM_NAME: "Velor",
+        SSLC_STORE_ID: "envstore", CLOUD_NAME: "envcloud", INVOICE_PREFIX: "VLR",
       });
-      await expect(config.getSmsConfig()).resolves.toMatchObject({ apiUrl: "http://sms.test", apiKey: "envkey", senderId: "880" });
-      await expect(config.getSslCommerzConfig()).resolves.toEqual({
-        storeId: "envstore", storePassword: "envpass", isLive: true,
-        callbackUrls: {
-          success: "https://api.velor.test/api/v1/payment/success",
-          fail: "https://api.velor.test/api/v1/payment/fail",
-          cancel: "https://api.velor.test/api/v1/payment/cancel",
-          ipn: "https://api.velor.test/api/v1/payment/ipn",
-        },
+
+      await expect(asPlatform(() => config.getSmsConfig())).resolves.toMatchObject({
+        apiUrl: "http://sms.test", apiKey: "envkey", senderId: "880",
       });
-      await expect(config.getCloudinaryConfig()).resolves.toEqual({ cloud_name: "envcloud", api_key: "111", api_secret: "envsecret", folder: "" });
+      await expect(asPlatform(() => config.getMailConfig())).resolves.toEqual({
+        transport: { service: "gmail", auth: { user: "platform@velor.test", pass: "app-pass" } },
+        from: "Velor <platform@velor.test>",
+      });
+
+      for (const getter of ["getGeneralConfig", "getInvoicePrefix", "getSslCommerzConfig", "getCloudinaryConfig"]) {
+        await expect(asPlatform(() => config[getter]())).rejects.toMatchObject({ name: "TenancyError" });
+      }
     });
 
-    it("defaults the invoice prefix to INV", async () => {
-      delete process.env.INVOICE_PREFIX;
-      await expect(config.getInvoicePrefix()).resolves.toBe("INV");
+    it("getMailConfig is null when the platform mail account is unset", async () => {
+      delete process.env.HOST_MAIL;
+      delete process.env.HOST_APP_PASSWORD;
+      await expect(asPlatform(() => config.getMailConfig())).resolves.toBeNull();
     });
   });
 
@@ -63,14 +87,14 @@ describe("integrations/config", () => {
       process.env.BULK_SMS_API_KEY = "envkey";
       await service.updateSection(T, "general", { invoicePrefix: "PZS", orderHotline: "01711000000", storefrontUrl: "https://pizza.test" });
       await service.updateSection(T, "sms", { enabled: true, apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" });
-      await service.updateSection(T, "cloudinary", { enabled: true, cloudName: "pizza-cdn", apiKey: "222", apiSecret: "pizza-secret", folder: "pizza" });
+      await service.updateSection(T, "cloudinary", { enabled: true, cloudName: "pizza-cdn", apiKey: "222", apiSecret: "pizza-secret" });
       await service.updateSection(T, "sslcommerz", { enabled: true, isLive: false, storeId: "pizzastore", storePassword: "pizzapass" });
 
       await inTenant(async () => {
         await expect(config.getInvoicePrefix()).resolves.toBe("PZS");
         await expect(config.getGeneralConfig()).resolves.toMatchObject({ orderHotline: "01711000000", storefrontUrl: "https://pizza.test" });
         await expect(config.getSmsConfig()).resolves.toMatchObject({ apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" });
-        await expect(config.getCloudinaryConfig()).resolves.toEqual({ cloud_name: "pizza-cdn", api_key: "222", api_secret: "pizza-secret", folder: "pizza" });
+        await expect(config.getCloudinaryConfig()).resolves.toEqual({ cloud_name: "pizza-cdn", api_key: "222", api_secret: "pizza-secret" });
       });
     });
 

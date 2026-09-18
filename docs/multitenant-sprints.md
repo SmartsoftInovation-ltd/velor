@@ -31,7 +31,7 @@
 | 2 | Tenancy core (context + plugin, shadow mode) | §2, §10 step 3 | **done** |
 | 3 | Platform identity & tenant API | §3.1, §8.2 (API only), §10 step 4 | **done** |
 | 4 | Tenant settings core (encryption, service, platform endpoints) | §5.2–5.6, §10 step 5 | **done** |
-| 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, Groq, webhooks) | §5.1, §5.6–5.9, §10 step 6 | **done** |
+| 5 | Integrations read settings (prefix, SMS, email, SSLCommerz, couriers, Cloudinary, webhooks) | §5.1, §5.6–5.9, §10 step 6 | **done** |
 | 6 | Data migration for Velor (backfill, indexes, counters, env import) | §11, §10 step 7 | **done** |
 | 7 | Tenant-aware auth (workspace login, token claims, getme) | §3.2–3.4, §10 step 8 | **done** |
 | 8 | Per-tenant RBAC (owner, escalation guard, staff limit) | §4, §10 step 9 | **done** |
@@ -129,7 +129,7 @@
 | # | Story |
 |---|---|
 | 4.1 | `settings/crypto.js` AES-256-GCM, key ring, `last4`, rotation helper |
-| 4.2 | `TenantSettings` model with sections: general, sms, email, payment.sslcommerz, couriers.*, cloudinary, ai.groq |
+| 4.2 | `TenantSettings` model with sections: general, sms, email, payment.sslcommerz, couriers.*, cloudinary |
 | 4.3 | Joi schemas per section + owner-editable policy table |
 | 4.4 | `settings.service`: decrypted LRU (60 s) + Redis pub/sub invalidation |
 | 4.5 | Platform endpoints `GET /settings`, `PATCH /settings/:section` (omit = keep, `null` = clear), masked responses, audit field names only |
@@ -138,8 +138,8 @@
 **Done when:** secrets never appear in responses/logs/audit; PATCH semantics tested; invalidation reaches a second process in a test.
 
 **Implementation notes (as built):**
-- One definition file (`src/settings/definitions.js`) drives validation, storage, masking, features and owner-editable fields. Sections: `general`, `sms`, `email` (flat `smtpHost`/`smtpPort`/`smtpSecure`/`smtpUser`/`smtpPassword`), `sslcommerz`, `pathao`, `steadfast` (`apiKey` is also a secret), `cloudinary`, `groq`.
-- Platform: `GET /platform/tenants/:id/settings` (masked + features + version), `PATCH /platform/tenants/:id/settings/{general|sms|email|payment/sslcommerz|couriers/pathao|couriers/steadfast|cloudinary|ai/groq}` (superadmin), `GET /platform/tenants/:id/settings/webhooks`.
+- One definition file (`src/settings/definitions.js`) drives validation, storage, masking, features and owner-editable fields. Sections: `general`, `sms`, `email` (flat `smtpHost`/`smtpPort`/`smtpSecure`/`smtpUser`/`smtpPassword`), `sslcommerz`, `pathao`, `steadfast` (`apiKey` is also a secret), `cloudinary`.
+- Platform: `GET /platform/tenants/:id/settings` (masked + features + version), `PATCH /platform/tenants/:id/settings/{general|sms|email|payment/sslcommerz|couriers/pathao|couriers/steadfast|cloudinary}` (superadmin), `GET /platform/tenants/:id/settings/webhooks`.
 - Tenant: `GET /api/v1/settings`, `PATCH /api/v1/settings/general` (only `orderHotline`, `facebookUrl`), `GET /api/v1/settings/webhooks` — permission `store-settings`. They return `400 TENANT_CONTEXT_REQUIRED` until Sprint 7 opens a tenant context per request.
 - Errors can carry a machine-readable `code` (e.g. `SMS_NOT_CONFIGURED`), returned in the JSON body.
 - Cache holds raw (encrypted) documents for 60 s; `startSettingsInvalidationListener()` runs in the API process (workers added in Sprint 5).
@@ -155,7 +155,6 @@
 | 5.4 | SSLCommerz from settings; per-tenant callback/IPN routes `/hooks/sslcommerz/:webhookKey/*` |
 | 5.5 | Couriers from settings; `/hooks/pathao/:webhookKey`, `/hooks/steadfast/:webhookKey`; Pathao token in Redis per tenant |
 | 5.6 | Cloudinary per-call credentials; `cloudName` on image schema; `CLOUDINARY_NOT_CONFIGURED` checked before save |
-| 5.7 | Groq from settings; `AI_NOT_CONFIGURED` |
 | 5.8 | `POST /platform/tenants/:id/settings/:section/test` for every section |
 | 5.9 | Order hotline and Facebook URL from settings |
 
@@ -168,7 +167,7 @@
 - Cloudinary: credentials passed per call (no global `cloudinary.config`); images store `cloudName`; deletes for another account are skipped; uploads are rejected with 422 before the controller runs when the tenant has no Cloudinary (temp files removed).
 - SSLCommerz via `src/integrations/sslcommerz.js`; callbacks `/api/v1/hooks/sslcommerz/:webhookKey/{success,fail,cancel,ipn}`.
 - Couriers: `resolveMerchant` uses tenant settings (legacy `Merchant` docs otherwise); Pathao tokens per tenant in Redis (`t:{tenantId}:courier:pathao:token`); Pathao login uses the merchant's own username/password; webhooks `/api/v1/hooks/pathao/:webhookKey` and `/api/v1/hooks/steadfast/:webhookKey` verify that tenant's secret.
-- `POST /platform/tenants/:id/settings/<section path>/test` for sms, email, payment/sslcommerz, couriers/pathao, couriers/steadfast, cloudinary, ai/groq — returns `{ ok, detail | error }`, secrets scrubbed.
+- `POST /platform/tenants/:id/settings/<section path>/test` for sms, email, payment/sslcommerz, couriers/pathao, couriers/steadfast, cloudinary — returns `{ ok, detail | error }`, secrets scrubbed.
 - Email links, order e-mail footer, order SMS hotline come from `general` settings.
 
 ## Sprint 6 — Velor data migration
@@ -176,7 +175,7 @@
 | # | Story |
 |---|---|
 | 6.1 | Migrations runner (`migrations` collection, up + verify) |
-| 6.2 | Env → Velor `TenantSettings` import (incl. `Merchant` docs, Cloudinary, Groq) |
+| 6.2 | Env → Velor `TenantSettings` import (incl. `Merchant` docs, Cloudinary) |
 | 6.3 | Batched idempotent `tenantId` backfill for all tenant-scoped collections + verification counts |
 | 6.4 | Counters keyed `{tenantId, key}` preserving `seq` |
 | 6.5 | Compound unique indexes built (old global ones kept for now); `User.phone` partial index |
@@ -321,4 +320,4 @@ Tenants list, create wizard (Cloudinary required step), tenant detail tabs (over
 
 **Update:** the standalone `platform-console/` app was removed. Its pages now live inside the dashboard as the **Platform Console** sidebar module (Store Settings, Stores, Permission Catalog, Operators) behind a separate platform operator login (`dashbaord/src/platform/`, `dashbaord/src/pages/PlatformConsole/`). See `multitenant-implementation-report.md` §7.
 
-**Update 2:** no separate operator login. The platform store owner (workspace in `PLATFORM_WORKSPACES`) signs in to the dashboard normally and enters an access code (frontend constant for now); `POST /platform/auth/console-access` exchanges the store session for a platform token. Permission Catalog page removed; sidebar is Sellers / Store Settings / Operators; `GET /platform/tenants` returns status `counts`; UI redesigned (ECOMPOS style, `#0F9D63`).
+**Update 2:** the console uses a platform operator login. `PlatformGate` collects the operator's email + password; `POST /platform/auth/login` returns an OTP challenge only, and `POST /platform/auth/verify-otp` exchanges the challenge + the SMS code for a platform token. The earlier access-code / `console-access` design was removed in `0c8f82e`. Permission Catalog page removed; sidebar is Sellers / Store Settings / Operators; `GET /platform/tenants` returns status `counts`; UI redesigned (ECOMPOS style, `#0F9D63`).

@@ -38,7 +38,7 @@
 
 ## 1. Summary
 
-**Short version (Banglish):** Ekhon ekta backend + ekta dashboard diye onek gulo store (tenant) chalano jay. Protita store er data `tenantId` diye alada, protita store er nijer owner, staff, role, SMS / email / SSLCommerz / courier / Cloudinary / Groq credential (encrypted, database e — `.env` e na). Platform owner (apni) nijer `velor` login diye dashboard er **Platform Console** module e jan (secret access code diye), sekhane seller create / edit / suspend kore; seller owner **Settings → Store Settings** theke nijer integration connect kore. Velor er purono data already `velor` store e migrate kora hoyeche.
+**Short version (Banglish):** Ekhon ekta backend + ekta dashboard diye onek gulo store (tenant) chalano jay. Protita store er data `tenantId` diye alada, protita store er nijer owner, staff, role, SMS / email / SSLCommerz / courier / Cloudinary credential (encrypted, database e — `.env` e na). Platform owner (apni) dashboard er **Platform Console** module e jan — platform operator email + password diye login, tarpor SMS OTP verify — sekhane seller create / edit / suspend kore; seller owner **Settings → Store Settings** theke nijer integration connect kore. Velor er purono data already `velor` store e migrate kora hoyeche.
 
 **What changed:**
 
@@ -62,7 +62,7 @@
 | `c67b590` Sprint 2 | Tenant context (AsyncLocalStorage) + Mongoose tenant plugin on all 50 business models; `Tenant` model |
 | `9e67a3a` Sprint 3 | Platform operators (`PlatformUser`), platform login, tenant API, platform audit log |
 | `b43eae4` Sprint 4 | Encrypted per-store settings (AES-256-GCM), settings service with cache + Redis invalidation |
-| `4e17945` Sprint 5 | SMS, email, SSLCommerz, couriers, Cloudinary, Groq, invoice prefix read store settings; per-store webhooks; per-tenant unique indexes; queue tenant propagation |
+| `4e17945` Sprint 5 | SMS, email, SSLCommerz, couriers, Cloudinary, invoice prefix read store settings; per-store webhooks; per-tenant unique indexes; queue tenant propagation |
 | `fd84628` Sprint 6 | Migration runner + scripts for existing single-store data |
 | `262d113` Sprint 7 | Store-aware login, token claims, request tenant resolution, legacy tokens |
 | `825445f` Sprint 8 | Owner role, escalation guards, staff limit, permission catalog to platform |
@@ -73,7 +73,7 @@
 | `1cae118` | Docs status |
 | `92d326f` | Sign-in redesign, CORS fix, Store Settings integrations page (owner self-service), webhook URL domain fallback |
 | (next) | Platform Console moved **into the dashboard** as a sidebar module; standalone `platform-console/` app removed |
-| (latest) | Console opens from the platform owner's own login + access code (no operator login); Permission Catalog page removed; Store → **Seller** naming; ECOMPOS-style UI in green `#0F9D63` |
+| (latest) | Console opens with a platform operator login (email + password) followed by an SMS OTP; Permission Catalog page removed; Store → **Seller** naming; ECOMPOS-style UI in green `#0F9D63` |
 
 ---
 
@@ -85,7 +85,7 @@
  You (platform)  │  Sidebar → Platform Console                               │
  ──────────────► │    • Sellers / Store Settings / Operators                 │
                  │      (owner of velor only; PlatformGate:                  │
-                 │      access code → /platform/auth/console-access)         │
+                 │      operator login + SMS OTP → /platform/auth/*)         │
                  └───────────┬───────────────────────────────┬───────────────┘
                              │ Bearer store token {sub,tid,tv}│ Bearer platform token (aud: platform)
                              │ x-tenant: <workspace>          │
@@ -183,7 +183,6 @@
 | `pathao` | enabled, baseUrl, clientId, clientSecret 🔒, username, password 🔒, storeId, webhookSecret 🔒 |
 | `steadfast` | enabled, baseUrl, apiKey 🔒, secretKey 🔒, webhookToken 🔒 |
 | `cloudinary` | enabled, cloudName, apiKey, apiSecret 🔒, folder |
-| `groq` | enabled, apiKey 🔒, model, temperature |
 
 ### 4.5 Integrations read the store's settings
 
@@ -197,7 +196,6 @@
 | SSLCommerz | `integrations/sslcommerz.js` session + validation with store credentials; callbacks `/hooks/sslcommerz/<webhookKey>/{success,fail,cancel,ipn}` |
 | Pathao / Steadfast | Courier config from settings (legacy `Merchant` docs otherwise); Pathao tokens per store in Redis; Pathao login uses the merchant's own username/password; webhooks verified with the store's secret/token |
 | Cloudinary | Credentials passed per call (no global config); images store `cloudName`; uploads rejected (422) before saving when the store has no Cloudinary; old-account deletes skipped |
-| Groq | Store key and model |
 
 ### 4.6 Cross-cutting
 
@@ -288,7 +286,7 @@
 
 | Page / component | What it does |
 |---|---|
-| **Store Settings** `/store-settings` (Platform Console → Store Settings, permission `store-settings`) | Header: store name, workspace, invoice prefix (read-only), "x of 7 connected" bar. **Integration cards (4 per row):** SMS, Email, SSLCommerz, Pathao, Steadfast, Cloudinary, AI (Groq) with Connected / Not connected. **Configure panel** (right side): enable switch, labelled fields with help, secrets masked `•••• 1234` with Replace / Remove, email SMTP fields only for SMTP mode, Save (only when changed), Test connection (saved values), inline API errors, Escape / outside click closes. **Webhook URLs** with copy buttons (show the live API domain on the live server). Staff who are not the owner see status only. |
+| **Store Settings** `/store-settings` (Platform Console → Store Settings, permission `store-settings`) | Header: store name, workspace, invoice prefix (read-only), "x of 6 connected" bar. **Integration cards (4 per row):** SMS, Email, SSLCommerz, Pathao, Steadfast, Cloudinary with Connected / Not connected. **Configure panel** (right side): enable switch, labelled fields with help, secrets masked `•••• 1234` with Replace / Remove, email SMTP fields only for SMTP mode, Save (only when changed), Test connection (saved values), inline API errors, Escape / outside click closes. **Webhook URLs** with copy buttons (show the live API domain on the live server). Staff who are not the owner see status only. |
 | `FeatureGate` / `useFeature` | SMS pages gated on SMS; Courier Delivery gated on any courier |
 | `IntegrationNotice` | Banner when Cloudinary is not configured (image uploads disabled) |
 | `StoreSuspended` `/store-suspended` | Shown when the store is suspended |
@@ -298,7 +296,7 @@
 
 ### 6.4 Dashboard tests
 
-Vitest + Testing Library (`npm test`): session helpers, axios interceptor, AuthContext, sign-in form, FeatureGate, roles helper, Store Settings page, integration form, platform API client, Platform Console access-code gate, sidebar visibility, create-seller form, seller list, seller detail — 58 tests.
+Vitest + Testing Library (`npm test`): session helpers, axios interceptor, AuthContext, sign-in form, FeatureGate, roles helper, Store Settings page, integration form, platform API client, Platform Console OTP gate, sidebar visibility, create-seller form, seller list, seller detail — 58 tests.
 
 ---
 
@@ -317,11 +315,11 @@ Sellers get every module except the Platform Console; their **Store Settings** s
 **Access:**
 1. Sign in to the dashboard normally (workspace `velor`, your owner account). No separate operator login.
 2. The Platform Console items show only when the workspace is in `VITE_PLATFORM_WORKSPACES` **and** the user is its owner.
-3. Opening a console page asks for the **access code** (`PlatformGate`). The code is a frontend constant for now (`src/platform/accessCode.ts`, TODO: move to the backend).
-4. With the right code the dashboard calls `POST /api/v1/platform/auth/console-access` using the normal store token. The API checks the workspace is in `PLATFORM_WORKSPACES` and the user is its owner, then returns a platform token for `PLATFORM_CONSOLE_OPERATOR_EMAIL` (or the first active superadmin) and writes a `PLATFORM_LOGIN` audit entry with `{ via: "console-access", staffEmail, workspace }`.
+3. Opening a console page shows the operator sign-in (`PlatformGate`): **platform operator email + password**. There is no access code, and no client-side secret.
+4. Sign-in is two steps and the password alone issues no session. `POST /api/v1/platform/auth/login` returns only an OTP challenge; a 6-digit code is sent by SMS to the operator phone. `POST /api/v1/platform/auth/verify-otp` exchanges the challenge + code for the platform token (`POST /auth/resend-otp` re-sends, throttled 60s). Codes are stored HMAC-hashed in Redis, compared with `crypto.timingSafeEqual`, expire in 5 minutes and burn after 5 wrong attempts.
 5. The console token lives in sessionStorage (closing the tab ends it) and is cleared when you sign out of the dashboard.
 
-Code: `src/platform/` (own axios instance → `/api/v1/platform`, `PlatformAuthContext`, `PlatformGate`, `accessCode.ts`, `visibility.ts`) and `src/pages/PlatformConsole/` (`ui.tsx` holds the shared header, filter pills, icon actions, avatar, pagination and modal).
+Code: `src/platform/` (own axios instance → `/api/v1/platform`, `PlatformAuthContext`, `PlatformGate`, `visibility.ts`) and `src/pages/PlatformConsole/` (`ui.tsx` holds the shared header, filter pills, icon actions, avatar, pagination and modal).
 
 **UI:** ECOMPOS style with accent green `rgb(15,157,99)` = `#0F9D63` (Tailwind tokens `accent-25…950` in `src/index.css`).
 
@@ -343,7 +341,7 @@ Shared UI: `src/pages/Settings/StoreSettings/IntegrationGrid.tsx` (cards + side 
 
 ### 8.1 Onboarding a new seller
 
-1. Sign in to the dashboard (workspace `velor`), open **Platform Console → Sellers**, enter the access code, click **Create seller** (name, workspace e.g. `pizzashop`, max staff, owner details).
+1. Sign in to the dashboard (workspace `velor`), open **Platform Console → Sellers**, sign in as a platform operator (email + password, then the SMS code), click **Create seller** (name, workspace e.g. `pizzashop`, max staff, owner details).
 2. Backend (one transaction): creates `Tenant` → roles `owner/admin/manager/salesmen` → owner `User` with a temporary password (`mustChangePassword`) → status `active` → invoice prefix from slug (`PIZZAS`).
 3. The page shows the **login link** `…/signin?workspace=pizzashop` and the **temporary password** once. Send both to the owner.
 
@@ -413,12 +411,12 @@ Database: Atlas `cluster0` / `jahir` (MongoDB 8.0).
 | Backup | 55 collections, 1,473 documents + old `.env` → `/home/desktop/velor-db-backup-2026-09-17/` |
 | `.env` | Added encryption key, platform secrets, `API_PUBLIC_URL`, `APP_URL`, `PLATFORM_URL`, `TENANCY_MODE=shadow`, `DEFAULT_TENANT_SLUG=velor`, `LEGACY_TOKEN_GRACE_UNTIL` |
 | Tenant | `velor` created (active) |
-| 001 import settings | general, sms, email, sslcommerz, cloudinary, groq imported; pathao/steadfast skipped (no merchants) |
+| 001 import settings | general, sms, email, sslcommerz, cloudinary imported; pathao/steadfast skipped (no merchants) |
 | 002 backfill | `tenantId` on all data (4 users, 14 products, 24 variants, 2 sales, 163 audit logs, …) |
 | 003 indexes | 164 per-store indexes built; 4 wait for cutover (`carts.user`, `carts.guestId`, `sizecharts.slug`, `variants.slug`) |
 | 004 cloudName | set on existing brand and store images |
 | 005 owner role | `superadmin` → `owner`; `superadmin@baig.com` and `karif9632@gmail.com` are Velor owners |
-| Platform operator | `johkasouerp@gmail.com` (password in the backup folder, `platform-admin-credentials.txt`) — the account the Platform Console acts as after the access code |
+| Platform operator | `johkasouerp@gmail.com` (password in the backup folder, `platform-admin-credentials.txt`) — the account the Platform Console signs in as (password + SMS OTP) |
 
 Sign in to the dashboard with workspace **`velor`**.
 
@@ -435,7 +433,7 @@ Sign in to the dashboard with workspace **`velor`**.
 | GET | `/auth/getme` | signed in |
 | GET | `/settings` | `store-settings:view` (owner sees `last4`) |
 | GET | `/settings/schema`, `/settings/webhooks` | `store-settings:view` |
-| PATCH | `/settings/{sms, email, payment/sslcommerz, couriers/pathao, couriers/steadfast, cloudinary, ai/groq}` | owner |
+| PATCH | `/settings/{sms, email, payment/sslcommerz, couriers/pathao, couriers/steadfast, cloudinary}` | owner |
 | POST | `/settings/<same paths>/test` | owner |
 | PATCH | `/settings/general` (orderHotline, facebookUrl) | `store-settings:edit` |
 | GET | `/permission/allpermissions` (catalog, read-only) | signed in |
@@ -448,8 +446,7 @@ Sign in to the dashboard with workspace **`velor`**.
 
 | Method | Path | Role |
 |---|---|---|
-| POST | `/auth/console-access` (store token of the platform workspace owner) | — |
-| POST | `/auth/login`, `/auth/refresh`, `/auth/logout` · GET `/auth/me` | — / any |
+| POST | `/auth/login` (password → OTP challenge), `/auth/verify-otp`, `/auth/resend-otp`, `/auth/refresh`, `/auth/logout` · GET `/auth/me` | — / any |
 | GET | `/tenants` (with `counts` per status), `/tenants/:id`, `/tenants/:id/audit`, `/tenants/:id/settings`, `/tenants/:id/settings/webhooks`, `/settings/schema`, `/permissions` | any |
 | POST | `/tenants` (with `owner` → provisioning) | superadmin |
 | PATCH | `/tenants/:id` · POST `/tenants/:id/suspend`, `/activate` | superadmin |
@@ -480,7 +477,7 @@ Sign in to the dashboard with workspace **`velor`**.
 | `HOST_MAIL`, `HOST_APP_PASSWORD`, `MAIL_FROM_NAME` | Platform mailbox (optional; stores can use their own SMTP) |
 | `WEBHOOK_SECRET`, `SUPERADMIN_EMAIL/PASSWORD` | Legacy routes / legacy seeder |
 
-Store-specific keys (SMS, SSLCommerz, Cloudinary, Groq, couriers, SMTP) **no longer belong in `.env`** — Velor's were imported into the database and can be removed from `.env` (switch Velor email to SMTP first if `HOST_MAIL` is removed).
+Store-specific keys (SMS, SSLCommerz, Cloudinary, couriers, SMTP) **no longer belong in `.env`** — Velor's were imported into the database and can be removed from `.env` (switch Velor email to SMTP first if `HOST_MAIL` is removed).
 
 ### Dashboard
 

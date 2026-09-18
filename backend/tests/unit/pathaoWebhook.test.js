@@ -24,13 +24,13 @@ describe("PathaoCourier.handlePathaoWebhook", () => {
     jest.restoreAllMocks();
   });
 
-  it("rejects with 401 when no webhook secret is configured", async () => {
-    delete process.env.WEBHOOK_SECRET;
+  it("rejects with 401 when the store has no webhook secret configured", async () => {
     const res = makeRes();
 
     await courier.handlePathaoWebhook(
       { headers: { "x-pathao-signature": "f3992ecc-59da-4cbe-a049-a13da2018d51" }, body: {} },
       res,
+      null,
     );
 
     expect(res.status).toHaveBeenCalledWith(401);
@@ -39,21 +39,19 @@ describe("PathaoCourier.handlePathaoWebhook", () => {
   });
 
   it("rejects with 401 when the signature does not match", async () => {
-    process.env.WEBHOOK_SECRET = "right-secret";
     const res = makeRes();
 
-    await courier.handlePathaoWebhook({ headers: { "x-pathao-signature": "wrong" }, body: {} }, res);
+    await courier.handlePathaoWebhook({ headers: { "x-pathao-signature": "wrong" }, body: {} }, res, "right-secret");
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(courier.processWebhook).not.toHaveBeenCalled();
   });
 
   it("accepts a valid signature, echoes the secret and processes the payload", async () => {
-    process.env.WEBHOOK_SECRET = "right-secret";
     const res = makeRes();
     const body = { consignment_id: "C1", order_status: "Delivered" };
 
-    await courier.handlePathaoWebhook({ headers: { "x-pathao-signature": "right-secret" }, body }, res);
+    await courier.handlePathaoWebhook({ headers: { "x-pathao-signature": "right-secret" }, body }, res, "right-secret");
 
     expect(res.setHeader).toHaveBeenCalledWith(
       "X-Pathao-Merchant-Webhook-Integration-Secret",

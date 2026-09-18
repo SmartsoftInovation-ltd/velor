@@ -1,3 +1,4 @@
+const { isDevelopment } = require("./nodeEnv");
 // Origins allowed to make credentialed cross-origin requests (HTTP + socket).
 // Set FRONTEND_URL / DASHBOARD_URL / PLATFORM_URL, plus any extras in CORS_ORIGINS (comma separated).
 const allowedOrigins = new Set(
@@ -18,8 +19,7 @@ const isOriginAllowed = (origin) => {
   // No Origin header: same-origin, curl, server-to-server, mobile apps
   if (!origin) return true;
   if (allowedOrigins.has(origin)) return true;
-  // "developement" is the spelling this codebase uses for NODE_ENV
-  return ["development", "developement"].includes(process.env.NODE_ENV) && isLocalhost(origin);
+  return isDevelopment() && isLocalhost(origin);
 };
 
 // Disallowed origins get no CORS headers (browser blocks) instead of a 500

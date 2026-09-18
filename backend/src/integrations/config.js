@@ -1,14 +1,33 @@
 const Tenant = require("../models/platform/tenant.model");
-const { getTenantId } = require("../tenancy/context");
+const { getTenantId, isPlatform } = require("../tenancy/context");
 const settings = require("../settings/settings.service");
 
 // Resolves third-party configuration for the current request.
-// Inside a tenant context: the tenant's own settings (422 when not configured).
-// Without a context (legacy single-tenant install, before migration): .env.
+//
+// Inside a tenant context: the tenant's own settings, and nothing else (422 when
+// the store has not configured that integration). There is no .env fallback — a
+// store must never send through the platform's SMS, SMTP, payment or media account.
+//
+// The one exception is the platform console itself (runAsPlatform): it has no
+// store to read from, so its SMS and email come from .env. Only those two.
 
 const tenantSettings = async () => {
   const tenantId = getTenantId();
   return tenantId ? { tenantId, values: await settings.getSettings(tenantId) } : null;
+};
+
+// Raised when code outside any tenant asks for a store integration. Carries the
+// tenant plugin's error name so the handler answers 400 TENANT_CONTEXT_REQUIRED.
+const noTenantContext = (label) => {
+  const error = new Error(`${label} is configured per store; this request has no store context`);
+  error.name = "TenancyError";
+  return error;
+};
+
+const requireTenant = async (label) => {
+  const tenant = await tenantSettings();
+  if (!tenant) throw noTenantContext(label);
+  return tenant;
 };
 
 const requireConfigured = async (tenantId, featurePath, code, label) => {
@@ -18,35 +37,21 @@ const requireConfigured = async (tenantId, featurePath, code, label) => {
 };
 
 const getGeneralConfig = async () => {
-  const tenant = await tenantSettings();
-  if (!tenant) {
-    return {
-      invoicePrefix: process.env.INVOICE_PREFIX || "INV",
-      orderHotline: process.env.ORDER_HOT_LINE_NUMBER || "",
-      facebookUrl: process.env.FACEBOOK_URL || "",
-      storefrontUrl: process.env.FRONTEND_URL || "",
-    };
-  }
+  const tenant = await requireTenant("Store details");
   const { invoicePrefix, orderHotline, facebookUrl, storefrontUrl } = tenant.values.general;
   return { invoicePrefix, orderHotline, facebookUrl, storefrontUrl };
 };
 
 const getInvoicePrefix = async () => (await getGeneralConfig()).invoicePrefix;
 
-const getSmsConfig = async () => {
-  const tenant = await tenantSettings();
-  if (!tenant) {
-    return {
-      apiUrl: process.env.BULK_SMS_URL,
-      apiKey: process.env.BULK_SMS_API_KEY,
-      senderId: process.env.BULK_SMS_SENDER_ID,
-      balanceUrl: "http://bulksmsbd.net/api/getBalanceApi",
-    };
-  }
-  await requireConfigured(tenant.tenantId, "sms", "SMS_NOT_CONFIGURED", "SMS");
-  const { apiUrl, apiKey, senderId, balanceUrl } = tenant.values.sms;
-  return { apiUrl, apiKey, senderId, balanceUrl: balanceUrl || "http://bulksmsbd.net/api/getBalanceApi" };
-};
+// ---- platform accounts (.env), for the platform console only ----
+
+const platformSmsSender = () => ({
+  apiUrl: process.env.BULK_SMS_URL,
+  apiKey: process.env.BULK_SMS_API_KEY,
+  senderId: process.env.BULK_SMS_SENDER_ID,
+  balanceUrl: process.env.BULK_SMS_BALANCE_URL || "http://bulksmsbd.net/api/getBalanceApi",
+});
 
 const platformMailSender = () => {
   const user = process.env.HOST_MAIL;
@@ -56,12 +61,19 @@ const platformMailSender = () => {
 
 const formatFrom = (name, address) => (name ? `${name} <${address}>` : address);
 
-// Returns { transport, from }, or null when legacy mail is not configured.
+const getSmsConfig = async () => {
+  if (isPlatform()) return platformSmsSender();
+
+  const tenant = await requireTenant("SMS");
+  await requireConfigured(tenant.tenantId, "sms", "SMS_NOT_CONFIGURED", "SMS");
+  const { apiUrl, apiKey, senderId, balanceUrl } = tenant.values.sms;
+  return { apiUrl, apiKey, senderId, balanceUrl: balanceUrl || "http://bulksmsbd.net/api/getBalanceApi" };
+};
+
+// Returns { transport, from }, or null when the platform mail account is unset.
 // Replies go to the From address; there is no separate reply-to.
 const getMailConfig = async () => {
-  const tenant = await tenantSettings();
-
-  if (!tenant) {
+  if (isPlatform()) {
     const sender = platformMailSender();
     if (!sender) return null;
     return {
@@ -70,6 +82,7 @@ const getMailConfig = async () => {
     };
   }
 
+  const tenant = await requireTenant("Email");
   const email = tenant.values.email;
 
   if (email.mode !== "smtp") throw settings.featureNotConfigured("EMAIL_NOT_CONFIGURED", "Email");
@@ -87,22 +100,7 @@ const getMailConfig = async () => {
 };
 
 const getSslCommerzConfig = async () => {
-  const tenant = await tenantSettings();
-  if (!tenant) {
-    const base = process.env.BACKEND_URL;
-    return {
-      storeId: process.env.SSLC_STORE_ID,
-      storePassword: process.env.SSLC_STORE_PASSWORD,
-      isLive: process.env.NODE_ENV === "production",
-      callbackUrls: {
-        success: `${base}/payment/success`,
-        fail: `${base}/payment/fail`,
-        cancel: `${base}/payment/cancel`,
-        ipn: `${base}/payment/ipn`,
-      },
-    };
-  }
-
+  const tenant = await requireTenant("Online payment");
   await requireConfigured(tenant.tenantId, "sslcommerz", "SSLCOMMERZ_NOT_CONFIGURED", "Online payment");
   const { storeId, storePassword, isLive } = tenant.values.sslcommerz;
   const record = await Tenant.findById(tenant.tenantId).select("webhookKey").lean();
@@ -115,7 +113,8 @@ const getSslCommerzConfig = async () => {
 };
 
 // Merchant-shaped config consumed by PathaoCourier / SteadFastCourier.
-// Returns null without a tenant context: callers fall back to Merchant documents.
+// Returns null when the store has no courier context to read (callers then fall
+// back to the store's own Merchant document, which is tenant-scoped).
 const getCourierConfig = async (provider) => {
   const tenant = await tenantSettings();
   if (!tenant) return null;
@@ -153,14 +152,7 @@ const getCourierConfig = async (provider) => {
 };
 
 const getCloudinaryConfig = async () => {
-  const tenant = await tenantSettings();
-  if (!tenant) {
-    return {
-      cloud_name: process.env.CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    };
-  }
+  const tenant = await requireTenant("Image storage (Cloudinary)");
   await requireConfigured(tenant.tenantId, "cloudinary", "CLOUDINARY_NOT_CONFIGURED", "Image storage (Cloudinary)");
   const { cloudName, apiKey, apiSecret } = tenant.values.cloudinary;
   return { cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret };

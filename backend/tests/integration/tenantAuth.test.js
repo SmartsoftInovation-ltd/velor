@@ -27,7 +27,6 @@ describe("tenant-aware staff auth", () => {
   beforeEach(async () => {
     process.env = { ...envBackup, ...STAFF_ENV };
     setSettingsEnv();
-    delete process.env.DEFAULT_TENANT_SLUG;
     delete process.env.TENANCY_MODE;
     invalidateTenantCache();
     service.clearSettingsCache();
@@ -78,13 +77,7 @@ describe("tenant-aware staff auth", () => {
       await login({ workspace: "pizzashop", email: "shopper@shop.test", password: "Shop-Pass1" }).expect(403);
     });
 
-    it("uses DEFAULT_TENANT_SLUG when no workspace is sent", async () => {
-      process.env.DEFAULT_TENANT_SLUG = "burgerhub";
-      const res = await login({ email: "staff@shop.test", password: "Burger-Pass1" }).expect(200);
-      expect(decode(res.body.data.accessToken).tid).toBe(burger.tenant._id.toString());
-    });
-
-    it("requires a workspace in strict mode when there is no default", async () => {
+    it("requires a workspace in strict mode: there is no default store", async () => {
       process.env.TENANCY_MODE = "strict";
       const res = await login({ email: "staff@shop.test", password: "Pizza-Pass1" }).expect(400);
       expect(res.body.code).toBe("WORKSPACE_REQUIRED");
@@ -178,12 +171,15 @@ describe("tenant-aware staff auth", () => {
       await request(app.server).get("/api/v1/auth/getme").set(bearer(legacyToken(pizza.user))).expect(401);
     });
 
-    it("still work for users not yet migrated while not in strict mode", async () => {
+    // A session with no tenant would read and write across every store, so it is
+    // rejected in both modes, grace period or not.
+    it("are rejected for users without a tenant, in any mode", async () => {
       const legacyUser = await runAsPlatform(async () => {
         await User.collection.insertOne({ name: "Legacy", email: "legacy@shop.test", password: "x", roles: [], permissions: [], isActive: true, isBlocked: false });
         return User.collection.findOne({ email: "legacy@shop.test" });
       });
-      await request(app.server).get("/api/v1/auth/getme").set(bearer(legacyToken(legacyUser))).expect(200);
+      process.env.LEGACY_TOKEN_GRACE_UNTIL = new Date(Date.now() + 86400000).toISOString();
+      await request(app.server).get("/api/v1/auth/getme").set(bearer(legacyToken(legacyUser))).expect(401);
 
       process.env.TENANCY_MODE = "strict";
       await request(app.server).get("/api/v1/auth/getme").set(bearer(legacyToken(legacyUser))).expect(401);

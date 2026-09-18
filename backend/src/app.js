@@ -8,6 +8,7 @@ const cookieparser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const http = require("http");
 const { corsOrigin } = require("./config/cors.config");
+const { isDevelopment } = require("./config/nodeEnv");
 
 const app = express();
 const server = http.createServer(app);
@@ -26,7 +27,7 @@ app.use(
 app.use(cookieparser());
 
 // 4. Morgan -> Request logging
-if (process.env.NODE_ENV === "development") {
+if (isDevelopment()) {
   app.use(morgan("dev"));
 } else {
   app.use(morgan("combined"));

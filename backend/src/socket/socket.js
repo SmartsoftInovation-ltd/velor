@@ -22,7 +22,7 @@ const authenticate = async (socket, next) => {
         User.findById(id).select("_id tokenVersion isActive isBlocked roles"),
       );
       if (!user.isActive || user.isBlocked) return next(unauthorized());
-      socket.data = { userId: String(user._id), tenantId: tenant ? String(tenant._id) : null, staff: user.roles?.length > 0 };
+      socket.data = { userId: String(user._id), tenantId: String(tenant._id), staff: user.roles?.length > 0 };
       return next();
     }
 
@@ -32,25 +32,22 @@ const authenticate = async (socket, next) => {
       return next();
     }
 
-    if (process.env.TENANCY_MODE === "strict") return next(unauthorized());
-    socket.data = { legacy: true };
-    return next();
+    // No token and no (store, guest id): there is no store to scope this socket to
+    return next(unauthorized());
   } catch {
     return next(unauthorized());
   }
 };
 
 const joinRooms = (socket) => {
-  const { tenantId, userId, guestId, staff, legacy } = socket.data || {};
+  const { tenantId, userId, guestId, staff } = socket.data || {};
+  if (!tenantId) return;
 
-  if (tenantId && userId) {
+  if (userId) {
     socket.join(userRoom(tenantId, userId));
     if (staff) socket.join(tenantRoom(tenantId));
-  } else if (tenantId && guestId) {
+  } else if (guestId) {
     socket.join(guestRoom(tenantId, guestId));
-  } else if (legacy && socket.handshake.query.userId) {
-    // Pre-multi-tenancy clients (single store only)
-    socket.join(String(socket.handshake.query.userId));
   }
 };
 
@@ -74,22 +71,25 @@ const getIO = () => {
   return io;
 };
 
-// Emit to every staff member of a store; without a tenant (legacy install) to everyone
+// A missing tenant is a bug in the caller, never a reason to reach every socket:
+// io.emit() would put one store's events on every other store's screens. Log and drop.
+const missingTenant = (event) => {
+  console.error(`[socket] dropped "${event}": no tenant id, refusing to broadcast across stores`);
+  return true;
+};
+
+// Emit to every staff member of a store
 const emitToTenant = (tenantId, event, payload) => {
   if (!io) return;
-  if (tenantId) io.to(tenantRoom(tenantId)).emit(event, payload);
-  else io.emit(event, payload);
+  if (!tenantId) return void missingTenant(event);
+  io.to(tenantRoom(tenantId)).emit(event, payload);
 };
 
 const emitToUserOrGuest = (tenantId, { userId, guestId }, event, payload) => {
   if (!io) return;
-  if (!tenantId) {
-    io.to(String(userId || guestId)).emit(event, payload);
-  } else if (userId) {
-    io.to(userRoom(tenantId, userId)).emit(event, payload);
-  } else if (guestId) {
-    io.to(guestRoom(tenantId, guestId)).emit(event, payload);
-  }
+  if (!tenantId) return void missingTenant(event);
+  if (userId) io.to(userRoom(tenantId, userId)).emit(event, payload);
+  else if (guestId) io.to(guestRoom(tenantId, guestId)).emit(event, payload);
 };
 
 module.exports = { initSocket, getIO, emitToTenant, emitToUserOrGuest };

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./AuthContext";
-import { setWorkspace } from "../lib/session";
+import { getWorkspace, setWorkspace } from "../lib/session";
 
 const get = vi.fn();
 vi.mock("../hooks/useAxiosSecure", () => ({ default: { get: (...args: unknown[]) => get(...args) } }));
@@ -109,5 +109,8 @@ describe("AuthContext", () => {
     await waitFor(() => expect(latest.user).toBeNull());
     expect(queryClient.getQueryData(["orders"])).toBeUndefined();
     expect(localStorage.getItem("t:pizzashop:product_form_draft")).toBeNull();
+    // The store itself is forgotten too, so the next sign-in cannot send the
+    // old x-tenant before the user has named a store
+    expect(getWorkspace()).toBeNull();
   });
 });

@@ -11,13 +11,14 @@ const {
 } = require("../../utils/platformTokens");
 const { recordPlatformAudit } = require("../../service/platformAudit.service");
 const otp = require("../../service/platformOtp.service");
+const { isProduction } = require("../../config/nodeEnv");
 
 const REFRESH_COOKIE = "platformRefreshToken";
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 const cookieOptions = () => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: isProduction(),
   sameSite: "lax",
   path: `${process.env.BASE_URL || "/api/v1"}/platform/auth`,
 });

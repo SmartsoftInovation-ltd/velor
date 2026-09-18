@@ -1,3 +1,4 @@
+const { isDevelopment } = require("./../config/nodeEnv");
 // this error show when you are working on production mode error size are more consize
 const productionError = (error, res) => {
   console.log("from production error funtion ", error);
@@ -129,13 +130,8 @@ exports.globalErrorHandeler = (error, req, res, next) => {
   error = normalizeAuthError(error);
   error = normalizeDatabaseError(error);
   error.statusCode = error.statusCode || 500;
-  if (process.env.NODE_ENV == "developement") {
-    developementError(error, res);
-  } else if (process.env.NODE_ENV == "production") {
-    productionError(error, res);
-  } else {
-    // Any other NODE_ENV would otherwise leave the request hanging with no
-    // response at all, so fall back to the concise production shape.
-    productionError(error, res);
-  }
+  // Anything that is not clearly development gets the concise shape: an
+  // unrecognised NODE_ENV must never leak stack traces to a client.
+  if (isDevelopment()) developementError(error, res);
+  else productionError(error, res);
 };

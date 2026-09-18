@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { runForTenant } = require("../../src/tenancy/context");
+const { runForTenant, runAsPlatform } = require("../../src/tenancy/context");
 const cacheUtil = require("../../src/utils/cache.util");
 const { cache, connection } = require("../../src/config/redis.config");
 
@@ -41,8 +41,13 @@ describe("tenant-scoped cache", () => {
     await expect(runForTenant(B, () => cacheUtil.getCache(`${ns}:single`))).resolves.toBe(2);
   });
 
-  it("keeps legacy unprefixed keys without a tenant context", async () => {
-    await cacheUtil.setCache(`${ns}:legacy`, "v", 60);
-    await expect(cache.get(`${ns}:legacy`)).resolves.toBe(JSON.stringify("v"));
+  // An unprefixed key would be shared by every store, so there is no such key:
+  // platform code caches under p:, everything else must name its tenant.
+  it("refuses an unprefixed key without a tenant context, and namespaces platform keys", async () => {
+    await expect(cacheUtil.setCache(`${ns}:legacy`, "v", 60)).rejects.toMatchObject({ name: "TenancyError" });
+
+    await runAsPlatform(() => cacheUtil.setCache(`${ns}:platform`, "v", 60));
+    await expect(cache.get(`p:${ns}:platform`)).resolves.toBe(JSON.stringify("v"));
+    await expect(cache.get(`${ns}:platform`)).resolves.toBeNull();
   });
 });

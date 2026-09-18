@@ -3,6 +3,7 @@ const BaseCourier = require("../BaseCourier");
 const Order = require("../../../models/order.model");
 const { customError } = require("../../../lib/CustomError");
 const { apiResponse } = require("../../../utils/apiResponse");
+const { secretEquals } = require("../../../utils/secretCompare");
 
 class SteadFastCourier extends BaseCourier {
   constructor(merchant) {
@@ -116,7 +117,7 @@ class SteadFastCourier extends BaseCourier {
   // True when the Authorization header carries the expected bearer token
   static isValidWebhookToken(authHeader, expected) {
     if (!expected || !authHeader?.startsWith("Bearer ")) return false;
-    return authHeader.slice("Bearer ".length) === expected;
+    return secretEquals(authHeader.slice("Bearer ".length), expected);
   }
 
   // Applies a Steadfast status update to the matching order (current tenant)
@@ -133,61 +134,6 @@ class SteadFastCourier extends BaseCourier {
     order.courier.rawResponse = { ...order.courier.rawResponse, ...data };
     await order.save();
     return order;
-  }
-
-  // steadfast webhook handler
-  async handleSteadFastWebhook(req, res) {
-    try {
-      // 1️⃣ Token Verify
-      const authHeader = req.headers["authorization"];
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        throw new customError("Invalid authorization header", 401);
-      }
-
-      const token = authHeader.split(" ")[1];
-      if (token !== process.env.STEADFAST_API_KEY && token !== this.ApiKey) {
-        throw new customError("Invalid API token", 403);
-      }
-
-      // 2️⃣ Webhook Data
-      const data = req.body;
-      const { invoice, status, tracking_code } = data;
-
-      if (!invoice) {
-        throw new customError("Invoice ID missing in webhook", 400);
-      }
-
-      // 3️⃣ Order find
-      const order = await Order.findOne({ invoiceId: invoice });
-      if (!order) {
-        throw new customError("Order not found for invoice: " + invoice, 404);
-      }
-
-      // 4️⃣ Update courier details
-      order.courier.status = status || order.courier.status;
-      order.courier.trackingId = tracking_code || order.courier.trackingId;
-      order.courier.rawResponse = { ...order.courier.rawResponse, ...data };
-
-      await order.save();
-
-      // 5️⃣ Success response
-      console.log("✅ SteadFast Webhook processed successfully");
-      res.status(200).json({
-        status: "success",
-        message: "Webhook received successfully.",
-      });
-      return order;
-    } catch (err) {
-      console.error("❌ Steadfast Webhook Error:", err);
-      res.status(200).json({
-        status: "error",
-        message: "Invalid consignment ID.",
-      });
-      throw new customError(
-        "Failed to process Steadfast webhook: " + err.message,
-        500
-      );
-    }
   }
 }
 

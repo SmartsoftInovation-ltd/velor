@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import { FiArrowRight, FiCheck, FiEye, FiEyeOff, FiLock, FiShield, FiUser } from "react-icons/fi";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
-import axiosSecure, { setAccessToken } from "../../hooks/useAxiosSecure";
+import axiosSecure, { clearAccessToken, setAccessToken } from "../../hooks/useAxiosSecure";
 import { useAuth } from "../../context/AuthContext";
 import { getWorkspace, setWorkspace, workspaceFromSearch } from "../../lib/session";
 import { loginIdentifier } from "../../lib/credentials";
@@ -24,7 +24,7 @@ const RequiredDot = () => <span aria-hidden className="ml-1 inline-block size-1 
 export default function SignInForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refreshAuth } = useAuth();
+  const { refreshAuth, clearAuth } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -78,14 +78,21 @@ export default function SignInForm() {
     setSubmitting(true);
     try {
       const workspace = formData.workspace.trim().toLowerCase();
-      // Remember the store first: the request interceptor sends it as x-tenant
-      setWorkspace(workspace);
+
+      // Drop whatever session this browser still held before naming a new store,
+      // so a failed sign-in cannot leave the previous store's token paired with
+      // this store's x-tenant. The workspace is remembered only once the API
+      // accepted the credentials.
+      clearAuth();
+      clearAccessToken();
+
       const response = await axiosSecure.post(
         `/auth/login`,
         { workspace, ...loginIdentifier(formData.identifier), password: formData.password },
-        { headers: { "Content-Type": "application/json" }, withCredentials: true },
+        { headers: { "Content-Type": "application/json", "x-tenant": workspace }, withCredentials: true },
       );
       const { accessToken } = response.data.data;
+      setWorkspace(workspace);
       setAccessToken(accessToken);
       toast.success("Login successful");
       await refreshAuth();

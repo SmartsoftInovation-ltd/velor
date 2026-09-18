@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axiosSecure from "../hooks/useAxiosSecure";
-import { clearTenantStorage } from "../lib/session";
+import { clearTenantStorage, clearWorkspace } from "../lib/session";
 import { disconnectSocket } from "../socket/socket";
 
 // ---------- Types ----------
@@ -143,7 +143,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setPermissionMap({});
     queryClient.clear();
+    // Order matters: clearTenantStorage() reads the workspace to build its key
+    // prefix, so the workspace is forgotten only after its data is gone.
     clearTenantStorage();
+    clearWorkspace();
     disconnectSocket();
   }, [queryClient]);
 

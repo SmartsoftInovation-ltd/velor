@@ -20,6 +20,13 @@ const safeStorage = {
       // Storage blocked: the workspace is simply not remembered
     }
   },
+  remove: (key: string) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Storage blocked: nothing stored to remove
+    }
+  },
 };
 
 export const getWorkspace = (): string | null => {
@@ -41,6 +48,10 @@ export const scopedStorageKey = (key: string): string => {
   const workspace = getWorkspace();
   return workspace ? `t:${workspace}:${key}` : key;
 };
+
+// Forget which store this browser was signed into. Left behind, it would put a
+// stale x-tenant header on the next sign-in attempt — at another store.
+export const clearWorkspace = () => safeStorage.remove(WORKSPACE_KEY);
 
 export const clearTenantStorage = (workspace: string | null = getWorkspace()) => {
   if (!workspace) return;

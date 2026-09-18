@@ -1,11 +1,18 @@
 const { cache } = require("@/config/redis.config");
-const { getTenantId } = require("@/tenancy/context");
+const { getTenantId, isPlatform } = require("@/tenancy/context");
 
-// Every key lives under its tenant: t:<tenantId>:<key>. Without a tenant
-// context (legacy single-tenant install) keys are unprefixed.
+// Every key lives under its tenant: t:<tenantId>:<key>. Platform code caches
+// under p:<key>. An unprefixed key would be shared by every store — two tenants
+// asking for "product:list" would read each other's rows — so there is no such key.
 const scoped = (key) => {
   const tenantId = getTenantId();
-  return tenantId ? `t:${tenantId}:${key}` : key;
+  if (tenantId) return `t:${tenantId}:${key}`;
+  if (isPlatform()) return `p:${key}`;
+  // Same name the tenant plugin raises, so the error handler answers 400
+  // TENANT_CONTEXT_REQUIRED instead of a 500.
+  const error = new Error(`Cache key "${key}" has no tenant context`);
+  error.name = "TenancyError";
+  throw error;
 };
 
 const safeJsonParse = (v) => {

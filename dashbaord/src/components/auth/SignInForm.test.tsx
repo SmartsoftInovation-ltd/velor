@@ -3,17 +3,21 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import SignInForm from "./SignInForm";
-import { getWorkspace, setWorkspace } from "../../lib/session";
+import { clearWorkspace, getWorkspace, setWorkspace } from "../../lib/session";
 
 const post = vi.fn();
 const setAccessToken = vi.fn();
+const clearAccessToken = vi.fn();
 const refreshAuth = vi.fn();
+// The real clearAuth forgets the workspace, which is what this form relies on
+const clearAuth = vi.fn(() => clearWorkspace());
 
 vi.mock("../../hooks/useAxiosSecure", () => ({
   default: { post: (...args: unknown[]) => post(...args) },
   setAccessToken: (token: string) => setAccessToken(token),
+  clearAccessToken: () => clearAccessToken(),
 }));
-vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ refreshAuth }) }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ refreshAuth, clearAuth }) }));
 vi.mock("react-hot-toast", () => ({ default: { success: vi.fn(), error: vi.fn() } }));
 
 const renderAt = (url = "/signin") =>
@@ -27,7 +31,10 @@ describe("SignInForm", () => {
   beforeEach(() => {
     post.mockReset();
     setAccessToken.mockReset();
+    clearAccessToken.mockReset();
     refreshAuth.mockReset();
+    clearAuth.mockClear();
+    localStorage.clear();
   });
 
   it("prefills the workspace from a deep link, then from the remembered value", () => {
@@ -74,9 +81,30 @@ describe("SignInForm", () => {
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(post.mock.calls[0][0]).toBe("/auth/login");
     expect(post.mock.calls[0][1]).toEqual({ workspace: "pizzashop", email: "staff@pizza.com", password: "Pizza-Pass1" });
+    expect(post.mock.calls[0][2]).toMatchObject({ headers: { "x-tenant": "pizzashop" } });
     await waitFor(() => expect(setAccessToken).toHaveBeenCalledWith("token-1"));
     expect(getWorkspace()).toBe("pizzashop");
     expect(refreshAuth).toHaveBeenCalled();
+  });
+
+  // A failed attempt must not leave the new store's x-tenant paired with the
+  // previous store's session: the workspace is written only on success.
+  it("drops the previous session first and does not remember a workspace it failed to sign into", async () => {
+    setWorkspace("burgerhub");
+    post.mockRejectedValue(new Error("nope"));
+    renderAt();
+
+    await userEvent.clear(screen.getByLabelText(/^workspace/i));
+    await userEvent.type(screen.getByLabelText(/^workspace/i), "pizzashop");
+    await userEvent.type(screen.getByLabelText(/^email or phone/i), "staff@pizza.com");
+    await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    expect(clearAuth).toHaveBeenCalled();
+    expect(clearAccessToken).toHaveBeenCalled();
+    expect(setAccessToken).not.toHaveBeenCalled();
+    expect(getWorkspace()).toBeNull();
   });
 
   it("signs in with a phone number instead of an email", async () => {

@@ -6,7 +6,8 @@ const PathaoCourier = require("../service/couriers/PathaoCourier");
 const cityZoneService = require("../service/couriers/courierCityZone");
 const { getCourierConfig } = require("../integrations/config");
 
-// Tenant settings when a tenant context exists; legacy Merchant document otherwise
+// Tenant settings when the store configured the courier; otherwise the store's own
+// legacy Merchant document (Merchant applies tenantPlugin, so the lookup is scoped)
 const resolveMerchant = async (provider, merchantId) => {
   const configured = await getCourierConfig(provider);
   if (configured) return configured;
@@ -69,14 +70,6 @@ exports.getPathaoOrderShortInfo = asynchandeler(async (req, res) => {
   apiResponse.sendSuccess(res, 200, "Order info fetched", orderInfo);
 });
 
-// pathao webhook handler
-exports.handlePathaoWebhook = asynchandeler(async (req, res) => {
-  const merchant = await Merchant.findOne({ serviceProvider: "pathao" });
-  if (!merchant) throw new customError("Merchant not found", 404);
-  const courier = new PathaoCourier(merchant);
-  await courier.handlePathaoWebhook(req, res);
-});
-
 //@desc Get available cities
 //@route GET /api/v1/courier/pathao/cities
 
@@ -132,15 +125,6 @@ exports.bulkSteadFastOrder = asynchandeler(async (req, res) => {
   if (!orders)
     throw new customError("Failed to create Steadfast bulk orders", 500);
   apiResponse.sendSuccess(res, 201, "Steadfast bulk orders created", orders);
-});
-
-// Steadfast webhook handler
-exports.handleSteadFastWebhook = asynchandeler(async (req, res) => {
-  const merchant = await Merchant.findOne({ serviceProvider: "steadfast" });
-  if (!merchant) throw new customError("Merchant not found", 404);
-  const courier = new SteadFastCourier(merchant);
-  const response = await courier.handleSteadFastWebhook(req, res);
-  apiResponse.sendSuccess(res, 200, "Webhook handled", response);
 });
 
 // ---------- per-tenant webhooks (/api/v1/hooks/:provider/:webhookKey) ----------

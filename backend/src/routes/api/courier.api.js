@@ -3,7 +3,6 @@ const _ = express.Router();
 const courierController = require("../../controller/courier.controller");
 const { authGuard } = require("../../middleware/authMiddleware");
 const { authorize } = require("../../middleware/checkPermission.middleware");
-const { legacyRoute } = require("../../middleware/legacyRoute.middleware");
 
 // Pathao Routes
 _.route("/pathao-create-order").post(
@@ -21,7 +20,6 @@ _.route("/order-shortinfo/:id").get(
   authorize("courier-delivery", "view"),
   courierController.getPathaoOrderShortInfo,
 );
-_.route("/pathao-webhook").post(legacyRoute, courierController.handlePathaoWebhook);
 _.route("/cities").get(
   authGuard,
   authorize("courier-delivery", "view"),
@@ -49,6 +47,5 @@ _.route("/steadfast-bulk-create-orders").post(
   authorize("courier-delivery", "add"),
   courierController.bulkSteadFastOrder,
 );
-_.route("/steadfast-webhook").post(legacyRoute, courierController.handleSteadFastWebhook);
 
 module.exports = _;

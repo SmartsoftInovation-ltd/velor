@@ -14,6 +14,7 @@ const { apiResponse } = require("../utils/apiResponse");
 const { customError } = require("../lib/CustomError");
 const { validateUser } = require("../validation/user.validation");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { isProduction } = require("../config/nodeEnv");
 const {
   cloudinaryFileUpload,
   deleteCloudinaryFile,
@@ -86,7 +87,7 @@ exports.registerUser = asynchandeler(async (req, res) => {
 
 // user login and send a refresh token and access token
 const cookieSameSite = () =>
-  process.env.AUTH_COOKIE_SAMESITE || (process.env.NODE_ENV === "production" ? "none" : "lax");
+  process.env.AUTH_COOKIE_SAMESITE || (isProduction() ? "none" : "lax");
 
 const tenantSummary = (tenant) =>
   tenant ? { _id: tenant._id, name: tenant.name, slug: tenant.slug, status: tenant.status } : null;
@@ -174,11 +175,11 @@ exports.login = asynchandeler(async (req, res) => {
   delete userData.userRefreshToken;
 
   // set refresh token in cookie
-  const isProduction = process.env.NODE_ENV === "production";
+  const production = isProduction();
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: isProduction,
+    secure: production,
     sameSite: cookieSameSite(),
     path: "/",
     maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days — matches REFRESH_TOKEN_EXPIRY
@@ -247,10 +248,10 @@ exports.logout = asynchandeler(async (req, res) => {
   }
 
   // remove refresh token from cookie
-  const isProduction = process.env.NODE_ENV === "production";
+  const production = isProduction();
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: isProduction,
+    secure: production,
     sameSite: cookieSameSite(),
     path: "/",
   });
