@@ -33,7 +33,16 @@ describe("ResetPasswordForm", () => {
     await userEvent.type(screen.getByLabelText(/email or phone/i), "01711000000");
     await userEvent.click(screen.getByRole("button", { name: /send code by sms/i }));
 
-    await waitFor(() => expect(post).toHaveBeenCalledWith("/auth/forgot-password", { workspace: "pizzashop", phone: "01711000000" }));
+    // The store is named per request; nothing is written to localStorage, so a
+    // signed-in session's token cannot end up paired with another store's header.
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        "/auth/forgot-password",
+        { workspace: "pizzashop", phone: "01711000000" },
+        { headers: { "x-tenant": "pizzashop" } },
+      ),
+    );
+    expect(localStorage.getItem("workspace")).toBeNull();
     expect(await screen.findByRole("status")).toHaveTextContent(/6-digit code/i);
 
     await userEvent.type(screen.getByLabelText(/sms code/i), "12a34");
@@ -46,12 +55,16 @@ describe("ResetPasswordForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /set new password/i }));
 
     await waitFor(() =>
-      expect(post).toHaveBeenLastCalledWith("/auth/reset-password", {
-        workspace: "pizzashop",
-        phone: "01711000000",
-        otp: "123456",
-        newPassword: "Pizza-New-Pass1",
-      }),
+      expect(post).toHaveBeenLastCalledWith(
+        "/auth/reset-password",
+        {
+          workspace: "pizzashop",
+          phone: "01711000000",
+          otp: "123456",
+          newPassword: "Pizza-New-Pass1",
+        },
+        { headers: { "x-tenant": "pizzashop" } },
+      ),
     );
     expect(await screen.findByText("Sign in page")).toBeInTheDocument();
   });
@@ -65,7 +78,11 @@ describe("ResetPasswordForm", () => {
     await userEvent.click(await screen.findByRole("button", { name: /resend code/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
-    expect(post.mock.calls[1]).toEqual(["/auth/forgot-password", { workspace: "pizzashop", email: "rahim@pizza.com" }]);
+    expect(post.mock.calls[1]).toEqual([
+      "/auth/forgot-password",
+      { workspace: "pizzashop", email: "rahim@pizza.com" },
+      { headers: { "x-tenant": "pizzashop" } },
+    ]);
   });
 
   it("shows why the code could not be sent", async () => {

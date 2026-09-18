@@ -20,6 +20,7 @@ jest.mock("../../src/service/platformSms.service", () => ({
 }));
 
 const { cache, __reset: resetRedis } = require("../mocks/redisCache");
+const { resetRateLimitCounters } = require("../../src/middleware/rateLimit.middleware");
 const { sendPlatformSms } = require("../../src/service/platformSms.service");
 
 const BASE = "/api/v1/platform/auth";
@@ -42,6 +43,9 @@ describe("platform auth API", () => {
   afterEach(async () => {
     await clearTestDb();
     resetRedis();
+    // Every test signs in from the same address; without this the sign-in
+    // limiter would count the whole suite as one brute-force run.
+    resetRateLimitCounters();
     sentMessages.length = 0;
     sendPlatformSms.mockClear();
   });

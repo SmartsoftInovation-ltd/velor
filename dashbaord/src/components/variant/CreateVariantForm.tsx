@@ -76,6 +76,11 @@ const quillModules = {
 const DB_NAME = "VariantDraftDB";
 const STORE_NAME = "draft_files";
 
+// The record key is namespaced per store: one IndexedDB database serves the
+// whole browser, so an unscoped key would restore one store's draft images
+// into the next store signed in on the same machine.
+const variantDraftFilesKey = () => scopedStorageKey("variant_draft_files_key");
+
 const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -97,7 +102,7 @@ const saveDraftFiles = async (
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    store.put(filesMap, "variant_draft_files_key");
+    store.put(filesMap, variantDraftFilesKey());
   } catch (e) {
     console.error("Failed to save files to IndexedDB", e);
   }
@@ -111,7 +116,7 @@ const getDraftFiles = async (): Promise<
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
-      const request = store.get("variant_draft_files_key");
+      const request = store.get(variantDraftFilesKey());
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => resolve(null);
     });
@@ -126,7 +131,7 @@ const clearDraftFiles = async () => {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    store.delete("variant_draft_files_key");
+    store.delete(variantDraftFilesKey());
   } catch (e) {
     console.error("Failed to clear IndexedDB files", e);
   }

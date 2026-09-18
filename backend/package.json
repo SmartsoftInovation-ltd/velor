@@ -37,7 +37,8 @@
     "seed:platform-admin": "node src/seeder/seedPlatformAdmin.js",
     "tenant:create": "node src/scripts/createTenant.js",
     "migrate": "node src/migrations/cli.js",
-    "migrate:cutover": "node src/migrations/cli.js --cutover"
+    "migrate:cutover": "node src/migrations/cli.js --cutover",
+    "migrate:audit": "node src/migrations/cli.js --audit"
   },
   "_moduleAliases": {
     "@": "src"

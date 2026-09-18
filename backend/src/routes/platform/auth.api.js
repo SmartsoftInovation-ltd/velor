@@ -1,7 +1,7 @@
 const express = require("express");
 const controller = require("../../controller/platform/platformAuth.controller");
 const { platformGuard } = require("../../middleware/platformGuard.middleware");
-const { platformLoginLimiter } = require("../../middleware/rateLimit.middleware");
+const { platformLoginLimiter, platformOtpLimiter } = require("../../middleware/rateLimit.middleware");
 const { validateBody } = require("../../validation/platform/validateBody");
 const {
   platformLoginSchema,
@@ -14,8 +14,8 @@ const _ = express.Router();
 // Sign-in is two steps: the password starts a challenge, the SMS code opens the
 // session. There is no way into the console that skips the code.
 _.post("/login", platformLoginLimiter, validateBody(platformLoginSchema), controller.login);
-_.post("/verify-otp", platformLoginLimiter, validateBody(platformOtpSchema), controller.verifyOtp);
-_.post("/resend-otp", platformLoginLimiter, validateBody(platformResendOtpSchema), controller.resendOtp);
+_.post("/verify-otp", platformOtpLimiter, validateBody(platformOtpSchema), controller.verifyOtp);
+_.post("/resend-otp", platformOtpLimiter, validateBody(platformResendOtpSchema), controller.resendOtp);
 _.post("/refresh", controller.refresh);
 _.post("/logout", controller.logout);
 _.get("/me", platformGuard, controller.me);

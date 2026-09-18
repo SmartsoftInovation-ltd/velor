@@ -8,6 +8,7 @@ const { tenantJob } = require("@/tenancy/queue");
 const { startSettingsInvalidationListener } = require("@/settings/settings.service");
 const { AUDIT_QUEUE_NAME } = require("@/queues/audit.queue");
 const { connection } = require("@/config/redis.config");
+const { queuePrefix } = require("@/queues/prefix");
 const { auditLogModel } = require("@/models/auditLog.model");
 const { dbConnect } = require("@/database/db");
 
@@ -32,9 +33,17 @@ function startAuditWorker() {
       // and skips schema re-validation on a payload the service already shaped
       // tenantId is stamped explicitly: the native driver skips the tenant plugin
       const { tenantId, ...entry } = job.data;
+
+      // A row written without a tenantId belongs to no store: every scoped read
+      // ANDs `{ tenantId }`, so it would silently vanish from the audit trail
+      // instead of failing. tenantJob already rejects such a job in strict mode;
+      // this refuses it in every mode, because the native driver has no plugin
+      // behind it to catch the mistake.
+      if (!tenantId) throw new Error(`Audit job ${job.id} has no tenantId`);
+
       await auditLogModel.collection.insertOne({
         ...entry,
-        ...(tenantId && { tenantId: toObjectId(tenantId) }),
+        tenantId: toObjectId(tenantId),
         createdAt: entry.createdAt ? new Date(entry.createdAt) : new Date(),
         ...(entry.user?.id && {
           user: { ...entry.user, id: toObjectId(entry.user.id) },
@@ -45,7 +54,7 @@ function startAuditWorker() {
       });
       return { logged: true };
     }),
-    { connection, concurrency: 25 },
+    { connection, prefix: queuePrefix(), concurrency: 25 },
   );
 
   worker.on("failed", (job, err) => {

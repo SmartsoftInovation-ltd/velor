@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { apiUrl } from "../lib/env";
 
 // Platform operator session inside the dashboard's Platform Console module.
 // Separate from the store staff session: its own access token (sessionStorage,
@@ -21,7 +22,12 @@ export const setPlatformSessionExpiredHandler = (handler: () => void) => {
 };
 
 export const platformApi = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1"}/platform`,
+  // No `x-tenant` header, by design: the platform routes are mounted BEFORE the
+  // tenant middleware (backend `routes/index.js`) and run under `runAsPlatform`,
+  // so they have no store context to name. Moving them below that middleware
+  // would break this silently — `tests/integration/platformGuard.test.js` pins
+  // the mount order.
+  baseURL: `${apiUrl()}/platform`,
   withCredentials: true,
 });
 

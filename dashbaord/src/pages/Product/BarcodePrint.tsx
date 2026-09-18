@@ -23,6 +23,7 @@ import type {
 } from "../../components/product/barcodePrint/types";
 import { FaArrowLeftLong } from "react-icons/fa6";
 import { showApiError } from "../../utils/apiError";
+import { scopedStorageKey } from "../../lib/session";
 
 const SOURCE_TABS: { id: SourceTab; label: string }[] = [
   { id: "products", label: "Products" },
@@ -30,7 +31,9 @@ const SOURCE_TABS: { id: SourceTab; label: string }[] = [
   { id: "variants", label: "Variants" },
 ];
 
-const STORAGE_KEY = "barcode-print-state";
+// Per store: the queue holds product names, prices and the shop name, which
+// must not reappear on screen after signing into a different store.
+const barcodeStateKey = () => scopedStorageKey("barcode-print-state");
 
 interface PersistedState {
   activeTab: SourceTab;
@@ -44,7 +47,7 @@ interface PersistedState {
 
 const loadPersistedState = (): Partial<PersistedState> => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(barcodeStateKey());
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -92,7 +95,7 @@ const BarcodePrint = () => {
       shopName,
     };
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(barcodeStateKey(), JSON.stringify(state));
     } catch {
       // ignore quota/serialization errors
     }

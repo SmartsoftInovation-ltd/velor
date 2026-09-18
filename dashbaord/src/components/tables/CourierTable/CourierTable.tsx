@@ -24,6 +24,7 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
+import { scopedStorageKey } from "../../../lib/session";
 
 interface Order {
   createdAt: string;
@@ -120,7 +121,7 @@ export default function CourierTable() {
       return;
     }
 
-    const key = `merchantId_${selectedCourier.toLowerCase()}`;
+    const key = scopedStorageKey(`merchantId_${selectedCourier.toLowerCase()}`);
     const storedMerchantId = localStorage.getItem(key);
     setMerchantId(storedMerchantId || "");
   }, [selectedCourier]);

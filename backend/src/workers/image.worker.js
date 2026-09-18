@@ -9,6 +9,7 @@ const { startSettingsInvalidationListener } = require("@/settings/settings.servi
 const fs = require("fs/promises");
 const { IMAGE_QUEUE_NAME } = require("@/queues/image.queue");
 const { connection } = require("@/config/redis.config");
+const { queuePrefix } = require("@/queues/prefix");
 const {
   cloudinaryFileUpload,
   deleteCloudinaryFile,
@@ -168,7 +169,7 @@ function startImageWorker() {
         throw err;
       }
     }),
-    { connection, concurrency: 3 },
+    { connection, prefix: queuePrefix(), concurrency: 3 },
   );
 
   worker.on("ready", () => console.log("✅ Image Worker ready"));

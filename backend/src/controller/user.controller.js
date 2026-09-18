@@ -85,9 +85,24 @@ exports.registerUser = asynchandeler(async (req, res) => {
   );
 });
 
-// user login and send a refresh token and access token
+// Refresh cookie policy. Production defaults to SameSite=none, because the
+// dashboard and the API are usually different origins and "lax" would stop the
+// browser sending the cookie at all — staff would be signed out at every expiry.
+// AUTH_COOKIE_SAMESITE overrides it for a same-site deployment.
 const cookieSameSite = () =>
   process.env.AUTH_COOKIE_SAMESITE || (isProduction() ? "none" : "lax");
+
+// Browsers reject SameSite=none without Secure, so the pair is decided together
+// rather than at each call site.
+const refreshCookieOptions = () => {
+  const sameSite = cookieSameSite();
+  return {
+    httpOnly: true,
+    secure: isProduction() || sameSite === "none",
+    sameSite,
+    path: "/",
+  };
+};
 
 const tenantSummary = (tenant) =>
   tenant ? { _id: tenant._id, name: tenant.name, slug: tenant.slug, status: tenant.status } : null;
@@ -174,14 +189,8 @@ exports.login = asynchandeler(async (req, res) => {
   delete userData.userPassword;
   delete userData.userRefreshToken;
 
-  // set refresh token in cookie
-  const production = isProduction();
-
   res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: production,
-    sameSite: cookieSameSite(),
-    path: "/",
+    ...refreshCookieOptions(),
     maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days — matches REFRESH_TOKEN_EXPIRY
   });
 
@@ -214,7 +223,14 @@ exports.refreshToken = asynchandeler(async (req, res) => {
   // A suspended store signs its staff out at the next refresh
   const tenantId = decoded.tid || user.tenantId;
   if (tenantId) assertTenantActive(await getTenantById(tenantId));
-  if (decoded.tid && (decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
+
+  // Checked for legacy tokens too (an absent `tv` reads as 0), the same rule
+  // authGuard applies. Guarding this on `decoded.tid` would let a token issued
+  // before multi-tenancy renew itself forever: the new access token is built
+  // from the live document, so it carries the current tokenVersion and passes
+  // authGuard — bumping tokenVersion would launder the session instead of
+  // ending it, and a password reset would not evict a stolen token.
+  if ((decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
     throw new customError("Session expired. Please sign in again.", statusCodes.UNAUTHORIZED);
   }
 
@@ -247,14 +263,8 @@ exports.logout = asynchandeler(async (req, res) => {
     await runAsPlatform(() => User.updateOne({ refreshToken }, { $set: { refreshToken: null } }));
   }
 
-  // remove refresh token from cookie
-  const production = isProduction();
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: production,
-    sameSite: cookieSameSite(),
-    path: "/",
-  });
+  // remove refresh token from cookie — same options, or the browser keeps it
+  res.clearCookie("refreshToken", refreshCookieOptions());
 
   apiResponse.sendSuccess(res, statusCodes.OK, "Logout successful");
 });

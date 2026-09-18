@@ -5,7 +5,7 @@ import axios from "axios";
 import { FiArrowLeft, FiCheck, FiEye, FiEyeOff, FiHash, FiLock, FiUser } from "react-icons/fi";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import axiosSecure from "../../hooks/useAxiosSecure";
-import { getWorkspace, setWorkspace, workspaceFromSearch } from "../../lib/session";
+import { getWorkspace, workspaceFromSearch } from "../../lib/session";
 import { loginIdentifier, NEW_PASSWORD_MIN } from "../../lib/credentials";
 import BrandMark from "./BrandMark";
 import { fieldShell, inputClass } from "./authStyles";
@@ -28,12 +28,18 @@ const submitClass =
 
 const signInPath = (workspace: string) => `/signin${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ""}`;
 
-// The code always goes by SMS to the phone number on the account
-const requestCode = (workspace: string, who: Identifier) => {
-  // Remember the store first: the request interceptor sends it as x-tenant
-  setWorkspace(workspace);
-  return axiosSecure.post("/auth/forgot-password", { workspace, ...who });
-};
+// The code always goes by SMS to the phone number on the account.
+//
+// The store is named per request, not remembered: this is a public form, so
+// writing an unauthenticated slug to localStorage would pair a signed-in
+// session's token with a different store's x-tenant on every later request —
+// and switch the query cache's namespace underneath it.
+const requestCode = (workspace: string, who: Identifier) =>
+  axiosSecure.post(
+    "/auth/forgot-password",
+    { workspace, ...who },
+    { headers: { "x-tenant": workspace } },
+  );
 
 // Step 1: which account
 const RequestCode = ({ initialWorkspace, onSent }: {
@@ -131,8 +137,13 @@ const ChooseNewPassword = ({ workspace, who }: { workspace: string; who: Identif
 
     setSubmitting(true);
     try {
-      setWorkspace(workspace);
-      await axiosSecure.post("/auth/reset-password", { workspace, ...who, otp, newPassword: password });
+      // Named per request, not remembered — see requestCode above. The signin
+      // link carries the slug forward instead.
+      await axiosSecure.post(
+        "/auth/reset-password",
+        { workspace, ...who, otp, newPassword: password },
+        { headers: { "x-tenant": workspace } },
+      );
       toast.success("Password updated. Sign in with your new password.");
       navigate(signInPath(workspace), { replace: true });
     } catch (error) {

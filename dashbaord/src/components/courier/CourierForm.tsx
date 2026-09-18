@@ -5,6 +5,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
 import MobileActionBar from "../common/MobileActionBar";
 import { showApiError } from "../../utils/apiError";
+import { scopedStorageKey } from "../../lib/session";
 
 const couriers = ["Pathao", "SteadFast", "RedX", "PaperFly", "eCourier"];
 
@@ -14,7 +15,6 @@ interface CourierFormData {
   store_id: string;
   webhookSecret: string;
   baseURL: string;
-  webhookIntegrationeURL: string;
 }
 
 const CourierForm = () => {
@@ -25,23 +25,13 @@ const CourierForm = () => {
     store_id: "",
     webhookSecret: "",
     baseURL: "",
-    webhookIntegrationeURL: "",
   });
 
-  // Set integration URL when courier changes. The webhook secret is typed in
-  // by the admin — secrets must never be baked into the dashboard bundle.
+  // The webhook secret is typed in by the admin — secrets must never be baked
+  // into the dashboard bundle.
   useEffect(() => {
     if (!selectedCourier) return;
-
-    const courierSlug = selectedCourier.toLowerCase();
-
-    setFormData((prev) => ({
-      ...prev,
-      webhookSecret: "",
-      webhookIntegrationeURL: `${
-        import.meta.env.VITE_API_URL
-      }/courier/${courierSlug}-webhook`,
-    }));
+    setFormData((prev) => ({ ...prev, webhookSecret: "" }));
   }, [selectedCourier]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,10 +59,11 @@ const CourierForm = () => {
       // Assuming API returns the saved merchant object with _id
       const merchant = res.data.data;
 
-      // Save to localStorage
+      // Remembered per store: unscoped, this id followed the browser into the
+      // next store and was posted as that store's merchant.
       if (merchant?._id) {
         localStorage.setItem(
-          `merchantId_${selectedCourier.toLowerCase()}`,
+          scopedStorageKey(`merchantId_${selectedCourier.toLowerCase()}`),
           merchant._id
         );
         toast.success(`${selectedCourier} merchant created and saved locally!`);
@@ -84,10 +75,7 @@ const CourierForm = () => {
     }
   };
 
-  const fields: Record<
-    keyof Omit<CourierFormData, "webhookIntegrationeURL">,
-    { label: string; type: string }
-  > = {
+  const fields: Record<keyof CourierFormData, { label: string; type: string }> = {
     merchantID: { label: "Merchant ID", type: "text" },
     merchantSecret: { label: "Merchant Secret", type: "text" },
     store_id: { label: "Store ID", type: "text" },
@@ -134,15 +122,15 @@ const CourierForm = () => {
               </div>
             ))}
 
-            {/* Webhook Integration URL (Readonly) */}
+            {/* The single-tenant /courier/<provider>-webhook URLs were removed:
+                each store now has its own webhook URL, shown in
+                Settings -> Store Settings -> the courier's card. */}
             <div>
               <Label>Webhook Integration URL</Label>
-              <input
-                type="text"
-                value={formData.webhookIntegrationeURL}
-                readOnly
-                className="w-full border px-3 py-2 rounded-md bg-gray-100 text-gray-600"
-              />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Your store's webhook URL is shown in Settings &rarr; Store Settings, on this
+                courier's card. Paste that one into the courier portal.
+              </p>
             </div>
           </div>
 

@@ -8,6 +8,7 @@ const { tenantJob } = require("@/tenancy/queue");
 const { startSettingsInvalidationListener } = require("@/settings/settings.service");
 const { SMS_QUEUE_NAME } = require("@/queues/sms.queue");
 const { connection } = require("@/config/redis.config");
+const { queuePrefix } = require("@/queues/prefix");
 const { sendSMS } = require("@/helpers/sms");
 const SmsLog = require("@/models/smsLog.model");
 const { dbConnect } = require("@/database/db");
@@ -111,7 +112,7 @@ function startSmsWorker() {
 
       return { logId, sentCount, failedCount, status: finalStatus };
     }),
-    { connection, concurrency: 2 },
+    { connection, prefix: queuePrefix(), concurrency: 2 },
   );
 
   worker.on("ready", () => console.log("✅ SMS Worker ready"));

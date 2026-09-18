@@ -111,7 +111,7 @@ const CreateSizeGuide = () => {
       { label: "XXL", values: ["44", "38", "31"], order: 4 }
     ],
     measurementGuide: "Measure your chest at the widest point. Keep tape slightly loose and horizontal.",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    videoUrl: "",
     visibility: "public",
     isActive: true
   });

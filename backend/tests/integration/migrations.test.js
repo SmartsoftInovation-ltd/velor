@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const { connectTestDb, disconnectTestDb } = require("../helpers/db");
 const { setSettingsEnv } = require("../helpers/settings");
 const { runMigrations, runCutover } = require("../../src/migrations/runner");
+const { auditTenancy } = require("../../src/migrations/audit");
 const { runForTenant } = require("../../src/tenancy/context");
 const Tenant = require("../../src/models/platform/tenant.model");
 const service = require("../../src/settings/settings.service");
@@ -102,7 +103,9 @@ describe("Velor migration", () => {
       expect(s.general).toMatchObject({ invoicePrefix: "VLR", orderHotline: "01700000000", facebookUrl: "https://facebook.com/velor", storefrontUrl: "https://velor.test" });
       expect(s.sms).toMatchObject({ enabled: true, apiKey: "velor-sms-key", senderId: "8809617" });
       expect(s.sslcommerz).toMatchObject({ enabled: true, storeId: "velorstore", storePassword: "velorpass", isLive: false });
-      expect(s.email).toMatchObject({ mode: "platform", fromName: "Velor" });
+      // The legacy .env mailbox is imported as this store's own SMTP sender:
+      // there is no "platform" mode, a store always sends its own email.
+      expect(s.email).toMatchObject({ mode: "smtp", smtpHost: "smtp.gmail.com", fromName: "Velor" });
       expect(s.cloudinary).toMatchObject({ enabled: true, cloudName: "velor-cloud", apiSecret: "velor-cloud-secret" });
       expect(s.steadfast).toMatchObject({ enabled: true, apiKey: "sf-api-key", secretKey: "sf-secret-key", webhookToken: "velor-steadfast-webhook" });
       // Pathao needs the merchant login, which legacy data does not have: imported but left disabled
@@ -154,6 +157,29 @@ describe("Velor migration", () => {
     });
   });
 
+  // Read-only: tells an operator whether a live database is safe for strict mode
+  describe("audit", () => {
+    it("reports documents without a tenant and the global unique indexes still in place", async () => {
+      await raw(Product).insertOne({ name: "Stray", slug: "stray" });
+
+      const report = await auditTenancy();
+
+      expect(report.ready).toBe(false);
+      expect(report.untenanted).toContainEqual({ collection: "products", documents: 1 });
+      expect(report.globalUniqueIndexes).toContainEqual(
+        expect.objectContaining({ collection: "products", index: "slug_1" }),
+      );
+
+      await raw(Product).deleteOne({ slug: "stray" });
+    });
+
+    it("writes nothing: the indexes it reported are still there afterwards", async () => {
+      const before = (await raw(Product).indexes()).map((i) => i.name).sort();
+      await auditTenancy();
+      expect((await raw(Product).indexes()).map((i) => i.name).sort()).toEqual(before);
+    });
+  });
+
   describe("cutover", () => {
     it("refuses while documents without tenantId remain", async () => {
       await raw(Product).insertOne({ name: "Stray", slug: "stray" });
@@ -168,6 +194,12 @@ describe("Velor migration", () => {
       const productKeys = (await raw(Product).indexes()).map((i) => i.key);
       expect(productKeys).toEqual(expect.arrayContaining([{ _id: 1 }, { tenantId: 1, slug: 1 }]));
       expect(productKeys).not.toContainEqual({ slug: 1 });
+    });
+
+    it("the audit calls the database ready once cutover has run", async () => {
+      const report = await auditTenancy();
+      expect(report.missingIndexes).toEqual([]);
+      expect(report).toMatchObject({ untenanted: [], globalUniqueIndexes: [], ready: true });
     });
   });
 });

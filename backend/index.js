@@ -2,11 +2,16 @@
 require("module-alias/register");
 require("dotenv").config();
 
+const { assertStaffSecrets } = require("./src/config/staffAuth.config");
 const { server } = require("./src/app");
 const { dbConnect } = require("./src/database/db");
 const { customError } = require("./src/lib/CustomError");
 const { scheduleTempCleanup } = require("./src/jobs/cleanTempFiles.job");
 const { startSettingsInvalidationListener } = require("./src/settings/settings.service");
+
+// Before anything listens: a weak or missing token secret makes every tenant
+// boundary forgeable, so in production this exits rather than serving traffic.
+assertStaffSecrets();
 
 dbConnect()
   .then(() => {

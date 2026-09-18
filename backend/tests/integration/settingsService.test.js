@@ -138,27 +138,25 @@ describe("settings.service", () => {
       expect(JSON.stringify(ownerView)).not.toMatch(/pizzashop-real-api-key|cloud-secret-value/);
     });
 
-    it("email in platform mode only counts as configured when a platform sender exists", async () => {
-      const saved = { mail: process.env.HOST_MAIL, pass: process.env.HOST_APP_PASSWORD };
-      delete process.env.HOST_MAIL;
-      delete process.env.HOST_APP_PASSWORD;
-      try {
-        expect((await service.getFeatures(T)).email).toBe(false);
-        process.env.HOST_MAIL = "platform@mail.test";
-        process.env.HOST_APP_PASSWORD = "pass";
-        expect((await service.getFeatures(T)).email).toBe(true);
-      } finally {
-        if (saved.mail) process.env.HOST_MAIL = saved.mail; else delete process.env.HOST_MAIL;
-        if (saved.pass) process.env.HOST_APP_PASSWORD = saved.pass; else delete process.env.HOST_APP_PASSWORD;
-      }
+    // A store's email must come from the store: the platform mailbox is not an
+    // option, so HOST_MAIL/HOST_APP_PASSWORD can never make email "configured".
+    it("email counts as configured only from the store's own SMTP, never the platform mailbox", async () => {
+      Object.assign(process.env, { HOST_MAIL: "platform@mail.test", HOST_APP_PASSWORD: "pass" });
+      expect((await service.getFeatures(T)).email).toBe(false);
+
+      await service.updateSection(T, "email", {
+        mode: "smtp", smtpHost: "smtp.pizza.test", smtpUser: "shop@pizza.test", smtpPassword: "smtp-pass",
+      });
+      expect((await service.getFeatures(T)).email).toBe(true);
+
+      await service.updateSection(T, "email", { mode: "disabled" });
+      expect((await service.getFeatures(T)).email).toBe(false);
     });
 
     it("getFeatures reports which integrations are configured", async () => {
-      process.env.HOST_MAIL = "platform@mail.test";
-      process.env.HOST_APP_PASSWORD = "pass";
       expect(await service.getFeatures(T)).toEqual({
         sms: true,
-        email: true,
+        email: false,
         sslcommerz: false,
         couriers: { pathao: false, steadfast: false },
         cloudinary: true,

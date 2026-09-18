@@ -146,6 +146,62 @@ describe("tenant-aware staff auth", () => {
       expect(decode(res.body.data.accessToken).tid).toBe(burger.tenant._id.toString());
     });
 
+    // Bumping tokenVersion is how a password reset evicts a stolen session. A
+    // refresh that skipped the check would launder the session instead of ending
+    // it: the new access token is built from the live document, so it carries the
+    // current tokenVersion and sails through authGuard.
+    it.each([
+      ["a current token", false],
+      ["a legacy token with no tid claim", true],
+    ])("refuses to refresh %s once tokenVersion moved", async (_label, legacy) => {
+      const cookie = await refreshCookie("burgerhub", "Burger-Pass1");
+
+      if (legacy) {
+        // Replace the stored refresh token with one issued before multi-tenancy
+        const stored = jwt.sign({ id: burger.user._id }, STAFF_ENV.REFRESH_TOKEN_SCCERET, { expiresIn: "7d" });
+        await runAsPlatform(() => User.updateOne({ _id: burger.user._id }, { $set: { refreshToken: stored } }));
+        await request(app.server)
+          .post("/api/v1/auth/refresh-token")
+          .set("Cookie", `refreshToken=${stored}`)
+          .expect(200); // works until the version moves
+        await runAsPlatform(() => User.updateOne({ _id: burger.user._id }, { $inc: { tokenVersion: 1 } }));
+        const res = await request(app.server)
+          .post("/api/v1/auth/refresh-token")
+          .set("Cookie", `refreshToken=${stored}`)
+          .expect(401);
+        expect(res.body.message).toMatch(/session expired/i);
+        return;
+      }
+
+      await runAsPlatform(() => User.updateOne({ _id: burger.user._id }, { $inc: { tokenVersion: 1 } }));
+      const res = await request(app.server).post("/api/v1/auth/refresh-token").set("Cookie", cookie).expect(401);
+      expect(res.body.message).toMatch(/session expired/i);
+    });
+
+    // A cross-origin dashboard needs SameSite=none, and a browser drops a
+    // SameSite=none cookie that is not also Secure — so the two travel together.
+    it.each([
+      ["", "development", "lax", false],
+      ["", "production", "none", true],
+      ["lax", "production", "lax", true],
+      ["none", "development", "none", true],
+    ])("refresh cookie with AUTH_COOKIE_SAMESITE=%s in %s is SameSite=%s", async (configured, env, sameSite, secure) => {
+      const saved = { same: process.env.AUTH_COOKIE_SAMESITE, env: process.env.NODE_ENV };
+      if (configured) process.env.AUTH_COOKIE_SAMESITE = configured;
+      else delete process.env.AUTH_COOKIE_SAMESITE;
+      process.env.NODE_ENV = env;
+
+      try {
+        const res = await login({ workspace: "burgerhub", email: "staff@shop.test", password: "Burger-Pass1" });
+        const cookie = res.headers["set-cookie"].find((c) => c.startsWith("refreshToken="));
+        expect(cookie).toMatch(new RegExp(`SameSite=${sameSite}`, "i"));
+        expect(/Secure/i.test(cookie)).toBe(secure);
+      } finally {
+        if (saved.same) process.env.AUTH_COOKIE_SAMESITE = saved.same; else delete process.env.AUTH_COOKIE_SAMESITE;
+        process.env.NODE_ENV = saved.env;
+      }
+    });
+
     it("refuses to refresh into a suspended store", async () => {
       const cookie = await refreshCookie("burgerhub", "Burger-Pass1");
       await Tenant.updateOne({ _id: burger.tenant._id }, { status: "suspended" });

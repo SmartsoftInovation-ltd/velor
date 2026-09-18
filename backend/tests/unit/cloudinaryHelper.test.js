@@ -25,7 +25,7 @@ describe("helpers/cloudinary", () => {
     jest.clearAllMocks();
     jest.spyOn(console, "log").mockImplementation(() => {});
     jest.spyOn(console, "error").mockImplementation(() => {});
-    getCloudinaryConfig.mockResolvedValue({ ...creds, folder: "pizza" });
+    getCloudinaryConfig.mockResolvedValue({ ...creds });
     cloudinary.uploader.upload.mockResolvedValue({ public_id: "pizza/abc" });
     cloudinary.url.mockReturnValue("https://res.cloudinary.com/pizza-cdn/abc");
     cloudinary.api.delete_resources.mockResolvedValue({ deleted: { "pizza/abc": "deleted" } });
@@ -41,10 +41,12 @@ describe("helpers/cloudinary", () => {
     expect(cloudinary.config).not.toHaveBeenCalledWith(expect.objectContaining({ api_secret: expect.anything() }));
   });
 
-  it("uploads with the tenant's credentials and folder, and reports the cloud name", async () => {
+  // Uploads land in each tenant's own Cloudinary account, so there is no folder
+  // to separate them with — the account is the boundary.
+  it("uploads with the tenant's credentials, and reports the cloud name", async () => {
     const result = await cloudinaryFileUpload(file, { deleteAfter: false });
 
-    expect(cloudinary.uploader.upload).toHaveBeenCalledWith(file, expect.objectContaining({ ...creds, folder: "pizza", resource_type: "auto" }));
+    expect(cloudinary.uploader.upload).toHaveBeenCalledWith(file, { ...creds, resource_type: "auto" });
     expect(cloudinary.url).toHaveBeenCalledWith("pizza/abc", expect.objectContaining({ cloud_name: "pizza-cdn" }));
     expect(result).toMatchObject({ cloudName: "pizza-cdn", optimizeUrl: "https://res.cloudinary.com/pizza-cdn/abc" });
   });

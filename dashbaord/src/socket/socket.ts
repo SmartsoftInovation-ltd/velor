@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import { getAccessToken } from "../hooks/useAxiosSecure";
+import { socketUrl } from "../lib/env";
 
 let socket: Socket | null = null;
 
@@ -7,7 +8,7 @@ let socket: Socket | null = null;
 // so events from other stores never arrive here.
 export const initSocket = (): Socket => {
   if (!socket) {
-    socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:3000", {
+    socket = io(socketUrl(), {
       auth: (cb) => cb({ token: getAccessToken() }),
       withCredentials: true,
     });

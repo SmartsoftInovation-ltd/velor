@@ -68,7 +68,8 @@ describe("StoreSettings", () => {
     setup();
     render(<StoreSettings />);
 
-    expect(await screen.findByText("2 of 7 connected")).toBeInTheDocument();
+    // Six integrations: sms, email, sslcommerz, pathao, steadfast, cloudinary
+    expect(await screen.findByText("2 of 6 connected")).toBeInTheDocument();
     expect(screen.getByText("velor")).toBeInTheDocument();
     expect(screen.getByDisplayValue("VR")).toHaveAttribute("readonly");
 

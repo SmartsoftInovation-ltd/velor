@@ -138,6 +138,11 @@ const GalleryDropZone = ({ onDrop, galleryCount }: any) => {
 const DB_NAME = "ProductDraftDB";
 const STORE_NAME = "product_draft_files";
 
+// The record key is namespaced per store: one IndexedDB database serves the
+// whole browser, so an unscoped key would restore one store's draft images
+// into the next store signed in on the same machine.
+const productDraftFilesKey = () => scopedStorageKey("product_draft_files_key");
+
 const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -159,7 +164,7 @@ const saveProductDraftFiles = async (
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    store.put(filesMap, "product_draft_files_key");
+    store.put(filesMap, productDraftFilesKey());
   } catch (e) {
     console.error("Failed to save product files to IndexedDB", e);
   }
@@ -173,7 +178,7 @@ const getProductDraftFiles = async (): Promise<
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
-      const request = store.get("product_draft_files_key");
+      const request = store.get(productDraftFilesKey());
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => resolve(null);
     });
@@ -188,7 +193,7 @@ const clearProductDraftFiles = async () => {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    store.delete("product_draft_files_key");
+    store.delete(productDraftFilesKey());
   } catch (e) {
     console.error("Failed to clear product IndexedDB files", e);
   }

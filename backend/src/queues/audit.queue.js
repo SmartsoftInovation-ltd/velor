@@ -1,10 +1,12 @@
 const { Queue } = require("bullmq");
 const { connection } = require("@/config/redis.config");
 const { tenantAwareQueue } = require("@/tenancy/queue");
+const { queuePrefix } = require("./prefix");
 
 const AUDIT_QUEUE_NAME = "audit-log";
 
 const auditQueue = tenantAwareQueue(new Queue(AUDIT_QUEUE_NAME, {
+  prefix: queuePrefix(),
   connection,
   defaultJobOptions: {
     attempts: 3,

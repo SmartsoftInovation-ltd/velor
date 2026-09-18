@@ -28,6 +28,30 @@ describe("app boot with tenancy plugin in shadow mode", () => {
     await request(server).post("/api/v1/platform/auth/refresh").expect(401);
   });
 
+  // The platform console has no store to name, so `platformApi` in the dashboard
+  // sends no x-tenant header. That only works while the platform routes stay
+  // ABOVE the tenant middleware: moved below it, every console request would be
+  // answered 400 TENANT_CONTEXT_REQUIRED instead of 401.
+  it("mounts the platform API above the tenant middleware", async () => {
+    const saved = process.env.TENANCY_MODE;
+    process.env.TENANCY_MODE = "strict";
+    try {
+      for (const path of ["/api/v1/platform/tenants", "/api/v1/platform/users", "/api/v1/platform/settings/schema"]) {
+        const res = await request(server).get(path);
+        // Guarded (401) or absent (404) — never "name your store", which is what
+        // the tenant middleware would answer if it ran first.
+        expect([401, 404]).toContain(res.status);
+        expect(res.body.code).not.toBe("TENANT_CONTEXT_REQUIRED");
+      }
+      // The same request under a tenant route does demand a store, which is what
+      // makes the assertion above meaningful rather than vacuous.
+      const tenantRoute = await request(server).get("/api/v1/categories-active");
+      expect(tenantRoute.body.code).toBe("TENANT_CONTEXT_REQUIRED");
+    } finally {
+      process.env.TENANCY_MODE = saved;
+    }
+  });
+
   it("retires the single-tenant payment callbacks in strict mode", async () => {
     const saved = process.env.TENANCY_MODE;
     process.env.TENANCY_MODE = "strict";

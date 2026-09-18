@@ -18,6 +18,7 @@ import ComponentCard from "../common/ComponentCard";
 import { Link } from "react-router";
 import QuickCreateModal from "./QuickCreateModal";
 import { showApiError } from "../../utils/apiError";
+import { scopedStorageKey } from "../../lib/session";
 
 // ---------- Types ----------
 interface Certification {
@@ -151,7 +152,7 @@ const EmployeeEdit = () => {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<1 | 2 | 3>(() => {
-    const saved = sessionStorage.getItem(`employee-edit-tab-${id}`);
+    const saved = sessionStorage.getItem(scopedStorageKey(`employee-edit-tab-${id}`));
     return (saved === "2" ? 2 : saved === "3" ? 3 : 1) as 1 | 2 | 3;
   });
   const [designationList, setDesignationList] = useState<{ label: string; value: string }[]>([]);
@@ -283,7 +284,7 @@ const EmployeeEdit = () => {
   }, [employee]);
 
   const goToTab = (tab: 1 | 2 | 3) => {
-    sessionStorage.setItem(`employee-edit-tab-${id}`, String(tab));
+    sessionStorage.setItem(scopedStorageKey(`employee-edit-tab-${id}`), String(tab));
     setActiveTab(tab);
   };
 
@@ -398,7 +399,7 @@ const EmployeeEdit = () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["employee-edit", id] });
       queryClient.invalidateQueries({ queryKey: ["employee-view", id] });
-      sessionStorage.removeItem(`employee-edit-tab-${id}`);
+      sessionStorage.removeItem(scopedStorageKey(`employee-edit-tab-${id}`));
       setTimeout(() => navigate("/employee-list"), 50);
     } catch (error: any) {
       if (axios.isAxiosError(error)) {

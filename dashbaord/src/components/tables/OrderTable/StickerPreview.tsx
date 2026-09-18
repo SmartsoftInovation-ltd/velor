@@ -3,13 +3,14 @@ import { useParams, useNavigate } from "react-router";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-// import QRCode from "qrcode.react";
+import { renderBarcodeToSvg } from "../../../utils/barcodeRender";
 
 const StickerPreview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<any>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const barcodeRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -22,7 +23,14 @@ const StickerPreview = () => {
     };
     if (id) fetchOrder();
   }, [id]);
-  console.log(order);
+
+  // Drawn in the browser with JsBarcode. It used to be an <img> pointing at
+  // barcode.tec-it.com, which sent every order's invoice id to a third party.
+  useEffect(() => {
+    if (order?.invoiceId && barcodeRef.current) {
+      renderBarcodeToSvg(barcodeRef.current, String(order.invoiceId), { height: 48, displayValue: true });
+    }
+  }, [order]);
 
   const handleDownload = async () => {
     if (!printRef.current) return;
@@ -49,13 +57,8 @@ const StickerPreview = () => {
           Baig's Digital
         </h1>
 
-        {/* Barcode Dummy */}
         <div className="flex justify-center mt-2">
-          <img
-            src={`https://barcode.tec-it.com/barcode.ashx?data=${order.invoiceId}&code=Code128&dpi=96`}
-            alt="barcode"
-            className="h-16"
-          />
+          <svg ref={barcodeRef} role="img" aria-label={`Barcode ${order.invoiceId ?? ""}`} className="h-16" />
         </div>
         {/* Customer Info */}
         <div className="text-sm leading-5 mb-2">

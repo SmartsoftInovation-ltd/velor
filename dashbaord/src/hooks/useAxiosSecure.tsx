@@ -4,6 +4,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { getWorkspace } from "../lib/session";
+import { apiUrl } from "../lib/env";
 
 const REFRESH_URL = "/auth/refresh-token";
 const ACCESS_TOKEN_KEY = "accessToken";
@@ -16,7 +17,7 @@ const ACCESS_TOKEN_KEY = "accessToken";
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
 const axiosSecure = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: apiUrl(),
   // The refresh token lives in an httpOnly cookie set by the backend at login,
   // so every request — the refresh call included — must send credentials.
   withCredentials: true,
@@ -110,7 +111,7 @@ const refreshAccessToken = (): Promise<string> => {
     // the already-expired access token, and a 401 from this call must never
     // re-enter the response interceptor and recurse.
     const { data } = await axios.post(
-      `${import.meta.env.VITE_API_URL}${REFRESH_URL}`,
+      `${apiUrl()}${REFRESH_URL}`,
       {},
       { withCredentials: true, headers: workspaceHeaders() },
     );

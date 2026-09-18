@@ -5,6 +5,7 @@ import type { Features } from "../../../context/AuthContext";
 import IntegrationForm from "./IntegrationForm";
 import { GROUP_ORDER, INTEGRATIONS } from "./integrationMeta";
 import type { SectionSchema, SectionValues, TestResult } from "./types";
+import { scopedStorageKey } from "../../../lib/session";
 
 const card =
   "rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]";
@@ -25,11 +26,13 @@ export const StatusPill = ({ connected }: { connected: boolean }) => (
 );
 
 export type PanelLayout = "drawer" | "modal";
-const LAYOUT_KEY = "integrationPanelLayout";
+// Per store: a preference, but one store's choice should not follow the browser
+// into another store's settings screen.
+const layoutKey = () => scopedStorageKey("integrationPanelLayout");
 
 const readLayout = (): PanelLayout => {
   try {
-    return localStorage.getItem(LAYOUT_KEY) === "modal" ? "modal" : "drawer";
+    return localStorage.getItem(layoutKey()) === "modal" ? "modal" : "drawer";
   } catch {
     return "drawer";
   }
@@ -168,7 +171,7 @@ const IntegrationGrid = ({
   const changeLayout = useCallback((next: PanelLayout) => {
     setLayout(next);
     try {
-      localStorage.setItem(LAYOUT_KEY, next);
+      localStorage.setItem(layoutKey(), next);
     } catch {
       // storage unavailable: the choice lasts for this page only
     }

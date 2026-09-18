@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { PlatformAuthProvider } from "./PlatformAuthContext";
 import PlatformGate from "./PlatformGate";
 import { getPlatformToken, setPlatformToken } from "./api";
@@ -25,20 +26,24 @@ vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ user: { _id: "u1" }
 const operator = { _id: "p1", name: "Owner", email: "owner@platform.test", role: "superadmin", isActive: true };
 const challenge = { challengeId: "11111111-2222-3333-4444-555555555555", phone: "01******62", expiresInSeconds: 300 };
 
+// The gate navigates away when the operator leaves the console, so it needs a router
 const renderGate = () =>
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <PlatformAuthProvider>
-        <PlatformGate>
-          <p>platform page</p>
-        </PlatformGate>
-      </PlatformAuthProvider>
-    </QueryClientProvider>,
+    <MemoryRouter initialEntries={["/platform"]}>
+      <QueryClientProvider client={new QueryClient()}>
+        <PlatformAuthProvider>
+          <PlatformGate>
+            <p>platform page</p>
+          </PlatformGate>
+        </PlatformAuthProvider>
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 
 const signIn = async (email = "owner@platform.test", password = "secret") => {
   await userEvent.type(screen.getByLabelText(/email/i), email);
-  await userEvent.type(screen.getByLabelText(/password/i), password);
+  // Exact: the show/hide toggle is also labelled "… password"
+  await userEvent.type(screen.getByLabelText("Password"), password);
   await userEvent.click(screen.getByRole("button", { name: /continue/i }));
 };
 

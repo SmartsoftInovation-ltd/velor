@@ -1,4 +1,5 @@
 const rateLimit = require("express-rate-limit");
+const { MemoryStore } = rateLimit;
 const { statusCodes } = require("../constant/constant");
 
 // Brute-force protection for the authentication endpoints.
@@ -22,6 +23,14 @@ const accountKey = (req) => {
   return email || phone || "no-identifier";
 };
 
+// Each limiter gets its own store, kept here so tests can clear them all
+const stores = [];
+const newStore = () => {
+  const store = new MemoryStore();
+  stores.push(store);
+  return store;
+};
+
 const tooMany = (message) => (req, res, next, options) => {
   res.status(options.statusCode).json({
     statusCode: options.statusCode,
@@ -33,6 +42,7 @@ const tooMany = (message) => (req, res, next, options) => {
 // signs in correctly never burns quota, so the limit is only ever reached by a
 // run of wrong passwords.
 const loginLimiter = rateLimit({
+  store: newStore(),
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 10,
   standardHeaders: true,
@@ -49,6 +59,7 @@ const loginLimiter = rateLimit({
 // a token, so they are rate limited on success too — otherwise the endpoint is
 // an SMS/email bomb and a token-generation oracle.
 const passwordResetLimiter = rateLimit({
+  store: newStore(),
   windowMs: 60 * 60 * 1000, // 1 hour
   limit: 5,
   standardHeaders: true,
@@ -63,6 +74,7 @@ const passwordResetLimiter = rateLimit({
 // Submitting a reset code. Each code also burns after a few wrong guesses
 // (user.controller), this caps guessing across codes and accounts per IP.
 const resetSubmitLimiter = rateLimit({
+  store: newStore(),
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
@@ -76,6 +88,7 @@ const resetSubmitLimiter = rateLimit({
 // Self-serve registration, per IP. Stops automated account creation without
 // getting in the way of a real person signing up.
 const registerLimiter = rateLimit({
+  store: newStore(),
   windowMs: 60 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
@@ -90,6 +103,7 @@ const registerLimiter = rateLimit({
 // Changing a password requires the old one, so this is a brute-force surface
 // for an attacker holding a stolen access token.
 const changePasswordLimiter = rateLimit({
+  store: newStore(),
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
@@ -104,6 +118,7 @@ const changePasswordLimiter = rateLimit({
 
 // Platform operator sign-in: same policy as tenant login, separate counter
 const platformLoginLimiter = rateLimit({
+  store: newStore(),
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
@@ -116,8 +131,46 @@ const platformLoginLimiter = rateLimit({
   ),
 });
 
+// Submitting or resending the operator's SMS code. Counted per challenge rather
+// than per IP: the OTP body carries no account identifier, so an IP-only counter
+// would let one operator's wrong codes lock out every other operator behind the
+// same address — and lock out the password step with them.
+const platformOtpLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `platform-otp:${clientIp(req)}:${req.body?.challengeId || "-"}`,
+  handler: tooMany("Too many attempts. Please sign in again."),
+});
+
+// Reports and dashboard widgets each run a batch of aggregations over the whole
+// store, so they cost far more than an ordinary read. The global limiter (1000
+// per IP per 15 minutes) is generous enough that one script could keep the
+// database busy without ever tripping it. Counted per user, not per IP, so a
+// shared office address is not one shared budget.
+const reportLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 60 * 1000,
+  limit: Number(process.env.REPORT_RATE_LIMIT_MAX) || 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `report:${req.user?._id || clientIp(req)}`,
+  handler: tooMany("Too many report requests. Please wait a moment and try again."),
+});
+
+// Test hook: forget every counter so one suite's attempts cannot spill into the next
+const resetRateLimitCounters = () => stores.forEach((store) => store.resetAll());
+
 module.exports = {
+  reportLimiter,
   platformLoginLimiter,
+  platformOtpLimiter,
+  resetRateLimitCounters,
   loginLimiter,
   passwordResetLimiter,
   resetSubmitLimiter,

@@ -8,6 +8,7 @@ const { tenantJob } = require("@/tenancy/queue");
 const { startSettingsInvalidationListener } = require("@/settings/settings.service");
 const { EMAIL_QUEUE_NAME } = require("@/queues/email.queue");
 const { connection } = require("@/config/redis.config");
+const { queuePrefix } = require("@/queues/prefix");
 const { sendEmail } = require("@/helpers/nodemailer");
 const { dbConnect } = require("@/database/db");
 
@@ -36,7 +37,7 @@ function startEmailWorker() {
       const messageId = await sendEmail(to, subject, html);
       return { to, messageId: messageId || null };
     }),
-    { connection, concurrency: 3 },
+    { connection, prefix: queuePrefix(), concurrency: 3 },
   );
 
   worker.on("ready", () => console.log("✅ Email Worker ready"));

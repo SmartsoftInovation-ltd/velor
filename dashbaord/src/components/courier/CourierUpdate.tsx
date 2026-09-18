@@ -9,6 +9,7 @@ import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import MobileActionBar from "../common/MobileActionBar";
 import { showApiError } from "../../utils/apiError";
+import { apiUrl } from "../../lib/env";
 
 const couriers = ["Pathao", "SteadFast", "RedX", "PaperFly", "eCourier"];
 
@@ -50,7 +51,7 @@ const CourierUpdate = () => {
         });
 
         setWebhookIntegrationeURL(
-          `${import.meta.env.VITE_API_URL}/courier/${
+          `${apiUrl()}/courier/${
             data.serviceProvider
           }-webhook`
         );

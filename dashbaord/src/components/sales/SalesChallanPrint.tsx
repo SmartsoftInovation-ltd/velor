@@ -19,6 +19,7 @@ import {
   fitBarcodeSvgToWidth,
   BARCODE_EDGE_INSET_PX,
 } from "../../utils/barcodeRender";
+import { scopedStorageKey } from "../../lib/session";
 
 interface StoreInformation {
   storeName: string;
@@ -106,11 +107,12 @@ const DEFAULT_SETTINGS: ChallanSettings = {
   showSignatures: true,
 };
 
-const SETTINGS_KEY = "challan-settings";
+// Per store: each store chooses its own letterhead and page size.
+const challanSettingsKey = () => scopedStorageKey("challan-settings");
 
 const loadSettings = (): ChallanSettings => {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
+    const raw = localStorage.getItem(challanSettingsKey());
     return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
   } catch {
     return DEFAULT_SETTINGS;
@@ -133,7 +135,7 @@ const SalesChallanPrint = () => {
     setSettings((prev) => {
       const next = { ...prev, [key]: value };
       try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+        localStorage.setItem(challanSettingsKey(), JSON.stringify(next));
       } catch {
         // storage full or blocked — settings still apply for this session
       }

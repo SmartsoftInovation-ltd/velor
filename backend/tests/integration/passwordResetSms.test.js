@@ -18,7 +18,12 @@ describe("password reset by SMS code", () => {
   let tenant;
   const envBackup = { ...process.env };
   const PHONE = "01711000000";
-  const SMS_ENV = { BULK_SMS_URL: "https://sms.test/send", BULK_SMS_API_KEY: "k", BULK_SMS_SENDER_ID: "s" };
+  // Reset codes go through the store's own SMS account (Store Settings → SMS),
+  // never the platform's, so this is a tenant setting and not an env variable.
+  const storeSms = (tenantId) =>
+    service.updateSection(tenantId, "sms", {
+      enabled: true, apiUrl: "https://sms.test/send", apiKey: "k", senderId: "s",
+    });
 
   beforeAll(async () => {
     Object.assign(process.env, STAFF_ENV);
@@ -31,12 +36,12 @@ describe("password reset by SMS code", () => {
   });
 
   beforeEach(async () => {
-    Object.assign(process.env, SMS_ENV);
     invalidateTenantCache();
     service.clearSettingsCache();
     sendSMS.mockReset().mockResolvedValue({ response_code: 202 });
 
     tenant = await Tenant.create({ name: "Pizza Shop", slug: "pizzashop", status: "active" });
+    await storeSms(tenant._id);
     const roles = await seedTenantRoles(tenant._id);
     await runForTenant(tenant._id, () =>
       User.create({ name: "Rahim", email: "rahim@pizza.com", phone: PHONE, password: "Old-Pass-1", roles: [roles.owner._id] }),
@@ -105,11 +110,18 @@ describe("password reset by SMS code", () => {
     await reset({ phone: PHONE, otp: sentCode(), newPassword: "New-Pass-1" }).expect(400);
   });
 
-  it("is unavailable without the platform SMS account, and never uses email", async () => {
-    Object.keys(SMS_ENV).forEach((key) => delete process.env[key]);
-    Object.assign(process.env, { HOST_MAIL: "platform@mail.test", HOST_APP_PASSWORD: "p" });
+  // The platform's own SMS and email accounts are for the platform console; a
+  // store that has not set up SMS cannot send reset codes through them.
+  it("is unavailable when the store has not set up SMS, and never falls back to env or email", async () => {
+    await service.updateSection(tenant._id, "sms", { enabled: false });
+    service.clearSettingsCache();
+    Object.assign(process.env, {
+      BULK_SMS_URL: "https://sms.test/send", BULK_SMS_API_KEY: "k", BULK_SMS_SENDER_ID: "s",
+      HOST_MAIL: "platform@mail.test", HOST_APP_PASSWORD: "p",
+    });
+
     const res = await forgot({ phone: PHONE }).expect(503);
-    expect(res.body.message).toMatch(/not available/i);
+    expect(res.body.code).toBe("SMS_NOT_CONFIGURED");
     expect(sendSMS).not.toHaveBeenCalled();
   });
 });
