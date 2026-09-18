@@ -7,6 +7,7 @@ const { invalidateTenantCache } = require("../../src/tenancy/tenantResolver");
 const Product = require("../../src/models/product.model");
 const Category = require("../../src/models/category.model");
 const Coupon = require("../../src/models/coupon.model");
+const Variant = require("../../src/models/variant.model");
 const Order = require("../../src/models/order.model");
 const service = require("../../src/settings/settings.service");
 const { cache } = require("../../src/config/redis.config");
@@ -164,6 +165,55 @@ describe("counter (POS) orders", () => {
 
     it("needs at least one line", async () => {
       await place({ items: [], shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(400);
+    });
+  });
+
+  describe("selling a variant (what a barcode scan resolves to)", () => {
+    /**
+     * Barcodes live on the variant, so scanning one at the counter produces a
+     * variant id rather than a product id. Both have to be sellable, and the
+     * variant's own price and stock are the ones that count — its parent's
+     * figures would be wrong.
+     */
+    it("prices and stocks the variant, not its parent product", async () => {
+      const variant = await runForTenant(velor.tenant._id, () =>
+        Variant.create({
+          product: product._id,
+          variantName: "Cola 1L",
+          retailPrice: 750,
+          purchasePrice: 200,
+          stockVariant: 4,
+          barCode: "8901234567890",
+        }),
+      );
+
+      const res = await place({
+        items: [{ variantId: String(variant._id), quantity: 2 }],
+        shippingInfo: SHIPPING,
+        paymentMethod: "cod",
+      }).expect(201);
+
+      // 2 x 750 (the variant's price), not the product's 500
+      expect(res.body.data.order.finalAmount).toBe(1500);
+
+      const after = await runForTenant(velor.tenant._id, () => Variant.findById(variant._id).lean());
+      expect(after.stockVariant).toBe(2);
+
+      // The parent product's own stock is untouched
+      const parent = await runForTenant(velor.tenant._id, () => Product.findById(product._id).lean());
+      expect(parent.stock).toBe(10);
+    });
+
+    it("refuses more than the variant holds", async () => {
+      const variant = await runForTenant(velor.tenant._id, () =>
+        Variant.create({ product: product._id, variantName: "Cola 2L", retailPrice: 900, stockVariant: 1 }),
+      );
+
+      await place({
+        items: [{ variantId: String(variant._id), quantity: 5 }],
+        shippingInfo: SHIPPING,
+        paymentMethod: "cod",
+      }).expect(400);
     });
   });
 

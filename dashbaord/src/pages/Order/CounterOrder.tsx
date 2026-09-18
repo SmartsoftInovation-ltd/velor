@@ -25,16 +25,34 @@ import {
  * sale and a web sale of the same basket come to the same number.
  */
 
-interface ProductHit {
+/**
+ * A search hit is either a whole product or a standalone variant.
+ *
+ * A scanned barcode usually matches the variant, because that is where barcodes
+ * live. A variant carries no `stock` or `name` of its own — its quantity is
+ * `stockVariant` and its parent's name sits on the embedded `product` — so the
+ * two shapes have to be read differently or a variant renders as "0 in stock".
+ */
+interface SearchHit {
   _id: string;
-  name: string;
-  retailPrice: number;
+  name?: string;
+  retailPrice?: number;
   stock?: number;
   sku?: string;
+  barCode?: string;
+  // Variant-only
+  resultType?: "product" | "variant";
+  variantName?: string;
+  stockVariant?: number;
+  variantType?: string;
+  product?: { _id?: string; name?: string; retailPrice?: number };
 }
 
 interface CartLine {
-  productId: string;
+  // Exactly one of these identifies the line, matching what the API expects
+  productId?: string;
+  variantId?: string;
+  key: string;
   name: string;
   retailPrice: number;
   quantity: number;
@@ -58,11 +76,41 @@ interface Quote {
 
 const money = (value: number) => `৳${value.toLocaleString("en-BD", { minimumFractionDigits: 0 })}`;
 
+/**
+ * A scanned barcode goes to the dedicated `barCode` query so the backend matches
+ * the field directly instead of running it through the name regex. Scanners
+ * emit 8–14 digits, which is what distinguishes a scan from someone typing.
+ */
+const searchParam = (term: string) => (/^\d{8,14}$/.test(term) ? "barCode" : "name");
+
+// A hit is a standalone variant, not a product, when it has no variantType of
+// its own but does carry variant-only fields.
+const isVariant = (hit: SearchHit) =>
+  hit.resultType === "variant" || (!hit.variantType && (hit.stockVariant !== undefined || !!hit.variantName));
+
+// One shape for the list and the basket, whichever kind of document came back
+const describe = (hit: SearchHit) =>
+  isVariant(hit)
+    ? {
+        key: `v:${hit._id}`,
+        variantId: hit._id,
+        name: [hit.product?.name, hit.variantName].filter(Boolean).join(" — ") || hit.variantName || "Variant",
+        retailPrice: hit.retailPrice ?? hit.product?.retailPrice ?? 0,
+        stock: hit.stockVariant ?? 0,
+      }
+    : {
+        key: `p:${hit._id}`,
+        productId: hit._id,
+        name: hit.name ?? "Product",
+        retailPrice: hit.retailPrice ?? 0,
+        stock: hit.stock ?? 0,
+      };
+
 const emptyCustomer = { fullName: "", phone: "", address: "" };
 
 const CounterOrder = () => {
   const [search, setSearch] = useState("");
-  const [hits, setHits] = useState<ProductHit[]>([]);
+  const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
 
   const [lines, setLines] = useState<CartLine[]>([]);
@@ -96,9 +144,10 @@ const CounterOrder = () => {
     searchTimer.current = setTimeout(async () => {
       setSearching(true);
       try {
-        // The endpoint searches by name, barCode, sku or slug; name is what an
-        // operator types at the counter.
-        const res = await axiosSecure.get("/product/search-product", { params: { name: term } });
+        // Matches both products and variants, by name or by scanned barcode
+        const res = await axiosSecure.get("/product/search-product", {
+          params: { [searchParam(term)]: term },
+        });
         const found = res.data?.data?.products ?? [];
         setHits(Array.isArray(found) ? found.slice(0, 8) : []);
       } catch {
@@ -113,42 +162,38 @@ const CounterOrder = () => {
     };
   }, [search]);
 
-  const addLine = (hit: ProductHit) => {
+  const addLine = (hit: SearchHit) => {
+    const described = describe(hit);
     setLines((current) => {
-      const existing = current.find((line) => line.productId === hit._id);
+      // Scanning the same barcode twice adds one more, rather than a second row
+      const existing = current.find((line) => line.key === described.key);
       if (existing) {
         return current.map((line) =>
-          line.productId === hit._id ? { ...line, quantity: line.quantity + 1 } : line,
+          line.key === described.key ? { ...line, quantity: line.quantity + 1 } : line,
         );
       }
-      return [
-        ...current,
-        {
-          productId: hit._id,
-          name: hit.name,
-          retailPrice: hit.retailPrice,
-          quantity: 1,
-          stock: hit.stock ?? 0,
-        },
-      ];
+      return [...current, { ...described, quantity: 1 }];
     });
     setSearch("");
     setHits([]);
   };
 
-  const setQuantity = (productId: string, quantity: number) =>
+  const setQuantity = (key: string, quantity: number) =>
     setLines((current) =>
       quantity < 1
-        ? current.filter((line) => line.productId !== productId)
-        : current.map((line) => (line.productId === productId ? { ...line, quantity } : line)),
+        ? current.filter((line) => line.key !== key)
+        : current.map((line) => (line.key === key ? { ...line, quantity } : line)),
     );
 
-  const removeLine = (productId: string) =>
-    setLines((current) => current.filter((line) => line.productId !== productId));
+  const removeLine = (key: string) => setLines((current) => current.filter((line) => line.key !== key));
 
   const payload = useMemo(
     () => ({
-      items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+      items: lines.map((line) =>
+        line.variantId
+          ? { variantId: line.variantId, quantity: line.quantity }
+          : { productId: line.productId, quantity: line.quantity },
+      ),
       couponCode: couponCode.trim() || undefined,
       deliveryChargeId: deliveryChargeId || undefined,
     }),
@@ -229,8 +274,8 @@ const CounterOrder = () => {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by product name…"
-                  aria-label="Search products"
+                  placeholder="Scan a barcode, or search by name…"
+                  aria-label="Scan a barcode or search products"
                   className={`${inputClass} pl-10`}
                 />
               </div>
@@ -241,26 +286,31 @@ const CounterOrder = () => {
                   {!searching && hits.length === 0 && (
                     <p className="px-4 py-3 text-sm text-gray-500">No product found</p>
                   )}
-                  {hits.map((hit) => (
-                    <button
-                      key={hit._id}
-                      type="button"
-                      onClick={() => addLine(hit)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition hover:bg-accent-50 dark:hover:bg-white/5"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-gray-800 dark:text-white/90">
-                          {hit.name}
+                  {hits.map((hit) => {
+                    const row = describe(hit);
+                    return (
+                      <button
+                        key={row.key}
+                        type="button"
+                        onClick={() => addLine(hit)}
+                        disabled={row.stock < 1}
+                        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition hover:bg-accent-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/5"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-gray-800 dark:text-white/90">
+                            {row.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {row.stock > 0 ? `Stock ${row.stock}` : "Out of stock"}
+                            {hit.barCode ? ` · ${hit.barCode}` : ""}
+                          </span>
                         </span>
-                        <span className="text-xs text-gray-500">
-                          Stock {hit.stock ?? 0}
+                        <span className="shrink-0 text-sm font-semibold text-gray-900 tabular-nums dark:text-white/90">
+                          {money(row.retailPrice)}
                         </span>
-                      </span>
-                      <span className="shrink-0 text-sm font-semibold text-gray-900 tabular-nums dark:text-white/90">
-                        {money(hit.retailPrice)}
-                      </span>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -282,7 +332,7 @@ const CounterOrder = () => {
             ) : (
               <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {lines.map((line) => (
-                  <li key={line.productId} className="flex items-center gap-3 px-5 py-3.5">
+                  <li key={line.key} className="flex items-center gap-3 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-gray-800 dark:text-white/90">{line.name}</p>
                       <p className="text-xs text-gray-500">{money(line.retailPrice)} each</p>
@@ -292,21 +342,21 @@ const CounterOrder = () => {
                       <button
                         type="button"
                         aria-label={`Reduce ${line.name}`}
-                        onClick={() => setQuantity(line.productId, line.quantity - 1)}
+                        onClick={() => setQuantity(line.key, line.quantity - 1)}
                         className="inline-flex size-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400"
                       >
                         <FiMinus className="size-3.5" />
                       </button>
                       <input
                         value={line.quantity}
-                        onChange={(event) => setQuantity(line.productId, Number(event.target.value) || 1)}
+                        onChange={(event) => setQuantity(line.key, Number(event.target.value) || 1)}
                         aria-label={`Quantity for ${line.name}`}
                         className="h-8 w-12 rounded-lg border border-gray-200 text-center text-sm tabular-nums dark:border-gray-800 dark:bg-gray-900 dark:text-white/90"
                       />
                       <button
                         type="button"
                         aria-label={`Add one ${line.name}`}
-                        onClick={() => setQuantity(line.productId, line.quantity + 1)}
+                        onClick={() => setQuantity(line.key, line.quantity + 1)}
                         className="inline-flex size-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400"
                       >
                         <FiPlus className="size-3.5" />
@@ -320,7 +370,7 @@ const CounterOrder = () => {
                     <button
                       type="button"
                       aria-label={`Remove ${line.name}`}
-                      onClick={() => removeLine(line.productId)}
+                      onClick={() => removeLine(line.key)}
                       className="inline-flex size-8 items-center justify-center rounded-lg text-error-500 transition hover:bg-error-50 dark:hover:bg-error-500/15"
                     >
                       <FiTrash2 className="size-4" />
