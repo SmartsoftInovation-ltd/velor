@@ -164,10 +164,28 @@ const reportLimiter = rateLimit({
 });
 
 // Test hook: forget every counter so one suite's attempts cannot spill into the next
+/**
+ * Domain verification performs a live DNS lookup, so an operator clicking
+ * "verify" repeatedly while waiting for propagation would aim a burst of
+ * outbound queries at the seller's nameservers. Keyed per domain so checking
+ * one store's domain never blocks another's.
+ */
+const domainVerifyLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `domain-verify:${req.params?.domainId || clientIp(req)}`,
+  handler: tooMany("Too many verification attempts. DNS changes take a few minutes to propagate."),
+});
+
 const resetRateLimitCounters = () => stores.forEach((store) => store.resetAll());
 
 module.exports = {
   reportLimiter,
+  domainVerifyLimiter,
   platformLoginLimiter,
   platformOtpLimiter,
   resetRateLimitCounters,

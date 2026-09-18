@@ -1,6 +1,8 @@
 const User = require("../models/user.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { statusCodes } = require("../constant/constant");
+const { getTenantId } = require("../tenancy/context");
 const { resolveTokenSession, continueInTenant, readToken } = require("./authMiddleware");
 
 exports.guestOrAuth = asynchandeler(async (req, res, next) => {
@@ -19,8 +21,24 @@ exports.guestOrAuth = asynchandeler(async (req, res, next) => {
     return continueInTenant(session.tenant, next);
   }
 
-  // If no valid token, check for guestId
+  /**
+   * A guest carries no token, so nothing here names their store — the tenant
+   * context must already have been opened upstream, from the storefront's
+   * hostname or the `x-tenant` header.
+   *
+   * Checking for it means a missing store is reported as exactly that. Left
+   * unchecked, the request would run on to the first query and fail inside the
+   * tenancy plugin, which reads as an internal error and tells the caller
+   * nothing about what was actually missing.
+   */
   if (guestId) {
+    if (!getTenantId()) {
+      throw new customError(
+        "No store named for this request",
+        statusCodes.BAD_REQUEST,
+        "TENANT_CONTEXT_REQUIRED",
+      );
+    }
     req.guestId = guestId;
     return next();
   }

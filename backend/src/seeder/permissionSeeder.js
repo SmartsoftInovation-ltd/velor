@@ -24,6 +24,8 @@ const permissionList = [
   { permissionName: "Coupon" },
   // Order
   { permissionName: "Order" },
+  // Storefront live chat: the shop's inbox of visitor conversations
+  { permissionName: "Chat" },
   { permissionName: "Incomplete Order" },
   // Courier
   { permissionName: "Courier Merchant" },

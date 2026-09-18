@@ -23,6 +23,18 @@
 > Sections below that describe Groq, AI chat or per-tenant LLM keys are kept as
 > a record of the original design and no longer reflect the codebase.
 >
+> **Storefront (2026-09-18):** the Next.js storefront now exists at `frontend/`
+> (Next 16.3.4) but is a **UI shell only** — no backend calls, no `.env`, no
+> tenant plumbing, all data from fixtures in `frontend/src/lib/`. Crucially,
+> **tenant is never resolved from the `Host` header**: `TenantDomain` (listed in
+> §2.1 below) was never built, `Tenant` has no domain field, and the only
+> resolution paths are the `x-tenant` header, the `workspace` body field, the
+> JWT `tid` claim and the `:webhookKey` path param. There is also no public
+> order-create route (every route in `order.api.js` requires staff auth) and no
+> chat subsystem. The plan to close all of this is
+> [`storefront-multitenant-plan-bangla.md`](./storefront-multitenant-plan-bangla.md);
+> read it instead of §10's "next → Storefront" line.
+>
 > **Changed (2026-09-18):** the Platform Console **access code** design was
 > removed in commit `0c8f82e`. `POST /platform/auth/console-access` and
 > `src/platform/accessCode.ts` no longer exist. The console now uses a platform
@@ -102,7 +114,7 @@
      worker-sms     src/workers/sms.worker.js
      worker-email   src/workers/email.worker.js
      worker-audit   src/workers/audit.worker.js
-     worker-embed   src/workers/embedding.worker.js
+     (worker-embed removed with the RAG feature)
 
    MongoDB (replica set / Atlas)  — not publicly exposed
    Redis                          — bind 127.0.0.1 only
@@ -127,12 +139,12 @@ backend/src/
     tenantPlugin.js            Mongoose plugin (query/aggregate/save/insertMany/bulkWrite hooks)
     registry.js                list of tenant-scoped vs global models (checked in CI)
   middleware/
-    resolveTenant.middleware.js
+    resolveTenant.middleware.js   (built as requestTenant.middleware.js)
     platformGuard.middleware.js
   models/platform/
     tenant.model.js
     tenantSettings.model.js
-    tenantDomain.model.js      (used when the storefront arrives)
+    tenantDomain.model.js      ❌ NEVER BUILT — see the storefront plan
     platformUser.model.js
     platformAuditLog.model.js
   settings/
@@ -145,7 +157,7 @@ backend/src/
     sslcommerz.client.js       getSslCommerz(tenantId)
     courier.factory.js         getCourier(tenantId, provider)
     cloudinary.client.js       getCloudinary(tenantId)  (replaces the global cloudinary.config in helpers/cloudinary.js)
-    groq.client.js             getGroq(tenantId)        (replaces process.env.GROQ_API_KEY in utils/llm.js)
+    groq.client.js             ❌ never built (Groq removed)
   controller/platform/
     tenant.controller.js
     tenantSettings.controller.js
@@ -162,8 +174,11 @@ request
       /api/v1/platform/*   → platformGuard → runAsPlatform(handler)
       /api/v1/hooks/*      → tenant from :webhookKey → runForTenant(handler)
       /api/v1/*            → authGuard (staff)  → tenant = token.tid
-                             guestOrAuth/public → tenant = host (storefront stage) or X-Tenant header
+                             guestOrAuth/public → tenant = X-Tenant header ONLY
                              → runForTenant(tenantId, handler)
+
+  ⚠️ "tenant = host" was never built. As of 2026-09-18 no code reads the Host
+     header to resolve a tenant. See storefront-multitenant-plan-bangla.md.
   → controller (unchanged code) → Mongoose calls → tenantPlugin injects tenantId
 ```
 

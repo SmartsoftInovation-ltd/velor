@@ -1,0 +1,211 @@
+const jwt = require("jsonwebtoken");
+const request = require("supertest");
+const { connectTestDb, clearTestDb, disconnectTestDb } = require("../helpers/db");
+const { setSettingsEnv } = require("../helpers/settings");
+const { loadApp, createTenantWithStaff, STAFF_ENV } = require("../helpers/tenantApp");
+const { runForTenant } = require("../../src/tenancy/context");
+const { invalidateTenantCache } = require("../../src/tenancy/tenantResolver");
+const { resetRateLimitCounters } = require("../../src/middleware/rateLimit.middleware");
+const TenantDomain = require("../../src/models/platform/tenantDomain.model");
+const User = require("../../src/models/user.model");
+const Order = require("../../src/models/order.model");
+const service = require("../../src/settings/settings.service");
+
+/**
+ * Shoppers and staff are rows in the same `User` collection, in the same store.
+ * What separates them is the audience claim on their tokens. These tests hold
+ * that line from both sides: a shopper's token must not open the dashboard, and
+ * a staff token must not pass as a customer.
+ */
+
+describe("storefront shopper accounts", () => {
+  let app;
+  let velor;
+  let pizza;
+  const envBackup = { ...process.env };
+
+  const VELOR = { "x-tenant-host": "velor.com" };
+  const PIZZA = { "x-tenant-host": "pizzashop.com" };
+
+  beforeAll(async () => {
+    setSettingsEnv();
+    await connectTestDb();
+    app = loadApp();
+    service.setSettingsPublisher(async () => {});
+    jest.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  beforeEach(async () => {
+    process.env = { ...envBackup, ...STAFF_ENV };
+    setSettingsEnv();
+    process.env.TENANCY_MODE = "strict";
+    process.env.TRUST_TENANT_HOST_HEADER = "true";
+    invalidateTenantCache();
+    service.clearSettingsCache();
+    resetRateLimitCounters();
+
+    velor = await createTenantWithStaff({ slug: "velor", email: "staff@velor.test", password: "Velor-Pass1" });
+    pizza = await createTenantWithStaff({ slug: "pizzashop", email: "staff@pizza.test", password: "Pizza-Pass1" });
+
+    await TenantDomain.create({ tenantId: velor.tenant._id, host: "velor.com", status: "active" });
+    await TenantDomain.create({ tenantId: pizza.tenant._id, host: "pizzashop.com", status: "active" });
+  });
+
+  afterEach(async () => {
+    await clearTestDb();
+    invalidateTenantCache();
+  });
+
+  afterAll(async () => {
+    process.env = { ...envBackup };
+    jest.restoreAllMocks();
+    await app.close();
+    await disconnectTestDb();
+  });
+
+  const register = (headers, body) => request(app.server).post("/api/v1/shop/auth/register").set(headers).send(body);
+  const login = (headers, body) => request(app.server).post("/api/v1/shop/auth/login").set(headers).send(body);
+  const bearer = (token) => ({ Authorization: `Bearer ${token}` });
+
+  const SHOPPER = { name: "Rahim", email: "rahim@example.com", password: "Shopper-Pass1" };
+
+  describe("registration", () => {
+    it("creates an account in the store whose domain was used", async () => {
+      const res = await register(VELOR, SHOPPER).expect(201);
+      expect(res.body.data.user).toMatchObject({ name: "Rahim", email: "rahim@example.com" });
+
+      const created = await runForTenant(velor.tenant._id, () =>
+        User.findOne({ email: "rahim@example.com" }).lean(),
+      );
+      expect(String(created.tenantId)).toBe(String(velor.tenant._id));
+      // No roles is what makes this a shopper rather than staff
+      expect(created.roles ?? []).toHaveLength(0);
+    });
+
+    /**
+     * The same person may shop at two stores on this platform. Those are two
+     * unrelated accounts, and one store's customer list must not reveal the
+     * other's.
+     */
+    it("lets the same email register separately in two stores", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      await register(PIZZA, SHOPPER).expect(201);
+
+      const inVelor = await runForTenant(velor.tenant._id, () => User.findOne({ email: SHOPPER.email }).lean());
+      const inPizza = await runForTenant(pizza.tenant._id, () => User.findOne({ email: SHOPPER.email }).lean());
+
+      expect(String(inVelor._id)).not.toBe(String(inPizza._id));
+    });
+
+    it("refuses a second account with the same email in one store", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      await register(VELOR, SHOPPER).expect(409);
+    });
+
+    it("refuses to register when no store was named", async () => {
+      await register({}, SHOPPER).expect(400);
+    });
+  });
+
+  describe("sign-in", () => {
+    beforeEach(async () => {
+      await register(VELOR, SHOPPER).expect(201);
+    });
+
+    it("signs a shopper in and marks the token as a storefront session", async () => {
+      const res = await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200);
+
+      const claims = jwt.verify(res.body.data.accessToken, STAFF_ENV.ACCESS_TOKEN_SECRET);
+      expect(claims).toMatchObject({ tid: String(velor.tenant._id), aud: "shopper" });
+    });
+
+    // The account exists in velor, not here; answering "invalid" rather than
+    // "not found" keeps the two stores' customer lists private.
+    it("does not recognise the account on another store's domain", async () => {
+      await login(PIZZA, { email: SHOPPER.email, password: SHOPPER.password }).expect(400);
+    });
+
+    /**
+     * Staff share the collection and may well know their own password. Letting
+     * them in here would mint them a storefront session, and — worse, if the
+     * audience claim were ever dropped — a dashboard one.
+     */
+    it("refuses a staff account even with the correct password", async () => {
+      await login(VELOR, { email: "staff@velor.test", password: "Velor-Pass1" }).expect(400);
+    });
+  });
+
+  describe("the two session types cannot be swapped", () => {
+    let shopperToken;
+    let staffToken;
+
+    beforeEach(async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      const res = await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200);
+      shopperToken = res.body.data.accessToken;
+
+      staffToken = jwt.sign(
+        { sub: String(velor.user._id), tid: String(velor.tenant._id), tv: 0, aud: "staff" },
+        STAFF_ENV.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1d" },
+      );
+    });
+
+    // The whole point of the audience claim: without it this request succeeds
+    // and a customer reads every order in the shop.
+    it("refuses a shopper token on a dashboard endpoint", async () => {
+      await request(app.server)
+        .get("/api/v1/order/allorders")
+        .set({ ...VELOR, ...bearer(shopperToken) })
+        .expect(401);
+    });
+
+    it("refuses a staff token on a storefront endpoint", async () => {
+      await request(app.server)
+        .get("/api/v1/shop/me")
+        .set({ ...VELOR, ...bearer(staffToken) })
+        .expect(401);
+    });
+
+    it("refuses a shopper token used against another store's domain", async () => {
+      await request(app.server)
+        .get("/api/v1/shop/me")
+        .set({ ...PIZZA, ...bearer(shopperToken) })
+        .expect(401);
+    });
+
+    it("lets the shopper read their own profile", async () => {
+      const res = await request(app.server)
+        .get("/api/v1/shop/me")
+        .set({ ...VELOR, ...bearer(shopperToken) })
+        .expect(200);
+
+      expect(res.body.data.user.email).toBe(SHOPPER.email);
+      expect(res.body.data.user).not.toHaveProperty("password");
+    });
+  });
+
+  describe("order history", () => {
+    it("shows the shopper only their own orders", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      const res = await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200);
+      const token = res.body.data.accessToken;
+      const shopperId = res.body.data.user._id;
+
+      // One order for this shopper, one for somebody else in the same store
+      await runForTenant(velor.tenant._id, async () => {
+        const other = await User.create({ name: "Karim", email: "karim@example.com", password: "Other-Pass1", roles: [] });
+        await Order.create({ user: shopperId, invoiceId: "INV-1", totalAmount: 100, finalAmount: 100, paymentMethod: "cod" });
+        await Order.create({ user: other._id, invoiceId: "INV-2", totalAmount: 200, finalAmount: 200, paymentMethod: "cod" });
+      });
+
+      const list = await request(app.server)
+        .get("/api/v1/shop/orders")
+        .set({ ...VELOR, ...bearer(token) })
+        .expect(200);
+
+      expect(list.body.data.orders).toHaveLength(1);
+      expect(list.body.data.orders[0].invoiceId).toBe("INV-1");
+    });
+  });
+});

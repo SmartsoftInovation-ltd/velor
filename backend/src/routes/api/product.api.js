@@ -4,7 +4,7 @@ const Product = require("../../controller/product.controller");
 const {
   multipleFileUploadWithFields,
 } = require("../../middleware/multer.middleware");
-const { authGuard } = require("../../middleware/authMiddleware");
+const { authGuard, optionalAuth } = require("../../middleware/authMiddleware");
 const { authorize } = require("../../middleware/checkPermission.middleware");
 
 _.route("/createproduct").post(
@@ -18,9 +18,9 @@ _.route("/createproduct").post(
   Product.createProduct
 );
 
-_.route("/getproduct").get(Product.getAllProducts);
+_.route("/getproduct").get(optionalAuth, Product.getAllProducts);
 
-_.route("/getproduct/:slug").get(Product.getProductBySlug);
+_.route("/getproduct/:slug").get(optionalAuth, Product.getProductBySlug);
 
 _.route("/updateproductinfo/:slug").put(
   authGuard,

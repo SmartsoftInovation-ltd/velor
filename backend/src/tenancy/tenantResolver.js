@@ -1,4 +1,6 @@
 const Tenant = require("../models/platform/tenant.model");
+const TenantDomain = require("../models/platform/tenantDomain.model");
+const { normalizeHost } = require("../models/platform/tenantDomain.model");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 
@@ -23,7 +25,31 @@ const getTenantBySlug = (slug) =>
     Tenant.findOne({ slug: String(slug).trim().toLowerCase() }).select(FIELDS).lean(),
   );
 
-// Call after changing a tenant's status; no id clears everything
+/**
+ * Resolves the tenant that owns a storefront hostname.
+ *
+ * Only an "active" domain resolves. A domain sitting at "pending" has been
+ * entered by an operator but not yet proven to belong to the seller, and
+ * honouring it would let a typo — or a deliberately claimed hostname — serve
+ * one tenant's catalogue under another's name.
+ *
+ * Returns null for an unknown host so the caller can answer 404 rather than
+ * leaking whether a given domain is registered on the platform.
+ */
+const getTenantByHost = (host) => {
+  const normalized = normalizeHost(host);
+  if (!normalized) return Promise.resolve(null);
+
+  return cached(`host:${normalized}`, async () => {
+    const domain = await TenantDomain.findOne({ host: normalized, status: "active" })
+      .select("tenantId")
+      .lean();
+    if (!domain) return null;
+    return Tenant.findById(domain.tenantId).select(FIELDS).lean();
+  });
+};
+
+// Call after changing a tenant's status or its domains; no id clears everything
 const invalidateTenantCache = () => cache.clear();
 
 /**
@@ -38,4 +64,4 @@ const assertTenantActive = (tenant, statusCode = statusCodes.UNAUTHORIZED) => {
   throw new customError("This store is not available", statusCode, "TENANT_INACTIVE");
 };
 
-module.exports = { getTenantById, getTenantBySlug, invalidateTenantCache, assertTenantActive };
+module.exports = { getTenantById, getTenantBySlug, getTenantByHost, invalidateTenantCache, assertTenantActive };

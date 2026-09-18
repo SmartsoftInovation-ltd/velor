@@ -60,7 +60,14 @@ const initSocket = (server) => {
   });
 
   io.use(authenticate);
-  io.on("connection", joinRooms);
+  io.on("connection", (socket) => {
+    joinRooms(socket);
+    // Inbound events. Registered after the rooms so a handler can rely on the
+    // socket already being scoped to its store. Required here rather than at
+    // module load because the chat handlers emit through this module.
+    const { registerChatHandlers } = require("./chat");
+    registerChatHandlers(io, socket, { emitToTenant, emitToUserOrGuest });
+  });
   io.on("error", (error) => console.error("Socket.IO error:", error));
 
   return io;

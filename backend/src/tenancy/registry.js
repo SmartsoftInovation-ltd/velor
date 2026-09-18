@@ -6,6 +6,7 @@ const GLOBAL_MODELS = [
   "PlatformUser", // platform operators, never tenant data
   "PlatformAuditLog", // platform operator actions across tenants
   "TenantSettings", // keyed by tenantId; accessed only through settings.service
+  "TenantDomain", // hostname → tenant map; it is how a tenant is found, so it cannot be scoped to one
 ];
 
 module.exports = { GLOBAL_MODELS };

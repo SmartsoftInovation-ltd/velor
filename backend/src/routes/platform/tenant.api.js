@@ -11,6 +11,9 @@ const {
   ownerPasswordSchema,
   listTenantsQuerySchema,
 } = require("../../validation/platform/tenant.validation");
+const domainController = require("../../controller/platform/domain.controller");
+const { addDomainSchema, updateDomainSchema } = require("../../validation/platform/domain.validation");
+const { domainVerifyLimiter } = require("../../middleware/rateLimit.middleware");
 
 const _ = express.Router();
 const superadmin = requirePlatformRole("superadmin");
@@ -24,6 +27,13 @@ _.patch("/:tenantId", superadmin, validateBody(updateTenantSchema), controller.u
 _.post("/:tenantId/suspend", superadmin, validateBody(statusChangeSchema), controller.suspendTenant);
 _.post("/:tenantId/activate", superadmin, validateBody(statusChangeSchema), controller.activateTenant);
 _.post("/:tenantId/owner/password", superadmin, validateBody(ownerPasswordSchema), controller.setOwnerPassword);
+
+// Storefront hostnames. Adding one routes no traffic until it is verified.
+_.get("/:tenantId/domains", domainController.listDomains);
+_.post("/:tenantId/domains", superadmin, validateBody(addDomainSchema), domainController.addDomain);
+_.post("/:tenantId/domains/:domainId/verify", superadmin, domainVerifyLimiter, domainController.verifyDomainHandler);
+_.patch("/:tenantId/domains/:domainId", superadmin, validateBody(updateDomainSchema), domainController.updateDomain);
+_.delete("/:tenantId/domains/:domainId", superadmin, domainController.removeDomain);
 
 _.get("/:tenantId/audit", controller.listTenantAudit);
 _.get("/:tenantId/settings", settingsController.getSettings);

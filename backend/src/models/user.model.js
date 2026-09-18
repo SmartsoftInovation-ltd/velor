@@ -150,13 +150,26 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   }
 };
 
-// Token claims: sub = user, tid = tenant, tv = token version. `id` is kept for
-// clients that still read it.
+/**
+ * Token claims: sub = user, tid = tenant, tv = token version, aud = audience.
+ * `id` is kept for clients that still read it.
+ *
+ * `aud` separates the two kinds of session that this one collection issues.
+ * Staff sign in to the dashboard; shoppers sign in on a storefront, and both
+ * are `User` rows in the same tenant. Without an audience claim a shopper's
+ * token is indistinguishable from a staff token, so it would open the whole
+ * dashboard API — every order, customer and report in the store.
+ *
+ * Staff are the users holding at least one role; a shopper holds none.
+ */
+const audienceOf = (user) => (user.roles?.length ? "staff" : "shopper");
+
 const sessionClaims = (user) => ({
   id: user._id,
   sub: user._id.toString(),
   ...(user.tenantId ? { tid: user.tenantId.toString() } : {}),
   tv: user.tokenVersion || 0,
+  aud: audienceOf(user),
 });
 
 // Generate JWT token

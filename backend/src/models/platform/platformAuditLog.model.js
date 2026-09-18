@@ -13,6 +13,12 @@ const PLATFORM_AUDIT_ACTIONS = [
   "TENANT_ACTIVATED",
   "TENANT_OWNER_PASSWORD_SET",
   "TENANT_SETTINGS_UPDATED",
+  // Storefront hostnames. Which domain points at which store decides where a
+  // shopper's order lands, so every change to that map is recorded.
+  "DOMAIN_ADDED",
+  "DOMAIN_VERIFIED",
+  "DOMAIN_PRIMARY_CHANGED",
+  "DOMAIN_REMOVED",
 ];
 
 // Records what platform operators did. `changes` holds field names only —

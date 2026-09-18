@@ -4,9 +4,30 @@ const { apiResponse } = require("../utils/apiResponse");
 const { validatePayment } = require("../integrations/sslcommerz");
 const Order = require("../models/order.model");
 const { statusCodes } = require("../constant/constant");
+const { paymentReturnUrl } = require("../service/storefrontUrl.service");
+
+/**
+ * Sends the shopper back to the shop they bought from.
+ *
+ * The gateway returns the customer's browser to this API, so these three
+ * callbacks are page loads, not API calls. Answering them with JSON leaves the
+ * shopper looking at raw text; they belong back on the storefront.
+ *
+ * Which storefront is decided per tenant — the order's own store — because one
+ * configured URL would send every seller's customers to the same shop. When no
+ * storefront is known the JSON answer is kept, so an API client or a store with
+ * no domain registered yet still gets a usable response.
+ */
+const finish = async (res, result, invoiceId, payload, message) => {
+  const target = await paymentReturnUrl(result, invoiceId);
+  if (target) return res.redirect(303, target);
+  return apiResponse.sendSuccess(res, statusCodes.OK, message, payload);
+};
+
 // @desc success payment
 exports.successPayment = asynchandeler(async (req, res) => {
-  apiResponse.sendSuccess(res, statusCodes.OK, "Payment successful", req.body);
+  const invoiceId = req.body?.tran_id;
+  return finish(res, "success", invoiceId, req.body, "Payment successful");
 });
 
 // @desc fail payment
@@ -34,12 +55,7 @@ exports.failPayment = asynchandeler(async (req, res) => {
     );
   }
 
-  apiResponse.sendSuccess(
-    res,
-    statusCodes.OK,
-    updatedOrder,
-    "Payment failed. Order status updated.",
-  );
+  return finish(res, "failed", tran_id, updatedOrder, "Payment failed. Order status updated.");
 });
 
 // @desc cancel payment
@@ -67,12 +83,7 @@ exports.cancelPayment = asynchandeler(async (req, res) => {
     );
   }
 
-  apiResponse.sendSuccess(
-    res,
-    statusCodes.OK,
-    updatedOrder,
-    "Payment cancelled. Order status updated.",
-  );
+  return finish(res, "cancelled", tran_id, updatedOrder, "Payment cancelled. Order status updated.");
 });
 
 // @desc ipn payment

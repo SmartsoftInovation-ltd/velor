@@ -31,6 +31,10 @@ _.use("/hooks", require("./api/hooks.api"));
 // request names it (x-tenant header)
 _.use(require("../middleware/requestTenant.middleware").resolveRequestTenant);
 _.use("/auth", userRoutes);
+// Storefront customer accounts; the store comes from the hostname, not the body
+_.use("/shop", require("./api/shop.api"));
+// Storefront live chat, read by staff from the dashboard
+_.use("/chat", require("./api/chat.api"));
 _.use(categoryRoutes);
 _.use(subcategoryRoutes);
 _.use(brandRoutes);

@@ -4,6 +4,7 @@ const Variant = require("../models/variant.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
+const { forAudience } = require("../utils/publicProduct");
 const {
   validateProduct,
   validateProductUpdate,
@@ -277,7 +278,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "Products fetched successfully",
-        { products: cached, fromCache: true },
+        { products: forAudience(req, cached), fromCache: true },
       );
     }
 
@@ -320,7 +321,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Products fetched successfully",
-      { products, fromCache: false },
+      { products: forAudience(req, products), fromCache: false },
     );
   });
 
@@ -335,7 +336,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "Product fetched successfully",
-        { product: cached, fromCache: true },
+        { product: forAudience(req, cached), fromCache: true },
       );
     }
 
@@ -361,7 +362,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Product fetched successfully",
-      { product, fromCache: false },
+      { product: forAudience(req, product), fromCache: false },
     );
   });
 
