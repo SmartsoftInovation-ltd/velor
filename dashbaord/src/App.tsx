@@ -835,9 +835,6 @@ export default function App() {
 
                 {/* Platform Console (platform store owner + access code): sellers and operators */}
                 <Route path="/store-settings" element={<ProtectedRoute module="store-settings" action="view"><StoreSettingsPage /></ProtectedRoute>} />
-                <Route path="/platform/sellers" element={<PlatformGate><PlatformSellersPage /></PlatformGate>} />
-                <Route path="/platform/sellers/:tenantId" element={<PlatformGate><PlatformSellerDetail /></PlatformGate>} />
-                <Route path="/platform/operators" element={<PlatformGate><PlatformOperatorsPage /></PlatformGate>} />
 
                 {/* Role & Permission Layout */}
                 <Route path="/create-role" element={<ProtectedRoute module="create-role" action="add"><CreateRole /></ProtectedRoute>} />
@@ -1496,6 +1493,15 @@ export default function App() {
               </Route>
 
               {/* Auth Layout */}
+              {/* Platform Console: its own operator session (email + password + SMS
+                  code), so these sit outside the store's ProtectedRoute — an
+                  operator signs in here without any seller account at all. */}
+              <Route element={<AppLayout />}>
+                <Route path="/platform/sellers" element={<PlatformGate><PlatformSellersPage /></PlatformGate>} />
+                <Route path="/platform/sellers/:tenantId" element={<PlatformGate><PlatformSellerDetail /></PlatformGate>} />
+                <Route path="/platform/operators" element={<PlatformGate><PlatformOperatorsPage /></PlatformGate>} />
+              </Route>
+
               <Route path="/signin" element={<SignIn />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/signup" element={<SignUp />} />

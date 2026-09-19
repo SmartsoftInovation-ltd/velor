@@ -23,6 +23,7 @@ import { LuClipboardList, LuWallet } from "react-icons/lu";
 import { Link, useLocation } from "react-router";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
+import { usePlatformAuth } from "../platform/PlatformAuthContext";
 import { canSeePlatformConsole, PLATFORM_WORKSPACES } from "../platform/visibility";
 import { getWorkspace } from "../lib/session";
 import { ChevronDownIcon, GridIcon, HorizontaLDots } from "../icons";
@@ -905,8 +906,13 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleSidebar } =
     useSidebar();
   const { can, isSuperAdmin, isOwner, isLoading } = useAuth();
+  const { operator } = usePlatformAuth();
+  // An operator signed into the console sees it whatever store session sits
+  // behind them — including none at all, which is how a platform-only sign-in
+  // arrives here.
   const showPlatformPages =
-    !isLoading && canSeePlatformConsole({ workspace: getWorkspace(), isOwner, allowed: PLATFORM_WORKSPACES });
+    Boolean(operator) ||
+    (!isLoading && canSeePlatformConsole({ workspace: getWorkspace(), isOwner, allowed: PLATFORM_WORKSPACES }));
   const location = useLocation();
 
   const [openSubmenu, setOpenSubmenu] = useState<{

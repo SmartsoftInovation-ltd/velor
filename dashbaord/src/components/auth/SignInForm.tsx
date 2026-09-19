@@ -10,6 +10,10 @@ import { getWorkspace, setWorkspace, workspaceFromSearch } from "../../lib/sessi
 import { loginIdentifier } from "../../lib/credentials";
 import BrandMark from "./BrandMark";
 import { fieldShell, inputClass } from "./authStyles";
+import { usePlatformAuth } from "../../platform/PlatformAuthContext";
+import { PLATFORM_WORKSPACES } from "../../platform/visibility";
+import type { OtpChallenge } from "../../platform/endpoints";
+import PlatformOtpStep from "./PlatformOtpStep";
 
 // Shown after the workspace input, e.g. "baig-digital.ecompos.app"
 const WORKSPACE_DOMAIN = import.meta.env.VITE_WORKSPACE_DOMAIN || "ecompos.app";
@@ -21,10 +25,23 @@ type Errors = {
 
 const RequiredDot = () => <span aria-hidden className="ml-1 inline-block size-1 translate-y-[-2px] rounded-full bg-emerald-500" />;
 
+/**
+ * A platform operator signs in on this same form.
+ *
+ * Their account lives in its own collection, so the store login can never match
+ * it — the attempt is made against the platform endpoint instead, but only for
+ * the workspace that owns the console and only for an email. Everyone else
+ * takes the store path exactly as before, with no extra request.
+ */
+const looksLikePlatformOperator = (workspace: string, identifier: string) =>
+  PLATFORM_WORKSPACES.includes(workspace) && identifier.includes("@");
+
 export default function SignInForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { refreshAuth, clearAuth } = useAuth();
+  const { startSignIn } = usePlatformAuth();
+  const [challenge, setChallenge] = useState<OtpChallenge | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -86,6 +103,24 @@ export default function SignInForm() {
       clearAuth();
       clearAccessToken();
 
+      // The console's own workspace: try the platform account first, because a
+      // store user and an operator can share an email address and only the
+      // platform endpoint knows the operator's password.
+      if (looksLikePlatformOperator(workspace, formData.identifier.trim())) {
+        try {
+          const started = await startSignIn({
+            email: formData.identifier.trim().toLowerCase(),
+            password: formData.password,
+          });
+          setWorkspace(workspace);
+          setChallenge(started);
+          return;
+        } catch {
+          // Not an operator, or not their password — fall through to the store
+          // login, which is what an owner signing in here expects.
+        }
+      }
+
       const response = await axiosSecure.post(
         `/auth/login`,
         { workspace, ...loginIdentifier(formData.identifier), password: formData.password },
@@ -111,6 +146,26 @@ export default function SignInForm() {
   };
 
   const identifierValid = Boolean(loginIdentifier(formData.identifier));
+
+  // A platform operator's password was accepted: the console opens only once
+  // the texted code is entered, so the store form gives way to that step.
+  if (challenge) {
+    return (
+      <div className="w-full max-w-[404px]">
+        <BrandMark className="mb-7 size-10" />
+        <PlatformOtpStep
+          challenge={challenge}
+          credentials={{ email: formData.identifier.trim().toLowerCase(), password: formData.password }}
+          onChallenge={setChallenge}
+          onCancel={() => {
+            setChallenge(null);
+            setFormData((prev) => ({ ...prev, password: "" }));
+          }}
+          onVerified={() => navigate("/platform/sellers", { replace: true })}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-[404px]">

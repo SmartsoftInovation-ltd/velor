@@ -8,17 +8,26 @@ const MIN_PASSWORD_LENGTH = 12;
 
 /**
  * Creates the first platform superadmin, or sets the password on an existing
- * account when `reset` is passed. Credentials are given on the command line,
- * never kept in .env — a platform password in a file is a standing risk, and
- * this seeder runs by hand a handful of times.
+ * account when `--reset` is passed.
  *
- *   node src/seeder/seedPlatformAdmin.js --email you@example.com --password '…'
- *   node src/seeder/seedPlatformAdmin.js --email you@example.com --password '…' --reset
+ *   node src/seeder/seedPlatformAdmin.js
+ *   node src/seeder/seedPlatformAdmin.js --reset
+ *
+ * Credentials come from the environment — PLATFORM_ADMIN_EMAIL,
+ * PLATFORM_ADMIN_PASSWORD and the optional PLATFORM_ADMIN_NAME — so the seeder
+ * runs unattended and the same values serve every environment's own .env.
+ *
+ * SECURITY: this account governs every seller on the platform. Its password
+ * therefore sits in a file on every machine holding the repo, in every backup
+ * of that file, and is readable by anything that can read this directory. Keep
+ * .env out of version control (it is), restrict who can read the deployment,
+ * and change the value then re-run with --reset to rotate — that also revokes
+ * every open console session.
  */
 async function seedPlatformAdmin({ email, password, name = "Platform Admin", reset = false } = {}) {
   const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail) throw new Error("--email is required");
-  if (!password) throw new Error("--password is required");
+  if (!normalizedEmail) throw new Error("PLATFORM_ADMIN_EMAIL is required");
+  if (!password) throw new Error("PLATFORM_ADMIN_PASSWORD is required");
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
@@ -51,18 +60,16 @@ async function seedPlatformAdmin({ email, password, name = "Platform Admin", res
   });
 }
 
-// --email a@b.c --password secret --name "Someone" --reset
-const parseArgs = (argv) => {
-  const args = { reset: argv.includes("--reset") };
-  for (const flag of ["email", "password", "name"]) {
-    const index = argv.indexOf(`--${flag}`);
-    if (index !== -1 && argv[index + 1]) args[flag] = argv[index + 1];
-  }
-  return args;
-};
+// Credentials are environment-only; --reset is the sole flag
+const fromEnv = (argv) => ({
+  reset: argv.includes("--reset"),
+  email: process.env.PLATFORM_ADMIN_EMAIL,
+  password: process.env.PLATFORM_ADMIN_PASSWORD,
+  name: process.env.PLATFORM_ADMIN_NAME,
+});
 
 if (require.main === module) {
-  const { email, password, name, reset } = parseArgs(process.argv.slice(2));
+  const { email, password, name, reset } = fromEnv(process.argv.slice(2));
   mongoose
     .connect(process.env.DATABASE_URL)
     .then(() => seedPlatformAdmin({ email, password, name, reset }))

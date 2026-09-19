@@ -11,6 +11,10 @@ const clearAccessToken = vi.fn();
 const refreshAuth = vi.fn();
 // The real clearAuth forgets the workspace, which is what this form relies on
 const clearAuth = vi.fn(() => clearWorkspace());
+const platformStartSignIn =
+  vi.fn<(credentials: { email: string; password: string }) => Promise<{ challengeId: string; phone: string; expiresInSeconds: number }>>(
+    () => Promise.reject(new Error("not an operator")),
+  );
 
 vi.mock("../../hooks/useAxiosSecure", () => ({
   default: { post: (...args: unknown[]) => post(...args) },
@@ -18,6 +22,15 @@ vi.mock("../../hooks/useAxiosSecure", () => ({
   clearAccessToken: () => clearAccessToken(),
 }));
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ refreshAuth, clearAuth }) }));
+// A platform operator's sign-in is a different account in a different collection;
+// these tests cover the store path, so the console's own step never starts.
+vi.mock("../../platform/PlatformAuthContext", () => ({
+  usePlatformAuth: () => ({ startSignIn: platformStartSignIn, verifyCode: vi.fn(), resendCode: vi.fn() }),
+}));
+vi.mock("../../platform/visibility", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../platform/visibility")>()),
+  PLATFORM_WORKSPACES: ["console"],
+}));
 vi.mock("react-hot-toast", () => ({ default: { success: vi.fn(), error: vi.fn() } }));
 
 const renderAt = (url = "/signin") =>
@@ -128,5 +141,51 @@ describe("SignInForm", () => {
 
     expect(await screen.findByText(/valid email or phone/i)).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  // The console's operator lives in its own collection, so the store login can
+  // never match them: the platform endpoint is tried first, and only for the
+  // workspace that owns the console.
+  describe("platform operator", () => {
+    it("starts the console's code step instead of a store session", async () => {
+      platformStartSignIn.mockResolvedValueOnce({
+        challengeId: "challenge-1",
+        phone: "01*******62",
+        expiresInSeconds: 300,
+      });
+      renderAt("/signin?workspace=console");
+
+      await userEvent.type(screen.getByLabelText(/^email or phone/i), "operator@platform.test");
+      await userEvent.type(screen.getByLabelText(/^password/i), "Platform-Pass1");
+      await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+      expect(await screen.findByLabelText(/sign-in code/i)).toBeInTheDocument();
+      expect(post).not.toHaveBeenCalled();
+      expect(setAccessToken).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the store login when the account is not an operator", async () => {
+      post.mockResolvedValue({ data: { data: { accessToken: "token-3" } } });
+      renderAt("/signin?workspace=console");
+
+      await userEvent.type(screen.getByLabelText(/^email or phone/i), "owner@console.test");
+      await userEvent.type(screen.getByLabelText(/^password/i), "Owner-Pass1");
+      await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+      await waitFor(() => expect(post).toHaveBeenCalled());
+      expect(setAccessToken).toHaveBeenCalledWith("token-3");
+    });
+
+    it("leaves another workspace's sign-in untouched", async () => {
+      post.mockResolvedValue({ data: { data: { accessToken: "token-4" } } });
+      renderAt("/signin?workspace=pizzashop");
+
+      await userEvent.type(screen.getByLabelText(/^email or phone/i), "staff@pizza.com");
+      await userEvent.type(screen.getByLabelText(/^password/i), "Pizza-Pass1");
+      await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+      await waitFor(() => expect(post).toHaveBeenCalled());
+      expect(platformStartSignIn).not.toHaveBeenCalled();
+    });
   });
 });

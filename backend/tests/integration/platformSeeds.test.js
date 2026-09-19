@@ -20,8 +20,8 @@ describe("platform seed scripts", () => {
 
   describe("seedPlatformAdmin", () => {
     it("requires credentials and a strong password", async () => {
-      await expect(seedPlatformAdmin({ password: STRONG })).rejects.toThrow(/--email/);
-      await expect(seedPlatformAdmin({ email: "me@platform.test" })).rejects.toThrow(/--password/);
+      await expect(seedPlatformAdmin({ password: STRONG })).rejects.toThrow(/PLATFORM_ADMIN_EMAIL/);
+      await expect(seedPlatformAdmin({ email: "me@platform.test" })).rejects.toThrow(/PLATFORM_ADMIN_PASSWORD/);
       await expect(seedPlatformAdmin({ email: "me@platform.test", password: "short" })).rejects.toThrow(/at least 12/);
     });
 

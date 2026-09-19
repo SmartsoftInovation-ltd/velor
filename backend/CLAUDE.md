@@ -12,10 +12,10 @@ npm run worker:image # start image upload worker (separate process)
 npm run seed:permissions
 npm run seed:roles
 npm run seed:delivery
-# Account seeders take credentials as flags — passwords are never kept in .env
+# The store staff seeder takes credentials as flags, so its password is never stored
 npm run superAdmin -- --email you@example.com --password '…'          # store staff superadmin
-npm run seed:platform-admin -- --email you@example.com --password '…' # platform operator
-#   add --reset to seed:platform-admin to set a new password on an existing operator
+npm run seed:platform-admin       # platform operator, from PLATFORM_ADMIN_* in .env
+#   add --reset to seed:platform-admin to apply a changed PLATFORM_ADMIN_PASSWORD
 ```
 
 ```bash
