@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { FiArrowRight, FiShield } from "react-icons/fi";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import type { OtpChallenge } from "../../platform/endpoints";
-import { fieldShell, inputClass } from "./authStyles";
+
+
+const LENGTH = 6;
 
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
@@ -26,20 +28,65 @@ const PlatformOtpStep = ({ challenge, credentials, onChallenge, onCancel, onVeri
   onVerified: () => void;
 }) => {
   const { verifyCode, resendCode } = usePlatformAuth();
-  const [code, setCode] = useState("");
+  const [digits, setDigits] = useState<string[]>(() => Array(LENGTH).fill(""));
   const [secondsLeft, setSecondsLeft] = useState(challenge.expiresInSeconds);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const codeRef = useRef<HTMLInputElement>(null);
+  const boxes = useRef<(HTMLInputElement | null)[]>([]);
 
-  // The code is only good for as long as the server said it would be
+  const code = digits.join("");
+
+  // The code is only good for as long as the server said it would be. A fresh
+  // challenge also empties the boxes: the digits on screen belong to the code
+  // that has just been replaced.
   useEffect(() => {
-    setCode("");
+    setDigits(Array(LENGTH).fill(""));
     setSecondsLeft(challenge.expiresInSeconds);
-    codeRef.current?.focus();
+    boxes.current[0]?.focus();
     const timer = setInterval(() => setSecondsLeft((s: number) => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(timer);
   }, [challenge]);
+
+  const writeFrom = (start: number, characters: string) => {
+    const incoming = characters.replace(/\D/g, "");
+    if (!incoming) return;
+
+    setError("");
+    setDigits((current) => {
+      const next = [...current];
+      for (let i = 0; i < incoming.length && start + i < LENGTH; i += 1) {
+        next[start + i] = incoming[i];
+      }
+      return next;
+    });
+    // The caret lands after the last digit written, or on the final box
+    boxes.current[Math.min(start + incoming.length, LENGTH - 1)]?.focus();
+  };
+
+  const onKeyDown = (index: number) => (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      setError("");
+      // Backspace on an empty box clears the one before it and steps back, so
+      // holding it walks the whole code out the way people expect.
+      setDigits((current) => {
+        const next = [...current];
+        if (next[index]) next[index] = "";
+        else if (index > 0) next[index - 1] = "";
+        return next;
+      });
+      if (!digits[index] && index > 0) boxes.current[index - 1]?.focus();
+      return;
+    }
+    if (event.key === "ArrowLeft" && index > 0) {
+      event.preventDefault();
+      boxes.current[index - 1]?.focus();
+    }
+    if (event.key === "ArrowRight" && index < LENGTH - 1) {
+      event.preventDefault();
+      boxes.current[index + 1]?.focus();
+    }
+  };
 
   const run = async (action: () => Promise<void>, fallback: string) => {
     setError("");
@@ -78,24 +125,41 @@ const PlatformOtpStep = ({ challenge, credentials, onChallenge, onCancel, onVeri
       </p>
 
       <form onSubmit={submit} className="mt-7">
-        <label htmlFor="platform-otp" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-gray-300">
+        <label htmlFor="platform-otp-0" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-gray-300">
           Sign-in code
         </label>
-        <div className={fieldShell(Boolean(error))}>
-          <input
-            id="platform-otp"
-            ref={codeRef}
-            value={code}
-            onChange={(event) => {
-              setCode(event.target.value.replace(/\D/g, "").slice(0, 6));
-              setError("");
-            }}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="000000"
-            aria-describedby="platform-otp-expiry"
-            className={`${inputClass} text-center text-lg font-semibold tracking-[0.5em] tabular-nums`}
-          />
+        {/* One box per digit. Each is its own input so a password manager or
+            the phone's SMS autofill can still drop the whole code in — the
+            paste handler spreads it across the boxes. */}
+        <div className="flex gap-2 sm:gap-2.5">
+          {digits.map((digit, index) => (
+            <input
+              key={index}
+              id={`platform-otp-${index}`}
+              ref={(element) => {
+                boxes.current[index] = element;
+              }}
+              value={digit}
+              onChange={(event) => writeFrom(index, event.target.value)}
+              onKeyDown={onKeyDown(index)}
+              onPaste={(event) => {
+                event.preventDefault();
+                writeFrom(index, event.clipboardData.getData("text"));
+              }}
+              onFocus={(event) => event.target.select()}
+              inputMode="numeric"
+              autoComplete={index === 0 ? "one-time-code" : "off"}
+              autoFocus={index === 0}
+              maxLength={LENGTH}
+              aria-label={`Digit ${index + 1} of ${LENGTH}`}
+              aria-describedby="platform-otp-expiry"
+              className={`h-14 min-w-0 flex-1 rounded-xl border bg-white text-center text-xl font-semibold tabular-nums outline-none transition focus:ring-4 dark:bg-white/[0.03] dark:text-white/90 ${
+                error
+                  ? "border-error-400 text-error-600 focus:border-error-500 focus:ring-error-500/10"
+                  : "border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-emerald-500/10 dark:border-gray-800"
+              }`}
+            />
+          ))}
         </div>
 
         <p id="platform-otp-expiry" className="mt-2 text-xs text-gray-500 dark:text-gray-400">
