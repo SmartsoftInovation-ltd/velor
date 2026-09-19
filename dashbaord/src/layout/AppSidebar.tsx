@@ -263,7 +263,7 @@ const navItems: NavItem[] = [
     subItems: [
       {
         name: "Create Order",
-        path: "/counter-order",
+        path: "/create-order",
         module: PERMISSIONS.ORDER,
         pro: false,
       },

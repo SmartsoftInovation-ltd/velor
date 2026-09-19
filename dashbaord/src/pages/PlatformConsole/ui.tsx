@@ -1,6 +1,6 @@
-import { useEffect, useId, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router";
-import { FiChevronLeft, FiChevronRight, FiRefreshCw, FiX } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiChevronLeft, FiChevronRight, FiRefreshCw, FiX } from "react-icons/fi";
 
 // Building blocks for the Platform Console pages (ECOMPOS style, accent green #0F9D63)
 
@@ -237,6 +237,166 @@ export const Modal = ({ title, description, icon, onClose, children, width = "ma
         </div>
         <div className="px-6 py-5">{children}</div>
       </div>
+    </div>
+  );
+};
+
+export interface SelectOption {
+  value: string;
+  label: string;
+  /** Shown right-aligned and dimmed — a price, a count, a hint */
+  meta?: string;
+}
+
+/**
+ * A select whose menu this app draws itself.
+ *
+ * A native <select> renders its option list with the operating system, so the
+ * panel keeps square corners, the OS highlight colour and a white background
+ * in dark mode however the closed control is styled — none of it reachable
+ * from CSS. The list here is ordinary markup, so it matches the rest of the
+ * console, and it keeps the keyboard behaviour people expect from a select:
+ * arrows move, Enter and Space choose, Escape closes, Home and End jump.
+ */
+export const Select = ({ id, value, onChange, options, placeholder = "Select…", icon, disabled }: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+  icon?: ReactNode;
+  disabled?: boolean;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const listId = useId();
+
+  const selected = options.find((option) => option.value === value) ?? null;
+
+  // Clicking anywhere else closes it, the way a native menu behaves
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  // Opening lands on the current choice, and the highlight is always in view
+  useEffect(() => {
+    if (!open) return;
+    const index = options.findIndex((option) => option.value === value);
+    setActive(index < 0 ? 0 : index);
+  }, [open, options, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    list.current?.children[active]?.scrollIntoView({ block: "nearest" });
+  }, [open, active]);
+
+  const choose = (index: number) => {
+    const option = options[index];
+    if (!option) return;
+    onChange(option.value);
+    setOpen(false);
+  };
+
+  const onKeyDown = (event: ReactKeyboardEvent) => {
+    if (disabled) return;
+    if (!open && ["Enter", " ", "ArrowDown", "ArrowUp"].includes(event.key)) {
+      event.preventDefault();
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActive((index) => Math.min(index + 1, options.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActive((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActive(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActive(options.length - 1);
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      choose(active);
+    } else if (event.key === "Tab") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div ref={root} className="relative min-w-0">
+      <button
+        id={id}
+        type="button"
+        role="combobox"
+        aria-controls={listId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        disabled={disabled}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={onKeyDown}
+        className={`flex h-11 w-full items-center gap-2.5 rounded-xl border bg-white px-3.5 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900 ${
+          open
+            ? "border-accent-400 ring-3 ring-accent-500/15"
+            : "border-gray-200 hover:border-gray-300 dark:border-gray-800"
+        }`}
+      >
+        {icon && <span className="flex size-4 shrink-0 items-center justify-center text-gray-400">{icon}</span>}
+        <span className={`min-w-0 flex-1 truncate ${selected ? "text-gray-800 dark:text-white/90" : "text-gray-400"}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        {selected?.meta && (
+          <span className="shrink-0 text-xs font-medium tabular-nums text-gray-500 dark:text-gray-400">{selected.meta}</span>
+        )}
+        <FiChevronDown className={`size-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <ul
+          ref={list}
+          id={listId}
+          role="listbox"
+          aria-activedescendant={`${listId}-${active}`}
+          className="absolute z-30 mt-1.5 max-h-64 w-full overflow-auto rounded-xl border border-gray-200 bg-white p-1.5 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900"
+        >
+          {options.length === 0 && <li className="px-3 py-2 text-sm text-gray-400">Nothing to choose</li>}
+          {options.map((option, index) => {
+            const isSelected = option.value === value;
+            return (
+              <li
+                key={option.value}
+                id={`${listId}-${index}`}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => choose(index)}
+                onPointerMove={() => setActive(index)}
+                className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${
+                  index === active ? "bg-accent-50 dark:bg-accent-500/15" : ""
+                } ${isSelected ? "font-medium text-accent-700 dark:text-accent-300" : "text-gray-700 dark:text-gray-300"}`}
+              >
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                {option.meta && (
+                  <span className="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400">{option.meta}</span>
+                )}
+                <FiCheck className={`size-4 shrink-0 text-accent-600 ${isSelected ? "" : "invisible"}`} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 };

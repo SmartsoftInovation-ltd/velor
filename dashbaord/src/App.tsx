@@ -153,7 +153,7 @@ const SigleOrderDetails = lazy(
   () => import("./components/tables/OrderTable/SigleOrderDetails"),
 );
 const OrderList = lazy(() => import("./pages/Order/OrderList"));
-const CounterOrder = lazy(() => import("./pages/Order/CounterOrder"));
+const CreateOrder = lazy(() => import("./pages/Order/CreateOrder"));
 const IncompleteOrderList = lazy(
   () => import("./pages/Order/IncompleteOrderList"),
 );
@@ -722,7 +722,7 @@ export default function App() {
 
                 {/* Order */}
                 <Route path="/order-list" element={<ProtectedRoute module="order" action="view"><OrderList /></ProtectedRoute>} />
-                <Route path="/counter-order" element={<ProtectedRoute module="order" action="add"><CounterOrder /></ProtectedRoute>} />
+                <Route path="/create-order" element={<ProtectedRoute module="order" action="add"><CreateOrder /></ProtectedRoute>} />
                 <Route
                   path="/orderdetails/:id"
                   element={<SigleOrderDetails />}

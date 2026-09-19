@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { FiMinus, FiPlus, FiSearch, FiShoppingCart, FiTrash2, FiUser } from "react-icons/fi";
+import {
+  FiCreditCard,
+  FiDollarSign,
+  FiMessageCircle,
+  FiMinus,
+  FiPlus,
+  FiSearch,
+  FiShoppingCart,
+  FiTrash2,
+  FiTruck,
+  FiUser,
+} from "react-icons/fi";
 import { HiOutlineReceiptPercent } from "react-icons/hi2";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import PageMeta from "../../components/common/PageMeta";
@@ -12,6 +23,7 @@ import {
   inputClass,
   primaryButtonClass,
   secondaryButtonClass,
+  Select,
 } from "../PlatformConsole/ui";
 
 /**
@@ -118,7 +130,12 @@ const describe = (hit: SearchHit) =>
 
 const emptyCustomer = { fullName: "", phone: "", address: "" };
 
-const CounterOrder = () => {
+const PAYMENT_METHODS = [
+  { value: "cod" as const, label: "Cash on delivery", icon: <FiDollarSign className="size-4" /> },
+  { value: "sslcommerz" as const, label: "Online", icon: <FiCreditCard className="size-4" /> },
+];
+
+const CreateOrder = () => {
   const [search, setSearch] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -488,84 +505,110 @@ const CounterOrder = () => {
               )}
 
               <Field id="pos-delivery" label="Delivery">
-                <select
+                <Select
                   id="pos-delivery"
+                  icon={<FiTruck />}
                   value={deliveryChargeId}
-                  onChange={(event) => setDeliveryChargeId(event.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">No delivery charge</option>
-                  {deliveryOptions.map((option) => (
-                    <option key={option._id} value={option._id}>
-                      {option.name} — {money(option.deliveryCharge)}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setDeliveryChargeId}
+                  options={[
+                    { value: "", label: "No delivery charge" },
+                    ...deliveryOptions.map((option) => ({
+                      value: option._id,
+                      label: option.name,
+                      meta: money(option.deliveryCharge),
+                    })),
+                  ]}
+                />
               </Field>
 
+              {/* Two choices, so they are both shown rather than hidden behind a menu */}
               <Field id="pos-payment" label="Payment">
-                <select
-                  id="pos-payment"
-                  value={paymentMethod}
-                  onChange={(event) => setPaymentMethod(event.target.value as "cod" | "sslcommerz")}
-                  className={inputClass}
-                >
-                  <option value="cod">Cash on delivery</option>
-                  <option value="sslcommerz">Online (SSLCommerz)</option>
-                </select>
+                {/* A label's htmlFor does not reach a div, so the group names itself */}
+                <div role="radiogroup" aria-label="Payment" className="grid grid-cols-2 gap-2">
+                  {PAYMENT_METHODS.map((method) => {
+                    const active = paymentMethod === method.value;
+                    return (
+                      <button
+                        key={method.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setPaymentMethod(method.value)}
+                        className={`flex h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition ${
+                          active
+                            ? "border-accent-500 bg-accent-50 text-accent-700 dark:bg-accent-500/15 dark:text-accent-300"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-white"
+                        }`}
+                      >
+                        {method.icon}
+                        {method.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </Field>
 
               <Field id="pos-order-from" label="Order from" hint="Where the customer reached you">
                 <div className="flex items-center gap-2">
-                  <select
-                    id="pos-order-from"
-                    value={orderFrom}
-                    onChange={(event) => setOrderFrom(event.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="">Not recorded</option>
-                    {sources.map((source) => (
-                      <option key={source._id} value={source.name}>
-                        {source.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      id="pos-order-from"
+                      icon={<FiMessageCircle />}
+                      value={orderFrom}
+                      onChange={setOrderFrom}
+                      options={[
+                        { value: "", label: "Not recorded" },
+                        ...sources.map((source) => ({ value: source.name, label: source.name })),
+                      ]}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() => setAddingSource((open) => !open)}
-                    aria-label="Add an order source"
+                    aria-label={addingSource ? "Cancel adding an order source" : "Add an order source"}
                     aria-expanded={addingSource}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 dark:border-gray-800 dark:hover:bg-white/5"
+                    title="Add an order source"
+                    className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl border transition ${
+                      addingSource
+                        ? "border-accent-500 bg-accent-50 text-accent-600 dark:bg-accent-500/15"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-white/5"
+                    }`}
                   >
-                    <FiPlus className="size-4" />
+                    <FiPlus className={`size-4 transition-transform ${addingSource ? "rotate-45" : ""}`} />
                   </button>
                 </div>
               </Field>
 
               {addingSource && (
-                <div className="flex items-center gap-2">
-                  <input
-                    value={newSource}
-                    onChange={(event) => setNewSource(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        addSource();
-                      }
-                    }}
-                    placeholder="e.g. TikTok"
-                    aria-label="New order source name"
-                    autoFocus
-                    className={inputClass}
-                  />
-                  <button
-                    type="button"
-                    onClick={addSource}
-                    disabled={!newSource.trim() || savingSource}
-                    className={`${primaryButtonClass} shrink-0`}
-                  >
-                    {savingSource ? "Adding…" : "Add"}
-                  </button>
+                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 dark:border-gray-700 dark:bg-white/[0.02]">
+                  <label htmlFor="pos-new-source" className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                    New order source
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="pos-new-source"
+                      value={newSource}
+                      onChange={(event) => setNewSource(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addSource();
+                        }
+                        if (event.key === "Escape") setAddingSource(false);
+                      }}
+                      placeholder="e.g. TikTok"
+                      autoFocus
+                      className={inputClass}
+                    />
+                    <button
+                      type="button"
+                      onClick={addSource}
+                      disabled={!newSource.trim() || savingSource}
+                      className={`${primaryButtonClass} shrink-0`}
+                    >
+                      {savingSource ? "Adding…" : "Add"}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -624,4 +667,4 @@ const CounterOrder = () => {
   );
 };
 
-export default CounterOrder;
+export default CreateOrder;
