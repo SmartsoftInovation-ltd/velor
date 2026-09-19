@@ -32,7 +32,11 @@ describe("settings.service", () => {
     it("returns defaults for a tenant without settings", async () => {
       const settings = await service.getSettings(T);
       expect(settings.general).toMatchObject({ invoicePrefix: "INV", currency: "BDT", timezone: "Asia/Dhaka" });
-      expect(settings.sms).toMatchObject({ enabled: false, provider: "bulksmsbd" });
+      expect(settings.sms).toMatchObject({
+        enabled: false,
+        provider: "bulksmsbd",
+        apiUrl: "http://bulksmsbd.net/api/smsapi",
+      });
       expect(settings.email.mode).toBe("smtp");
       expect(settings.cloudinary.enabled).toBe(false);
     });
@@ -50,7 +54,8 @@ describe("settings.service", () => {
       const result = await service.updateSection(T, "sms", smsPatch);
 
       expect(result.version).toBe(1);
-      expect(result.changes.sort()).toEqual(["sms.apiKey", "sms.apiUrl", "sms.enabled", "sms.senderId"]);
+      // apiUrl is not listed: the patch sets it to the value it already had by default.
+      expect(result.changes.sort()).toEqual(["sms.apiKey", "sms.enabled", "sms.senderId"]);
       expect(result.section.apiKey).toEqual({ isSet: true, last4: "-key", updatedAt: expect.any(Date) });
       expect(JSON.stringify(result)).not.toContain("pizzashop-real-api-key");
 
@@ -86,7 +91,7 @@ describe("settings.service", () => {
     it("rejects enabling a section without its required fields", async () => {
       await expect(service.updateSection(T, "sms", { enabled: true })).rejects.toMatchObject({
         statusCode: 400,
-        message: expect.stringMatching(/apiUrl.*apiKey.*senderId/),
+        message: expect.stringMatching(/apiKey.*senderId/),
       });
       await expect(service.updateSection(T, "email", { mode: "smtp" })).rejects.toMatchObject({ statusCode: 400 });
     });

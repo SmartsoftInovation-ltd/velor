@@ -181,6 +181,21 @@ const orderSchema = new mongoose.Schema(
       default: "pos",
       index: true,
     },
+    /**
+     * Which conversation the customer came through — Website, Messenger,
+     * WhatsApp, over the phone. The shop manages the list itself (OrderSource),
+     * but the chosen name is copied onto the order rather than referenced, so
+     * renaming or removing a source later never rewrites order history.
+     *
+     * A storefront checkout is always "Website"; a staff member picks the rest
+     * while entering the order.
+     */
+    orderFrom: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
     // The staff member who entered a counter order; null for a web order
     placedBy: {
       type: mongoose.Schema.Types.ObjectId,

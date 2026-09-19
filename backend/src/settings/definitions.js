@@ -24,8 +24,11 @@ const SECTIONS = {
     fields: {
       enabled: { type: "boolean", default: false },
       provider: { type: "enum", values: ["bulksmsbd"], default: "bulksmsbd" },
-      apiUrl: { type: "uri", default: "", required: true },
-      balanceUrl: { type: "uri", default: "" },
+      // Every seller signs up with the same BulkSMSBD endpoints, so they are
+      // prefilled rather than left blank; a seller on a different gateway host
+      // just overwrites them.
+      apiUrl: { type: "uri", default: "http://bulksmsbd.net/api/smsapi", required: true },
+      balanceUrl: { type: "uri", default: "http://bulksmsbd.net/api/getBalanceApi" },
       apiKey: { type: "secret", required: true },
       senderId: { type: "string", default: "", required: true },
     },

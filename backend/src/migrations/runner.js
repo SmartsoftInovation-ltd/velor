@@ -10,6 +10,7 @@ const MIGRATIONS = [
   require("./003-create-tenant-indexes"),
   require("./004-backfill-cloud-name"),
   require("./005-owner-role"),
+  require("./006-drop-global-role-indexes"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

@@ -12,6 +12,7 @@ const { statusCodes } = require("../constant/constant");
 const { getGeneralConfig } = require("../integrations/config");
 const { emitToTenant } = require("../socket/socket");
 const { getTenantId } = require("../tenancy/context");
+const { WEBSITE_SOURCE } = require("../models/orderSource.model");
 
 /**
  * Checkout from the storefront.
@@ -194,6 +195,7 @@ exports.createOrder = asynchandeler(async (req, res) => {
     totalQuantity,
     // Taken on the storefront, so reports can tell it apart from a counter sale
     channel: "web",
+    orderFrom: WEBSITE_SOURCE,
   });
 
   /**

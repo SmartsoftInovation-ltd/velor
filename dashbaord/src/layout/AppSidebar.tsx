@@ -262,7 +262,7 @@ const navItems: NavItem[] = [
     icon: <LuClipboardList />,
     subItems: [
       {
-        name: "Counter Order",
+        name: "Create Order",
         path: "/counter-order",
         module: PERMISSIONS.ORDER,
         pro: false,

@@ -46,7 +46,7 @@ describe("POST /platform/tenants/:id/settings/:section/test", () => {
 
   it("reports missing fields without calling the provider", async () => {
     const res = await test("sms").expect(200);
-    expect(res.body.data).toEqual({ ok: false, error: "Missing apiUrl, apiKey, senderId" });
+    expect(res.body.data).toEqual({ ok: false, error: "Missing apiKey, senderId" });
     expect(axios.get).not.toHaveBeenCalled();
   });
 

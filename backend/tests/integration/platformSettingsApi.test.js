@@ -73,7 +73,7 @@ describe("platform tenant settings API", () => {
 
     const audit = await PlatformAuditLog.findOne({ action: "TENANT_SETTINGS_UPDATED" }).lean();
     expect(audit.tenantId.toString()).toBe(tenant._id.toString());
-    expect(audit.changes.sort()).toEqual(["sms.apiKey", "sms.apiUrl", "sms.enabled", "sms.senderId"]);
+    expect(audit.changes.sort()).toEqual(["sms.apiKey", "sms.enabled", "sms.senderId"]);
     expect(JSON.stringify(audit)).not.toContain("sms-key-123456");
   });
 

@@ -36,6 +36,9 @@ interface Order {
   guestId?: string | null;
   shippingInfo: any;
   invoiceId: String;
+  // Where the customer reached the shop: "Website" for a storefront checkout,
+  // or whatever the staff member picked when entering the order by hand.
+  orderFrom?: string;
   finalAmount: number;
   discountAmount: number;
   deliveryCharge: {
@@ -151,6 +154,9 @@ export default function OrderTable() {
               <MobileCardRow label="Delivery">
                 +৳{order?.deliveryCharge?.deliveryCharge || 0}
               </MobileCardRow>
+              <MobileCardRow label="Order From">
+                {order?.orderFrom || "—"}
+              </MobileCardRow>
               <MobileCardRow label="Final">
                 <span className="font-bold">৳{order?.finalAmount || 0}</span>
               </MobileCardRow>
@@ -216,6 +222,12 @@ export default function OrderTable() {
                   className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
                   Customer Type
+                </TableCell>
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
+                >
+                  Order From
                 </TableCell>
                 <TableCell
                   isHeader
@@ -352,6 +364,13 @@ export default function OrderTable() {
                     <Badge color={order.guestId ? "orange" : "info"}>
                       {order.guestId ? "Guest" : "User"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-theme-sm text-center">
+                    {order?.orderFrom ? (
+                      <Badge color="light">{order.orderFrom}</Badge>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </TableCell>
 
                   <TableCell className="px-4 py-3 text-theme-sm">

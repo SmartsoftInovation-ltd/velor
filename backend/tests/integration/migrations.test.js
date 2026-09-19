@@ -93,6 +93,7 @@ describe("Velor migration", () => {
         ["003-create-tenant-indexes", "applied"],
         ["004-backfill-cloud-name", "applied"],
         ["005-owner-role", "applied"],
+        ["006-drop-global-role-indexes", "applied"],
       ]);
     });
 

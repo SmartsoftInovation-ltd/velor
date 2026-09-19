@@ -65,6 +65,16 @@ interface DeliveryOption {
   deliveryCharge: number;
 }
 
+/**
+ * Where the customer came from — Messenger, WhatsApp, over the phone. The shop
+ * keeps its own list, so the options are fetched rather than hard-coded and
+ * staff can add one without leaving the order they are taking.
+ */
+interface OrderSource {
+  _id: string;
+  name: string;
+}
+
 interface Quote {
   subtotal: number;
   discountAmount: number;
@@ -119,6 +129,12 @@ const CounterOrder = () => {
   const [deliveryChargeId, setDeliveryChargeId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "sslcommerz">("cod");
 
+  const [orderFrom, setOrderFrom] = useState("");
+  const [sources, setSources] = useState<OrderSource[]>([]);
+  const [addingSource, setAddingSource] = useState(false);
+  const [newSource, setNewSource] = useState("");
+  const [savingSource, setSavingSource] = useState(false);
+
   const [deliveryOptions, setDeliveryOptions] = useState<DeliveryOption[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [placing, setPlacing] = useState(false);
@@ -130,7 +146,35 @@ const CounterOrder = () => {
       .get("/delivery-charge/get-delivery-charge")
       .then((res) => setDeliveryOptions(Array.isArray(res.data?.data) ? res.data.data : []))
       .catch(() => setDeliveryOptions([]));
+
+    axiosSecure
+      .get("/order-source")
+      .then((res) => setSources(Array.isArray(res.data?.data) ? res.data.data : []))
+      .catch(() => setSources([]));
   }, []);
+
+  const addSource = async () => {
+    const name = newSource.trim();
+    if (!name) return;
+    setSavingSource(true);
+    try {
+      const res = await axiosSecure.post("/order-source", { name });
+      const created: OrderSource = res.data?.data;
+      setSources((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
+      // Selected straight away: it was added to be used on this order.
+      setOrderFrom(created.name);
+      setNewSource("");
+      setAddingSource(false);
+      toast.success(`${created.name} added`);
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Could not add that option";
+      toast.error(message);
+    } finally {
+      setSavingSource(false);
+    }
+  };
 
   // Debounced so typing a product name does not fire a request per keystroke
   useEffect(() => {
@@ -232,6 +276,7 @@ const CounterOrder = () => {
         ...payload,
         shippingInfo: customer,
         paymentMethod,
+        orderFrom,
       });
       const order = res.data?.data?.order;
       toast.success(`Order ${order?.invoiceId ?? ""} placed — ${money(order?.finalAmount ?? 0)}`);
@@ -240,6 +285,7 @@ const CounterOrder = () => {
       setCustomer(emptyCustomer);
       setCouponCode("");
       setDeliveryChargeId("");
+      setOrderFrom("");
       setQuote(null);
     } catch (error) {
       const message =
@@ -253,11 +299,11 @@ const CounterOrder = () => {
 
   return (
     <>
-      <PageMeta title="Counter Order" description="Take an order at the counter or over the phone" />
+      <PageMeta title="Create Order" description="Take an order at the counter or over the phone" />
 
       <ConsoleHeader
-        crumbs={[{ label: "Orders", to: "/order-list" }, { label: "Counter order" }]}
-        title="Counter order"
+        crumbs={[{ label: "Orders", to: "/order-list" }, { label: "Create order" }]}
+        title="Create order"
         subtitle="Take an order over the phone or for a walk-in customer. Prices come from your catalogue."
       />
 
@@ -468,6 +514,60 @@ const CounterOrder = () => {
                   <option value="sslcommerz">Online (SSLCommerz)</option>
                 </select>
               </Field>
+
+              <Field id="pos-order-from" label="Order from" hint="Where the customer reached you">
+                <div className="flex items-center gap-2">
+                  <select
+                    id="pos-order-from"
+                    value={orderFrom}
+                    onChange={(event) => setOrderFrom(event.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Not recorded</option>
+                    {sources.map((source) => (
+                      <option key={source._id} value={source.name}>
+                        {source.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setAddingSource((open) => !open)}
+                    aria-label="Add an order source"
+                    aria-expanded={addingSource}
+                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 dark:border-gray-800 dark:hover:bg-white/5"
+                  >
+                    <FiPlus className="size-4" />
+                  </button>
+                </div>
+              </Field>
+
+              {addingSource && (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={newSource}
+                    onChange={(event) => setNewSource(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addSource();
+                      }
+                    }}
+                    placeholder="e.g. TikTok"
+                    aria-label="New order source name"
+                    autoFocus
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={addSource}
+                    disabled={!newSource.trim() || savingSource}
+                    className={`${primaryButtonClass} shrink-0`}
+                  >
+                    {savingSource ? "Adding…" : "Add"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -506,6 +606,7 @@ const CounterOrder = () => {
                   setCustomer(emptyCustomer);
                   setCouponCode("");
                   setDeliveryChargeId("");
+                  setOrderFrom("");
                 }}
                 className={secondaryButtonClass}
                 disabled={lines.length === 0 && !customer.fullName}

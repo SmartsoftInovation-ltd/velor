@@ -302,4 +302,81 @@ describe("counter (POS) orders", () => {
       expect(web).toBe(1);
     });
   });
+
+  /**
+   * Where the customer reached the shop — Messenger, WhatsApp, over the phone.
+   * The shop owns the list, so it is data rather than an enum, and the name is
+   * copied onto the order so renaming a source never rewrites history.
+   */
+  describe("order source", () => {
+    const listSources = () => request(app.server).get("/api/v1/order-source").set(auth());
+    const addSource = (body) => request(app.server).post("/api/v1/order-source").set(auth()).send(body);
+
+    it("starts every shop with a usable list", async () => {
+      const res = await listSources().expect(200);
+      const names = res.body.data.map((source) => source.name);
+      expect(names).toEqual(expect.arrayContaining(["Website", "Messenger", "WhatsApp"]));
+    });
+
+    it("records the source the staff member chose", async () => {
+      await listSources().expect(200);
+
+      const res = await place({
+        items: oneLine(1),
+        shippingInfo: SHIPPING,
+        paymentMethod: "cod",
+        orderFrom: "Messenger",
+      }).expect(201);
+
+      expect(res.body.data.order.orderFrom).toBe("Messenger");
+      const saved = await runForTenant(velor.tenant._id, () => Order.findById(res.body.data.order._id));
+      expect(saved.orderFrom).toBe("Messenger");
+    });
+
+    it("refuses a source the shop does not keep", async () => {
+      await listSources().expect(200);
+
+      await place({
+        items: oneLine(1),
+        shippingInfo: SHIPPING,
+        paymentMethod: "cod",
+        orderFrom: "Telepathy",
+      }).expect(400);
+    });
+
+    it("takes an order with no source recorded", async () => {
+      const res = await place({ items: oneLine(1), shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
+      expect(res.body.data.order.orderFrom).toBe("");
+    });
+
+    it("adds one from the order screen, and refuses a duplicate", async () => {
+      await listSources().expect(200);
+
+      const created = await addSource({ name: "TikTok" }).expect(201);
+      expect(created.body.data.name).toBe("TikTok");
+
+      // Case-insensitive: "tiktok" would split one channel across two report lines
+      await addSource({ name: "tiktok" }).expect(400);
+
+      await place({
+        items: oneLine(1),
+        shippingInfo: SHIPPING,
+        paymentMethod: "cod",
+        orderFrom: "TikTok",
+      }).expect(201);
+    });
+
+    it("keeps one shop's list out of another's", async () => {
+      await listSources().expect(200);
+      await addSource({ name: "TikTok" }).expect(201);
+
+      const pizzaAuth = {
+        Authorization: `Bearer ${pizza.user.generateJwtAccessToken()}`,
+        "x-tenant": "pizzashop",
+      };
+      const res = await request(app.server).get("/api/v1/order-source").set(pizzaAuth).expect(200);
+
+      expect(res.body.data.map((source) => source.name)).not.toContain("TikTok");
+    });
+  });
 });

@@ -11,6 +11,7 @@ const { statusCodes } = require("../constant/constant");
 const { getGeneralConfig } = require("../integrations/config");
 const { emitToTenant } = require("../socket/socket");
 const { getTenantId } = require("../tenancy/context");
+const OrderSource = require("../models/orderSource.model");
 
 /**
  * Counter orders: a staff member taking an order over the phone or in person.
@@ -132,13 +133,20 @@ const applyCoupon = async (code, subtotal) => {
 };
 
 exports.createPosOrder = asynchandeler(async (req, res) => {
-  const { items: lines, shippingInfo, paymentMethod, couponCode, deliveryChargeId } = req.body;
+  const { items: lines, shippingInfo, paymentMethod, couponCode, deliveryChargeId, orderFrom } = req.body;
 
   if (!shippingInfo?.fullName || !shippingInfo?.phone) {
     throw new customError("Customer name and phone are required", statusCodes.BAD_REQUEST);
   }
   if (!["cod", "sslcommerz"].includes(paymentMethod)) {
     throw new customError("Choose a valid payment method", statusCodes.BAD_REQUEST);
+  }
+
+  // Only a source the shop actually keeps in its list may be stamped on an
+  // order, so a typo cannot quietly become a new line in the reports.
+  const sourceName = String(orderFrom ?? "").trim();
+  if (sourceName && !(await OrderSource.exists({ name: sourceName, isActive: true }))) {
+    throw new customError("Choose a valid order source", statusCodes.BAD_REQUEST);
   }
 
   const { items, subtotal, totalQuantity } = await priceLines(lines);
@@ -171,6 +179,7 @@ exports.createPosOrder = asynchandeler(async (req, res) => {
     invoiceId,
     totalQuantity,
     channel: "pos",
+    orderFrom: sourceName,
     placedBy: req.user?._id ?? null,
   });
 
@@ -207,6 +216,7 @@ exports.createPosOrder = asynchandeler(async (req, res) => {
       finalAmount: order.finalAmount,
       totalQuantity: order.totalQuantity,
       channel: order.channel,
+      orderFrom: order.orderFrom,
     },
   });
 });
