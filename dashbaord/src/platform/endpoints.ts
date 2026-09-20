@@ -59,6 +59,20 @@ export interface PlatformSession {
   user: PlatformUser;
 }
 
+export interface ProfileUpdate {
+  name?: string;
+  email?: string;
+  password?: string;
+  /** Required by the API for an email or password change */
+  currentPassword?: string;
+}
+
+/** A password change reissues this device's tokens; otherwise accessToken is null */
+export interface ProfileUpdateResult {
+  user: PlatformUser;
+  accessToken: string | null;
+}
+
 export const authApi = {
   // Step 1: the password only starts a challenge — the code opens the session
   login: (body: { email: string; password: string }) => data<OtpChallenge>(api.post("/auth/login", body)),
@@ -67,6 +81,8 @@ export const authApi = {
     data<OtpChallenge>(api.post("/auth/resend-otp", body)),
   me: () => data<PlatformUser>(api.get("/auth/me")),
   logout: () => api.post("/auth/logout"),
+  // Self-service: every operator owns their own account, support role included
+  updateMe: (body: ProfileUpdate) => data<ProfileUpdateResult>(api.patch("/auth/me", body)),
 };
 
 export const tenantsApi = {

@@ -7,6 +7,8 @@ const PLATFORM_AUDIT_ACTIONS = [
   "PLATFORM_LOGIN_OTP_SENT",
   "PLATFORM_LOGIN_OTP_FAILED",
   "PLATFORM_LOGOUT",
+  // An operator changed their own name, email or password
+  "PLATFORM_PROFILE_UPDATED",
   "TENANT_CREATED",
   "TENANT_UPDATED",
   "TENANT_SUSPENDED",

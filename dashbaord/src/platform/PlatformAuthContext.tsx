@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getPlatformToken, refreshPlatformSession, setPlatformSessionExpiredHandler, setPlatformToken } from "./api";
-import { authApi, type OtpChallenge } from "./endpoints";
+import { authApi, type OtpChallenge, type ProfileUpdate } from "./endpoints";
 import type { PlatformUser } from "./types";
 
 interface PlatformAuthValue {
@@ -16,6 +16,8 @@ interface PlatformAuthValue {
   restore: () => void;
   /** End the console session — the only way back to the password and the code */
   signOut: () => Promise<void>;
+  /** Edit the signed-in operator's own name, email or password */
+  updateProfile: (input: ProfileUpdate) => Promise<void>;
   resendCode: (input: { email: string; password: string; challengeId?: string }) => Promise<OtpChallenge>;
 }
 
@@ -69,6 +71,14 @@ export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
     [queryClient],
   );
 
+  const updateProfile = useCallback(async (input: ProfileUpdate) => {
+    const { user, accessToken } = await authApi.updateMe(input);
+    // A new password revokes the old tokens, so the API hands this device a
+    // replacement — storing it is what keeps the console open.
+    if (accessToken) setPlatformToken(accessToken);
+    setOperator(user);
+  }, []);
+
   const signOut = useCallback(async () => {
     await authApi.logout().catch(() => {});
     reset();
@@ -78,7 +88,7 @@ export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <PlatformAuthContext.Provider
-      value={{ operator, loading, isSuperadmin: operator?.role === "superadmin", startSignIn, verifyCode, resendCode, restore, signOut }}
+      value={{ operator, loading, isSuperadmin: operator?.role === "superadmin", startSignIn, verifyCode, resendCode, restore, signOut, updateProfile }}
     >
       {children}
     </PlatformAuthContext.Provider>

@@ -1,14 +1,22 @@
 import { useState } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import axiosSecure, { clearAccessToken } from "../../hooks/useAxiosSecure";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, clearAuth } = useAuth();
+  const { operator, signOut: signOutOfConsole } = usePlatformAuth();
   const navigate = useNavigate();
+
+  // Inside the Platform Console the person here is an operator, who may have no
+  // store session at all: their account, and the way out, are the console's.
+  const onConsole = useLocation().pathname.startsWith("/platform/");
+  const account = onConsole && operator ? { name: operator.name, email: operator.email } : { name: user?.name, email: user?.email };
+  const profilePath = onConsole && operator ? "/platform/profile" : "/profile";
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -19,6 +27,10 @@ export default function UserDropdown() {
   }
 
   const handleLogout = async () => {
+    // Leaving the console is not leaving the store session behind it; the Link
+    // itself does the navigating, so the gate reappears on the console page.
+    if (onConsole && operator) return signOutOfConsole();
+
     // Revoke the refresh token server-side first — clearing localStorage alone
     // leaves the httpOnly refresh cookie valid, so the session could be
     // resurrected by a refresh call. Local state is cleared either way.
@@ -49,7 +61,7 @@ export default function UserDropdown() {
         </span>
 
         <span className="hidden text-sm font-semibold text-gray-800 sm:block dark:text-gray-200">
-          {user?.name}
+          {account.name}
         </span>
         <svg
           className={`stroke-gray-400 dark:stroke-gray-500 transition-transform duration-200 ${
@@ -78,10 +90,10 @@ export default function UserDropdown() {
       >
         <div>
           <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            {user?.name}
+            {account.name}
           </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-            {user?.email}
+            {account.email}
           </span>
         </div>
 
@@ -90,7 +102,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              to="/profile"
+              to={profilePath}
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg
@@ -115,7 +127,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              to="/profile"
+              to={profilePath}
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg
@@ -140,7 +152,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              to="/profile"
+              to={profilePath}
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg
@@ -164,7 +176,7 @@ export default function UserDropdown() {
         </ul>
         <Link
           onClick={handleLogout}
-          to="/signin"
+          to={onConsole && operator ? "/platform/sellers" : "/signin"}
           className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
         >
           <svg
@@ -182,7 +194,7 @@ export default function UserDropdown() {
               fill=""
             />
           </svg>
-          Sign out
+          {onConsole && operator ? "Sign out of the console" : "Sign out"}
         </Link>
       </Dropdown>
     </div>

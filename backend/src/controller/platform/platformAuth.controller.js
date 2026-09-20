@@ -164,3 +164,47 @@ exports.logout = asynchandeler(async (req, res) => {
 exports.me = asynchandeler(async (req, res) =>
   apiResponse.sendSuccess(res, statusCodes.OK, "Current platform user", req.platformUser.toJSON()),
 );
+
+// Every operator owns their own name, email and password — support included,
+// which is why this is not under the superadmin-only /platform/users routes.
+// Role and isActive are not here: an operator cannot promote themselves.
+exports.updateMe = asynchandeler(async (req, res) => {
+  const { name, email, currentPassword, password } = req.body;
+  const user = await PlatformUser.findById(req.platformUser._id).select("+password");
+  if (!user) throw new customError("Platform user not found", statusCodes.NOT_FOUND);
+
+  // Changing the email or the password proves the current password first: a
+  // console left open must not be enough to take the account over.
+  if ((password || (email && email !== user.email)) && !(await user.comparePassword(currentPassword))) {
+    throw new customError("Your current password is incorrect", statusCodes.UNAUTHORIZED);
+  }
+
+  if (email && email !== user.email) {
+    const taken = await PlatformUser.exists({ email, _id: { $ne: user._id } });
+    if (taken) throw new customError("That email is already in use", statusCodes.CONFLICT);
+    user.email = email;
+  }
+  if (name !== undefined) user.name = name;
+
+  let passwordChanged = false;
+  if (password) {
+    user.password = password;
+    passwordChanged = true;
+    // A new password ends every other session; this one is reissued below.
+    user.tokenVersion += 1;
+  }
+
+  await user.save();
+  await recordPlatformAudit({ req, actor: user, action: "PLATFORM_PROFILE_UPDATED" });
+
+  // The old tokens no longer verify, so hand this device a matching pair back
+  // rather than signing the operator out of the console they are working in.
+  if (passwordChanged) {
+    res.cookie(REFRESH_COOKIE, signPlatformRefreshToken(user), { ...cookieOptions(), maxAge: REFRESH_MAX_AGE });
+  }
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Profile updated", {
+    user: user.toJSON(),
+    accessToken: passwordChanged ? signPlatformAccessToken(user) : null,
+  });
+});

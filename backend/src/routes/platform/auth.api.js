@@ -7,6 +7,7 @@ const {
   platformLoginSchema,
   platformOtpSchema,
   platformResendOtpSchema,
+  platformUpdateMeSchema,
 } = require("../../validation/platform/auth.validation");
 
 const _ = express.Router();
@@ -19,5 +20,7 @@ _.post("/resend-otp", platformOtpLimiter, validateBody(platformResendOtpSchema),
 _.post("/refresh", controller.refresh);
 _.post("/logout", controller.logout);
 _.get("/me", platformGuard, controller.me);
+// Self-service: every operator owns their own profile, support role included
+_.patch("/me", platformGuard, validateBody(platformUpdateMeSchema), controller.updateMe);
 
 module.exports = _;

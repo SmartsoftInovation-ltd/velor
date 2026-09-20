@@ -20,6 +20,7 @@ const StoreSettingsPage = lazy(() => import("./pages/Settings/StoreSettings/Stor
 const PlatformSellersPage = lazy(() => import("./pages/PlatformConsole/SellersPage"));
 const PlatformSellerDetail = lazy(() => import("./pages/PlatformConsole/SellerDetailRoute"));
 const PlatformOperatorsPage = lazy(() => import("./pages/PlatformConsole/OperatorsPage"));
+const PlatformProfilePage = lazy(() => import("./pages/PlatformConsole/ProfilePage"));
 import PlatformGate from "./platform/PlatformGate";
 import FeatureGate from "./components/routes/FeatureGate";
 const UserProfiles = lazy(() => import("./pages/UserProfiles"));
@@ -1500,6 +1501,8 @@ export default function App() {
                 <Route path="/platform/sellers" element={<PlatformGate><PlatformSellersPage /></PlatformGate>} />
                 <Route path="/platform/sellers/:tenantId" element={<PlatformGate><PlatformSellerDetail /></PlatformGate>} />
                 <Route path="/platform/operators" element={<PlatformGate><PlatformOperatorsPage /></PlatformGate>} />
+                {/* An operator's own account — the store /profile page belongs to a store session */}
+                <Route path="/platform/profile" element={<PlatformGate><PlatformProfilePage /></PlatformGate>} />
               </Route>
 
               <Route path="/signin" element={<SignIn />} />

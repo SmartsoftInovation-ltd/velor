@@ -275,4 +275,99 @@ describe("platform auth API", () => {
       await request(app).post(`${BASE}/logout`).expect(200);
     });
   });
+
+  // Every operator owns their own account, support role included — the
+  // superadmin-only /platform/users routes are for managing other people.
+  describe("PATCH /me", () => {
+    const NEW_PASSWORD = "Another-Passw0rd!";
+
+    it("renames the operator without asking for the password", async () => {
+      const { accessToken } = await signIn({ name: "Old Name" });
+
+      const res = await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ name: "New Name" })
+        .expect(200);
+
+      expect(res.body.data.user).toMatchObject({ name: "New Name" });
+      expect(res.body.data.accessToken).toBeNull();
+      expect(await PlatformAuditLog.countDocuments({ action: "PLATFORM_PROFILE_UPDATED" })).toBe(1);
+    });
+
+    it("lets a support operator edit their own profile", async () => {
+      const { accessToken } = await signIn({ role: "support" });
+
+      await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ name: "Support Person" })
+        .expect(200);
+    });
+
+    it("changes the email only with the current password", async () => {
+      const { user, accessToken } = await signIn();
+
+      await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ email: "moved@platform.test" })
+        .expect(401);
+
+      await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ email: "moved@platform.test", currentPassword: PASSWORD })
+        .expect(200);
+
+      expect((await PlatformUser.findById(user._id)).email).toBe("moved@platform.test");
+    });
+
+    it("refuses an email another operator already uses", async () => {
+      const { accessToken } = await signIn();
+      const other = await createPlatformUser({ email: "taken@platform.test" });
+
+      await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ email: other.email, currentPassword: PASSWORD })
+        .expect(409);
+    });
+
+    it("keeps this console open on a password change and closes the others", async () => {
+      const { user, cookie, accessToken } = await signIn();
+      const otherDevice = await request(app)
+        .post(`${BASE}/refresh`)
+        .set("Cookie", cookie)
+        .expect(200);
+
+      const res = await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ password: NEW_PASSWORD, currentPassword: PASSWORD })
+        .expect(200);
+
+      // The device that made the change carries on with the tokens it got back
+      const reissued = res.body.data.accessToken;
+      expect(reissued).toEqual(expect.any(String));
+      await request(app).get(`${BASE}/me`).set("Authorization", `Bearer ${reissued}`).expect(200);
+      await request(app).post(`${BASE}/refresh`).set("Cookie", refreshCookie(res).split(";")[0]).expect(200);
+
+      // Everything issued before it is dead
+      await request(app).get(`${BASE}/me`).set("Authorization", `Bearer ${otherDevice.body.data.accessToken}`).expect(401);
+      await request(app).post(`${BASE}/refresh`).set("Cookie", cookie).expect(401);
+
+      expect(await (await PlatformUser.findById(user._id).select("+password")).comparePassword(NEW_PASSWORD)).toBe(true);
+    });
+
+    it("cannot promote itself", async () => {
+      const { accessToken } = await signIn({ role: "support" });
+
+      await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ role: "superadmin" })
+        .expect(400);
+    });
+  });
 });
