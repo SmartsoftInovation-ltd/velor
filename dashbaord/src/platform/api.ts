@@ -2,19 +2,26 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { apiUrl } from "../lib/env";
 
 // Platform operator session inside the dashboard's Platform Console module.
-// Separate from the store staff session: its own access token (sessionStorage,
-// closing the tab ends it) and refresh cookie scoped to /api/v1/platform/auth.
+// Separate from the store staff session: its own access token (localStorage, so
+// the console survives a reload or a new tab) and a refresh cookie scoped to
+// /api/v1/platform/auth that renews it — the operator signs in with the
+// password and the one-time code once, not on every visit.
 const TOKEN_KEY = "platformAccessToken";
 
-let token: string | null = sessionStorage.getItem(TOKEN_KEY);
+let token: string | null = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
+// A session stored by an older build lived in sessionStorage; carry it over.
+if (token) {
+  localStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.removeItem(TOKEN_KEY);
+}
 let onSessionExpired: () => void = () => {};
 
 export const getPlatformToken = () => token;
 
 export const setPlatformToken = (value: string | null) => {
   token = value;
-  if (value) sessionStorage.setItem(TOKEN_KEY, value);
-  else sessionStorage.removeItem(TOKEN_KEY);
+  if (value) localStorage.setItem(TOKEN_KEY, value);
+  else localStorage.removeItem(TOKEN_KEY);
 };
 
 export const setPlatformSessionExpiredHandler = (handler: () => void) => {
@@ -53,6 +60,13 @@ const refresh = () => {
     });
   return refreshing;
 };
+
+/**
+ * Trade the refresh cookie for a fresh access token. Called on boot so an
+ * operator who signed in earlier is let straight back into the console instead
+ * of being asked for the password and a new one-time code.
+ */
+export const refreshPlatformSession = () => refresh();
 
 platformApi.interceptors.response.use(
   (response) => response,

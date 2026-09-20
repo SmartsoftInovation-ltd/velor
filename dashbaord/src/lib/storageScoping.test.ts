@@ -20,7 +20,7 @@ const SRC = join(__dirname, "..");
 // Keys that are deliberately global, each with the reason it is safe
 const ALLOWED = new Map<string, string>([
   ["ACCESS_TOKEN_KEY", "the session token itself; cleared on sign-out and on forced logout"],
-  ["TOKEN_KEY", "the platform operator token, in sessionStorage, cleared on sign-out"],
+  ["TOKEN_KEY", "the platform operator token; cleared when the operator signs out of the console"],
   ["WORKSPACE_KEY", "the workspace name — the thing every other key is scoped BY"],
   ["'theme'", "a display preference belonging to the browser, not to any store"],
   ['"theme"', "a display preference belonging to the browser, not to any store"],

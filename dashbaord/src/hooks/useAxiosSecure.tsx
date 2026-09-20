@@ -54,6 +54,12 @@ const forceLogout = () => {
 
   const { pathname, search } = window.location;
   if (pathname === "/signin") return;
+  // The Platform Console holds its own operator session and does not need a
+  // store one. A dead store token must not throw an operator out of it.
+  if (pathname.startsWith("/platform/")) {
+    loggingOut = false;
+    return;
+  }
 
   // Preserve where the user was so signin can send them back after re-auth.
   const from = encodeURIComponent(`${pathname}${search}`);

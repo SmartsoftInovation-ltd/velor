@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
@@ -39,6 +39,10 @@ const AppHeader: React.FC = () => {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Branding belongs to a store, and the Platform Console can be open without a
+  // store session at all — asking there only produces a 401.
+  const onPlatformConsole = useLocation().pathname.startsWith("/platform/");
+
   const { data: branding } = useQuery({
     queryKey: ["store-branding"],
     queryFn: async () => {
@@ -46,6 +50,7 @@ const AppHeader: React.FC = () => {
       return data.data as { storeName: string; logo: string };
     },
     staleTime: 30 * 60 * 1000,
+    enabled: !onPlatformConsole,
   });
 
   useEffect(() => {

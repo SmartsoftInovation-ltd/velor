@@ -1,7 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "../context/AuthContext";
-import { getPlatformToken, setPlatformSessionExpiredHandler, setPlatformToken } from "./api";
+import { getPlatformToken, refreshPlatformSession, setPlatformSessionExpiredHandler, setPlatformToken } from "./api";
 import { authApi, type OtpChallenge } from "./endpoints";
 import type { PlatformUser } from "./types";
 
@@ -13,19 +12,25 @@ interface PlatformAuthValue {
   startSignIn: (credentials: { email: string; password: string }) => Promise<OtpChallenge>;
   /** Step 2: the code opens the session */
   verifyCode: (input: { challengeId: string; code: string }) => Promise<void>;
+  /** Restore a previous console session; the gate calls it when it mounts */
+  restore: () => void;
+  /** End the console session — the only way back to the password and the code */
+  signOut: () => Promise<void>;
   resendCode: (input: { email: string; password: string; challengeId?: string }) => Promise<OtpChallenge>;
 }
 
 const PlatformAuthContext = createContext<PlatformAuthValue | null>(null);
 
 // Platform Console session. Its own sign-in — the operator's email and password
-// plus a one-time code by SMS — kept separate from the dashboard session, and
-// closed when the dashboard session ends or the tab closes.
+// plus a one-time code by SMS — kept separate from the dashboard session. It is
+// signed in once: the access token is stored and, when it has expired, the
+// refresh cookie renews it, so returning to the console asks for nothing. Only
+// "Sign out" in the console, or a refresh cookie past its lifetime, ends it.
 export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
   const [operator, setOperator] = useState<PlatformUser | null>(null);
-  const [loading, setLoading] = useState(Boolean(getPlatformToken()));
+  const [loading, setLoading] = useState(false);
+  const restoring = useRef<Promise<void> | null>(null);
 
   const reset = useCallback(() => {
     setPlatformToken(null);
@@ -34,22 +39,23 @@ export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
     queryClient.removeQueries({ queryKey: ["platform"] });
   }, [queryClient]);
 
-  useEffect(() => {
-    setPlatformSessionExpiredHandler(reset);
-    if (!getPlatformToken()) return;
-    authApi
-      .me()
-      .then(setOperator)
-      .catch(reset)
-      .finally(() => setLoading(false));
-  }, [reset]);
+  useEffect(() => setPlatformSessionExpiredHandler(reset), [reset]);
 
-  // Signing out of the dashboard closes the console too
-  useEffect(() => {
-    if (authLoading || user || !getPlatformToken()) return;
-    authApi.logout().catch(() => {});
-    reset();
-  }, [authLoading, user, reset]);
+  // Pick up the session the operator already opened. With no stored token the
+  // refresh cookie is still tried once — that is what lets an operator who
+  // signed in earlier back into the console without another one-time code.
+  // Only the console asks for this, so no other page pays for the request.
+  const restore = useCallback(() => {
+    if (restoring.current || operator) return;
+    setLoading(true);
+    restoring.current = (getPlatformToken() ? authApi.me() : refreshPlatformSession().then(() => authApi.me()))
+      .then(setOperator)
+      .catch(() => reset())
+      .finally(() => {
+        setLoading(false);
+        restoring.current = null;
+      });
+  }, [operator, reset]);
 
   const startSignIn = useCallback((credentials: { email: string; password: string }) => authApi.login(credentials), []);
 
@@ -63,11 +69,16 @@ export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
     [queryClient],
   );
 
+  const signOut = useCallback(async () => {
+    await authApi.logout().catch(() => {});
+    reset();
+  }, [reset]);
+
   const resendCode = useCallback((input: { email: string; password: string; challengeId?: string }) => authApi.resendOtp(input), []);
 
   return (
     <PlatformAuthContext.Provider
-      value={{ operator, loading, isSuperadmin: operator?.role === "superadmin", startSignIn, verifyCode, resendCode }}
+      value={{ operator, loading, isSuperadmin: operator?.role === "superadmin", startSignIn, verifyCode, resendCode, restore, signOut }}
     >
       {children}
     </PlatformAuthContext.Provider>

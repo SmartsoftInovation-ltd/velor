@@ -5,7 +5,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { PlatformAuthProvider } from "./PlatformAuthContext";
 import PlatformGate from "./PlatformGate";
-import { getPlatformToken, setPlatformToken } from "./api";
+import { getPlatformToken, refreshPlatformSession, setPlatformToken } from "./api";
+
+// The refresh call is the only part of the module the gate should not really run
+vi.mock("./api", async () => {
+  const actual = await vi.importActual<typeof import("./api")>("./api");
+  return { ...actual, refreshPlatformSession: vi.fn() };
+});
+const refreshSession = vi.mocked(refreshPlatformSession);
 
 const login = vi.fn();
 const verifyOtp = vi.fn();
@@ -41,7 +48,8 @@ const renderGate = () =>
   );
 
 const signIn = async (email = "owner@platform.test", password = "secret") => {
-  await userEvent.type(screen.getByLabelText(/email/i), email);
+  // The gate first tries the refresh cookie, so wait for the form it falls back to
+  await userEvent.type(await screen.findByLabelText(/email/i), email);
   // Exact: the show/hide toggle is also labelled "… password"
   await userEvent.type(screen.getByLabelText("Password"), password);
   await userEvent.click(screen.getByRole("button", { name: /continue/i }));
@@ -60,6 +68,8 @@ describe("PlatformGate", () => {
     resendOtp.mockReset();
     me.mockReset();
     logout.mockReset();
+    refreshSession.mockReset();
+    refreshSession.mockRejectedValue(new Error("no session"));
   });
 
   it("opens the console only after the password and the texted code", async () => {
@@ -118,5 +128,16 @@ describe("PlatformGate", () => {
     me.mockResolvedValue(operator);
     renderGate();
     expect(await screen.findByText("platform page")).toBeInTheDocument();
+  });
+
+  // Signing in is a one-time cost: with the access token gone the refresh cookie
+  // reopens the console, so no second password and no second code.
+  it("reopens the console from the refresh cookie without another code", async () => {
+    refreshSession.mockResolvedValue("fresh-token");
+    me.mockResolvedValue(operator);
+    renderGate();
+
+    expect(await screen.findByText("platform page")).toBeInTheDocument();
+    expect(login).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router";
-import { FiCheck, FiChevronDown, FiChevronLeft, FiChevronRight, FiRefreshCw, FiX } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiChevronLeft, FiChevronRight, FiLogOut, FiRefreshCw, FiX } from "react-icons/fi";
+import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 
 // Building blocks for the Platform Console pages (ECOMPOS style, accent green #0F9D63)
 
@@ -39,9 +40,35 @@ export const ConsoleHeader = ({ crumbs, title, subtitle, actions }: {
       <h1 className="truncate text-2xl font-semibold tracking-tight text-gray-900 dark:text-white/90">{title}</h1>
       {subtitle && <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>}
     </div>
-    {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    <div className="flex shrink-0 items-center gap-2">
+      {actions}
+      <ConsoleSignOutButton />
+    </div>
   </div>
 );
+
+// The console session outlives the tab, so it needs a way out: this is what
+// takes an operator back to the password and a fresh one-time code.
+const ConsoleSignOutButton = () => {
+  const { signOut } = usePlatformAuth();
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        signOut().finally(() => setBusy(false));
+      }}
+      title="Sign out of the Platform Console"
+      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 hover:text-gray-900 disabled:opacity-60 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-white/5"
+    >
+      <FiLogOut className="size-4" />
+      <span className="hidden sm:inline">Sign out</span>
+    </button>
+  );
+};
 
 export const RefreshButton = ({ onClick, spinning }: { onClick: () => void; spinning?: boolean }) => (
   <button

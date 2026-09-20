@@ -29,7 +29,7 @@ const mmss = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds 
 // then a one-time code texted to the platform's operator phone. It takes over the
 // window — this is a separate account from the dashboard session behind it.
 const PlatformGate = ({ children }: { children: ReactNode }) => {
-  const { operator, loading, startSignIn, verifyCode, resendCode } = usePlatformAuth();
+  const { operator, loading, restore, startSignIn, verifyCode, resendCode } = usePlatformAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -41,6 +41,12 @@ const PlatformGate = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const codeRef = useRef<HTMLInputElement>(null);
+
+  // Pick up a session opened on an earlier visit, so the console asks for the
+  // password and a code only the first time.
+  useEffect(() => {
+    restore();
+  }, [restore]);
 
   // The code is only good for as long as the server says
   useEffect(() => {

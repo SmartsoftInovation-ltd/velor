@@ -54,6 +54,21 @@ describe("axiosSecure", () => {
     expect(seen[0].headers["x-tenant"]).toBeUndefined();
   });
 
+  // The Platform Console runs on its own operator session. A store token that
+  // has expired behind it used to bounce the operator to /signin mid-console.
+  it("leaves the Platform Console alone when the store session dies", async () => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...originalLocation, pathname: "/platform/sellers", search: "", replace },
+    });
+    localStorage.setItem("accessToken", "expired");
+    respondWith(401, { message: "Unauthorized" });
+
+    await expect(axiosSecure.get("/storeinformation/store-information-branding")).rejects.toBeTruthy();
+
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("sends staff of a suspended store to the suspended page instead of refreshing", async () => {
     localStorage.setItem("accessToken", "t");
     respondWith(401, { code: "TENANT_SUSPENDED", message: "suspended" });
