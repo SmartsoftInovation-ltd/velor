@@ -90,6 +90,7 @@ const SubCategoryTable = ({
   const canToggle = usePermission("sub-category", "toggle");
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{ slug: string; currentStatus: boolean } | null>(null);
@@ -134,7 +135,10 @@ const SubCategoryTable = ({
   };
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!pendingToggle) return;
+    setIsToggling(true);
     try {
       const { slug, currentStatus } = pendingToggle;
       const endpoint = currentStatus ? `/subcategories/${slug}/deactive` : `/subcategories/${slug}/activate`;
@@ -144,6 +148,7 @@ const SubCategoryTable = ({
     } catch (error) {
       showApiError(error, "Failed to update status.");
     } finally {
+      setIsToggling(false);
       setShowToggleModal(false);
       setPendingToggle(null);
     }
@@ -505,12 +510,20 @@ const SubCategoryTable = ({
             </Button>
             <Button
               onClick={handleToggleStatus}
+              disabled={isToggling}
                 className={`flex-1 rounded-xl py-3 text-[#1D4ED8] shadow-lg border-none font-bold transition-transform active:scale-95 ${pendingToggle?.currentStatus
  ?"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
  :"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
                 }`}
             >
-              Confirm {pendingToggle?.currentStatus ? "Deactivate" : "Activate"}
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                <>Confirm {pendingToggle?.currentStatus ? "Deactivate" : "Activate"}</>
+              )}
             </Button>
           </div>
         </div>

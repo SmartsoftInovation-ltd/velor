@@ -82,6 +82,7 @@ const VariantView = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
   const { data: variant, isLoading, isError, refetch } = useQuery({
@@ -97,9 +98,12 @@ const VariantView = () => {
   });
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!variant) return;
     const next = !variant.isActive;
     const ep = next ? `/variant/active?slug=${variant.slug}` : `/variant/deactive?slug=${variant.slug}`;
+    setIsToggling(true);
     try {
       await axiosSecure.post(ep);
       toast.success(`Variant ${next ? "activated" : "deactivated"} successfully.`);
@@ -108,6 +112,7 @@ const VariantView = () => {
     } catch (error) {
       showApiError(error, "Failed to update variant status.");
     } finally {
+      setIsToggling(false);
       setShowConfirmModal(false);
     }
   };
@@ -444,9 +449,17 @@ const VariantView = () => {
             <Button onClick={() => setShowConfirmModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
             <Button
               onClick={handleToggleStatus}
+              disabled={isToggling}
                 className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none ${variant.isActive ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg" :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"}`}
             >
-              {variant.isActive ? "Yes, Deactivate" : "Yes, Activate"}
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                variant.isActive ? "Yes, Deactivate" : "Yes, Activate"
+              )}
             </Button>
           </div>
         </div>

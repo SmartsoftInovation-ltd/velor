@@ -66,6 +66,7 @@ const CouponView = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   const {
     data: coupon,
@@ -83,7 +84,10 @@ const CouponView = () => {
   });
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!coupon) return;
+    setIsToggling(true);
     try {
       const endpoint = coupon.isActive ? `/coupon/${coupon.slug}/deactivate` : `/coupon/${coupon.slug}/activate`;
       await axiosSecure.put(endpoint);
@@ -95,6 +99,7 @@ const CouponView = () => {
     } catch (error) {
       showApiError(error, "Failed to update status.");
     } finally {
+      setIsToggling(false);
       setShowConfirmModal(false);
     }
   };
@@ -380,13 +385,21 @@ const CouponView = () => {
             </Button>
             <Button
               onClick={handleToggleStatus}
+              disabled={isToggling}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
                 coupon?.isActive
  ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
  :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
               }`}
             >
-              {coupon?.isActive ? "Yes, Deactivate" : "Yes, Activate"}
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                coupon?.isActive ? "Yes, Deactivate" : "Yes, Activate"
+              )}
             </Button>
           </div>
         </div>

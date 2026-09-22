@@ -86,6 +86,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
   const canToggle = usePermission("discount", "toggle");
   const [selectedDiscountSlug, setSelectedDiscountSlug] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Toggle Status State
@@ -123,7 +124,10 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
   };
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!pendingToggle) return;
+    setIsToggling(true);
     try {
       const { slug, currentStatus } = pendingToggle;
       const endpoint = currentStatus ? `/discount/deactive?slug=${slug}` : `/discount/active?slug=${slug}`;
@@ -134,6 +138,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
     } catch (error) {
       showApiError(error, "Failed to update status.");
     } finally {
+      setIsToggling(false);
       setShowToggleModal(false);
       setPendingToggle(null);
     }
@@ -537,13 +542,21 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
             </Button>
             <Button
               onClick={handleToggleStatus}
+              disabled={isToggling}
                 className={`flex-1 rounded-xl py-2.5 font-semibold text-[#1D4ED8] transition-all shadow-lg ${
                 pendingToggle?.currentStatus
  ?"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
  :"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
               }`}
             >
-              {pendingToggle?.currentStatus ? "Yes, Deactivate" : "Yes, Activate"}
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                pendingToggle?.currentStatus ? "Yes, Deactivate" : "Yes, Activate"
+              )}
             </Button>
           </div>
         </div>

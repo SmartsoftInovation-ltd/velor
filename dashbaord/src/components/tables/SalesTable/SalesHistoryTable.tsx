@@ -399,6 +399,7 @@ const SalesHistoryTable = ({
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
@@ -442,8 +443,11 @@ const SalesHistoryTable = ({
     .filter(Boolean);
 
   const fetchSales = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isSubmitting) return;
     setLoading(true);
     setIsError(false);
+    setIsSubmitting(true);
     try {
       const params = new URLSearchParams();
       if (salesType) params.set("salesType", salesType);
@@ -456,6 +460,7 @@ const SalesHistoryTable = ({
       setIsError(true);
       showApiError(error, "Failed to load sales.");
     } finally {
+      setIsSubmitting(false);
       setLoading(false);
     }
   };
@@ -742,9 +747,17 @@ const SalesHistoryTable = ({
                       </p>
                       <Button
                         onClick={fetchSales}
-                          className="px-8 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-semibold shadow-lg transition-all active:scale-95"
+                        disabled={isSubmitting}
+                          className="px-8 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-semibold shadow-lg transition-all active:scale-95 disabled:active:scale-100"
                       >
-                        Try Again
+                        {isSubmitting ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                            Saving...
+                          </span>
+                        ) : (
+                          "Try Again"
+                        )}
                       </Button>
                     </div>
                   </TableCell>

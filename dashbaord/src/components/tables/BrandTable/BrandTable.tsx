@@ -68,6 +68,7 @@ export default function BrandTable({
 }: BrandTableProps) {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{ slug: string; currentStatus: boolean } | null>(null);
@@ -122,7 +123,10 @@ export default function BrandTable({
   };
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!pendingToggle) return;
+    setIsToggling(true);
     try {
       const { slug, currentStatus } = pendingToggle;
       const endpoint = currentStatus ? `/brand/${slug}/deactivate` : `/brand/${slug}/activate`;
@@ -132,6 +136,7 @@ export default function BrandTable({
     } catch (error) {
       showApiError(error, "Failed to update status.");
     } finally {
+      setIsToggling(false);
       setShowToggleModal(false);
       setPendingToggle(null);
     }
@@ -523,13 +528,21 @@ export default function BrandTable({
             </Button>
             <Button
               onClick={handleToggleStatus}
+              disabled={isToggling}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
                 pendingToggle?.currentStatus
  ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
  :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
               }`}
             >
-              {pendingToggle?.currentStatus ? "Yes, Deactivate" : "Yes, Activate"}
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                pendingToggle?.currentStatus ? "Yes, Deactivate" : "Yes, Activate"
+              )}
             </Button>
           </div>
         </div>

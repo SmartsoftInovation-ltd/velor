@@ -63,6 +63,7 @@ const BrandView = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   const {
     data: brand,
@@ -79,7 +80,10 @@ const BrandView = () => {
   });
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!brand) return;
+    setIsToggling(true);
     try {
       const endpoint = brand.isActive
         ? `/brand/${brand.slug}/deactivate`
@@ -93,6 +97,7 @@ const BrandView = () => {
     } catch (error) {
       showApiError(error, "Failed to update status.");
     } finally {
+      setIsToggling(false);
       setShowConfirmModal(false);
     }
   };
@@ -380,13 +385,21 @@ const BrandView = () => {
             </Button>
             <Button
               onClick={handleToggleStatus}
+              disabled={isToggling}
               className={`flex-1 rounded-2xl py-3 text-sm font-black uppercase tracking-widest border-none active:scale-95 transition-all ${
                 brand?.isActive
  ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-xl"
  :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-xl"
               }`}
             >
-              {brand?.isActive ? "Confirm Deactivation" : "Confirm Activation"}
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                brand?.isActive ? "Confirm Deactivation" : "Confirm Activation"
+              )}
             </Button>
           </div>
         </div>

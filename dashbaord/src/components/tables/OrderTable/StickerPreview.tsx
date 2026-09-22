@@ -9,6 +9,7 @@ const StickerPreview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<any>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const barcodeRef = useRef<SVGSVGElement>(null);
 
@@ -33,14 +34,21 @@ const StickerPreview = () => {
   }, [order]);
 
   const handleDownload = async () => {
-    if (!printRef.current) return;
-    const canvas = await html2canvas(printRef.current, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`sticker-${order.invoiceId || "0000"}.pdf`);
+    // Guard against a second click while the first request is still running.
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      if (!printRef.current) return;
+      const canvas = await html2canvas(printRef.current, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`sticker-${order.invoiceId || "0000"}.pdf`);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (!order) return <p className="text-center mt-10">Loading sticker...</p>;
@@ -108,9 +116,17 @@ const StickerPreview = () => {
         </button>
         <button
           onClick={handleDownload}
+          disabled={isDownloading}
             className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-4 py-2 rounded"
         >
-          💾 Download
+          {isDownloading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+              Downloading...
+            </span>
+          ) : (
+            "💾 Download"
+          )}
         </button>
       </div>
     </div>

@@ -26,6 +26,7 @@ const DeliveryChargeUpdate = () => {
     name: "",
     deliveryCharge: "",
   });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,10 @@ const DeliveryChargeUpdate = () => {
   };
 
   const handleUpdate = async () => {
+
+    // Guard against a second click while the first request is still running.
+
+    if (isUpdating) return;
     const validate: FormErrors = {};
 
     if (!formData.name.trim()) {
@@ -74,6 +79,8 @@ const DeliveryChargeUpdate = () => {
       return;
     }
 
+    setIsUpdating(true);
+
     try {
       await axiosInstance.put(`/delivery-charge/update-delivery-charge/${id}`, {
         name: formData.name,
@@ -84,6 +91,8 @@ const DeliveryChargeUpdate = () => {
     } catch (error) {
       console.log(error);
       showApiError(error, "Failed to update delivery charge");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -142,7 +151,16 @@ const DeliveryChargeUpdate = () => {
               )}
             </div>
 
-            <Button onClick={handleUpdate}>Update Delivery Charge</Button>
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                "Update Delivery Charge"
+              )}
+            </Button>
           </div>
         </ComponentCard>
       </div>

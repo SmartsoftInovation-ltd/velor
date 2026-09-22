@@ -66,6 +66,7 @@ const ProductView = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
   const {
@@ -91,7 +92,10 @@ const ProductView = () => {
   });
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!product) return;
+    setIsToggling(true);
     try {
       await axiosSecure.put(`/product/product-status/${product.slug}`, {
         isActive: !product.isActive,
@@ -104,6 +108,7 @@ const ProductView = () => {
     } catch (error) {
       showApiError(error, "Failed to update status.");
     } finally {
+      setIsToggling(false);
       setShowConfirmModal(false);
     }
   };
@@ -500,13 +505,21 @@ const ProductView = () => {
             <Button onClick={() => setShowConfirmModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
             <Button
               onClick={handleToggleStatus}
+              disabled={isToggling}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none transition-all ${
                 product.isActive
  ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
  :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
               }`}
             >
-              {product.isActive ? "Yes, Deactivate" : "Yes, Activate"}
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : (
+                product.isActive ? "Yes, Deactivate" : "Yes, Activate"
+              )}
             </Button>
           </div>
         </div>

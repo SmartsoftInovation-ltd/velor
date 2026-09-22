@@ -21,6 +21,7 @@ const CreateDeliveryChargeForm = () => {
     name: "",
     deliveryCharge: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -32,6 +33,10 @@ const CreateDeliveryChargeForm = () => {
   };
 
   const handleSubmit = async () => {
+
+    // Guard against a second click while the first request is still running.
+
+    if (isSubmitting) return;
     const validate: FormErrors = {};
 
     if (!formData.name.trim()) {
@@ -46,6 +51,8 @@ const CreateDeliveryChargeForm = () => {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       await axiosInstance.post(
         `/delivery-charge/create-delivery-charge`,
@@ -56,6 +63,8 @@ const CreateDeliveryChargeForm = () => {
     } catch (error) {
       console.log(error);
       showApiError(error, "Failed to create delivery charge");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -94,8 +103,16 @@ const CreateDeliveryChargeForm = () => {
       <Button
         className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-4 py-2 rounded"
         onClick={handleSubmit}
+        disabled={isSubmitting}
       >
-        Create Delivery Charge
+        {isSubmitting ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+            Saving...
+          </span>
+        ) : (
+          "Create Delivery Charge"
+        )}
       </Button>
     </div>
   );

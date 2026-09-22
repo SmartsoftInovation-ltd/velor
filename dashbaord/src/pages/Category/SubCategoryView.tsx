@@ -60,6 +60,7 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 };
 
 const SubCategoryView = () => {
+  const [isToggling, setIsToggling] = useState(false);
   const { slug } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -80,7 +81,10 @@ const SubCategoryView = () => {
   });
 
   const handleToggleStatus = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isToggling) return;
     if (!subcategory) return;
+    setIsToggling(true);
     try {
       const endpoint = subcategory.isActive
         ? `/subcategories/${slug}/deactive`
@@ -94,6 +98,7 @@ const SubCategoryView = () => {
     } catch (error) {
       showApiError(error, "Failed to update status.");
     } finally {
+      setIsToggling(false);
       setShowConfirmModal(false);
     }
   };
@@ -350,8 +355,17 @@ const SubCategoryView = () => {
           </p>
           <div className="flex gap-3 mt-7">
             <Button onClick={() => setShowConfirmModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleToggleStatus} className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${subcategory?.isActive ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25" : "bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/25"}`}>
-              {subcategory?.isActive ? "Yes, Deactivate" : "Yes, Activate"}
+            <Button onClick={handleToggleStatus} disabled={isToggling} className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${subcategory?.isActive ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25" : "bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/25"}`}>
+              {isToggling ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Updating...
+                </span>
+              ) : subcategory?.isActive ? (
+                "Yes, Deactivate"
+              ) : (
+                "Yes, Activate"
+              )}
             </Button>
           </div>
         </div>

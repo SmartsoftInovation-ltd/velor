@@ -15,6 +15,7 @@ import { showApiError } from "../../../utils/apiError";
 const TransactionAccountWise = () => {
   const navigate = useNavigate();
   const [selectedAccount, setSelectedAccount] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [accountOptions, setAccountOptions] = useState([
     { value: "", label: "Select Account" },
   ]);
@@ -66,7 +67,11 @@ const TransactionAccountWise = () => {
   };
 
   const handleGenerateReport = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isGenerating) return;
     if (!validate()) return;
+
+    setIsGenerating(true);
 
     try {
       //@ts-ignore
@@ -91,6 +96,8 @@ const TransactionAccountWise = () => {
     } catch (error) {
       console.error("Error generating transaction report:", error);
       showApiError(error, "Error generating report. Check console.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -158,7 +165,16 @@ const TransactionAccountWise = () => {
 
           <div className="mt-10">
             <MobileActionBar>
-              <Button onClick={handleGenerateReport}>Generate Report</Button>
+              <Button onClick={handleGenerateReport} disabled={isGenerating}>
+                {isGenerating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                    Generating...
+                  </span>
+                ) : (
+                  "Generate Report"
+                )}
+              </Button>
             </MobileActionBar>
           </div>
         </ComponentCard>
