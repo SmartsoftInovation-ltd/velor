@@ -31,12 +31,19 @@ const PlatformAuthContext = createContext<PlatformAuthValue | null>(null);
 export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
   const [operator, setOperator] = useState<PlatformUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Starts true: until the first restore settles we do not know whether there is
+  // a session, and the gate must not show the sign-in form on that guess.
+  const [loading, setLoading] = useState(true);
   const restoring = useRef<Promise<void> | null>(null);
+  // Restore runs once per page load, not once per gate mount.
+  const restored = useRef(false);
 
   const reset = useCallback(() => {
     setPlatformToken(null);
     setOperator(null);
+    // Settled — there is no session. Leaving this false holds the spinner
+    // instead of showing the sign-in form.
+    restored.current = true;
     setLoading(false);
     queryClient.removeQueries({ queryKey: ["platform"] });
   }, [queryClient]);
@@ -48,16 +55,17 @@ export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
   // signed in earlier back into the console without another one-time code.
   // Only the console asks for this, so no other page pays for the request.
   const restore = useCallback(() => {
-    if (restoring.current || operator) return;
+    if (restoring.current || restored.current) return;
     setLoading(true);
     restoring.current = (getPlatformToken() ? authApi.me() : refreshPlatformSession().then(() => authApi.me()))
       .then(setOperator)
       .catch(() => reset())
       .finally(() => {
+        restored.current = true;
         setLoading(false);
         restoring.current = null;
       });
-  }, [operator, reset]);
+  }, [reset]);
 
   const startSignIn = useCallback((credentials: { email: string; password: string }) => authApi.login(credentials), []);
 
@@ -65,6 +73,7 @@ export const PlatformAuthProvider = ({ children }: { children: ReactNode }) => {
     async (input: { challengeId: string; code: string }) => {
       const session = await authApi.verifyOtp(input);
       setPlatformToken(session.accessToken);
+      restored.current = true;
       queryClient.removeQueries({ queryKey: ["platform"] });
       setOperator(session.user);
     },

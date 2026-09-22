@@ -140,4 +140,38 @@ describe("PlatformGate", () => {
     expect(await screen.findByText("platform page")).toBeInTheDocument();
     expect(login).not.toHaveBeenCalled();
   });
+
+  // The reported bug: clicking a console submenu asked for the password again.
+  // A remounted gate must not paint the sign-in form over a live session.
+  it("stays open when a console submenu remounts the gate", async () => {
+    setPlatformToken("existing");
+    me.mockResolvedValue(operator);
+
+    const { unmount } = renderGate();
+    expect(await screen.findByText("platform page")).toBeInTheDocument();
+    unmount();
+
+    renderGate();
+    expect(await screen.findByText("platform page")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(login).not.toHaveBeenCalled();
+    expect(verifyOtp).not.toHaveBeenCalled();
+  });
+
+  // While the restore is in flight nothing is decided yet — neither the page nor
+  // the form. Showing the form there is what asked for a second sign-in.
+  it("waits for the restore instead of showing the form while it is in flight", async () => {
+    setPlatformToken("existing");
+    let resolveMe: (user: typeof operator) => void = () => {};
+    me.mockReturnValue(new Promise((resolve) => { resolveMe = resolve; }));
+
+    renderGate();
+
+    await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument());
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("platform page")).not.toBeInTheDocument();
+
+    resolveMe(operator);
+    expect(await screen.findByText("platform page")).toBeInTheDocument();
+  });
 });

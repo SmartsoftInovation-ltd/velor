@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Route, BrowserRouter as Router, Routes } from "react-router";
+import { Outlet, Route, BrowserRouter as Router, Routes } from "react-router";
 import { Toaster } from "react-hot-toast";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import ProtectedRoute from "./components/routes/ProtectedRoute";
@@ -1498,11 +1498,17 @@ export default function App() {
                   code), so these sit outside the store's ProtectedRoute — an
                   operator signs in here without any seller account at all. */}
               <Route element={<AppLayout />}>
-                <Route path="/platform/sellers" element={<PlatformGate><PlatformSellersPage /></PlatformGate>} />
-                <Route path="/platform/sellers/:tenantId" element={<PlatformGate><PlatformSellerDetail /></PlatformGate>} />
-                <Route path="/platform/operators" element={<PlatformGate><PlatformOperatorsPage /></PlatformGate>} />
-                {/* An operator's own account — the store /profile page belongs to a store session */}
-                <Route path="/platform/profile" element={<PlatformGate><PlatformProfilePage /></PlatformGate>} />
+                {/* One gate around every console page, not one per route: a gate
+                    per route unmounts and remounts on each submenu click, and the
+                    fresh gate has no operator yet — so it painted the sign-in
+                    form again on every navigation inside the console. */}
+                <Route element={<PlatformGate><Outlet /></PlatformGate>}>
+                  <Route path="/platform/sellers" element={<PlatformSellersPage />} />
+                  <Route path="/platform/sellers/:tenantId" element={<PlatformSellerDetail />} />
+                  <Route path="/platform/operators" element={<PlatformOperatorsPage />} />
+                  {/* An operator's own account — the store /profile page belongs to a store session */}
+                  <Route path="/platform/profile" element={<PlatformProfilePage />} />
+                </Route>
               </Route>
 
               <Route path="/signin" element={<SignIn />} />
