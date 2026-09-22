@@ -108,6 +108,7 @@ const CustomerAdvancePaymentTable = ({
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -138,14 +139,17 @@ const CustomerAdvancePaymentTable = ({
   };
 
   const closeDeleteModal = () => {
+    // Closing mid-request would hide a delete that is still running
+    if (isDeleting) return;
     setShowDeleteModal(false);
     setSelectedId(null);
   };
 
   const handleDelete = async () => {
     const id = selectedId;
-    setShowDeleteModal(false);
-    setSelectedId(null);
+    // Guard against a second click while the first request is still running.
+    if (!id || isDeleting) return;
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(
         `/customer/delete-customer-advance-payment-recived/${id}`,
@@ -159,8 +163,13 @@ const CustomerAdvancePaymentTable = ({
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
       fetchPayments();
+      setShowDeleteModal(false);
+      setSelectedId(null);
     } catch (error) {
+      // The modal stays open on failure, so the row is still there to retry.
       showApiError(error, "Failed to delete payment. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -507,6 +516,7 @@ const CustomerAdvancePaymentTable = ({
           <div className="flex gap-3 mt-7">
             <Button
               onClick={closeDeleteModal}
+              disabled={isDeleting}
               variant="outline"
               className="flex-1 rounded-xl py-2.5 text-sm"
             >
@@ -514,9 +524,17 @@ const CustomerAdvancePaymentTable = ({
             </Button>
             <Button
               onClick={handleDelete}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+              disabled={isDeleting}
+                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
-              Yes, Delete
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>

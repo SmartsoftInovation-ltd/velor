@@ -26,7 +26,12 @@ const MANUAL_ENTRY_ONLY = {
   customerAdvancePaymentReference: { $eq: null },
   purchaseReference: { $eq: null },
   salesReturnReference: { $eq: null },
+  purchaseReturnReference: { $eq: null },
 };
+
+// Exported so a test can pin it against the schema: a reference field added to
+// the model but not to this filter silently leaks that module's rows here.
+exports.MANUAL_ENTRY_ONLY = MANUAL_ENTRY_ONLY;
 
 // create transaction controller
 exports.createTransaction = asynchandeler(async (req, res) => {

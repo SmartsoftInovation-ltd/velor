@@ -132,9 +132,12 @@ exports.createSalesReturn = asynchandeler(async (req, res) => {
     );
 
     // 4. Record the refund as a transaction either way, and link it back.
+    // returnDoc, not `data`: `data` is the request body and has no _id, so the
+    // refund row was saved with an empty salesReturnReference and then showed
+    // up on /transaction-list as if it had been typed by hand.
     const transaction = await recordReturnTransaction({
       sale: originalSale,
-      returnDoc: data,
+      returnDoc,
       refundMethod: data.refundMethod,
       session,
     });

@@ -153,7 +153,8 @@ const CustomerTypeTable = () => {
   };
 
   const handleDelete = async () => {
-    if (!selected) return;
+    // Guard against a second click while the first request is still running.
+    if (!selected || isDeleting) return;
     setIsDeleting(true);
     try {
       await axiosSecure.delete(
@@ -162,12 +163,13 @@ const CustomerTypeTable = () => {
       toast.success("Customer type deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["customer-types"] });
       fetchTypes();
+      setShowDeleteModal(false);
+      setSelected(null);
     } catch (error) {
+      // The modal stays open on failure, so the row is still there to retry.
       showApiError(error, "Failed to delete customer type.");
     } finally {
       setIsDeleting(false);
-      setShowDeleteModal(false);
-      setSelected(null);
     }
   };
 
@@ -457,6 +459,8 @@ const CustomerTypeTable = () => {
       <Modal
         isOpen={showDeleteModal}
         onClose={() => {
+          // Closing mid-request would hide a delete that is still running
+          if (isDeleting) return;
           setShowDeleteModal(false);
           setSelected(null);
         }}
@@ -481,6 +485,7 @@ const CustomerTypeTable = () => {
                 setShowDeleteModal(false);
                 setSelected(null);
               }}
+              disabled={isDeleting}
               variant="outline"
               className="flex-1 rounded-xl py-2.5 text-sm"
             >
@@ -489,9 +494,16 @@ const CustomerTypeTable = () => {
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
-              {isDeleting ? "Deleting..." : "Yes, Delete"}
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>

@@ -32,6 +32,7 @@ const CustomerPaymentReceiveForm = () => {
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>("");
 
   const [errors, setErrors] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const today = new Date().toLocaleDateString("en-CA");
 
@@ -93,6 +94,9 @@ const CustomerPaymentReceiveForm = () => {
   };
 
   const handleSubmit = async () => {
+    // A second click while the first request is in flight would record the
+    // payment twice.
+    if (isSubmitting) return;
     const newErrors: any = {};
     if (!form.customer) newErrors.customer = true;
     if (!form.paidAmount) newErrors.paidAmount = true;
@@ -104,6 +108,7 @@ const CustomerPaymentReceiveForm = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const payload = {
         customer: form.customer,
@@ -152,6 +157,8 @@ const CustomerPaymentReceiveForm = () => {
       setErrors({});
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -271,9 +278,17 @@ const CustomerPaymentReceiveForm = () => {
 
       <Button
         onClick={handleSubmit}
+        disabled={isSubmitting}
           className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-4 py-2 rounded"
       >
-        Receive Payment
+        {isSubmitting ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+            Receiving...
+          </span>
+        ) : (
+          "Receive Payment"
+        )}
       </Button>
     </div>
   );

@@ -30,6 +30,7 @@ const CustomerAdvancePaymentForm = () => {
 
   const [balance, setBalance] = useState(0);
   const [errors, setErrors] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const today = new Date().toLocaleDateString("en-CA");
 
@@ -95,6 +96,9 @@ const CustomerAdvancePaymentForm = () => {
   };
 
   const handleSubmit = async () => {
+    // A second click while the first request is in flight would record the
+    // payment twice.
+    if (isSubmitting) return;
     const newErrors: any = {};
     if (!form.customer) newErrors.customer = true;
     if (!form.paidAmount) newErrors.paidAmount = true;
@@ -115,6 +119,7 @@ const CustomerAdvancePaymentForm = () => {
       remarks: form.remarks,
     };
 
+    setIsSubmitting(true);
     try {
       await axiosSecure.post("/customer/customer-advance-payment-recived", payload);
 
@@ -140,6 +145,8 @@ const CustomerAdvancePaymentForm = () => {
       setErrors({});
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -236,9 +243,17 @@ const CustomerAdvancePaymentForm = () => {
 
       <Button
         onClick={handleSubmit}
+        disabled={isSubmitting}
           className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-4 py-2 rounded"
       >
-        Create Advance Payment
+        {isSubmitting ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+            Creating...
+          </span>
+        ) : (
+          "Create Advance Payment"
+        )}
       </Button>
     </div>
   );

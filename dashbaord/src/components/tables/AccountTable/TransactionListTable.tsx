@@ -70,6 +70,7 @@ const TransactionListTable = () => {
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [editState, setEditState] = useState<EditState>({ date: "", transactionDescription: "", transactionType: "", amount: "" });
@@ -157,7 +158,10 @@ const TransactionListTable = () => {
   };
 
   const handleDelete = async () => {
-    if (!selectedTx) return;
+    // Guard against a second click while the first request is still running:
+    // the row would already be gone and the retry would answer "not found".
+    if (!selectedTx || isDeleting) return;
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/transaction/delete-transaction/${selectedTx._id}`);
       toast.success("Transaction deleted successfully.");
@@ -165,11 +169,13 @@ const TransactionListTable = () => {
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
       fetchTransactions();
-    } catch (error) {
-      showApiError(error, "Failed to delete transaction.");
-    } finally {
       setShowDeleteModal(false);
       setSelectedTx(null);
+    } catch (error) {
+      // The modal stays open on failure, so the row is still there to retry.
+      showApiError(error, "Failed to delete transaction.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -410,7 +416,11 @@ const TransactionListTable = () => {
       </div>
 
       {/* Delete Modal */}
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+      <Modal
+        isOpen={showDeleteModal}
+        // Closing mid-request would hide a delete that is still running
+        onClose={() => !isDeleting && setShowDeleteModal(false)}
+      >
         <div className="p-8">
           <div className="flex items-center justify-center size-16 bg-red-50 dark:bg-red-500/10 rounded-full mb-5 mx-auto">
             <MdDelete className="size-8 text-red-600" />
@@ -420,9 +430,27 @@ const TransactionListTable = () => {
             Are you sure you want to <span className="font-semibold text-red-500">delete</span> this transaction?
           </p>
           <div className="flex gap-3 mt-7">
-            <Button onClick={() => setShowDeleteModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all">
-              Yes, Delete
+            <Button
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeleting}
+              variant="outline"
+              className="flex-1 rounded-xl py-2.5 text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all disabled:opacity-60 disabled:active:scale-100"
+            >
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>

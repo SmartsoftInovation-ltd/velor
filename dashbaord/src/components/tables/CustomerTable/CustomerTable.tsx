@@ -97,6 +97,7 @@ const CustomerTable = ({
 
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{
     customerId: string;
@@ -130,29 +131,37 @@ const CustomerTable = ({
   };
 
   const closeDeleteModal = () => {
+    // Closing mid-request would hide a delete that is still running
+    if (isDeleting) return;
     setShowDeleteModal(false);
     setSelectedCustomer(null);
   };
 
   const handleDelete = async () => {
     const deletingId = selectedCustomer;
-    setShowDeleteModal(false);
-    setSelectedCustomer(null);
-    // Optimistically remove from all customer query caches
-    queryClient.setQueriesData({ queryKey: ["customers"] }, (old: any) =>
-      Array.isArray(old)
-        ? old.filter((c: Customer) => c.customerId !== deletingId)
-        : old,
-    );
+    // Guard against a second click while the first request is still running.
+    if (!deletingId || isDeleting) return;
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/customer/delete-customer/${deletingId}`);
+      // Dropped from the caches only once the API confirmed it, so a failed
+      // delete never blinks the row out and back in.
+      queryClient.setQueriesData({ queryKey: ["customers"] }, (old: any) =>
+        Array.isArray(old)
+          ? old.filter((c: Customer) => c.customerId !== deletingId)
+          : old,
+      );
       toast.success("Customer deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setShowDeleteModal(false);
+      setSelectedCustomer(null);
     } catch (error) {
+      // The modal stays open on failure, so the row is still there to retry.
       showApiError(error, "Failed to delete customer. Please try again.");
-      // Revert on failure
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       fetchCustomers();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -643,6 +652,7 @@ const CustomerTable = ({
           <div className="flex gap-3 mt-7">
             <Button
               onClick={closeDeleteModal}
+              disabled={isDeleting}
               variant="outline"
               className="flex-1 rounded-xl py-2.5 text-sm"
             >
@@ -650,9 +660,17 @@ const CustomerTable = ({
             </Button>
             <Button
               onClick={handleDelete}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+              disabled={isDeleting}
+                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
-              Yes, Delete
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>
