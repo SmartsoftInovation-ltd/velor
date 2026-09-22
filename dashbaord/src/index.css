@@ -209,8 +209,45 @@ layer(base);
   }
 }
 
+/* Light streak that sweeps across an element on hover (buttons, sidebar items) */
+@keyframes shine-sweep {
+  from {
+    transform: translateX(-100%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(350%) skewX(-20deg);
+  }
+}
+
+@utility shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 40%;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+    transform: translateX(-100%) skewX(-20deg);
+  }
+  &:hover::after {
+    animation: shine-sweep 0.8s ease-in-out;
+  }
+  &:where(.dark, .dark *)::after {
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.12), transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:hover::after {
+      animation: none;
+    }
+  }
+}
+
 @utility menu-item {
-  @apply relative flex items-center w-full gap-2.5 px-2 py-1.5 font-semibold rounded-lg text-[13px] leading-[18px] transition-all duration-150;
+  @apply shine flex items-center w-full gap-2.5 px-2 py-1.5 font-semibold rounded-lg text-[13px] leading-[18px] transition-all duration-150;
 }
 
 @utility menu-item-active {
@@ -253,19 +290,12 @@ layer(base);
 }
 
 @utility menu-dropdown-item {
-  @apply relative flex items-center gap-2.5 rounded-md py-[5px] pl-3 pr-2.5 text-[12.5px] leading-[18px] font-medium transition-colors duration-150;
-  /* selection bar, drawn over the parent list's gray rail (pl-2 + 1px border) */
-  &::before {
-    content: "";
-    @apply absolute inset-y-0 -left-[10px] w-[3px] rounded-full bg-transparent transition-colors duration-150;
-  }
+  @apply shine flex items-center gap-2.5 rounded-md py-[5px] pl-3 pr-2.5 text-[12.5px] leading-[18px] font-medium transition-colors duration-150;
+  /* the green selection bar is RailList's sliding indicator (AppSidebar.tsx) */
 }
 
 @utility menu-dropdown-item-active {
   @apply bg-accent-50 font-semibold text-accent-600 dark:bg-accent-500/20 dark:text-accent-300;
-  &::before {
-    @apply bg-accent-500 dark:bg-accent-400;
-  }
 }
 
 @utility menu-dropdown-item-inactive {

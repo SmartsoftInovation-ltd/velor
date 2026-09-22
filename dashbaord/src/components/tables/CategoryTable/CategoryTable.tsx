@@ -259,7 +259,7 @@ export default function CategoryTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10 transition-all active:scale-90"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -269,10 +269,10 @@ export default function CategoryTable({
                     onClick={() => handleToggleModal(category.slug, category.isActive)}
                     size="sm"
                     variant="outline"
-                    className={`max-md:size-11 size-10 p-0 rounded-2xl transition-all active:scale-90 border-none ${
+                    className={`max-md:size-11 size-10 p-0 !rounded transition-all active:scale-90 border-none ${
                       category.isActive
-                        ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                        : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                     }`}
                   >
                     {category.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
@@ -283,7 +283,7 @@ export default function CategoryTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
+                      className="max-md:size-11 size-10 p-0 !rounded border-none !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25 transition-all active:scale-90"
                     >
                       <FaEdit className="size-4" />
                     </Button>
@@ -293,7 +293,7 @@ export default function CategoryTable({
                   <Button
                     onClick={() => handleDeleteModal(category.slug)}
                     size="sm"
-                    className="max-md:size-11 size-10 p-0 rounded-xl bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 border-none transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25 border-none transition-all active:scale-90"
                   >
                     <MdDelete className="size-5" />
                   </Button>
@@ -474,7 +474,7 @@ export default function CategoryTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
+                                className="size-10 p-0 !rounded border-none !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10 transition-all active:scale-90"
                             >
                               <FaEye className="size-4" />
                             </Button>
@@ -487,10 +487,10 @@ export default function CategoryTable({
                             onClick={() => handleToggleModal(category.slug, category.isActive)}
                             size="sm"
                             variant="outline"
-                            className={`size-10 p-0 rounded-2xl transition-all active:scale-90 border-none ${
+                            className={`size-10 p-0 !rounded transition-all active:scale-90 border-none ${
                               category.isActive
-                                ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                                : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
+                                ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                                : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                             }`}
                           >
                             {category.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
@@ -503,7 +503,7 @@ export default function CategoryTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
+                                className="size-10 p-0 !rounded border-none !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25 transition-all active:scale-90"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -515,7 +515,7 @@ export default function CategoryTable({
                           <Button
                             onClick={() => handleDeleteModal(category.slug)}
                             size="sm"
-                            className="size-10 p-0 rounded-xl bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 border-none transition-all active:scale-90"
+                            className="size-10 p-0 !rounded !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25 border-none transition-all active:scale-90"
                           >
                             <MdDelete className="size-5" />
                           </Button>

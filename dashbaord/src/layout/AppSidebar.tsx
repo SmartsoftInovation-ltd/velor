@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { HiOutlineAdjustments } from "react-icons/hi";
 import {
   MdOutlineInventory2,
@@ -24,7 +30,10 @@ import { Link, useLocation } from "react-router";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 import { usePlatformAuth } from "../platform/PlatformAuthContext";
-import { canSeePlatformConsole, PLATFORM_WORKSPACES } from "../platform/visibility";
+import {
+  canSeePlatformConsole,
+  PLATFORM_WORKSPACES,
+} from "../platform/visibility";
 import { getWorkspace } from "../lib/session";
 import { ChevronDownIcon, GridIcon, HorizontaLDots } from "../icons";
 import {
@@ -85,6 +94,74 @@ type SubmenuType =
   | "others"
   | "hrManage"
   | "platformConsole";
+
+// Submenu list whose green selection bar sits on the gray rail and slides to
+// the active item instead of jumping.
+const RailList = ({
+  className,
+  children,
+}: {
+  className: string;
+  children: React.ReactNode;
+}) => {
+  const ref = useRef<HTMLUListElement>(null);
+  const [bar, setBar] = useState<{ top: number; height: number } | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [animate, setAnimate] = useState(false);
+
+  const measure = useCallback(() => {
+    const active = ref.current?.querySelector<HTMLElement>(
+      ":scope > li > .menu-dropdown-item-active",
+    );
+    if (!active) {
+      setVisible(false);
+      return;
+    }
+    const top = active.offsetTop;
+    const height = active.offsetHeight;
+    setBar((prev) =>
+      prev?.top === top && prev?.height === height ? prev : { top, height },
+    );
+    setVisible(true);
+  }, []);
+
+  // Re-measure after every render (route or open submenu changed) and while
+  // a nested submenu grows or shrinks.
+  useLayoutEffect(measure);
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [measure]);
+
+  // Place the bar without a transition first, so it does not slide in from the top
+  useEffect(() => {
+    if (bar && !animate) {
+      const timer = setTimeout(() => setAnimate(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [bar, animate]);
+
+  return (
+    <ul ref={ref} className={`relative ${className}`}>
+      <li
+        aria-hidden
+        className={`pointer-events-none absolute -left-[2px] w-[3px] rounded-full bg-accent-500 dark:bg-accent-400 ${
+          animate
+            ? "transition-[top,height,opacity] duration-[280ms] ease-[cubic-bezier(0.65,0,0.35,1)]"
+            : ""
+        }`}
+        style={{
+          top: bar?.top ?? 0,
+          height: bar?.height ?? 0,
+          opacity: visible ? 1 : 0,
+        }}
+      />
+      {children}
+    </ul>
+  );
+};
 
 // ---------- NAV DATA ----------
 const navItems: NavItem[] = [
@@ -894,13 +971,23 @@ const platformConsoleItems: NavItem[] = [
     name: "Platform Console",
     icon: <TbBuildingCommunity />,
     subItems: [
-      { name: "Sellers", path: "/platform/sellers", platformOnly: true, pro: false },
+      {
+        name: "Sellers",
+        path: "/platform/sellers",
+        platformOnly: true,
+        pro: false,
+      },
       // No "Store Settings" here: /store-settings is a seller page behind the
       // store session, so an operator — who holds only a platform token — was
       // bounced to /signin by ProtectedRoute. An operator edits a store's
       // settings on that seller's own page (Sellers → a seller), which already
       // does it over the platform token via settingsApi.
-      { name: "Operators", path: "/platform/operators", platformOnly: true, pro: false },
+      {
+        name: "Operators",
+        path: "/platform/operators",
+        platformOnly: true,
+        pro: false,
+      },
     ],
   },
 ];
@@ -916,7 +1003,12 @@ const AppSidebar: React.FC = () => {
   // arrives here.
   const showPlatformPages =
     Boolean(operator) ||
-    (!isLoading && canSeePlatformConsole({ workspace: getWorkspace(), isOwner, allowed: PLATFORM_WORKSPACES }));
+    (!isLoading &&
+      canSeePlatformConsole({
+        workspace: getWorkspace(),
+        isOwner,
+        allowed: PLATFORM_WORKSPACES,
+      }));
   const location = useLocation();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
@@ -995,7 +1087,9 @@ const AppSidebar: React.FC = () => {
     ),
   );
   const visibleSalesPurchaseItems = filterNavItems(salesPurchaseItems);
-  const visibleDiscountManagementItems = filterNavItems(discountManagementItems);
+  const visibleDiscountManagementItems = filterNavItems(
+    discountManagementItems,
+  );
   const visibleStockManagementItems = filterNavItems(stockManagementItems);
   const visibleWebsiteManagementItems = filterNavItems(websiteManagementItems);
   const visibleProfileItems = filterNavItems(profileItems);
@@ -1208,7 +1302,7 @@ const AppSidebar: React.FC = () => {
                   : "max-h-0"
               }`}
             >
-              <ul className="ml-[19px] space-y-[6px] border-l border-gray-200 pl-2 dark:border-gray-800">
+              <RailList className="ml-[19px] space-y-[6px] border-l border-gray-200 pl-2 dark:border-gray-800">
                 {nav.subItems.map((subItem, subIndex) => {
                   const isSubSubOpen =
                     openSubSubMenu?.parentIndex === index &&
@@ -1253,7 +1347,7 @@ const AppSidebar: React.FC = () => {
                               isSubSubOpen ? "max-h-[600px] mt-1" : "max-h-0"
                             }`}
                           >
-                            <ul className="mt-[6px] ml-2.5 space-y-[6px] border-l border-gray-200 pb-1 pl-2 dark:border-gray-800">
+                            <RailList className="mt-[6px] ml-2.5 space-y-[6px] border-l border-gray-200 pb-1 pl-2 dark:border-gray-800">
                               {subItem.subSubItems.map((subSubItem) => (
                                 <li key={subSubItem.name}>
                                   <Link
@@ -1294,7 +1388,7 @@ const AppSidebar: React.FC = () => {
                                   </Link>
                                 </li>
                               ))}
-                            </ul>
+                            </RailList>
                           </div>
                         </>
                       ) : (
@@ -1314,7 +1408,7 @@ const AppSidebar: React.FC = () => {
                     </li>
                   );
                 })}
-              </ul>
+              </RailList>
             </div>
           )}
         </li>
@@ -1341,9 +1435,7 @@ const AppSidebar: React.FC = () => {
       {/* ---------- LOGO ---------- */}
       <div
         className={`py-5 flex items-center ${
-          !isExpanded && !isHovered
-            ? "lg:justify-center"
-            : "justify-between"
+          !isExpanded && !isHovered ? "lg:justify-center" : "justify-between"
         }`}
       >
         <Link to="/" className="flex items-center gap-2.5">

@@ -1,5 +1,6 @@
 const Category = require("../models/category.model");
 const { runForTenant } = require("../tenancy/context");
+const { bumpNsVersion } = require("../utils/cache.util");
 
 // Gives categories created before serials existed a CAT-<prefix>-NN serial,
 // oldest first, so the numbering follows creation order.
@@ -14,6 +15,9 @@ module.exports = {
       for (const doc of missing) {
         await Category.assignSerial(doc);
       }
+
+      // Cached category lists were built before the serials existed
+      if (missing.length) await bumpNsVersion("category");
 
       return { assigned: missing.length };
     }),

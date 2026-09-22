@@ -42,7 +42,7 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       // className last so a caller can still override the shared look.
-      className={`inline-flex items-center justify-center gap-2 rounded-md border-none transition ${
+      className={`shine inline-flex items-center justify-center gap-2 rounded-md border-none transition ${
         sizeClasses[size]
       } ${variantClasses[variant]} ${
         disabled ? "cursor-not-allowed opacity-50" : ""
