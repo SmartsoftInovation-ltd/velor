@@ -19,6 +19,7 @@ const DailyCashSummary = require("../models/dailyCashSummary.model");
 const Account = require("../models/account.model");
 const stockAdjustModel = require("../models/stockadjust.model");
 const purchaseReturnModel = require("../models/purchaseReturn.model");
+const salesReturnModel = require("../models/salesReturn.model");
 
 const NS = "dashboard";
 const CACHE_TTL = 2 * 60; // 2 minutes — dashboard tolerates slight staleness
@@ -1183,6 +1184,10 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
           saleReference: null,
           customerPaymentReference: null,
           customerAdvancePaymentReference: null,
+          // A purchase return writes its own refund transaction and is already
+          // counted by the Purchase Return source below, so counting it here
+          // too would double the same money.
+          purchaseReturnReference: null,
         })
         .sort({ createdAt: -1 })
         .populate("transactionCategory", "name")
@@ -1218,11 +1223,12 @@ exports.getInflowTransactionSummary = asynchandeler(async (req, res) => {
         .select("paymentId customer paidAmount advanceCashBack createdAt")
         .lean(),
 
-      // 11. Purchase returns — value coming back from suppliers. This model
-      // dates its rows on `returnDate`, not `date`, so it needs its own match:
-      // the shared dateMatch would never hit. Unlike sales/customer payments
-      // a purchase return writes no cash transaction of its own, so there is
-      // nothing to de-duplicate against source 7.
+      // 11. Purchase returns — value coming back from suppliers, listed by the
+      // return's own serial ("PURR-VR-05"). This model dates its rows on
+      // `returnDate`, not `date`, so it needs its own match: the shared
+      // dateMatch would never hit. Each return also writes a "cash recived"
+      // refund transaction, which source 7 filters out by
+      // purchaseReturnReference so the refund is not counted twice.
       purchaseReturnModel
         .find(
           start
@@ -1441,6 +1447,7 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
     cashPaymentTxns,
     purchaseDocs,
     supplierPaymentDocs,
+    salesReturnDocs,
   ] = await Promise.all([
     // 1. Purchase payments — the purchase model has no less-amount/cashback
     // fields, so net payment reduces to the `paid` field.
@@ -1469,9 +1476,21 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
       },
     ]),
 
-    // 3. Manual cash-payment transactions from All Accounts (Add Transaction)
+    // 3. Manual cash-payment transactions from All Accounts (Add Transaction).
+    //
+    // Purchase payments, supplier payments and sales returns each write their
+    // own "cash payment" transaction, and each is already counted by its own
+    // source above — so counting them here too would double the same money.
+    // Only rows with no originating reference are genuinely manual entries,
+    // which is exactly how the Inflow box selects its own.
     crateTransactionModel
-      .find({ ...dateMatch, transactionType: "cash payment" })
+      .find({
+        ...dateMatch,
+        transactionType: "cash payment",
+        purchaseReference: null,
+        supplierPaymentReference: null,
+        salesReturnReference: null,
+      })
       .sort({ createdAt: -1 })
       .populate("transactionCategory", "name")
       .select("transactionSerialId transactionDescription amount transactionCategory createdAt")
@@ -1492,6 +1511,17 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
       .sort({ createdAt: -1 })
       .select("supplierPaymentSerialId supplierId paidAmount lessAmount createdAt")
       .lean(),
+
+    // 6. Per-return sales return rows — money refunded to customers, the
+    // outflow mirror of the purchase returns in the Inflow box. Each return
+    // also writes its own "cash payment" transaction, so those are filtered
+    // out of source 3 to keep the same money from being counted twice.
+    salesReturnModel
+      .find(dateMatch)
+      .sort({ createdAt: -1 })
+      .populate("invoiceNumber", "invoiceNumber")
+      .select("returnId invoiceNumber totalReturnAmount transaction date createdAt")
+      .lean(),
   ]);
 
   const pp = purchasePaymentAgg[0] || { paidAmount: 0, count: 0 };
@@ -1500,8 +1530,30 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
   const sp = supplierPaymentAgg[0] || { paidAmount: 0, lessAmount: 0, count: 0 };
   const supplierPaymentNet = round2((sp.paidAmount || 0) - (sp.lessAmount || 0));
 
+  const salesReturns = salesReturnDocs.map((doc) => ({
+    returnId: doc.returnId || "",
+    invoiceNumber: doc.invoiceNumber?.invoiceNumber || "",
+    amount: round2(doc.totalReturnAmount || 0),
+    date: doc.date,
+    createdAt: doc.createdAt,
+  }));
+  const salesReturnsTotal = round2(
+    salesReturns.reduce((sum, s) => sum + s.amount, 0),
+  );
+
+  // Returns created before CrateTransaction carried salesReturnReference still
+  // have a "cash payment" row that the query above could not filter out. Each
+  // return points at its own transaction, so drop those ids here — otherwise an
+  // old refund is counted twice.
+  const salesReturnTxnIds = new Set(
+    salesReturnDocs.map((doc) => String(doc.transaction || "")).filter(Boolean),
+  );
+  const manualCashPaymentTxns = salesReturnTxnIds.size
+    ? cashPaymentTxns.filter((t) => !salesReturnTxnIds.has(String(t._id)))
+    : cashPaymentTxns;
+
   const cashAccountTotal = round2(
-    cashPaymentTxns.reduce((sum, t) => sum + (t.amount || 0), 0),
+    manualCashPaymentTxns.reduce((sum, t) => sum + (t.amount || 0), 0),
   );
 
   const sources = [
@@ -1518,10 +1570,16 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
       count: sp.count || 0,
     },
     {
+      key: "salesReturns",
+      label: "Sales Return",
+      amount: salesReturnsTotal,
+      count: salesReturns.length,
+    },
+    {
       key: "cashPaymentAccounts",
       label: "Cash Payment (All Accounts)",
       amount: cashAccountTotal,
-      count: cashPaymentTxns.length,
+      count: manualCashPaymentTxns.length,
     },
   ];
 
@@ -1562,7 +1620,7 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
   const payload = {
     range: key,
     sources,
-    accountTransactions: cashPaymentTxns.map((t) => ({
+    accountTransactions: manualCashPaymentTxns.map((t) => ({
       transactionId: t.transactionSerialId || "",
       categoryName: t.transactionCategory?.name || "",
       description: t.transactionDescription || "",
@@ -1573,6 +1631,8 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
     purchasePaymentsTotal,
     supplierPayments,
     supplierPaymentsTotal,
+    salesReturns,
+    salesReturnsTotal,
     breakdown: {
       purchasePayment: {
         paidAmount: round2(pp.paidAmount),

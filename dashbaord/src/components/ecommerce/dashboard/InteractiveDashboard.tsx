@@ -978,6 +978,25 @@ export default function InteractiveDashboard() {
                         </div>
                       ))}
 
+                      {(outflowTransactionSummary?.salesReturns ?? []).map((s, i) => (
+                        <div
+                          key={`sales-return-${s.returnId}-${i}`}
+                          className="flex items-center justify-between px-3 py-2"
+                        >
+                          <p className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
+                            <span className="font-semibold text-gray-800 dark:text-gray-100">
+                              {s.returnId || "—"}
+                            </span>
+                            <span className="ml-2 capitalize">
+                              Sales Return{s.invoiceNumber ? ` of ${s.invoiceNumber}` : ""}
+                            </span>
+                          </p>
+                          <span className="ml-2 shrink-0 text-sm font-bold text-error-600 dark:text-error-400">
+                            -{formatCurrency(s.amount)}
+                          </span>
+                        </div>
+                      ))}
+
                       {(outflowTransactionSummary?.accountTransactions ?? []).map((t, i) => (
                         <div
                           key={`cash-${t.transactionId}-${i}`}

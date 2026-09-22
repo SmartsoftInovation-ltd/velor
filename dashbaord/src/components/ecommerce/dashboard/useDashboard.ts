@@ -667,6 +667,14 @@ export interface OutflowSupplierPaymentRow {
   createdAt: string;
 }
 
+export interface OutflowSalesReturnRow {
+  returnId: string;
+  invoiceNumber: string;
+  amount: number;
+  date: string;
+  createdAt: string;
+}
+
 export interface OutflowTransactionSummaryData {
   range: string;
   sources: InflowSource[];
@@ -675,6 +683,8 @@ export interface OutflowTransactionSummaryData {
   purchasePaymentsTotal: number;
   supplierPayments: OutflowSupplierPaymentRow[];
   supplierPaymentsTotal: number;
+  salesReturns: OutflowSalesReturnRow[];
+  salesReturnsTotal: number;
   breakdown: {
     purchasePayment: InflowNetBreakdownLine;
     supplierPayment: InflowNetBreakdownLine;
