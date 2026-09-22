@@ -171,7 +171,7 @@ const CreateCategoryForm = () => {
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
                       onClick={handleRemoveImage}
-                        className="bg-[#DCE8FF] text-[#1D4ED8] p-3 rounded-full hover:bg-[#C7DAFF] transform hover:scale-110 transition-all duration-200 shadow-xl"
+                        className="bg-accent-500 text-white p-3 rounded-full hover:bg-accent-600 transform hover:scale-110 transition-all duration-200 shadow-xl"
                       title="Remove image"
                     >
                       <TrashBinIcon className="size-6" />
@@ -192,7 +192,7 @@ const CreateCategoryForm = () => {
         <MobileActionBar>
           <div className="flex justify-end pt-2">
             <Button
-              className="w-full sm:w-auto bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-normal text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              className="w-full sm:w-auto bg-accent-500 hover:bg-accent-600 text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-normal text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
               onClick={handleSubmit}
               disabled={isLoading}
             >

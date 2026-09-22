@@ -59,6 +59,20 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
   );
 };
 
+// Same look as the Platform Console seller status pill
+const StatusPill = ({ isActive }: { isActive: boolean }) => (
+  <span
+    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
+      isActive
+        ? "bg-accent-50 text-accent-700 ring-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400"
+        : "bg-error-50 text-error-700 ring-error-500/20 dark:bg-error-500/15 dark:text-error-400"
+    }`}
+  >
+    <span className={`size-1.5 rounded-full ${isActive ? "bg-accent-500 animate-pulse" : "bg-error-500"}`} />
+    {isActive ? "Active" : "Inactive"}
+  </span>
+);
+
 interface Image {
   url: string;
   publicId: string;
@@ -73,6 +87,7 @@ interface Subcategory {
 
 interface Category {
   _id: string;
+  categorySerialId?: string;
   name: string;
   image: Image;
   slug: string;
@@ -181,7 +196,7 @@ export default function CategoryTable({
     setSearchTerm("");
   };
 
-  const gridTemplateColumns = "80px 1.5fr 120px 1fr 1fr 150px 120px 220px";
+  const gridTemplateColumns = "150px 1.5fr 120px 1fr 1fr 150px 120px 220px";
 
   return (
     <div className="w-full">
@@ -191,9 +206,9 @@ export default function CategoryTable({
             placeholder="Search categories..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full shadow-theme-xs h-12 pr-12 pl-11 focus:ring-2 focus:ring-brand-500/20 rounded-xl transition-all"
+            className="w-full shadow-theme-xs h-12 pr-12 pl-11 focus:ring-2 focus:ring-accent-500/20 rounded-xl transition-all"
           />
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 group-focus-within:text-brand-500 transition-colors" />
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 group-focus-within:text-accent-500 transition-colors" />
           
           {searchTerm && (
             <button 
@@ -224,16 +239,11 @@ export default function CategoryTable({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{category.name}</p>
-                  <p className="text-xs text-gray-400">#{index + 1}</p>
+                  <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">{category.categorySerialId || `#${index + 1}`}</p>
                 </div>
-                <Badge
-                  size="sm"
-                  variant="solid"
-                  color={category.isActive ? "success" : "error"}
-                  className="font-black text-[10px] uppercase shrink-0"
-                >
-                  {category.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <div className="shrink-0">
+                  <StatusPill isActive={category.isActive} />
+                </div>
               </div>
               <MobileCardRow label="Subcategories">
                 {category.subcategories?.length > 0 ? `${category.subcategories.length} sub` : "N/A"}
@@ -249,7 +259,7 @@ export default function CategoryTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -273,7 +283,7 @@ export default function CategoryTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                      className="max-md:size-11 size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
                     >
                       <FaEdit className="size-4" />
                     </Button>
@@ -283,7 +293,7 @@ export default function CategoryTable({
                   <Button
                     onClick={() => handleDeleteModal(category.slug)}
                     size="sm"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 rounded-xl bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 border-none transition-all active:scale-90"
                   >
                     <MdDelete className="size-5" />
                   </Button>
@@ -313,7 +323,7 @@ export default function CategoryTable({
             {searchTerm && (
               <Button
                 onClick={handleClearSearch}
-                className="rounded-xl px-10 py-3 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
+                className="rounded-xl px-10 py-3 bg-accent-500 hover:bg-accent-600 text-white border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
               >
                 Go Back to All Categories
               </Button>
@@ -332,7 +342,7 @@ export default function CategoryTable({
                 style={{ gridTemplateColumns }}
               >
                 <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
-                  S/N
+                  Serial ID
                 </TableCell>
                 <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
                   Category Name
@@ -384,8 +394,14 @@ export default function CategoryTable({
                         gridTemplateColumns
                       }}
                     >
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-500 dark:text-gray-400 flex items-center justify-center font-medium">
-                        #{virtualRow.index + 1}
+                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center">
+                        {category.categorySerialId ? (
+                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                            {category.categorySerialId}
+                          </span>
+                        ) : (
+                          <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center">
                         <Tooltip text={category.name}>
@@ -448,14 +464,7 @@ export default function CategoryTable({
                         {moment(category.createdAt).format("MMM DD, YYYY")}
                       </TableCell>
                       <TableCell className="px-4 py-3 flex items-center justify-center">
-                        <Badge
-                          size="sm"
-                          variant="solid"
-                          color={category.isActive ? "success" : "error"}
-                          className="min-w-[75px] font-black text-[10px] uppercase shadow-md transition-all duration-300"
-                        >
-                          {category.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        <StatusPill isActive={category.isActive} />
                       </TableCell>
 
                       <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
@@ -465,7 +474,7 @@ export default function CategoryTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                                className="size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
                             >
                               <FaEye className="size-4" />
                             </Button>
@@ -494,7 +503,7 @@ export default function CategoryTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                                className="size-10 p-0 rounded-xl border-none bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 transition-all active:scale-90"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -506,7 +515,7 @@ export default function CategoryTable({
                           <Button
                             onClick={() => handleDeleteModal(category.slug)}
                             size="sm"
-                            className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                            className="size-10 p-0 rounded-xl bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 border-none transition-all active:scale-90"
                           >
                             <MdDelete className="size-5" />
                           </Button>
@@ -585,11 +594,11 @@ export default function CategoryTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 bg-error-500 hover:bg-error-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -634,13 +643,13 @@ export default function CategoryTable({
               disabled={isToggling}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
                 pendingToggle?.currentStatus
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
+ ?"bg-accent-500 hover:bg-accent-600 text-white shadow-lg"
+ :"bg-accent-500 hover:bg-accent-600 text-white shadow-lg"
               }`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

@@ -20,7 +20,7 @@ const CreateCategory = () => {
         hideTitle
         actions={
           <Link to="/category-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
               Category List
             </Button>
           </Link>

@@ -11,6 +11,7 @@ const MIGRATIONS = [
   require("./004-backfill-cloud-name"),
   require("./005-owner-role"),
   require("./006-drop-global-role-indexes"),
+  require("./007-backfill-category-serial"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

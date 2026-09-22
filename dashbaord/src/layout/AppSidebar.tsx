@@ -1165,7 +1165,7 @@ const AppSidebar: React.FC = () => {
                   className={`ml-auto size-4 shrink-0 transition-transform duration-200 ${
                     openSubmenu?.type === menuType &&
                     openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500 dark:text-brand-400"
+                      ? "rotate-180 text-accent-500 dark:text-accent-400"
                       : "text-gray-400 dark:text-gray-500"
                   }`}
                 />
@@ -1240,7 +1240,7 @@ const AppSidebar: React.FC = () => {
                               <ChevronDownIcon
                                 className={`size-3.5 shrink-0 transition-transform duration-200 ${
                                   isSubSubOpen
-                                    ? "rotate-180 text-brand-500 dark:text-brand-400"
+                                    ? "rotate-180 text-accent-500 dark:text-accent-400"
                                     : "text-gray-400 dark:text-gray-500"
                                 }`}
                               />

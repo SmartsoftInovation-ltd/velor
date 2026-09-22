@@ -214,11 +214,11 @@ layer(base);
 }
 
 @utility menu-item-active {
-  @apply bg-brand-50 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300;
+  @apply bg-accent-50 text-accent-600 dark:bg-accent-500/20 dark:text-accent-300;
 }
 
 @utility menu-item-inactive {
-  @apply text-gray-700 hover:bg-brand-50/60 hover:text-brand-600 dark:text-gray-300 dark:hover:bg-brand-500/10 dark:hover:text-brand-300;
+  @apply text-gray-700 hover:bg-accent-50/60 hover:text-accent-600 dark:text-gray-300 dark:hover:bg-accent-500/10 dark:hover:text-accent-300;
 }
 
 @utility menu-item-icon {
@@ -226,7 +226,7 @@ layer(base);
 }
 
 @utility menu-item-icon-active {
-  @apply bg-brand-500 text-white shadow-[0_2px_6px_rgba(70,95,255,0.4)] dark:bg-brand-500 dark:text-white;
+  @apply bg-accent-500 text-white shadow-[0_2px_6px_rgba(15,157,99,0.4)] dark:bg-accent-500 dark:text-white;
 }
 
 @utility menu-item-icon-size {
@@ -237,7 +237,7 @@ layer(base);
 }
 
 @utility menu-item-icon-inactive {
-  @apply bg-gray-50 border-gray-200/70 text-gray-600 group-hover:bg-brand-500 group-hover:border-brand-500 group-hover:text-white dark:bg-white/5 dark:border-white/10 dark:text-gray-300 dark:group-hover:bg-brand-500 dark:group-hover:border-brand-500 dark:group-hover:text-white;
+  @apply bg-gray-50 border-gray-200/70 text-gray-600 group-hover:bg-accent-500 group-hover:border-accent-500 group-hover:text-white dark:bg-white/5 dark:border-white/10 dark:text-gray-300 dark:group-hover:bg-accent-500 dark:group-hover:border-accent-500 dark:group-hover:text-white;
 }
 
 @utility menu-item-arrow {
@@ -245,7 +245,7 @@ layer(base);
 }
 
 @utility menu-item-arrow-active {
-  @apply rotate-180 text-brand-600 dark:text-brand-400;
+  @apply rotate-180 text-accent-600 dark:text-accent-400;
 }
 
 @utility menu-item-arrow-inactive {
@@ -253,38 +253,35 @@ layer(base);
 }
 
 @utility menu-dropdown-item {
-  @apply relative flex items-center gap-2.5 rounded-md py-[5px] pl-4 pr-2.5 text-[12.5px] leading-[18px] font-medium transition-colors duration-150;
-  /* dot marker on the rail */
+  @apply relative flex items-center gap-2.5 rounded-md py-[5px] pl-3 pr-2.5 text-[12.5px] leading-[18px] font-medium transition-colors duration-150;
+  /* selection bar, drawn over the parent list's gray rail (pl-2 + 1px border) */
   &::before {
     content: "";
-    @apply absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-gray-300 transition-all duration-150 dark:bg-gray-600;
+    @apply absolute inset-y-0 -left-[10px] w-[3px] rounded-full bg-transparent transition-colors duration-150;
   }
 }
 
 @utility menu-dropdown-item-active {
-  @apply bg-brand-50 font-semibold text-brand-600 dark:bg-brand-500/20 dark:text-brand-300;
+  @apply bg-accent-50 font-semibold text-accent-600 dark:bg-accent-500/20 dark:text-accent-300;
   &::before {
-    @apply size-1.5 bg-brand-500 dark:bg-brand-400;
+    @apply bg-accent-500 dark:bg-accent-400;
   }
 }
 
 @utility menu-dropdown-item-inactive {
-  @apply text-gray-600 hover:bg-gray-50 hover:text-brand-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-brand-300;
-  &:hover::before {
-    @apply bg-brand-500 dark:bg-brand-400;
-  }
+  @apply text-gray-600 hover:bg-gray-50 hover:text-accent-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-accent-300;
 }
 
 @utility menu-dropdown-badge {
-  @apply block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase text-brand-500 dark:text-brand-400;
+  @apply block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase text-accent-500 dark:text-accent-400;
 }
 
 @utility menu-dropdown-badge-active {
-  @apply bg-brand-100 dark:bg-brand-500/20;
+  @apply bg-accent-100 dark:bg-accent-500/20;
 }
 
 @utility menu-dropdown-badge-inactive {
-  @apply bg-brand-50 group-hover:bg-brand-100 dark:bg-brand-500/15 dark:group-hover:bg-brand-500/20;
+  @apply bg-accent-50 group-hover:bg-accent-100 dark:bg-accent-500/15 dark:group-hover:bg-accent-500/20;
 }
 @utility header-icon-button {
   @apply relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors dark:border-gray-700 dark:bg-gray-800;

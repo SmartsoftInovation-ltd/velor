@@ -3,6 +3,8 @@ const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
+const Counter = require("./counter.model");
+const { getInvoicePrefix } = require("../integrations/config");
 
 const imageSchema = new mongoose.Schema(
   {
@@ -24,6 +26,13 @@ const imageSchema = new mongoose.Schema(
 
 const categorySchema = new mongoose.Schema(
   {
+    // Sequential, never-reused display serial — e.g. CAT-INV-01
+    categorySerialId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
     name: {
       type: String,
       required: true,
@@ -89,6 +98,35 @@ categorySchema.pre("save", async function (next) {
         ),
       );
     }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Gives a category the next CAT-<prefix>-NN serial. Also used by the backfill
+// migration for categories created before serials existed.
+categorySchema.statics.assignSerial = async function (doc, session) {
+  const counter = await Counter.findOneAndUpdate(
+    { key: "CATEGORY_SERIAL" },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true, session },
+  );
+
+  const padded = String(counter.seq).padStart(2, "0");
+  doc.categorySerialId = `CAT-${await getInvoicePrefix()}-${padded}`;
+  await this.updateOne(
+    { _id: doc._id },
+    { $set: { categorySerialId: doc.categorySerialId } },
+    { session },
+  );
+};
+
+// Auto-generate a sequential, never-reused categorySerialId after first save
+categorySchema.post("save", async function (doc, next) {
+  try {
+    if (doc.categorySerialId) return next();
+    await doc.constructor.assignSerial(doc, doc.$session());
     next();
   } catch (error) {
     next(error);

@@ -171,7 +171,7 @@ const CategoryUpdate = () => {
                     onClick={() => navigate(-1)}
                     size="sm"
                     variant="outline"
-                    className="size-10 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 transition-all active:scale-90"
+                    className="size-10 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-accent-600 transition-all active:scale-90"
                   >
                     <FaArrowLeft className="size-4" />
                   </Button>
@@ -182,7 +182,7 @@ const CategoryUpdate = () => {
               </div>
               <Tooltip text="View Category List">
                 <Link to="/category-list">
-                  <Button size="sm" className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-brand-500/20">
+                  <Button size="sm" className="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-accent-500/20">
                     Category List
                   </Button>
                 </Link>
@@ -245,7 +245,7 @@ const CategoryUpdate = () => {
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                           <button
                             onClick={handleRemoveImage}
-                              className="bg-[#DCE8FF] text-[#1D4ED8] p-3 rounded-full hover:bg-[#C7DAFF] transform hover:scale-110 transition-all duration-200 shadow-xl"
+                              className="bg-accent-500 text-white p-3 rounded-full hover:bg-accent-600 transform hover:scale-110 transition-all duration-200 shadow-xl"
                             title="Remove image"
                           >
                             <TrashBinIcon className="size-6" />
@@ -265,7 +265,7 @@ const CategoryUpdate = () => {
               <div className="flex justify-end pt-2">
                 <Tooltip text={isLoading ? "Processing..." : "Save Changes"}>
                   <Button
-                    className="w-full sm:w-auto bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-bold text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                    className="w-full sm:w-auto bg-accent-500 hover:bg-accent-600 text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-bold text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
                     onClick={handleSubmit}
                     disabled={isLoading}
                   >

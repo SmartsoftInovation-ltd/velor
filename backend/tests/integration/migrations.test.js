@@ -11,6 +11,7 @@ const User = require("../../src/models/user.model");
 const Counter = require("../../src/models/counter.model");
 const Merchant = require("../../src/models/marchant.model");
 const Role = require("../../src/models/role.model");
+const Category = require("../../src/models/category.model");
 
 const LEGACY_ENV = {
   INVOICE_PREFIX: "VLR",
@@ -59,6 +60,10 @@ describe("Velor migration", () => {
       { name: "Staff", email: "staff@velor.test", password: "x" },
     ]);
     await raw(Counter).insertOne({ key: "SALES_INVOICE", seq: 41 });
+    await raw(Category).insertMany([
+      { name: "Newer", slug: "newer", createdAt: new Date("2026-02-01") },
+      { name: "Older", slug: "older", createdAt: new Date("2026-01-01") },
+    ]);
     const { insertedIds } = await raw(Role).insertMany([
       { name: "superAdmin", slug: "superadmin", isActive: true, permissions: [] },
       { name: "manager", slug: "manager", isActive: true, permissions: [] },
@@ -94,7 +99,13 @@ describe("Velor migration", () => {
         ["004-backfill-cloud-name", "applied"],
         ["005-owner-role", "applied"],
         ["006-drop-global-role-indexes", "applied"],
+        ["007-backfill-category-serial", "applied"],
       ]);
+    });
+
+    it("gives existing categories CAT serials in creation order", async () => {
+      const serials = await raw(Category).find({}, { sort: { createdAt: 1 } }).toArray();
+      expect(serials.map((c) => c.categorySerialId)).toEqual(["CAT-VLR-01", "CAT-VLR-02"]);
     });
 
     it("imports env values and merchants into Velor's encrypted settings", async () => {
