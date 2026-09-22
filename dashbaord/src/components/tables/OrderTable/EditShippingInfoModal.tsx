@@ -22,6 +22,7 @@ export default function EditShippingInfoModal({
   fetchOrders,
 }: EditShippingInfoModalProps) {
   const [formData, setFormData] = useState(shippingInfo || {});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -30,6 +31,9 @@ export default function EditShippingInfoModal({
   };
 
   const handleSubmit = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (!orderId) return;
 
@@ -43,6 +47,8 @@ export default function EditShippingInfoModal({
     } catch (error) {
       console.error("Error updating order:", error);
       showApiError(error, "Failed to update order. Try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -103,7 +109,16 @@ export default function EditShippingInfoModal({
         </div>
 
         <div className="flex justify-end mt-6 gap-x-2">
-          <Button onClick={handleSubmit}>Save</Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                Saving...
+              </span>
+            ) : (
+              "Save"
+            )}
+          </Button>
           <Button
             onClick={onClose}
               className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"

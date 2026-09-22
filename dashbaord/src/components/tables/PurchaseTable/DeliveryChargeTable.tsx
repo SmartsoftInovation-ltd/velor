@@ -31,6 +31,7 @@ const DeliveryChargeTable = () => {
     string | null
   >(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
 
   const fetchDeliveryChargeList = async () => {
@@ -55,6 +56,10 @@ const DeliveryChargeTable = () => {
 
   const closeModal = () => setShowDeleteModal(false);
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
+
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(
         `/delivery-charge/delete-delivery-charge/${selectedDeliveryCharge}`
@@ -64,6 +69,7 @@ const DeliveryChargeTable = () => {
     } catch (error) {
       showApiError(error, "Failed to delete the delivery charge.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedDeliveryCharge(null);
     }
@@ -106,7 +112,16 @@ const DeliveryChargeTable = () => {
               Are you sure you want to delete this delivery charge?
             </p>
             <div className="flex justify-end mt-4 gap-x-2">
-              <Button onClick={handleDelete}>Yes</Button>
+              <Button onClick={handleDelete} disabled={isDeleting}>
+                {isDeleting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                    Deleting...
+                  </span>
+                ) : (
+                  "Yes"
+                )}
+              </Button>
               <Button
                 onClick={closeModal}
                 className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"
@@ -196,7 +211,16 @@ const DeliveryChargeTable = () => {
             Are you sure you want to delete this delivery charge?
           </p>
           <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete}>Yes</Button>
+            <Button onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes"
+              )}
+            </Button>
             <Button
               onClick={closeModal}
                 className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"

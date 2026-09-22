@@ -90,6 +90,7 @@ const SubCategoryTable = ({
   const canToggle = usePermission("sub-category", "toggle");
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{ slug: string; currentStatus: boolean } | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -115,6 +116,10 @@ const SubCategoryTable = ({
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
+
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/subcategories/${selectedSubCategory}`);
       toast.success("Sub Category deleted successfully.");
@@ -122,6 +127,7 @@ const SubCategoryTable = ({
     } catch (error) {
       showApiError(error, "Failed to delete the subcategory.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedSubCategory(null);
     }
@@ -460,9 +466,17 @@ const SubCategoryTable = ({
             </Button>
             <Button
               onClick={handleDelete}
-                className="flex-1 rounded-xl py-3 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg border-none font-bold transition-transform active:scale-95"
+              disabled={isDeleting}
+                className="flex-1 rounded-xl py-3 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg border-none font-bold transition-transform active:scale-95 disabled:active:scale-100"
             >
-              Confirm Delete
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Confirm Delete"
+              )}
             </Button>
           </div>
         </div>

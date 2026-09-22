@@ -88,6 +88,7 @@ export default function UserTable({
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{ id: string; currentStatus: boolean; name: string } | null>(null);
   const [showToggleModal, setShowToggleModal] = useState(false);
 
@@ -109,7 +110,10 @@ export default function UserTable({
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
     if (!selectedUser) return;
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/auth/delete-user/${selectedUser._id}`);
       toast.success("User deleted successfully.");
@@ -117,6 +121,7 @@ export default function UserTable({
     } catch (error) {
       showApiError(error, "Failed to delete user. Please try again.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedUser(null);
     }
@@ -424,9 +429,17 @@ export default function UserTable({
             </Button>
             <Button
               onClick={handleDelete}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+              disabled={isDeleting}
+                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
-              Yes, Delete
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>

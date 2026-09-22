@@ -12,6 +12,7 @@ const CreateEmployeeAdvancePaymentForm = () => {
   const [employees, setEmployees] = useState<
     { label: string; value: string }[]
   >([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     date: "",
@@ -49,6 +50,9 @@ const CreateEmployeeAdvancePaymentForm = () => {
   }, []);
 
   const handleSubmit = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const payload = {
         date: formData.date,
@@ -70,6 +74,8 @@ const CreateEmployeeAdvancePaymentForm = () => {
       toast.success("Advance payment created successfully");
     } catch (error) {
        toast.success("Failed to create advance payment");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -165,9 +171,17 @@ const CreateEmployeeAdvancePaymentForm = () => {
 
       <Button
         onClick={handleSubmit}
-          className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-4 py-2 rounded"
+        disabled={isSubmitting}
+          className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-4 py-2 rounded disabled:active:scale-100"
       >
-        Create Employee Advance Payment
+        {isSubmitting ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+            Saving...
+          </span>
+        ) : (
+          "Create Employee Advance Payment"
+        )}
       </Button>
     </div>
   );

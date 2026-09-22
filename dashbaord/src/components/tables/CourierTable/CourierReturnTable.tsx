@@ -51,6 +51,7 @@ interface Order {
 export default function CourierReturnTable() {
   const [orders, setOrders] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   // const tableData: Order[] = orders ?? [];
   const tableData: Order[] = (orders ?? []).filter(
@@ -96,6 +97,10 @@ export default function CourierReturnTable() {
     setShowDeleteModal(false);
   };
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
+
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/order/delete-Order/${selectedOrderId}`);
       toast.success("Order deleted successfully.");
@@ -105,6 +110,7 @@ export default function CourierReturnTable() {
       console.error("Error deleting order:", error);
       showApiError(error, "Failed to delete the order. Please try again.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedOrderId(null);
     }
@@ -324,7 +330,16 @@ export default function CourierReturnTable() {
             Are you sure you want to delete this order?
           </p>
           <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete}>Yes</Button>
+            <Button onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes"
+              )}
+            </Button>
             <Button
               onClick={closeModal}
                 className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"

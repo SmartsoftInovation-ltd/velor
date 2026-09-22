@@ -93,6 +93,7 @@ const VariantTable = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedVariantSlug, setSelectedVariantSlug] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{ slug: string; currentStatus: boolean } | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -207,6 +208,10 @@ const VariantTable = () => {
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
+
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/variant/${selectedVariantSlug}`);
       toast.success("Variant deleted successfully.");
@@ -215,6 +220,7 @@ const VariantTable = () => {
     } catch (error) {
       showApiError(error, "Failed to delete the variant. Please try again.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedVariantSlug(null);
     }
@@ -584,7 +590,16 @@ const VariantTable = () => {
           </p>
           <div className="flex items-center gap-3 mt-8">
             <Button onClick={closeModal} variant="outline" className="flex-1 rounded-xl py-2.5">Cancel</Button>
-            <Button onClick={handleDelete} className="bg-red-500 text-white hover:bg-red-600 flex-1 rounded-xl py-2.5 shadow-lg shadow-red-500/20">Yes, Delete</Button>
+            <Button onClick={handleDelete} disabled={isDeleting} className="bg-red-500 text-white hover:bg-red-600 flex-1 rounded-xl py-2.5 shadow-lg shadow-red-500/20 disabled:active:scale-100">
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
+            </Button>
           </div>
         </div>
       </Modal>

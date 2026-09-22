@@ -34,6 +34,7 @@ const CourierMerchantTable = () => {
     string | null
   >(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
 
   const fetchMerchants = async () => {
@@ -57,6 +58,10 @@ const CourierMerchantTable = () => {
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
+
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(
         `/merchant/delete-merchant/${selectedMerchantList}`
@@ -67,6 +72,7 @@ const CourierMerchantTable = () => {
       console.error("Error deleting merchant list:", error);
       showApiError(error, "Failed to delete the merchant list. Please try again.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedMerchantList(null);
     }
@@ -322,7 +328,16 @@ const CourierMerchantTable = () => {
             Are you sure you want to delete this merchant list?
           </p>
           <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete}>Yes</Button>
+            <Button onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes"
+              )}
+            </Button>
             <Button
               onClick={closeModal}
                 className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"

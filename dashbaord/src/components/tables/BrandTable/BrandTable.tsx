@@ -68,6 +68,7 @@ export default function BrandTable({
 }: BrandTableProps) {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{ slug: string; currentStatus: boolean } | null>(null);
   const [hoveredImage, setHoveredImage] = useState<{ url: string; name: string; x: number; y: number } | null>(null);
@@ -98,6 +99,10 @@ export default function BrandTable({
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
+
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/brand/${selectedBrand}`);
       toast.success("Brand deleted successfully.");
@@ -105,6 +110,7 @@ export default function BrandTable({
     } catch (error) {
       showApiError(error, "Failed to delete the brand. Please try again.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedBrand(null);
     }
@@ -470,9 +476,17 @@ export default function BrandTable({
             </Button>
             <Button
               onClick={handleDelete}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+              disabled={isDeleting}
+                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
-              Yes, Delete
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>

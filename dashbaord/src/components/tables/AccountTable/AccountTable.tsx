@@ -64,6 +64,8 @@ const AccountTable = () => {
   const canDelete = usePermission("add-account", "delete");
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [editedName, setEditedName] = useState("");
@@ -138,7 +140,10 @@ const AccountTable = () => {
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
     if (!selectedAccount) return;
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/account/delete-account/${selectedAccount.slug}`);
       toast.success(`Account "${selectedAccount.name}" deleted.`);
@@ -146,13 +151,17 @@ const AccountTable = () => {
     } catch (error) {
       showApiError(error, "Failed to delete account.");
     } finally {
+      setIsDeleting(false);
       setShowDeleteModal(false);
       setSelectedAccount(null);
     }
   };
 
   const handleUpdate = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isUpdating) return;
     if (!editedName.trim()) { toast.error("Account name cannot be empty."); return; }
+    setIsUpdating(true);
     try {
       await axiosSecure.put(`/account/update-account/${selectedAccount?.slug}`, { name: editedName });
       toast.success(`Updated to "${editedName}"`);
@@ -160,6 +169,8 @@ const AccountTable = () => {
       fetchAccounts();
     } catch (error) {
       showApiError(error, "Failed to update account.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -388,8 +399,15 @@ const AccountTable = () => {
           </p>
           <div className="flex gap-3 mt-7">
             <Button onClick={() => setShowDeleteModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all">
-              Yes, Delete
+            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all disabled:active:scale-100">
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>
@@ -409,8 +427,15 @@ const AccountTable = () => {
           </div>
           <div className="flex gap-3 pt-2">
             <Button onClick={() => setShowEditModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleUpdate} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all">
-              Update
+            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
+              {isUpdating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Updating...
+                </span>
+              ) : (
+                "Update"
+              )}
             </Button>
           </div>
         </div>

@@ -63,6 +63,7 @@ const MoneyHandoverTable = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -140,6 +141,10 @@ const MoneyHandoverTable = () => {
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
+
+    setIsDeleting(true);
     try {
       await axiosSecure.delete(`/fundhandover/delete-fundhandover/${selectedId}`);
       toast.success("Money handover deleted successfully.");
@@ -147,6 +152,7 @@ const MoneyHandoverTable = () => {
     } catch (error) {
       showApiError(error, "Failed to delete the money handover.");
     } finally {
+      setIsDeleting(false);
       closeModal();
     }
   };
@@ -376,8 +382,15 @@ const MoneyHandoverTable = () => {
           </p>
           <div className="flex gap-3 mt-7">
             <Button onClick={closeModal} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all">
-              Yes, Delete
+            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all disabled:active:scale-100">
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>

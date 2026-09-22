@@ -399,6 +399,7 @@ const SalesHistoryTable = ({
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
   const handleDeleteModal = (saleId: string) => {
@@ -412,7 +413,10 @@ const SalesHistoryTable = ({
   };
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
     if (!selectedSaleId) return;
+    setIsDeleting(true);
 
     try {
       await axiosSecure.delete(`/sales/delete-sales/${selectedSaleId}`);
@@ -426,6 +430,7 @@ const SalesHistoryTable = ({
     } catch (error) {
       showApiError(error, "Failed to delete.");
     } finally {
+      setIsDeleting(false);
       closeModal();
     }
   };
@@ -854,7 +859,16 @@ const SalesHistoryTable = ({
             Are you sure you want to delete this sale?
           </p>
           <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete}>Yes</Button>
+            <Button onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes"
+              )}
+            </Button>
             <Button
               onClick={closeModal}
                 className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"

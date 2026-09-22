@@ -40,6 +40,7 @@ const EmployeeAdvancePaymentTable = () => {
   const [advancePaymentList, setAdvancePaymentList] = useState<AdvancePayment[]>([]);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const isMobile = useIsMobile();
 
@@ -72,7 +73,10 @@ const EmployeeAdvancePaymentTable = () => {
   }, []);
 
   const handleDelete = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isDeleting) return;
     if (!selectedPaymentId) return;
+    setIsDeleting(true);
 
     try {
       await axiosSecure.delete(
@@ -93,6 +97,8 @@ const EmployeeAdvancePaymentTable = () => {
       console.error("Error deleting advance payment:", error);
       showApiError(error, "Failed to delete.");
       closeModal();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -310,7 +316,16 @@ const EmployeeAdvancePaymentTable = () => {
             Are you sure you want to delete this advance payment?
           </p>
           <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete}>Yes</Button>
+            <Button onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Deleting...
+                </span>
+              ) : (
+                "Yes"
+              )}
+            </Button>
             <Button
               onClick={closeModal}
                 className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"

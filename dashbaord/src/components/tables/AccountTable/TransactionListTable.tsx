@@ -70,6 +70,7 @@ const TransactionListTable = () => {
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -180,7 +181,10 @@ const TransactionListTable = () => {
   };
 
   const handleUpdate = async () => {
+    // Guard against a second click while the first request is still running.
+    if (isUpdating) return;
     if (!selectedTx) return;
+    setIsUpdating(true);
     try {
       await axiosSecure.put(`/transaction/update-transaction/${selectedTx._id}`, {
         date: editState.date,
@@ -198,6 +202,8 @@ const TransactionListTable = () => {
       fetchTransactions();
     } catch (error) {
       showApiError(error, "Failed to update transaction.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -500,8 +506,15 @@ const TransactionListTable = () => {
           <p className="text-xs text-gray-400 dark:text-gray-500">Category and account cannot be changed after creation.</p>
           <div className="flex gap-3 pt-2">
             <Button onClick={() => setShowEditModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleUpdate} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all">
-              Update
+            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
+              {isUpdating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Updating...
+                </span>
+              ) : (
+                "Update"
+              )}
             </Button>
           </div>
         </div>
