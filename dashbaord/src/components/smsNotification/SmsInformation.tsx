@@ -99,10 +99,20 @@ const SmsInformation = () => {
         </p>
         <button
           onClick={fetchSmsBalance}
-          className="flex items-center gap-1.5 rounded-md bg-[#DCE8FF] px-4 py-2 text-sm text-[#1D4ED8] transition-colors hover:bg-[#C7DAFF]"
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-md bg-[#DCE8FF] px-4 py-2 text-sm text-[#1D4ED8] transition-colors hover:bg-[#C7DAFF] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <MdOutlineRefresh className="size-4" />
-          Try Again
+          {loading ? (
+            <>
+              <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+              Loading...
+            </>
+          ) : (
+            <>
+              <MdOutlineRefresh className="size-4" />
+              Try Again
+            </>
+          )}
         </button>
       </div>
     );
