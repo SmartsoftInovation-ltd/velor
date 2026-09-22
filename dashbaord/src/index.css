@@ -234,7 +234,7 @@ layer(base);
     transform: translateX(-100%) skewX(-20deg);
   }
   &:hover::after {
-    animation: shine-sweep 0.8s ease-in-out;
+    animation: shine-sweep var(--shine-duration, 0.8s) ease-in-out;
   }
   &:where(.dark, .dark *)::after {
     background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.12), transparent);

@@ -83,3 +83,7 @@ Singleton `socket.io-client` instance authenticated with the access token (serve
 ### Styling
 
 Tailwind CSS v4 (via `@tailwindcss/postcss`). Dark mode uses the `dark` class on `<html>`. Use `tailwind-merge` (`twMerge` / `clsx`) for conditional class composition.
+
+### Redesign style
+
+The app is moving from the old blue button look (`#DCE8FF` / `#1D4ED8`) to the Platform Console accent green (`accent-*`, `#0F9D63`). When asked to redesign or restyle any page, follow `.claude/rules/ui-redesign.md`: primary, secondary and destructive button colors, soft per-action row buttons (view gray, edit amber, toggle green/gray, delete red, 4px radius), the status pill, the serial ID column, the sidebar rail and the `shine` hover sweep. The Category module is the finished reference.
