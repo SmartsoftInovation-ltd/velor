@@ -895,7 +895,11 @@ const platformConsoleItems: NavItem[] = [
     icon: <TbBuildingCommunity />,
     subItems: [
       { name: "Sellers", path: "/platform/sellers", platformOnly: true, pro: false },
-      { name: "Store Settings", path: "/store-settings", platformOnly: true, pro: false },
+      // No "Store Settings" here: /store-settings is a seller page behind the
+      // store session, so an operator — who holds only a platform token — was
+      // bounced to /signin by ProtectedRoute. An operator edits a store's
+      // settings on that seller's own page (Sellers → a seller), which already
+      // does it over the platform token via settingsApi.
       { name: "Operators", path: "/platform/operators", platformOnly: true, pro: false },
     ],
   },

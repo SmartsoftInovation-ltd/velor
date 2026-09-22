@@ -94,10 +94,27 @@ describe("SignInForm", () => {
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(post.mock.calls[0][0]).toBe("/auth/login");
     expect(post.mock.calls[0][1]).toEqual({ workspace: "pizzashop", email: "staff@pizza.com", password: "Pizza-Pass1" });
-    expect(post.mock.calls[0][2]).toMatchObject({ headers: { "x-tenant": "pizzashop" } });
+    // The body names the workspace; an x-tenant header here is resolved before
+    // the sign-in is read, so a mistyped one answered "Store not found".
+    expect(post.mock.calls[0][2].headers).not.toHaveProperty("x-tenant");
     await waitFor(() => expect(setAccessToken).toHaveBeenCalledWith("token-1"));
     expect(getWorkspace()).toBe("pizzashop");
     expect(refreshAuth).toHaveBeenCalled();
+  });
+
+  // Every later request sends the workspace as x-tenant, which resolves a slug
+  // and nothing else — so what the API resolved is what must be remembered.
+  it("remembers the slug the API returned, not what was typed", async () => {
+    post.mockResolvedValue({ data: { data: { accessToken: "token-1", tenant: { slug: "smartsoftinovation" } } } });
+    renderAt();
+
+    await userEvent.type(screen.getByLabelText(/^workspace/i), "smartsoftinovation");
+    await userEvent.type(screen.getByLabelText(/^email or phone/i), "staff@velor.com");
+    await userEvent.type(screen.getByLabelText(/^password/i), "Velor-Pass1");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => expect(setAccessToken).toHaveBeenCalledWith("token-1"));
+    expect(getWorkspace()).toBe("smartsoftinovation");
   });
 
   // A failed attempt must not leave the new store's x-tenant paired with the

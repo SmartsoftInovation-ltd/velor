@@ -121,13 +121,18 @@ export default function SignInForm() {
         }
       }
 
+      // No x-tenant here: the body's `workspace` already names the store, and
+      // the header is resolved before the sign-in is read — so a mistyped
+      // workspace answered "Store not found" instead of "Invalid credentials".
       const response = await axiosSecure.post(
         `/auth/login`,
         { workspace, ...loginIdentifier(formData.identifier), password: formData.password },
-        { headers: { "Content-Type": "application/json", "x-tenant": workspace }, withCredentials: true },
+        { headers: { "Content-Type": "application/json" }, withCredentials: true },
       );
-      const { accessToken } = response.data.data;
-      setWorkspace(workspace);
+      const { accessToken, tenant } = response.data.data;
+      // Remember the slug the API resolved, not what was typed — every later
+      // request sends it as x-tenant, which accepts nothing else.
+      setWorkspace(tenant?.slug || workspace);
       setAccessToken(accessToken);
       toast.success("Login successful");
       await refreshAuth();
