@@ -566,6 +566,9 @@ export default function CreateWholeSalesForm({
     // Walking customers have no account to carry a due, and dueLimit 0 means
     // no limit was set for this customer.
     const isDueLimitExceeded = !isWalking && dueLimit > 0 && balance > dueLimit;
+    // A walking customer has no account to carry a due against, so the sale
+    // must be settled in full at the counter: paid has to cover the payable.
+    const isWalkingUnderpaid = isWalking && presDues > 0;
 
     // ── Seller discount-limit guard ─────────────────────────────────────────
     // A product/variant that already carries its own discount marks its row
@@ -873,6 +876,14 @@ export default function CreateWholeSalesForm({
 
         if (!salesman) {
             toast.error("Please select a salesman.");
+            return;
+        }
+
+        // A walking sale cannot leave a due behind — there is no account to bill.
+        if (isWalkingUnderpaid) {
+            toast.error(
+                `A walking customer must pay in full — ৳${presDues.toFixed(2)} still due on a ৳${payable.toFixed(2)} bill.`,
+            );
             return;
         }
 
@@ -1780,7 +1791,7 @@ export default function CreateWholeSalesForm({
                     <div className="flex gap-2 mt-3">
                         <button
                             onClick={() => handleSave(false)}
-                            disabled={isDueLimitExceeded || isSaving}
+                            disabled={isDueLimitExceeded || isWalkingUnderpaid || isSaving}
                             title={
                                 isDueLimitExceeded
                                     ? "Due limit exceeded"
@@ -1794,7 +1805,7 @@ export default function CreateWholeSalesForm({
                         </button>
                         <button
                             onClick={() => handleSave(true)}
-                            disabled={isDueLimitExceeded || isSaving}
+                            disabled={isDueLimitExceeded || isWalkingUnderpaid || isSaving}
                             title={
                                 isDueLimitExceeded
                                     ? "Due limit exceeded"

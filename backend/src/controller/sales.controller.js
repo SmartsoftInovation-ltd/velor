@@ -128,6 +128,31 @@ const normalizeNetPaid = (body, fallback = {}) => {
   body.netPaid = toPaisa(Math.max(0, paid - body.changes));
 };
 
+/**
+ * A walking customer has no account to bill later, so the sale has to be
+ * settled in full at the counter. The dashboard's receivable figure counts
+ * listed customers only for the same reason — a walking due is money nobody
+ * can go and collect.
+ *
+ * Overpaying is fine: the excess comes back as `changes`. Only a shortfall is
+ * rejected.
+ */
+const enforceWalkingPaidInFull = (body, fallback = {}) => {
+  const type = body?.customerType?.type ?? fallback?.customerType?.type;
+  if (type !== "walking") return;
+
+  const paid = Number(body.paid ?? fallback.paid ?? 0) || 0;
+  const payable = Number(body.payable ?? fallback.payable ?? 0) || 0;
+  const due = toPaisa(payable - paid);
+  if (due <= 0) return;
+
+  throw new customError(
+    `A walking customer must pay in full — ${due} still due on a ${toPaisa(payable)} bill.`,
+    statusCodes.BAD_REQUEST,
+    "WALKING_DUE_NOT_ALLOWED",
+  );
+};
+
 // Extract {account, amount} pairs the seller entered on the Paid field(s),
 // whichever payment mode (single/multiple) is active. Zero/blank entries are
 // skipped — they don't move any money.
@@ -324,6 +349,7 @@ exports.createSales = asynchandeler(async (req, res) => {
   // Enforce the seller's discount limit and stamp who is accountable for it.
   enforceDiscountLimit(req.user, req.body);
   normalizeNetPaid(req.body);
+  enforceWalkingPaidInFull(req.body);
   req.body.discountGivenBy = req.user?._id;
 
   const session = await mongoose.startSession();
@@ -910,6 +936,8 @@ exports.updateSales = asynchandeler(async (req, res) => {
         lessTaka: req.body.lessTaka ?? oldSale.lessTaka,
       });
       normalizeNetPaid(req.body, oldSale);
+      // An edit must not be able to leave a walking sale with a due either.
+      enforceWalkingPaidInFull(req.body, oldSale);
       // Record who applied the discount on this edit.
       req.body.discountGivenBy = req.user?._id;
 
