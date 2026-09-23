@@ -249,7 +249,14 @@ const MoneyHandoverUpdate = () => {
    loading ?"bg-gray-400" :"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
    } text-[#1D4ED8] px-4 py-2 rounded`}
               >
-                {loading ? "Updating..." : "Update Money Handover"}
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                    Updating...
+                  </span>
+                ) : (
+                  "Update Money Handover"
+                )}
               </Button>
             </MobileActionBar>
           </div>

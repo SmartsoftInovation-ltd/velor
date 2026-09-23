@@ -108,6 +108,13 @@ export default function SupplierTable({
       await axiosSecure.delete(`/supplier/delete-supplier/${selectedSupplier.supplierId}`);
       toast.success("Supplier deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchSuppliers();
     } catch (error) {
       showApiError(error, "Failed to delete supplier.");

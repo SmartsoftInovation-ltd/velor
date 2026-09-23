@@ -228,7 +228,14 @@ const CustomerPaymentReceiveEdit = () => {
               disabled={isLoading}
                 className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-6 py-2 rounded"
             >
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Saving...
+                </span>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         </ComponentCard>

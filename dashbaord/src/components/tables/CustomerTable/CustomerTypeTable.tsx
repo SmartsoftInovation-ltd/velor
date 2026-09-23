@@ -117,6 +117,13 @@ const CustomerTypeTable = () => {
 
   const fetchTypes = () => {
     queryClient.invalidateQueries({ queryKey: ["customer-types"] });
+    // Refresh every dashboard widget (Accounts Balance included) so the
+    // change shows without a reload.
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        typeof query.queryKey[0] === "string" &&
+        query.queryKey[0].startsWith("dashboard-"),
+    });
     refetch();
   };
 
@@ -140,6 +147,13 @@ const CustomerTypeTable = () => {
       });
       toast.success("Customer type updated successfully.");
       queryClient.invalidateQueries({ queryKey: ["customer-types"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchTypes();
       setShowEditModal(false);
       setSelected(null);
@@ -162,6 +176,13 @@ const CustomerTypeTable = () => {
       );
       toast.success("Customer type deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["customer-types"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchTypes();
       setShowDeleteModal(false);
       setSelected(null);
@@ -449,7 +470,14 @@ const CustomerTypeTable = () => {
               disabled={isSaving}
                 className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
             >
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Saving...
+                </span>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         </div>

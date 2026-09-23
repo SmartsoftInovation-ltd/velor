@@ -154,12 +154,26 @@ const CustomerTable = ({
       );
       toast.success("Customer deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       setShowDeleteModal(false);
       setSelectedCustomer(null);
     } catch (error) {
       // The modal stays open on failure, so the row is still there to retry.
       showApiError(error, "Failed to delete customer. Please try again.");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchCustomers();
     } finally {
       setIsDeleting(false);
@@ -190,6 +204,13 @@ const CustomerTable = ({
         `Customer ${currentStatus ? "deactivated" : "activated"} successfully.`,
       );
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchCustomers();
     } catch (error) {
       showApiError(error, "Failed to update customer status.");
@@ -261,6 +282,13 @@ const CustomerTable = ({
                 queryClient.invalidateQueries({ queryKey: ["customers"] });
                 queryClient.invalidateQueries({ queryKey: ["customer-payments"] });
                 queryClient.invalidateQueries({ queryKey: ["customer-advance-payments"] });
+                // Refresh every dashboard widget (Accounts Balance included) so the
+                // change shows without a reload.
+                queryClient.invalidateQueries({
+                  predicate: (query) =>
+                    typeof query.queryKey[0] === "string" &&
+                    query.queryKey[0].startsWith("dashboard-"),
+                });
                 fetchCustomers();
               }}
               size="sm"

@@ -216,7 +216,14 @@ const QuickAddModal = ({ title, placeholder, onClose, onSave, requireType, onSav
             disabled={saving}
               className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                Saving...
+              </span>
+            ) : (
+              "Save"
+            )}
           </Button>
         </div>
       </div>
@@ -428,7 +435,14 @@ const AddTransactionForm = () => {
             disabled={isLoading}
               className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-2.5 rounded-xl font-semibold border-none shadow-lg active:scale-95 transition-all"
           >
-            {isLoading ? "Submitting..." : "Add Transaction"}
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                Submitting...
+              </span>
+            ) : (
+              "Add Transaction"
+            )}
           </Button>
         </MobileActionBar>
       </div>

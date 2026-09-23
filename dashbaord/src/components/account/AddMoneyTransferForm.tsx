@@ -130,7 +130,14 @@ const QuickAddModal = ({ onClose, onSave }: { onClose: () => void; onSave: (name
         <div className="flex gap-3">
           <Button onClick={onClose} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
           <Button onClick={handleSave} disabled={saving} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all">
-            {saving ? "Saving..." : "Save"}
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                Saving...
+              </span>
+            ) : (
+              "Save"
+            )}
           </Button>
         </div>
       </div>
@@ -257,7 +264,14 @@ const AddMoneyTransferForm = () => {
           <Button onClick={handleSubmit} disabled={loading}
             className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-2.5 rounded-xl font-semibold border-none shadow-lg active:scale-95 transition-all"
           >
-            {loading ? "Submitting..." : "Add Money Transfer"}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                Submitting...
+              </span>
+            ) : (
+              "Add Money Transfer"
+            )}
           </Button>
         </MobileActionBar>
       </div>

@@ -132,6 +132,13 @@ const CustomerEdit = () => {
       setShowAddTypeModal(false);
       await fetchCustomerTypes();
       queryClient.invalidateQueries({ queryKey: ["customer-types"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to create type");
     } finally {
@@ -207,6 +214,13 @@ const CustomerEdit = () => {
       toast.success("Customer updated successfully");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["customer", customerId] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       setTimeout(() => navigate("/customer-list"), 50);
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
@@ -497,7 +511,14 @@ const CustomerEdit = () => {
                 disabled={isLoading}
                   className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-6 py-2.5 rounded-xl font-semibold"
               >
-                {isLoading ? "Saving..." : "Save Changes"}
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                    Saving...
+                  </span>
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             </div>
           </div>
@@ -534,7 +555,14 @@ const CustomerEdit = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={handleAddType} disabled={addingType} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white">
-              {addingType ? "Creating..." : "Create"}
+              {addingType ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Creating...
+                </span>
+              ) : (
+                "Create"
+              )}
             </Button>
             <Button
               onClick={() => { setShowAddTypeModal(false); setNewTypeName(""); }}

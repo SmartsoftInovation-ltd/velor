@@ -224,7 +224,14 @@ const AddTransactionCategoryForm = () => {
             onClick={handleSubmit}
             disabled={isLoading}
           >
-            {isLoading ? "Submitting..." : "Submit"}
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                Submitting...
+              </span>
+            ) : (
+              "Submit"
+            )}
           </Button>
         </div>
       </MobileActionBar>

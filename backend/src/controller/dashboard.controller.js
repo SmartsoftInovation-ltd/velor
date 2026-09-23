@@ -437,8 +437,11 @@ exports.getOverview = asynchandeler(async (req, res) => {
     // 11. Total customers
     customerModel.countDocuments({}),
 
-    // 12. Outstanding customer dues across all sales (not range-bound)
+    // 12. Outstanding customer dues across all sales (not range-bound).
+    // Listed customers only: a walking customer has no account to owe against,
+    // so their unpaid amount is not a receivable the shop can collect.
     salesModel.aggregate([
+      { $match: { "customerType.type": "listed" } },
       {
         $group: {
           _id: null,
@@ -1666,7 +1669,11 @@ exports.getOutflowTransactionSummary = asynchandeler(async (req, res) => {
 // closingBalance, then kept in sync with today's live totals on every call.
 exports.getDayCashSummary = asynchandeler(async (req, res) => {
   const { start: todayStart, end: todayEnd } = resolveRange("today");
-  const dateMatch = { createdAt: { $gte: todayStart, $lte: todayEnd } };
+  // `date` — the day the money actually moved — not `createdAt`, which is when
+  // the row was typed. The Inflow and Outflow boxes range on `date`, so using
+  // `createdAt` here made a backdated entry land on a different day than the
+  // feed showed it on.
+  const dateMatch = { date: { $gte: todayStart, $lte: todayEnd } };
 
   const [
     salesPaidAgg,
@@ -1676,6 +1683,8 @@ exports.getDayCashSummary = asynchandeler(async (req, res) => {
     purchasePaidAgg,
     supplierPaymentAgg,
     cashPaymentAgg,
+    purchaseReturnAgg,
+    salesReturnAgg,
   ] = await Promise.all([
     salesModel.aggregate([
       { $match: dateMatch },
@@ -1720,8 +1729,21 @@ exports.getDayCashSummary = asynchandeler(async (req, res) => {
         },
       },
     ]),
+    // Manual cash received only. Sales, customer payments and purchase returns
+    // each write their own "cash recived" row and are counted by their own
+    // source above, so counting these here too would double the same money —
+    // the Inflow box filters them out the same way.
     crateTransactionModel.aggregate([
-      { $match: { ...dateMatch, transactionType: "cash recived" } },
+      {
+        $match: {
+          ...dateMatch,
+          transactionType: "cash recived",
+          saleReference: null,
+          customerPaymentReference: null,
+          customerAdvancePaymentReference: null,
+          purchaseReturnReference: null,
+        },
+      },
       { $group: { _id: null, amount: { $sum: "$amount" } } },
     ]),
     purchaseModel.aggregate([
@@ -1738,9 +1760,33 @@ exports.getDayCashSummary = asynchandeler(async (req, res) => {
         },
       },
     ]),
+    // Manual cash payments only — same reasoning as the receive side: purchase
+    // payments, supplier payments and sales returns are already counted by
+    // their own source, exactly as the Outflow box filters them.
     crateTransactionModel.aggregate([
-      { $match: { ...dateMatch, transactionType: "cash payment" } },
+      {
+        $match: {
+          ...dateMatch,
+          transactionType: "cash payment",
+          purchaseReference: null,
+          supplierPaymentReference: null,
+          salesReturnReference: null,
+        },
+      },
       { $group: { _id: null, amount: { $sum: "$amount" } } },
+    ]),
+
+    // Purchase returns — money back from suppliers, counted by the Inflow box.
+    // This model dates its rows on `returnDate`, not `createdAt`.
+    purchaseReturnModel.aggregate([
+      { $match: { returnDate: { $gte: todayStart, $lte: todayEnd } } },
+      { $group: { _id: null, amount: { $sum: "$totalReturnAmount" } } },
+    ]),
+
+    // Sales returns — money refunded to customers, counted by the Outflow box.
+    salesReturnModel.aggregate([
+      { $match: { date: { $gte: todayStart, $lte: todayEnd } } },
+      { $group: { _id: null, amount: { $sum: "$totalReturnAmount" } } },
     ]),
   ]);
 
@@ -1748,17 +1794,23 @@ exports.getDayCashSummary = asynchandeler(async (req, res) => {
   const cap = customerAdvancePaymentAgg[0] || { paidAmount: 0, cashBack: 0 };
   const sp = supplierPaymentAgg[0] || { paidAmount: 0, lessAmount: 0 };
 
+  // These two must equal the Inflow and Outflow boxes' grand totals for the
+  // same day: same sources, same de-duplication. A source added to one of those
+  // boxes has to be added here too, or the day's cash disagrees with the feed
+  // the operator is looking at right above it.
   const totalReceive = round2(
     (salesPaidAgg[0]?.amount || 0) +
       ((cp.paidAmount || 0) - (cp.lessAmount || 0) - (cp.cashBack || 0)) +
       ((cap.paidAmount || 0) - (cap.cashBack || 0)) +
-      (cashReceivedAgg[0]?.amount || 0),
+      (cashReceivedAgg[0]?.amount || 0) +
+      (purchaseReturnAgg[0]?.amount || 0),
   );
 
   const totalPayment = round2(
     (purchasePaidAgg[0]?.amount || 0) +
       ((sp.paidAmount || 0) - (sp.lessAmount || 0)) +
-      (cashPaymentAgg[0]?.amount || 0),
+      (cashPaymentAgg[0]?.amount || 0) +
+      (salesReturnAgg[0]?.amount || 0),
   );
 
   // Seed today's opening balance from the most recent prior day's closing
@@ -1939,7 +1991,11 @@ exports.getCustomerSummary = asynchandeler(async (req, res) => {
   const [customerCount, duesAgg] = await Promise.all([
     customerModel.countDocuments({}),
 
+    // Listed customers only. A walking customer has no account to owe against —
+    // their unpaid amount is written off at the counter, not carried as a
+    // receivable — so counting it here overstated what the shop can collect.
     salesModel.aggregate([
+      { $match: { "customerType.type": "listed" } },
       { $group: { _id: null, totalDue: { $sum: "$presentDue" } } },
     ]),
   ]);

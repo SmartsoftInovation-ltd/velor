@@ -155,6 +155,13 @@ const QuickCreateCustomerModal = ({
       const created = customers.find((c) => c.mobileNumber === mobile);
 
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       toast.success("Customer created successfully");
 
       if (!created) {
@@ -324,7 +331,14 @@ const QuickCreateCustomerModal = ({
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={isLoading}>
-          {isLoading ? "Creating..." : "Create Customer"}
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+              Creating...
+            </span>
+          ) : (
+            "Create Customer"
+          )}
         </Button>
       </div>
     </Modal>

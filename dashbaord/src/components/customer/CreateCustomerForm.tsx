@@ -93,6 +93,13 @@ const CreateCustomerForm = () => {
       setShowAddTypeModal(false);
       await fetchCustomerTypes();
       queryClient.invalidateQueries({ queryKey: ["customer-types"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to create type");
     } finally {
@@ -108,6 +115,13 @@ const CreateCustomerForm = () => {
       if (selectedType?.slug === slug) setSelectedType(null);
       await fetchCustomerTypes();
       queryClient.invalidateQueries({ queryKey: ["customer-types"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to delete type");
     }
@@ -165,6 +179,13 @@ const CreateCustomerForm = () => {
       });
       toast.success("Customer created successfully");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      // Refresh every dashboard widget (Accounts Balance included) so the
+      // change shows without a reload.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
 
       setForm({
         fullName: "",
@@ -449,7 +470,14 @@ const CreateCustomerForm = () => {
           disabled={isLoading}
             className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-6 py-2.5 rounded-xl font-semibold"
         >
-          {isLoading ? "Creating..." : "Create Customer"}
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+              Creating...
+            </span>
+          ) : (
+            "Create Customer"
+          )}
         </Button>
       </div>
 
@@ -487,7 +515,14 @@ const CreateCustomerForm = () => {
               disabled={addingType}
                 className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8]"
             >
-              {addingType ? "Creating..." : "Create"}
+              {addingType ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  Creating...
+                </span>
+              ) : (
+                "Create"
+              )}
             </Button>
             <Button
               onClick={() => { setShowAddTypeModal(false); setNewTypeName(""); }}
