@@ -1795,9 +1795,11 @@ export default function CreateWholeSalesForm({
                             title={
                                 isDueLimitExceeded
                                     ? "Due limit exceeded"
-                                    : isSaving
-                                        ? "Saving..."
-                                        : undefined
+                                    : isWalkingUnderpaid
+                                        ? "Walking customer must pay in full"
+                                        : isSaving
+                                            ? "Saving..."
+                                            : undefined
                             }
                               className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-[0.98] text-[#1D4ED8] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
                         >
@@ -1809,15 +1811,26 @@ export default function CreateWholeSalesForm({
                             title={
                                 isDueLimitExceeded
                                     ? "Due limit exceeded"
-                                    : isSaving
-                                        ? "Saving..."
-                                        : undefined
+                                    : isWalkingUnderpaid
+                                        ? "Walking customer must pay in full"
+                                        : isSaving
+                                            ? "Saving..."
+                                            : undefined
                             }
                               className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-[0.98] text-[#1D4ED8] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
                         >
                             {isSaving ? (isEdit ? "UPDATING..." : "SAVING...") : (isEdit ? "UPDATE & PRINT" : "SAVE & PRINT")}
                         </button>
                     </div>
+
+                    {/* A walking customer has no account to bill later, so the
+                        counter has to collect the whole bill before saving. */}
+                    {isWalkingUnderpaid && (
+                        <p className="mt-2 rounded-md bg-red-50 px-2.5 py-2 text-[11px] font-semibold leading-snug text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                            Walking customer — no due allowed. Collect the full ৳{payable.toFixed(2)};
+                            ৳{presDues.toFixed(2)} is still unpaid.
+                        </p>
+                    )}
                 </div>
             </div>
 
