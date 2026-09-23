@@ -162,6 +162,13 @@ const CustomerAdvancePaymentTable = ({
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      // Every dashboard widget, not just the balance box: each is keyed by
+      // range, so a prefix match is what refreshes the one on screen.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchPayments();
       setShowDeleteModal(false);
       setSelectedId(null);

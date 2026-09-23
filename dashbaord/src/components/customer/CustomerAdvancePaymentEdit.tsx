@@ -90,6 +90,13 @@ const CustomerAdvancePaymentEdit = () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      // Every dashboard widget, not just the balance box: each is keyed by
+      // range, so a prefix match is what refreshes the one on screen.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       setTimeout(() => navigate("/advance-payment-list"), 50);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to update payment.");

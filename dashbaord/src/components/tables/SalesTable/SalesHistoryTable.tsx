@@ -427,7 +427,14 @@ const SalesHistoryTable = ({
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+      // Every dashboard widget, not just the balance box: deleting a sale moves
+      // Total Invoices and Total Sale too, and each is keyed by range, so a
+      // prefix match is what actually refreshes the one on screen.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
     } catch (error) {
       showApiError(error, "Failed to delete.");
     } finally {

@@ -119,8 +119,8 @@ export default function InteractiveDashboard() {
     refetch: refetchSalesSummary,
   } = useSalesSummary(range);
   const {
-    data: transactionSummaryData,
-    isLoading: isTransactionSummaryLoading,
+    // Kept for the "Refresh all" button: the Total Transaction box now reads
+    // the Inflow/Outflow feeds instead of this endpoint's own figures.
     isFetching: isTransactionSummaryFetching,
     refetch: refetchTransactionSummary,
   } = useTransactionSummary(range);
@@ -218,7 +218,6 @@ export default function InteractiveDashboard() {
   const k = data?.kpis;
   const inv = invoiceStats?.invoices;
   const salesSummary = salesSummaryData?.sales;
-  const transactionSummary = transactionSummaryData?.transaction;
   const inventorySummary = inventorySummaryData?.inventory;
   const customerSummary = customerSummaryData?.customer;
   const supplierSummary = supplierSummaryData?.supplier;
@@ -233,6 +232,14 @@ export default function InteractiveDashboard() {
   const customerDuePayment = customerDuePaymentSummaryData?.customerDuePayment;
   const inflowTransactionSummary = inflowTransactionSummaryData;
   const outflowTransactionSummary = outflowTransactionSummaryData;
+
+  // The Total Transaction box reads the same two feeds shown further down the
+  // page, so the headline figure always matches the Inflow and Outflow grand
+  // totals a user can scroll to and check. Its own endpoint counted a
+  // different set of sources and disagreed with them.
+  const totalTransactionReceived = inflowTransactionSummary?.grandTotal ?? 0;
+  const totalTransactionPaid = outflowTransactionSummary?.grandTotal ?? 0;
+  const totalTransactionBalance = totalTransactionReceived - totalTransactionPaid;
 
   // Each box is gated by its own permission. Superadmin sees everything;
   // anyone else sees only the boxes explicitly granted to them.
@@ -432,17 +439,17 @@ export default function InteractiveDashboard() {
             {showBox(PERMISSIONS.DASHBOARD_TOTAL_TRANSACTION) && (
               <KpiCard
                 title="Total Transaction"
-                value={formatCurrencyExact(transactionSummary?.totalTransaction ?? 0)}
+                value={formatCurrencyExact(totalTransactionReceived)}
                 icon={<FiCreditCard className="size-5" />}
                 iconAccent="orange"
-                loading={isTransactionSummaryLoading}
+                loading={isInflowTransactionSummaryLoading || isOutflowTransactionSummaryLoading}
                 stats={[
-                  { label: "Total Payment", value: formatCurrencyExact(transactionSummary?.totalPayment ?? 0) },
-                  { label: "Total Balance", value: formatCurrencyExact(transactionSummary?.totalBalance ?? 0) },
+                  { label: "Total Payment", value: formatCurrencyExact(totalTransactionPaid) },
+                  { label: "Total Balance", value: formatCurrencyExact(totalTransactionBalance) },
                 ]}
                 progressSegments={[
-                  { label: "Total Payment", value: transactionSummary?.totalPayment ?? 0, color: "warning" },
-                  { label: "Total Balance", value: Math.max(transactionSummary?.totalBalance ?? 0, 0), color: "success" },
+                  { label: "Total Payment", value: totalTransactionPaid, color: "warning" },
+                  { label: "Total Balance", value: Math.max(totalTransactionBalance, 0), color: "success" },
                 ]}
               />
             )}

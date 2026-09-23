@@ -85,6 +85,14 @@ const SalesReturnTable = () => {
 
   const fetchReturns = () => {
     queryClient.invalidateQueries({ queryKey: ["sales-returns"] });
+    // Every dashboard widget: a sale moves Total Invoices, Total Sale
+    // and the cash boxes, and each is keyed by range, so a prefix
+    // match is what refreshes the one on screen.
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        typeof query.queryKey[0] === "string" &&
+        query.queryKey[0].startsWith("dashboard-"),
+    });
   };
 
   const handleDeleteModal = (id: string) => {

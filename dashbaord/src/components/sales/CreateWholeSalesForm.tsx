@@ -1007,6 +1007,14 @@ export default function CreateWholeSalesForm({
                 queryClient.invalidateQueries({ queryKey: ["accounts"] });
                 queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
                 queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+                // Every dashboard widget: a sale moves Total Invoices, Total Sale
+                // and the cash boxes, and each is keyed by range, so a prefix
+                // match is what refreshes the one on screen.
+                queryClient.invalidateQueries({
+                  predicate: (query) =>
+                    typeof query.queryKey[0] === "string" &&
+                    query.queryKey[0].startsWith("dashboard-"),
+                });
                 onUpdated?.();
                 if (shouldPrint) {
                     const invoiceNumber = res?.data?.data?.invoiceNumber || editSale.invoiceNumber;
@@ -1024,6 +1032,14 @@ export default function CreateWholeSalesForm({
             queryClient.invalidateQueries({ queryKey: ["accounts"] });
             queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
             queryClient.invalidateQueries({ queryKey: ["dashboard-accounts-balance-summary"] });
+            // Every dashboard widget: a sale moves Total Invoices, Total Sale
+            // and the cash boxes, and each is keyed by range, so a prefix
+            // match is what refreshes the one on screen.
+            queryClient.invalidateQueries({
+              predicate: (query) =>
+                typeof query.queryKey[0] === "string" &&
+                query.queryKey[0].startsWith("dashboard-"),
+            });
             resetForm();
             if (shouldPrint) {
                 const invoiceNumber = res?.data?.data?.invoiceNumber;
