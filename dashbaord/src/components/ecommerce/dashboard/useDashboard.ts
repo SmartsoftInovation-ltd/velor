@@ -430,6 +430,7 @@ export const usePurchaseSummary = (
 export interface DashboardSoldItemsSummary {
   invoiceCount: number;
   quantity: number;
+  totalAmount: number;
   wholesaleAmount: number;
   retailAmount: number;
 }

@@ -2186,8 +2186,9 @@ exports.getPurchaseSummary = asynchandeler(async (req, res) => {
   });
 });
 
-// @desc  Sold Items box — total quantity sold, sales invoice count, and
-// discount-applied amount split by wholesale vs retail, range-filtered
+// @desc  Sold Items box — total quantity sold, sales invoice count, and the
+// net sales amount (after item AND invoice discounts), in total and split by
+// wholesale vs retail, range-filtered
 exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
   const { start, end, key } = resolveRange(
     req.query.range,
@@ -2195,7 +2196,8 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
     req.query.endDate,
   );
 
-  const cacheKey = await buildCacheKey(NS, `sold-items-summary:${key}`);
+  // v2: amounts became net of invoice discount; old cached payloads lack totalAmount.
+  const cacheKey = await buildCacheKey(NS, `sold-items-summary:v2:${key}`);
   const cached = await getCache(cacheKey);
   if (cached) {
     return apiResponse.sendSuccess(res, statusCodes.OK, "Sold items summary fetched", {
@@ -2216,12 +2218,78 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
       { $group: { _id: null, quantity: { $sum: "$searchItem.quantity" } } },
     ]),
 
-    // Discount-applied amount (searchItem.subtotal), grouped by whether the
-    // sale is wholesale (wholesale/wholesaleorder) or retail (retailsale/retailsaleorder)
+    // Net sales per invoice, grouped wholesale (wholesale/wholesaleorder) vs
+    // retail (retailsale/retailsaleorder). searchItem.subtotal already carries
+    // the item discount; on top of that the invoice discountPercent and
+    // lessTaka are taken off, the same way the sale forms build payable.
+    // lessTaka is spread over all lines, so only the sale lines' share of it
+    // counts here. VAT, delivery and labour are not sales price and stay out.
     salesModel.aggregate([
       { $match: dateMatch },
-      { $unwind: "$searchItem" },
-      { $match: { "searchItem.salesStatus": "sale" } },
+      {
+        $project: {
+          salesType: 1,
+          saleSubtotal: {
+            $reduce: {
+              input: { $ifNull: ["$searchItem", []] },
+              initialValue: 0,
+              in: {
+                $add: [
+                  "$$value",
+                  {
+                    $cond: [
+                      { $eq: [{ $ifNull: ["$$this.salesStatus", "sale"] }, "sale"] },
+                      { $ifNull: ["$$this.subtotal", 0] },
+                      0,
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          allSubtotal: {
+            $reduce: {
+              input: { $ifNull: ["$searchItem", []] },
+              initialValue: 0,
+              in: { $add: ["$$value", { $ifNull: ["$$this.subtotal", 0] }] },
+            },
+          },
+          discountPercent: { $ifNull: ["$discountPercent", 0] },
+          lessTaka: { $ifNull: ["$lessTaka", 0] },
+        },
+      },
+      {
+        $project: {
+          salesType: 1,
+          net: {
+            $max: [
+              0,
+              {
+                $subtract: [
+                  {
+                    $multiply: [
+                      "$saleSubtotal",
+                      { $subtract: [1, { $divide: ["$discountPercent", 100] }] },
+                    ],
+                  },
+                  {
+                    $cond: [
+                      { $gt: ["$allSubtotal", 0] },
+                      {
+                        $multiply: [
+                          "$lessTaka",
+                          { $divide: ["$saleSubtotal", "$allSubtotal"] },
+                        ],
+                      },
+                      0,
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
       {
         $group: {
           _id: {
@@ -2231,7 +2299,7 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
               "retail",
             ],
           },
-          amount: { $sum: "$searchItem.subtotal" },
+          amount: { $sum: "$net" },
         },
       },
     ]),
@@ -2247,6 +2315,7 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
     soldItems: {
       invoiceCount: invoiceCount || 0,
       quantity: quantityAgg[0]?.quantity || 0,
+      totalAmount: Math.round(wholesaleAmount + retailAmount),
       wholesaleAmount: Math.round(wholesaleAmount),
       retailAmount: Math.round(retailAmount),
     },

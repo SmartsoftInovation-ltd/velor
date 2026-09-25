@@ -552,7 +552,7 @@ export default function InteractiveDashboard() {
                 loading={isSoldItemsSummaryLoading}
                 stats={[
                   { label: "Invoices", value: formatNumber(soldItemsSummary?.invoiceCount ?? 0) },
-                  { label: "Wholesale", value: formatCurrency(soldItemsSummary?.wholesaleAmount ?? 0), color: "success" },
+                  { label: "Total Sales", value: formatCurrency(soldItemsSummary?.totalAmount ?? 0), color: "success" },
                   { label: "Retail", value: formatCurrency(soldItemsSummary?.retailAmount ?? 0), color: "success" },
                 ]}
               />
