@@ -72,7 +72,7 @@ const DiscountBannerView = () => {
         />
         <PageBreadcrumb pageTitle="View Discount Banner" />
         <div className="flex justify-center items-center min-h-[400px]">
-          <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+          <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
         </div>
       </>
     );
@@ -90,7 +90,7 @@ const DiscountBannerView = () => {
           <p className="text-red-500 font-semibold">Banner not found.</p>
           <button
             onClick={() => navigate("/discount-banner-list")}
-            className="px-5 py-2 rounded-xl bg-brand-500 text-white text-sm font-bold"
+            className="px-5 py-2 rounded-xl bg-accent-500 text-white text-sm font-bold"
           >
             Back to List
           </button>
@@ -114,14 +114,14 @@ const DiscountBannerView = () => {
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate("/discount-banner-list")}
-            className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition-colors"
+            className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-accent-500 dark:hover:text-accent-400 transition-colors"
           >
             <FaArrowLeft className="size-3.5" />
             Back to List
           </button>
           <Button
             onClick={() => navigate(`/update-discount-banner/${banner.slug}`)}
-            className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-5 py-2 rounded-xl text-sm font-bold"
+            className="flex items-center gap-2 !bg-accent-500 hover:!bg-accent-600 !text-white px-5 py-2 !rounded-xl text-sm font-semibold"
           >
             <FaEdit className="size-3.5" />
             Edit Banner
@@ -180,7 +180,7 @@ const DiscountBannerView = () => {
                   href={banner.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-brand-500 hover:text-brand-600 hover:underline break-all"
+                  className="flex items-center gap-1.5 text-sm text-accent-500 hover:text-accent-600 hover:underline break-all"
                 >
                   {banner.link}
                   <FaExternalLinkAlt className="size-3 shrink-0" />
@@ -196,7 +196,7 @@ const DiscountBannerView = () => {
               <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
                 Priority
               </p>
-              <span className="inline-flex items-center justify-center size-8 rounded-full bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 text-sm font-bold">
+              <span className="inline-flex items-center justify-center size-8 rounded-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400 text-sm font-bold">
                 {banner.priority}
               </span>
             </div>

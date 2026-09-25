@@ -123,8 +123,9 @@ const StoreInfoList = () => {
               onClick={() => navigate(-1)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Go Back"
+              aria-label="Go Back"
             >
               <FaArrowLeft className="size-3.5" />
             </Button>
@@ -132,14 +133,15 @@ const StoreInfoList = () => {
               onClick={() => fetchStores(1, debouncedSearch)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Refresh"
+              aria-label="Refresh"
             >
               <FaSync className="size-3.5" />
             </Button>
             {canAdd && (
               <Link to="/add-store-info">
-                <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+                <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                   Add Store Info
                 </Button>
               </Link>
@@ -167,7 +169,7 @@ const StoreInfoList = () => {
             <div className="py-10 text-center text-sm text-gray-500">
               No store information found.{" "}
               {canAdd && (
-                <Link to="/add-store-info" className="text-blue-500 hover:underline">Create one</Link>
+                <Link to="/add-store-info" className="text-accent-600 hover:underline">Create one</Link>
               )}
             </div>
           )}
@@ -179,7 +181,7 @@ const StoreInfoList = () => {
                   <Table>
                     <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                       <TableRow className="uppercase">
-                        {["#", "Logo", "Store Name", "Phone", "Email", "Address", "Actions"].map((h) => (
+                        {["Serial ID", "Logo", "Store Name", "Phone", "Email", "Address", "Actions"].map((h) => (
                           <TableCell key={h} isHeader className="px-3 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400 truncate">
                             {h}
                           </TableCell>
@@ -190,7 +192,7 @@ const StoreInfoList = () => {
                       {stores.map((store, idx) => (
                         <TableRow key={store._id}>
                           <TableCell className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
-                            {(meta.page - 1) * meta.limit + idx + 1}
+                            <span className="font-medium text-gray-500 dark:text-gray-400">#{(meta.page - 1) * meta.limit + idx + 1}</span>
                           </TableCell>
                           <TableCell className="px-3 py-3">
                             {store.image?.url ? (
@@ -215,10 +217,12 @@ const StoreInfoList = () => {
                             <div className="flex items-center gap-2">
                               <Tooltip text="View">
                                 <button
+                                  type="button"
                                   onClick={() => navigate(`/store-info-view/${store.slug}`)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:text-blue-500 bg-white dark:bg-gray-800 transition-colors"
+                                  className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                                  aria-label="View store"
                                 >
-                                  <FaEye className="text-base" />
+                                  <FaEye className="size-4" />
                                 </button>
                               </Tooltip>
                               <Tooltip text="Edit">
@@ -231,10 +235,12 @@ const StoreInfoList = () => {
                               </Tooltip>
                               {/* <Tooltip text="Delete">
                                 <button
+                                  type="button"
                                   onClick={() => setDeleteSlug(store.slug)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                                  className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                                  aria-label="Delete store"
                                 >
-                                  <MdDelete className="text-base" />
+                                  <MdDelete className="size-5" />
                                 </button>
                               </Tooltip> */}
                             </div>
@@ -269,7 +275,7 @@ const StoreInfoList = () => {
                           <span key={`e-${i}`} className="px-2 text-gray-400">…</span>
                         ) : (
                           <button key={p} onClick={() => handlePageChange(p as number)}
-                            className={`px-3 py-1.5 rounded border text-sm ${meta.page === p ? "bg-brand-500 text-white border-brand-500" : "hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"}`}>
+                            className={`px-3 py-1.5 rounded border text-sm ${meta.page === p ? "bg-accent-500 text-white border-accent-500" : "hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"}`}>
                             {p}
                           </button>
                         )
@@ -293,10 +299,10 @@ const StoreInfoList = () => {
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Delete Store Information</h3>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">Are you sure? This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteSlug(null)} className="px-4 py-2 rounded border text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button onClick={() => setDeleteSlug(null)} className="shine px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                 Cancel
               </button>
-              <button onClick={confirmDelete} disabled={deleteLoading} className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white text-sm disabled:opacity-50">
+              <button onClick={confirmDelete} disabled={deleteLoading} className="shine px-4 py-2 rounded-xl bg-error-500 hover:bg-error-600 text-white text-sm font-semibold disabled:opacity-50">
                 {deleteLoading ? "Deleting…" : "Delete"}
               </button>
             </div>

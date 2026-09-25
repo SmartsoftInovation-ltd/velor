@@ -76,7 +76,7 @@ const StoreInfoView = () => {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-gray-500 text-sm">Store information not found.</p>
         <Link to="/store-info-list">
-          <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
+          <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-4 py-2 rounded">
             Back to List
           </Button>
         </Link>
@@ -86,7 +86,7 @@ const StoreInfoView = () => {
 
   const socialLinks = [
     {
-      icon: <FaFacebook className="text-blue-600" />,
+      icon: <FaFacebook className="text-accent-600" />,
       label: "Facebook",
       url: store.facebookLink,
     },
@@ -111,7 +111,7 @@ const StoreInfoView = () => {
       url: store.twitterLink,
     },
     {
-      icon: <SiMessenger className="text-blue-500" />,
+      icon: <SiMessenger className="text-accent-600" />,
       label: "Messenger",
       url: store.messengerLink,
     },
@@ -136,7 +136,7 @@ const StoreInfoView = () => {
         hideTitle
         actions={
           <Link to="/store-info-list">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
               Store Info List
             </Button>
           </Link>
@@ -244,7 +244,7 @@ const StoreInfoView = () => {
           </ComponentCard>
 
           {/* Social links card */}
-          {socialLinks.length > 0 && (
+          {(socialLinks.length > 0 || store.googleMapLink) && (
             <ComponentCard title="Social & Contact Links">
               <div className="space-y-3">
                 {socialLinks.map(({ icon, label, url }) => (
@@ -253,7 +253,7 @@ const StoreInfoView = () => {
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 dark:hover:text-blue-400 transition-colors group"
+                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-accent-600 dark:hover:text-blue-400 transition-colors group"
                   >
                     <span className="text-xl">{icon}</span>
                     <span className="font-medium">{label}</span>
@@ -268,7 +268,7 @@ const StoreInfoView = () => {
                     href={store.googleMapLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-accent-600 dark:hover:text-blue-400 transition-colors"
                   >
                     <MdPlace className="text-xl text-red-500" />
                     <span className="font-medium">Google Map</span>

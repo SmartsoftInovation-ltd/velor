@@ -71,8 +71,9 @@ const BannerList = () => {
               onClick={() => navigate(-1)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Go Back"
+              aria-label="Go Back"
             >
               <FaArrowLeft className="size-3.5" />
             </Button>
@@ -80,14 +81,15 @@ const BannerList = () => {
               onClick={() => refetch()}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Refresh"
+              aria-label="Refresh"
             >
               <FaSync className="size-3.5" />
             </Button>
             {canAdd && (
               <Link to="/add-banner">
-                <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+                <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                   Add Banner
                 </Button>
               </Link>
@@ -99,14 +101,14 @@ const BannerList = () => {
         <ComponentCard>
           {isLoading ? (
             <div className="flex justify-center items-center min-h-[400px]">
-              <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+              <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
             </div>
           ) : isError ? (
             <div className="text-center py-20 min-h-[400px]">
               <p className="text-red-500 font-bold mb-4">Failed to load banners!</p>
               <button
                 onClick={() => refetch()}
-                className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold"
+                className="px-6 py-2 bg-accent-500 text-white rounded-xl font-bold"
               >
                 Try Again
               </button>

@@ -4,7 +4,9 @@ import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router";
 import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import ComponentCard from "../../../components/common/ComponentCard";
+import { FaPercent, FaLink, FaImage } from "react-icons/fa";
+import SectionCard from "../../../components/common/SectionCard";
+import MobileActionBar from "../../../components/common/MobileActionBar";
 import PageBreadcrumb from "../../../components/common/PageBreadCrumb";
 import PageMeta from "../../../components/common/PageMeta";
 import Label from "../../../components/form/Label";
@@ -151,7 +153,7 @@ const DiscountBannerUpdate = () => {
         <PageMeta title="Update Discount Banner | Admin Dashboard" description="" />
         <PageBreadcrumb pageTitle="Update Discount Banner" />
         <div className="flex justify-center items-center min-h-[400px]">
-          <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+          <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
         </div>
       </>
     );
@@ -171,80 +173,82 @@ const DiscountBannerUpdate = () => {
         hideTitle
         actions={
           <Link to="/discount-banner-list">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
               Banner List
             </Button>
           </Link>
         }
       />
       <div className="space-y-6">
-        <ComponentCard>
-          <div className="space-y-6">
-            {/* Text fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Title <Req /></Label>
-                <Input
-                  type="text"
-                  name="title"
-                  placeholder="Enter banner title"
-                  value={formData.title}
-                  onChange={handleChange}
-                />
-                {errors.title && <p className="text-red-500 text-xs mt-1 font-medium">{errors.title}</p>}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <SectionCard icon={<FaPercent />} title="Discount Banner Content">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>Title <Req /></Label>
+                  <Input
+                    type="text"
+                    name="title"
+                    placeholder="Enter banner title"
+                    value={formData.title}
+                    onChange={handleChange}
+                  />
+                  {errors.title && <p className="text-red-500 text-xs mt-1 font-medium">{errors.title}</p>}
+                </div>
+                <div>
+                  <Label>Headline <Req /></Label>
+                  <Input
+                    type="text"
+                    name="headLine"
+                    placeholder="Enter headline"
+                    value={formData.headLine}
+                    onChange={handleChange}
+                  />
+                  {errors.headLine && <p className="text-red-500 text-xs mt-1 font-medium">{errors.headLine}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Description <Req /></Label>
+                  <textarea
+                    name="description"
+                    placeholder="Enter banner description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-3 focus:ring-accent-500/20 focus:border-accent-500 text-sm"
+                  />
+                  {errors.description && <p className="text-red-500 text-xs mt-1 font-medium">{errors.description}</p>}
+                </div>
+            
               </div>
-
-              <div>
-                <Label>Headline <Req /></Label>
-                <Input
-                  type="text"
-                  name="headLine"
-                  placeholder="Enter headline"
-                  value={formData.headLine}
-                  onChange={handleChange}
-                />
-                {errors.headLine && <p className="text-red-500 text-xs mt-1 font-medium">{errors.headLine}</p>}
+            </SectionCard>
+            <SectionCard icon={<FaLink />} title="Link & Order">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label>Redirect Link <Req /></Label>
+                  <Input
+                    type="text"
+                    name="link"
+                    placeholder="https://example.com/promo"
+                    value={formData.link}
+                    onChange={handleChange}
+                  />
+                  {errors.link && <p className="text-red-500 text-xs mt-1 font-medium">{errors.link}</p>}
+                </div>
+                <div>
+                  <Label>Priority <Req /></Label>
+                  <Input
+                    type="number"
+                    name="priority"
+                    placeholder="e.g. 1"
+                    value={formData.priority}
+                    onChange={handleChange}
+                  />
+                  {errors.priority && <p className="text-red-500 text-xs mt-1 font-medium">{errors.priority}</p>}
+                </div>
               </div>
-
-              <div>
-                <Label>Redirect Link <Req /></Label>
-                <Input
-                  type="text"
-                  name="link"
-                  placeholder="https://example.com/promo"
-                  value={formData.link}
-                  onChange={handleChange}
-                />
-                {errors.link && <p className="text-red-500 text-xs mt-1 font-medium">{errors.link}</p>}
-              </div>
-
-              <div>
-                <Label>Priority <Req /></Label>
-                <Input
-                  type="number"
-                  name="priority"
-                  placeholder="e.g. 1"
-                  value={formData.priority}
-                  onChange={handleChange}
-                />
-                {errors.priority && <p className="text-red-500 text-xs mt-1 font-medium">{errors.priority}</p>}
-              </div>
-
-              <div className="md:col-span-2">
-                <Label>Description <Req /></Label>
-                <textarea
-                  name="description"
-                  placeholder="Enter banner description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
-                {errors.description && <p className="text-red-500 text-xs mt-1 font-medium">{errors.description}</p>}
-              </div>
-            </div>
-
-            {/* Image Upload */}
+            </SectionCard>
+          </div>
+          <SectionCard icon={<FaImage />} title="Banner Image" className="self-start">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-3">
                 Banner Image <span className="text-gray-400 font-normal normal-case">(leave empty to keep current)</span>
@@ -252,14 +256,14 @@ const DiscountBannerUpdate = () => {
               <div
                 {...getRootProps()}
                 className={`relative flex flex-col items-center justify-center w-full min-h-50 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300
-                  ${isDragActive ? "border-brand-500 bg-brand-50 dark:bg-brand-500/5" : "border-gray-300 dark:border-gray-700 hover:border-brand-400"}
+                  ${isDragActive ? "border-accent-500 bg-accent-50 dark:bg-accent-500/5" : "border-gray-300 dark:border-gray-700 hover:border-accent-400"}
                   ${preview ? "border-none p-0" : "p-6"}`}
               >
                 <input {...getInputProps()} />
                 {!preview ? (
                   <div className="text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/10 mb-4">
-                      <svg className="h-6 w-6 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50 dark:bg-accent-500/10 mb-4">
+                      <svg className="h-6 w-6 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </div>
@@ -270,17 +274,18 @@ const DiscountBannerUpdate = () => {
                   </div>
                 ) : (
                   <div className="relative w-full flex justify-center py-4">
-                    <div className="relative w-full max-w-125 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-theme-md group">
+                    <div className="relative w-full max-w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-theme-md group">
                       <img
                         src={preview}
                         alt="Banner preview"
-                        className="w-full h-52 object-cover bg-gray-50 dark:bg-gray-800 transition-transform duration-500 group-hover:scale-105"
+                        className="w-full aspect-video h-auto object-cover bg-gray-50 dark:bg-gray-800 transition-transform duration-500 group-hover:scale-105"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                         <button
                           type="button"
                           onClick={handleRemoveImage}
-                            className="bg-[#D5F0E3] text-[#0A6B43] p-3 rounded-full hover:bg-[#B8E4CF] transform hover:scale-110 transition-all shadow-xl"
+                            aria-label="Remove image"
+                            className="bg-error-500 text-white p-3 rounded-full hover:bg-error-600 transform hover:scale-110 transition-all shadow-xl"
                         >
                           <TrashBinIcon className="size-5" />
                         </button>
@@ -295,36 +300,37 @@ const DiscountBannerUpdate = () => {
                 )}
               </div>
             </div>
+          </SectionCard>
+        </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-2 justify-end">
-              <Link to="/discount-banner-list">
-                <button
-                  type="button"
-                  className="px-6 py-2.5 rounded-xl text-sm border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-              </Link>
-              <Button
-                // @ts-ignore
+        <MobileActionBar>
+          <div className="flex items-center gap-3 pt-2 justify-end">
+            <Link to="/discount-banner-list">
+              <button
                 type="button"
-                onClick={handleSubmit}
-                disabled={isLoading}
-                  className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-2.5 rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50 shadow-theme-md transition-all"
+                className="shine px-6 py-2.5 rounded-xl text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Updating...</span>
-                  </div>
-                ) : (
-                  "Update Banner"
-                )}
-              </Button>
-            </div>
+                Cancel
+              </button>
+            </Link>
+            <Button
+              // @ts-ignore
+              type="button"
+              onClick={handleSubmit}
+              disabled={isLoading}
+                className="!bg-accent-500 hover:!bg-accent-600 !text-white px-8 py-2.5 !rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50 shadow-theme-md transition-all"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Updating...</span>
+                </div>
+              ) : (
+                "Update Banner"
+              )}
+            </Button>
           </div>
-        </ComponentCard>
+        </MobileActionBar>
       </div>
     </>
   );

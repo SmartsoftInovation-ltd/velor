@@ -89,7 +89,7 @@ const StoreSettings = () => {
     return (
       <div className={`${card} p-8 text-center`}>
         <p className="text-sm text-gray-600 dark:text-gray-400">Store settings could not be loaded.</p>
-        <button type="button" onClick={load} className="mt-3 text-sm font-medium text-brand-600 hover:underline">Try again</button>
+        <button type="button" onClick={load} className="mt-3 text-sm font-medium text-accent-600 hover:underline">Try again</button>
       </div>
     );
   }
@@ -127,7 +127,7 @@ const StoreSettings = () => {
       {/* Store summary */}
       <section className={`${card} flex flex-col gap-5 p-5 md:flex-row md:items-center md:justify-between`}>
         <div className="flex items-center gap-4">
-          <span className="flex size-12 items-center justify-center rounded-xl bg-brand-50 text-2xl text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+          <span className="flex size-12 items-center justify-center rounded-xl bg-brand-50 text-2xl text-accent-600 dark:bg-brand-500/15 dark:text-brand-400">
             <HiOutlineBuildingStorefront />
           </span>
           <div>

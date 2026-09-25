@@ -62,8 +62,8 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 const getImageUrl = (image: DiscountBanner["image"]) =>
   typeof image === "object" && image !== null ? image.url : image || "";
 
-const gridTemplateColumns = "48px 100px 1fr 1fr 1fr 80px 160px";
-const COLUMNS = ["#", "Image", "Title", "Headline", "Description", "Priority", "Actions"];
+const gridTemplateColumns = "110px 100px 1fr 1fr 1fr 80px 180px";
+const COLUMNS = ["Serial ID", "Image", "Title", "Headline", "Description", "Priority", "Actions"];
 
 const DiscountBannerTable = () => {
   const navigate = useNavigate();
@@ -148,7 +148,7 @@ const DiscountBannerTable = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by title, headline..."
-            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition"
           />
           {searchTerm && (
             <button
@@ -164,7 +164,7 @@ const DiscountBannerTable = () => {
           <button
             onClick={fetchBanners}
             disabled={isFetching}
-            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:border-brand-500 transition disabled:opacity-50"
+            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-accent-500 hover:border-accent-500 transition disabled:opacity-50"
           >
             <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
@@ -178,7 +178,7 @@ const DiscountBannerTable = () => {
       {/* Loading */}
       {isLoading && (
         <div className="flex justify-center items-center min-h-[400px]">
-          <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+          <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
         </div>
       )}
 
@@ -188,7 +188,7 @@ const DiscountBannerTable = () => {
           <p className="text-red-500 font-bold mb-4">Failed to load discount banners!</p>
           <button
             onClick={() => refetch()}
-            className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold"
+            className="px-6 py-2 bg-accent-500 text-white rounded-xl font-bold"
           >
             Try Again
           </button>
@@ -221,20 +221,26 @@ const DiscountBannerTable = () => {
               <MobileCardRow label="Priority">{banner.priority}</MobileCardRow>
               <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => navigate(`/view-discount-banner/${banner.slug}`)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="View discount banner"
                 >
                   <FaEye className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => navigate(`/update-discount-banner/${banner.slug}`)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                  aria-label="Edit discount banner"
                 >
                   <FaEdit className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setSelected(banner); setShowDeleteModal(true); }}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-red-500 text-white"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                  aria-label="Delete discount banner"
                 >
                   <MdDelete className="size-5" />
                 </button>
@@ -272,7 +278,7 @@ const DiscountBannerTable = () => {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="mt-2 text-xs text-brand-500 hover:underline"
+                    className="mt-2 text-xs text-accent-500 hover:underline"
                   >
                     Clear search
                   </button>
@@ -295,7 +301,7 @@ const DiscountBannerTable = () => {
                     >
                       {/* # */}
                       <div className="px-4 text-xs text-gray-400 font-mono flex items-center justify-center">
-                        {virtualRow.index + 1}
+                        <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                       </div>
 
                       {/* Image */}
@@ -330,7 +336,7 @@ const DiscountBannerTable = () => {
 
                       {/* Priority */}
                       <div className="px-4 flex items-center justify-center">
-                        <span className="inline-flex items-center justify-center size-7 rounded-full bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 text-xs font-bold">
+                        <span className="inline-flex items-center justify-center size-7 rounded-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400 text-xs font-bold">
                           {banner.priority}
                         </span>
                       </div>
@@ -339,27 +345,33 @@ const DiscountBannerTable = () => {
                       <div className="px-4 flex items-center justify-center gap-2">
                         <Tooltip text="View">
                           <button
+                            type="button"
                             onClick={() => navigate(`/view-discount-banner/${banner.slug}`)}
-                            className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-blue-400 hover:text-blue-500 hover:border-blue-400 transition-all active:scale-90"
+                            className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                            aria-label="View discount banner"
                           >
                             <FaEye className="size-4" />
                           </button>
                         </Tooltip>
                         <Tooltip text="Edit">
                           <button
+                            type="button"
                             onClick={() => navigate(`/update-discount-banner/${banner.slug}`)}
-                            className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90"
+                            className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                            aria-label="Edit discount banner"
                           >
                             <FaEdit className="size-4" />
                           </button>
                         </Tooltip>
                         <Tooltip text="Delete">
                           <button
+                            type="button"
                             onClick={() => {
                               setSelected(banner);
                               setShowDeleteModal(true);
                             }}
-                            className="size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all active:scale-90"
+                            className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                            aria-label="Delete discount banner"
                           >
                             <MdDelete className="size-5" />
                           </button>
@@ -401,7 +413,7 @@ const DiscountBannerTable = () => {
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete"}
             </Button>

@@ -36,7 +36,7 @@ interface SiteInfo {
   linkedinLink: string;
   googleMapLink: string;
   qrCode: string;
-  image: string;
+  image?: { url?: string } | string;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,7 +63,7 @@ const SiteInfoView = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
-        <div className="size-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -72,7 +72,7 @@ const SiteInfoView = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-gray-500 text-sm">Site information not found.</p>
-        <Link to="/site-info-list" className="px-4 py-2 rounded bg-brand-500 hover:bg-brand-600 text-white text-sm">
+        <Link to="/site-info-list" className="px-4 py-2 rounded bg-accent-500 hover:bg-accent-600 text-white text-sm">
           Back to List
         </Link>
       </div>
@@ -80,12 +80,12 @@ const SiteInfoView = () => {
   }
 
   const socialLinks = [
-    { icon: <FaFacebook className="text-blue-600" />, label: "Facebook", url: site.facebookLink },
+    { icon: <FaFacebook className="text-accent-600" />, label: "Facebook", url: site.facebookLink },
     { icon: <FaYoutube className="text-red-600" />, label: "YouTube", url: site.youtubeLink },
     { icon: <FaInstagram className="text-pink-500" />, label: "Instagram", url: site.instagramLink },
     { icon: <FaWhatsapp className="text-green-500" />, label: "WhatsApp", url: site.whatsappLink },
     { icon: <FaSquareXTwitter className="text-gray-800 dark:text-white" />, label: "Twitter / X", url: site.twitterLink },
-    { icon: <SiMessenger className="text-blue-500" />, label: "Messenger", url: site.messengerLink },
+    { icon: <SiMessenger className="text-accent-600" />, label: "Messenger", url: site.messengerLink },
     { icon: <FaLinkedin className="text-blue-700" />, label: "LinkedIn", url: site.linkedinLink },
   ].filter((s) => s.url);
 
@@ -101,12 +101,12 @@ const SiteInfoView = () => {
         actions={
           <div className="flex items-center gap-2">
             <Link to={`/update-site-info/${site.slug}`}>
-              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+              <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                 Edit
               </Button>
             </Link>
             <Link to="/site-info-list">
-              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+              <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                 Site Info List
               </Button>
             </Link>
@@ -117,9 +117,9 @@ const SiteInfoView = () => {
         <ComponentCard>
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             <div className="flex-shrink-0">
-              {site.image ? (
+              {(typeof site.image === "string" ? site.image : site.image?.url) ? (
                 <img
-                  src={site.image}
+                  src={typeof site.image === "string" ? site.image : site.image?.url}
                   alt={site.storeName}
                   className="w-32 h-32 object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-2"
                 />
@@ -180,7 +180,7 @@ const SiteInfoView = () => {
               <div className="space-y-3">
                 {socialLinks.map(({ icon, label, url }) => (
                   <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 transition-colors group">
+                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-accent-600 transition-colors group">
                     <span className="text-xl">{icon}</span>
                     <span className="font-medium">{label}</span>
                     <span className="text-xs text-gray-400 truncate group-hover:text-blue-400 max-w-xs">{url}</span>
@@ -188,7 +188,7 @@ const SiteInfoView = () => {
                 ))}
                 {site.googleMapLink && (
                   <a href={site.googleMapLink} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 transition-colors">
+                    className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 hover:text-accent-600 transition-colors">
                     <MdPlace className="text-xl text-red-500" />
                     <span className="font-medium">Google Map</span>
                     <span className="text-xs text-gray-400 truncate max-w-xs">{site.googleMapLink}</span>

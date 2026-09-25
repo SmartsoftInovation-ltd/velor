@@ -46,7 +46,7 @@ const OutletView = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
-        <div className="size-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -55,7 +55,7 @@ const OutletView = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-gray-500 text-sm">Outlet information not found.</p>
-        <Link to="/outlet-list" className="px-4 py-2 rounded bg-brand-500 hover:bg-brand-600 text-white text-sm">
+        <Link to="/outlet-list" className="px-4 py-2 rounded bg-accent-500 hover:bg-accent-600 text-white text-sm">
           Back to List
         </Link>
       </div>
@@ -74,12 +74,12 @@ const OutletView = () => {
         actions={
           <div className="flex items-center gap-2">
             <Link to={`/update-outlet-info/${outlet.slug}`}>
-              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+              <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                 Edit
               </Button>
             </Link>
             <Link to="/outlet-list">
-              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+              <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                 Outlet List
               </Button>
             </Link>

@@ -148,7 +148,7 @@ const OutletInfoTable = () => {
             ? `No results for "${search}".`
             : "No outlet information found. "}
           {!search && canAdd && (
-            <Link to="/add-outlet" className="text-blue-500 hover:underline">
+            <Link to="/add-outlet" className="text-accent-600 hover:underline">
               Create one
             </Link>
           )}
@@ -181,10 +181,12 @@ const OutletInfoTable = () => {
               <MobileCardRow label="Off Day">{outlet.offDay || "—"}</MobileCardRow>
               <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => navigate(`/view-outlet-info/${outlet.slug}`)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="View outlet"
                 >
-                  <FaEye className="text-base" />
+                  <FaEye className="size-4" />
                 </button>
                 <button
                   onClick={() => navigate(`/update-outlet-info/${outlet.slug}`)}
@@ -193,10 +195,12 @@ const OutletInfoTable = () => {
                   <FiEdit2 className="text-base" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setDeleteSlug(outlet.slug)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-lg bg-red-500 text-white"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                  aria-label="Delete outlet"
                 >
-                  <MdDelete className="text-base" />
+                  <MdDelete className="size-5" />
                 </button>
               </div>
             </div>
@@ -223,7 +227,7 @@ const OutletInfoTable = () => {
               <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                 <tr className="border-b border-gray-100 dark:border-white/[0.05]">
                   {[
-                    "#",
+                    "Serial ID",
                     "Image",
                     "Location",
                     "Manager",
@@ -249,7 +253,7 @@ const OutletInfoTable = () => {
                     className="border-b border-gray-100 dark:border-white/[0.05] hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                   >
                     <td className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
-                      {idx + 1}
+                      <span className="font-medium text-gray-500 dark:text-gray-400">#{idx + 1}</span>
                     </td>
                     <td className="px-3 py-3">
                       {outlet.image ? (
@@ -294,12 +298,14 @@ const OutletInfoTable = () => {
                       <div className="flex items-center gap-2" style={{ overflow: "visible" }}>
                         <Tooltip text="View">
                           <button
+                            type="button"
                             onClick={() =>
                               navigate(`/view-outlet-info/${outlet.slug}`)
                             }
-                            className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:text-blue-500 bg-white dark:bg-gray-800 transition-colors"
+                            className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                            aria-label="View outlet"
                           >
-                            <FaEye className="text-base" />
+                            <FaEye className="size-4" />
                           </button>
                         </Tooltip>
                         <Tooltip text="Edit">
@@ -314,10 +320,12 @@ const OutletInfoTable = () => {
                         </Tooltip>
                         <Tooltip text="Delete">
                           <button
+                            type="button"
                             onClick={() => setDeleteSlug(outlet.slug)}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                            className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                            aria-label="Delete outlet"
                           >
-                            <MdDelete className="text-base" />
+                            <MdDelete className="size-5" />
                           </button>
                         </Tooltip>
                       </div>
@@ -347,14 +355,14 @@ const OutletInfoTable = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteSlug(null)}
-                className="px-4 py-2 rounded border text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="shine px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleteLoading}
-                  className="px-4 py-2 rounded bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm disabled:opacity-50"
+                  className="shine px-4 py-2 rounded-xl bg-error-500 hover:bg-error-600 text-white text-sm font-semibold disabled:opacity-50"
               >
                 {deleteLoading ? "Deleting…" : "Delete"}
               </button>
