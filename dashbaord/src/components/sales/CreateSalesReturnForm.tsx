@@ -83,6 +83,8 @@ interface SaleDetail {
   date?: string;
   customerType?: SalesListItem["customerType"];
   searchItem: SearchItem[];
+  lessTaka?: number;
+  discountPercent?: number;
 }
 
 interface ReturnItem {
@@ -233,7 +235,25 @@ const CreateSalesReturnForm = () => {
 
   // ── Totals ──────────────────────────────────────────────────────────────────
   const selectedItems = returnItems.filter((it) => it.selected);
-  const totalReturnAmount = selectedItems.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+  // Items at their sale price, then the invoice's deductions (the server
+  // recomputes the same figures, so this is what gets saved):
+  //  - less taka is spread equally over every unit sold on the invoice, and
+  //    each returned unit gives back its share;
+  //  - discount % comes off the returned value at the same percent.
+  // "return" lines still count as sold units — returning one must not raise
+  // the share left on the rest.
+  const grossReturnAmount = selectedItems.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+  const soldUnits = (saleDetail?.searchItem ?? [])
+    .filter((si) => si.salesStatus !== "exchange")
+    .reduce((sum, si) => sum + (Number(si.quantity) || 0), 0);
+  const invoiceLessTaka = Number(saleDetail?.lessTaka) || 0;
+  const invoiceDiscountPercent = Number(saleDetail?.discountPercent) || 0;
+  const returnedUnits = selectedItems.reduce((sum, it) => sum + it.quantity, 0);
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const discountAmount = round2((grossReturnAmount * invoiceDiscountPercent) / 100);
+  const lessTakaShare = soldUnits > 0 ? round2((invoiceLessTaka / soldUnits) * returnedUnits) : 0;
+  const lessPerUnit = soldUnits > 0 ? round2(invoiceLessTaka / soldUnits) : 0;
+  const totalReturnAmount = Math.max(0, round2(grossReturnAmount - discountAmount - lessTakaShare));
 
   const fmt = (n: number) => n.toLocaleString("en-BD", { minimumFractionDigits: 0 });
 
@@ -635,11 +655,36 @@ const CreateSalesReturnForm = () => {
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Summary</p>
           </div>
           <div className="space-y-3 p-3.5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Return Value</p>
-              <p className="text-base font-bold text-accent-600 dark:text-accent-400 tabular-nums">
-                ৳{fmt(totalReturnAmount)}
-              </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-gray-500 dark:text-gray-400">Return Value</p>
+                <p className="font-semibold text-gray-800 dark:text-gray-100 tabular-nums">
+                  ৳{fmt(grossReturnAmount)}
+                </p>
+              </div>
+              {invoiceDiscountPercent > 0 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Invoice Discount ({invoiceDiscountPercent}%)
+                  </p>
+                  <p className="font-semibold text-error-600 dark:text-error-400 tabular-nums">
+                    −৳{fmt(discountAmount)}
+                  </p>
+                </div>
+              )}
+              {invoiceLessTaka > 0 && (
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-gray-500 dark:text-gray-400">Less Taka Share</p>
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                      ৳{fmt(invoiceLessTaka)} ÷ {soldUnits} unit{soldUnits === 1 ? "" : "s"} = ৳{fmt(lessPerUnit)}/unit × {returnedUnits}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-error-600 dark:text-error-400 tabular-nums">
+                    −৳{fmt(lessTakaShare)}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl border border-accent-500/15 bg-accent-50 px-4 py-3 text-center dark:border-accent-500/20 dark:bg-accent-500/15">

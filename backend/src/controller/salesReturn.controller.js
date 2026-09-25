@@ -68,6 +68,49 @@ async function recordReturnTransaction({ sale, returnDoc, refundMethod, session 
 }
 
 // @desc create a new sales return
+// Invoice-level deductions carried into a return.
+//  - lessTaka is spread equally over every unit sold on the invoice, so each
+//    returned unit gives back its share (e.g. 400 less over 2 units = 200 each).
+//  - discountPercent is a share of the value, so it is taken off the returned
+//    items' value at the same percent.
+// Units are counted over "sale" and "return" lines: a line is flipped to
+// "return" once returned, but it was still sold when the less was given, so
+// the per-unit share must not grow as items come back. Unit prices come from
+// the sale itself, not the request, so the refund cannot be inflated.
+function computeReturnAmounts(sale, allproduct) {
+  const lines = (sale.searchItem || []).filter((si) => si.salesStatus !== "exchange");
+  const soldUnits = lines.reduce((sum, si) => sum + (Number(si.quantity) || 0), 0);
+  const lessPerUnit = soldUnits > 0 ? (Number(sale.lessTaka) || 0) / soldUnits : 0;
+  const discountPercent = Number(sale.discountPercent) || 0;
+
+  const round2 = (n) => Math.round(n * 100) / 100;
+  let gross = 0;
+  let units = 0;
+  const items = allproduct.map((item) => {
+    const line = lines.find((si) =>
+      item.variant
+        ? si.variantId?.toString() === item.variant.toString()
+        : si.productId?.toString() === String(item.product),
+    );
+    const unitPrice = line ? Number(line.salesRate) || 0 : Number(item.unitPrice) || 0;
+    const quantity = Number(item.quantity) || 0;
+    gross += unitPrice * quantity;
+    units += quantity;
+    return { ...item, unitPrice, subtotal: round2(unitPrice * quantity) };
+  });
+
+  const discountAmount = round2((gross * discountPercent) / 100);
+  const lessTakaShare = round2(lessPerUnit * units);
+  return {
+    allproduct: items,
+    grossReturnAmount: round2(gross),
+    discountPercent,
+    discountAmount,
+    lessTakaShare,
+    totalReturnAmount: Math.max(0, round2(gross - discountAmount - lessTakaShare)),
+  };
+}
+
 exports.createSalesReturn = asynchandeler(async (req, res) => {
   const data = await validateSalesReturn(req);
   
@@ -75,6 +118,13 @@ exports.createSalesReturn = asynchandeler(async (req, res) => {
   session.startTransaction();
 
   try {
+    // The refund is worked out here from the sale, not taken from the form.
+    const saleForAmounts = await Sales.findById(data.invoiceNumber).session(session);
+    if (!saleForAmounts) {
+      throw new customError("Original Sale not found", statusCodes.NOT_FOUND);
+    }
+    Object.assign(data, computeReturnAmounts(saleForAmounts, data.allproduct));
+
     const salesReturn = await SalesReturn.create([data], { session });
     let returnDoc = salesReturn[0];
 
@@ -361,6 +411,10 @@ exports.updateSalesReturn = asynchandeler(async (req, res) => {
 
     const oldSale = await Sales.findById(existingReturn.invoiceNumber).session(session);
     const newSale = await Sales.findById(data.invoiceNumber).session(session);
+    if (!newSale) {
+      throw new customError("Original Sale not found", statusCodes.NOT_FOUND);
+    }
+    Object.assign(data, computeReturnAmounts(newSale, data.allproduct));
 
     // --- STEP 1: REVERT OLD STATE ---
 

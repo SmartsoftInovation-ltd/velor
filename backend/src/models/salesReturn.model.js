@@ -62,6 +62,12 @@ const salesReturnSchema = new mongoose.Schema(
         },
       },
     ],
+    // Refund breakdown: items at their sale price, less the invoice discount %
+    // and the returned units' share of the invoice's less-taka.
+    grossReturnAmount: { type: Number, default: 0 },
+    discountPercent: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    lessTakaShare: { type: Number, default: 0 },
     totalReturnAmount: {
       type: Number,
       required: true,
