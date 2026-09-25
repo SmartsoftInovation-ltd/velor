@@ -22,6 +22,8 @@ const { emailQueue } = require("../queues/email.queue");
 const { buildInvoiceHtml } = require("../helpers/invoiceTemplate");
 const SmsLog = require("../models/smsLog.model");
 const { clientCommandMessageReg } = require("bullmq");
+const settings = require("../settings/settings.service");
+const { getTenantId } = require("../tenancy/context");
 const {
   bumpNsVersion,
   buildCacheKey,
@@ -696,6 +698,40 @@ exports.getAllSales = asynchandeler(async (req, res) => {
 
 // search by product name or barCode  sku and search also variant model variantName
 
+// A discount applies on a sale only while it is active and today (in the
+// store's timezone) falls between its Valid From and Valid To dates, both
+// days included. The dates are saved date-only (midnight UTC), so they are
+// compared as YYYY-MM-DD calendar days rather than instants — otherwise the
+// last valid day would expire at 6 AM in Dhaka.
+const applicableDiscountPipeline = async () => {
+  const tenantId = getTenantId();
+  const timezone =
+    (tenantId && (await settings.getSettings(tenantId))?.general?.timezone) ||
+    "Asia/Dhaka";
+  // en-CA formats as YYYY-MM-DD
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const day = (field) => ({ $dateToString: { format: "%Y-%m-%d", date: field } });
+
+  return [
+    {
+      $match: {
+        isActive: true,
+        $expr: {
+          $and: [
+            { $lte: [day("$discountValidFrom"), today] },
+            { $gte: [day("$discountValidTo"), today] },
+          ],
+        },
+      },
+    },
+  ];
+};
+
 exports.searchProductsAndVariants = async (req, res) => {
   const escapeRegex = (str = "") => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -750,15 +786,21 @@ exports.searchProductsAndVariants = async (req, res) => {
           ],
         };
 
+    const discountPipeline = await applicableDiscountPipeline();
+
     const results = await productModel.aggregate([
       { $match: productMatch },
 
-      // product discount populate
+      // product discount populate — applicable discounts only (active and
+      // within its dates). Deactivating or expiring a discount leaves the
+      // product's reference in place, so the filter has to live here or the
+      // sale form would still apply it.
       {
         $lookup: {
           from: "discounts",
           localField: "discount",
           foreignField: "_id",
+          pipeline: discountPipeline,
           as: "discount",
         },
       },
@@ -818,12 +860,13 @@ exports.searchProductsAndVariants = async (req, res) => {
           pipeline: [
             { $match: variantMatch },
 
-            // variant discount populate
+            // variant discount populate — applicable discounts only (see above)
             {
               $lookup: {
                 from: "discounts",
                 localField: "discount",
                 foreignField: "_id",
+                pipeline: discountPipeline,
                 as: "discount",
               },
             },

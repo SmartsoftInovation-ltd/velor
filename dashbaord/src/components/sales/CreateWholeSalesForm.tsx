@@ -740,12 +740,16 @@ export default function CreateWholeSalesForm({
             let disType = "percent";
             let isDiscountReadOnly = false;
 
-            if (draftProduct?.discount?.discountType === "tk") {
-                initialDis = draftProduct.discount.discountValueByAmount || 0;
+            // An inactive discount must not reach the line, even from a stale response.
+            const activeDiscount =
+              draftProduct?.discount?.isActive === false ? null : draftProduct?.discount;
+
+            if (activeDiscount?.discountType === "tk") {
+                initialDis = activeDiscount.discountValueByAmount || 0;
                 disType = "amount";
                 isDiscountReadOnly = true;
-            } else if (draftProduct?.discount?.discountType === "percentance") {
-                initialDis = draftProduct.discount.discountValueByPercentance || 0;
+            } else if (activeDiscount?.discountType === "percentance") {
+                initialDis = activeDiscount.discountValueByPercentance || 0;
                 disType = "percent";
                 isDiscountReadOnly = true;
             }

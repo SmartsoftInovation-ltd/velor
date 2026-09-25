@@ -733,12 +733,16 @@ export default function CreateRetailSalesForm({
       let disType = "percent";
       let isDiscountReadOnly = false;
 
-      if (product?.discount?.discountType === "tk") {
-        initialDis = product.discount.discountValueByAmount || 0;
+      // An inactive discount must not reach the line, even from a stale response.
+      const activeDiscount =
+        product?.discount?.isActive === false ? null : product?.discount;
+
+      if (activeDiscount?.discountType === "tk") {
+        initialDis = activeDiscount.discountValueByAmount || 0;
         disType = "amount";
         isDiscountReadOnly = true;
-      } else if (product?.discount?.discountType === "percentance") {
-        initialDis = product.discount.discountValueByPercentance || 0;
+      } else if (activeDiscount?.discountType === "percentance") {
+        initialDis = activeDiscount.discountValueByPercentance || 0;
         disType = "percent";
         isDiscountReadOnly = true;
       }

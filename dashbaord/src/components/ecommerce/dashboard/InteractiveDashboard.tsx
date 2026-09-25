@@ -37,6 +37,7 @@ import {
   useDayCashSummary,
   useAccountsBalanceSummary,
   DashboardRange,
+  type DailyPoint,
   formatCurrency,
   formatCurrencyExact,
   formatCompact,
@@ -103,6 +104,30 @@ const Card = ({
   </div>
 );
 
+type SalesProgressRange = Extract<DashboardRange, "7d" | "30d" | "90d">;
+
+const SALES_PROGRESS_RANGES: { value: SalesProgressRange; label: string; title: string }[] = [
+  { value: "7d", label: "1 Week", title: "Last 7 days" },
+  { value: "30d", label: "1 Month", title: "Last 30 days" },
+  { value: "90d", label: "3 Months", title: "Last 90 days" },
+];
+
+const SALES_PROGRESS_DAYS: Record<SalesProgressRange, number> = { "7d": 7, "30d": 30, "90d": 90 };
+
+// The API only returns days that had sales; fill the rest of the window with
+// zeros so a quiet day shows as a dip instead of vanishing from the axis.
+// Keys are UTC dates, matching the backend's $dateToString grouping.
+const fillDailySeries = (series: DailyPoint[], days: number): DailyPoint[] => {
+  const byDate = new Map(series.map((p) => [p.date, p]));
+  const today = new Date();
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(today);
+    d.setUTCDate(today.getUTCDate() - (days - 1 - i));
+    const date = d.toISOString().slice(0, 10);
+    return byDate.get(date) ?? { date, revenue: 0, orders: 0 };
+  });
+};
+
 export default function InteractiveDashboard() {
   const { can, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
   const [range, setRange] = useState<DashboardRange>("today");
@@ -111,6 +136,15 @@ export default function InteractiveDashboard() {
     useTopSellingProducts(topMonths);
 
   const { data, isLoading, isFetching, isError, refetch } = useDashboard(range);
+  // Sales Progress chart keeps its own window (default last 7 days) so the
+  // dashboard's "today" range does not collapse it to a single point.
+  const [trendRange, setTrendRange] = useState<SalesProgressRange>("7d");
+  const {
+    data: trendData,
+    isLoading: isTrendLoading,
+    isFetching: isTrendFetching,
+    refetch: refetchTrend,
+  } = useDashboard(trendRange);
   const {
     data: invoiceStats,
     isLoading: isInvoiceLoading,
@@ -220,7 +254,6 @@ export default function InteractiveDashboard() {
     refetch: refetchAccountsBalanceSummary,
   } = useAccountsBalanceSummary();
 
-  const k = data?.kpis;
   const inv = invoiceStats?.invoices;
   const salesSummary = salesSummaryData?.sales;
   const inventorySummary = inventorySummaryData?.inventory;
@@ -315,6 +348,7 @@ export default function InteractiveDashboard() {
             onClick={() =>
               Promise.all([
                 refetch(),
+                refetchTrend(),
                 refetchInvoices(),
                 refetchSalesSummary(),
                 refetchTransactionSummary(),
@@ -337,6 +371,7 @@ export default function InteractiveDashboard() {
             }
             disabled={
               isFetching ||
+              isTrendFetching ||
               isInvoiceFetching ||
               isSalesSummaryFetching ||
               isTransactionSummaryFetching ||
@@ -361,6 +396,7 @@ export default function InteractiveDashboard() {
               size={15}
               className={
                 isFetching ||
+                isTrendFetching ||
                 isInvoiceFetching ||
                 isSalesSummaryFetching ||
                 isTransactionSummaryFetching ||
@@ -625,21 +661,41 @@ export default function InteractiveDashboard() {
             )}
           </div>
 
-          {/* ── Revenue trend + Sales by type ── */}
+          {/* ── Sales progress + Sales by type ── */}
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {showBox(PERMISSIONS.DASHBOARD_REVENUE_TREND) && (
               <Card
-                title="Revenue Trend"
+                title="Sales Progress"
                 action={
-                  <span className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
-                    {formatCurrency(k?.revenue ?? 0)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+                      {formatCurrency(trendData?.kpis?.revenue ?? 0)}
+                    </span>
+                    <div className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-white/[0.03]">
+                      {SALES_PROGRESS_RANGES.map((r) => (
+                        <button
+                          key={r.value}
+                          onClick={() => setTrendRange(r.value)}
+                          title={r.title}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                            trendRange === r.value
+                              ? "bg-brand-500 text-white shadow-sm"
+                              : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 }
               >
-                {isLoading ? (
+                {isTrendLoading ? (
                   <div className="h-[320px] animate-pulse rounded-xl bg-gray-50 dark:bg-white/[0.02]" />
                 ) : (
-                  <RevenueTrendChart series={data?.dailySeries ?? []} />
+                  <RevenueTrendChart
+                    series={fillDailySeries(trendData?.dailySeries ?? [], SALES_PROGRESS_DAYS[trendRange])}
+                  />
                 )}
               </Card>
             )}
