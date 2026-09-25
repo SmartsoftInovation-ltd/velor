@@ -171,7 +171,7 @@ const UpdateStoreInfo = () => {
         hideTitle
         actions={
           <Link to="/store-info-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Store Info List
             </Button>
           </Link>
@@ -269,7 +269,7 @@ const UpdateStoreInfo = () => {
 
             <div className="flex gap-3 pt-2">
               <button onClick={handleSubmit} disabled={loading}
-                className={`px-6 py-2 rounded text-white text-sm transition-colors ${loading ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"}`}>
+                className={`px-6 py-2 rounded text-white text-sm transition-colors ${loading ? "bg-gray-400" : "bg-brand-500 hover:bg-brand-600"}`}>
                 {loading ? "Updating…" : "Update Store Info"}
               </button>
               <Link to="/store-info-list">

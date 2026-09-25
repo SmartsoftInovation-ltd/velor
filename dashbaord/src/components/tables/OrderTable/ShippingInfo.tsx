@@ -63,7 +63,7 @@ const ShippingInfo = ({ order }: { order: any }) => {
 
       <button
         onClick={openModal}
-          className="bg-[#DCE8FF] font-medium py-1 px-3 rounded-3xl text-[#1D4ED8] hover:bg-[#C7DAFF] transition"
+          className="bg-[#D5F0E3] font-medium py-1 px-3 rounded-3xl text-[#0A6B43] hover:bg-[#B8E4CF] transition"
       >
         Fraud Check
       </button>

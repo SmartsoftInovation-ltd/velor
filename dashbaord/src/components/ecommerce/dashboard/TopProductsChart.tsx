@@ -20,7 +20,7 @@ export default function TopProductsChart({ data }: { data: TopProduct[] }) {
       background: "transparent",
     },
     theme: { mode: dark ? "dark" : "light" },
-    colors: ["#465fff"],
+    colors: ["#0F9D63"],
     plotOptions: {
       bar: {
         horizontal: true,

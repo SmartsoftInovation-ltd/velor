@@ -165,13 +165,13 @@ const MoneyHandoverTable = () => {
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="relative w-full md:w-80 group">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#1D4ED8]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
           <input
             type="text"
             placeholder="Search by serial, name, voucher..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#1D4ED8] dark:border-gray-700 dark:text-gray-200"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#0A6B43] dark:border-gray-700 dark:text-gray-200"
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 transition-colors hover:text-red-500">
@@ -196,7 +196,7 @@ const MoneyHandoverTable = () => {
             </p>
             <Button 
               onClick={fetchHandovers} 
-                className="px-8 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-semibold shadow-lg transition-all active:scale-95"
+                className="px-8 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold shadow-lg transition-all active:scale-95"
             >
               Try Again
             </Button>
@@ -249,7 +249,7 @@ const MoneyHandoverTable = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 flex items-center justify-center"
+                        className="size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 flex items-center justify-center"
                       >
                         <FaEdit className="size-4" />
                       </Button>
@@ -337,7 +337,7 @@ const MoneyHandoverTable = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                  className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90 flex items-center justify-center"
+                                  className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
                               >
                                 <FaEdit className="size-4" />
                               </Button>

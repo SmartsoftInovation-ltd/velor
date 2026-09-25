@@ -21,7 +21,7 @@ interface StatCardProps {
 const StatCard = ({ label, value, hint, icon }: StatCardProps) => (
   <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
     <div className="flex items-center gap-2">
-      <span className="flex size-7 items-center justify-center rounded-lg bg-[#DCE8FF] text-[#1D4ED8] dark:bg-blue-500/10 dark:text-blue-300">
+      <span className="flex size-7 items-center justify-center rounded-lg bg-[#D5F0E3] text-[#0A6B43] dark:bg-blue-500/10 dark:text-blue-300">
         {icon}
       </span>
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -83,7 +83,7 @@ const SmsInformation = () => {
   if (loading) {
     return (
       <div className="flex min-h-[220px] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-[#DCE8FF] border-t-[#1D4ED8]" />
+        <div className="size-8 animate-spin rounded-full border-4 border-[#D5F0E3] border-t-[#0A6B43]" />
       </div>
     );
   }
@@ -100,11 +100,11 @@ const SmsInformation = () => {
         <button
           onClick={fetchSmsBalance}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-md bg-[#DCE8FF] px-4 py-2 text-sm text-[#1D4ED8] transition-colors hover:bg-[#C7DAFF] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center gap-1.5 rounded-md bg-[#D5F0E3] px-4 py-2 text-sm text-[#0A6B43] transition-colors hover:bg-[#B8E4CF] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? (
             <>
-              <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+              <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
               Loading...
             </>
           ) : (
@@ -122,7 +122,7 @@ const SmsInformation = () => {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-[#DCE8FF] text-[#1D4ED8] dark:bg-blue-500/10 dark:text-blue-300">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-[#D5F0E3] text-[#0A6B43] dark:bg-blue-500/10 dark:text-blue-300">
             <MdSms className="size-4.5" />
           </span>
           <div>

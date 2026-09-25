@@ -146,7 +146,7 @@ const AddSiteInfo = () => {
         hideTitle
         actions={
           <Link to="/site-info-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Site Info List
             </Button>
           </Link>
@@ -272,7 +272,7 @@ const AddSiteInfo = () => {
               <Button
                 // @ts-ignore
                 type="submit" disabled={loading}
-                className={`px-6 py-2 rounded text-white text-sm ${loading ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"}`}>
+                className={`px-6 py-2 rounded text-white text-sm ${loading ? "bg-gray-400" : "bg-brand-500 hover:bg-brand-600"}`}>
                 {loading ? "Creating..." : "Create Site Info"}
               </Button>
               <Link to="/site-info-list">

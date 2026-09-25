@@ -1008,7 +1008,7 @@ const CreatePurchaseForm = () => {
         <Button
           onClick={handleSubmit}
           disabled={submitLoading}
-            className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-7 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-60 min-w-36"
+            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-7 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-60 min-w-36"
         >
           {submitLoading ? (
             <span className="flex items-center justify-center gap-2">

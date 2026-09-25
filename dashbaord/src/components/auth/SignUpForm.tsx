@@ -261,7 +261,7 @@ export default function SignUpForm() {
                 <div>
                   <button
                     type="submit"
-                      className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-[#1D4ED8] transition rounded-lg bg-[#DCE8FF] shadow-theme-xs hover:bg-[#C7DAFF]"
+                      className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-[#0A6B43] transition rounded-lg bg-[#D5F0E3] shadow-theme-xs hover:bg-[#B8E4CF]"
                   >
                     Sign Up
                   </button>

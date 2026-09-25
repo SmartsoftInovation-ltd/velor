@@ -456,14 +456,14 @@ const CreateSizeGuide = () => {
                   <button 
                     type="button" 
                     onClick={addColumn} 
-                      className="h-9 px-4 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-bold text-xs uppercase flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+                      className="h-9 px-4 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold text-xs uppercase flex items-center gap-1.5 shadow-md transition-all active:scale-95"
                   >
                     <FaPlus className="size-2.5" /> Add Attribute (Column)
                   </button>
                   <button 
                     type="button" 
                     onClick={addRow} 
-                      className="h-9 px-4 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-bold text-xs uppercase flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+                      className="h-9 px-4 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold text-xs uppercase flex items-center gap-1.5 shadow-md transition-all active:scale-95"
                   >
                     <FaPlus className="size-2.5" /> Add Size (Row)
                   </button>

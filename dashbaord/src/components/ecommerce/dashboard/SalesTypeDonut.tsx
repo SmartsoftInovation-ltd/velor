@@ -17,7 +17,7 @@ export default function SalesTypeDonut({ data }: { data: SalesByType[] }) {
 
   const labels = data.map((d) => TYPE_LABELS[d.type] || d.type);
   const values = data.map((d) => d.revenue);
-  const colors = ["#465fff", "#12b76a", "#f79009", "#fb6514"];
+  const colors = ["#0F9D63", "#12b76a", "#f79009", "#fb6514"];
 
   const options: ApexOptions = {
     chart: { fontFamily: "Outfit, sans-serif", type: "donut" },

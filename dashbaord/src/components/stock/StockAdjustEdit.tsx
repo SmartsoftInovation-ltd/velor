@@ -380,7 +380,7 @@ const StockAdjustEdit = () => {
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                    className="h-10 px-6 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-semibold transition-colors disabled:opacity-50"
+                    className="h-10 px-6 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold transition-colors disabled:opacity-50"
                 >
                   {isSaving ? "Saving…" : "Save Changes"}
                 </button>

@@ -990,7 +990,7 @@ const PurchaseReturnForm = () => {
         <Button
           onClick={handleSubmit}
           disabled={isLoading}
-            className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 min-w-52"
+            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 min-w-52"
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">

@@ -26,7 +26,7 @@ const AuditLogList = () => {
             onClick={() => navigate(-1)}
             size="sm"
             variant="outline"
-            className="size-9 p-0 rounded-md !bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] transition-all active:scale-90"
+            className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
             title="Go Back"
           >
             <FaArrowLeft className="size-3.5" />

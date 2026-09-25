@@ -165,7 +165,7 @@ export default function UserTable({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="h-10 w-full rounded-lg pl-9 pr-9 transition-colors"
           />
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#1D4ED8]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
@@ -435,11 +435,11 @@ export default function UserTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Deleting...
                 </span>
               ) : (
@@ -489,13 +489,13 @@ export default function UserTable({
               disabled={isToggling}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
                 pendingToggle?.currentStatus
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
               }`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Updating...
                 </span>
               ) : (

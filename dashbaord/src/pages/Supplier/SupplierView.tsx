@@ -45,7 +45,7 @@ const SupplierView = () => {
           </p>
           <Button
             onClick={() => navigate("/supplier-list")}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl"
+            className="bg-brand-500 hover:bg-brand-600 text-white px-5 py-2 rounded-xl"
           >
             Back to List
           </Button>
@@ -74,7 +74,7 @@ const SupplierView = () => {
                   onClick={() =>
                     navigate(`/supplier-edit/${supplier.supplierId}`)
                   }
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                  className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded"
                 >
                   Edit
                 </Button>

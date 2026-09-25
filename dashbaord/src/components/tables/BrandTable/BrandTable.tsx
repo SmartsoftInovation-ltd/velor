@@ -225,7 +225,7 @@ export default function BrandTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -249,7 +249,7 @@ export default function BrandTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90 flex items-center justify-center"
+                      className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
                     >
                       <FaEdit className="size-4" />
                     </Button>
@@ -388,7 +388,7 @@ export default function BrandTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                             >
                               <FaEye className="size-4" />
                             </Button>
@@ -417,7 +417,7 @@ export default function BrandTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90 flex items-center justify-center"
+                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -482,11 +482,11 @@ export default function BrandTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Deleting...
                 </span>
               ) : (
@@ -531,13 +531,13 @@ export default function BrandTable({
               disabled={isToggling}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
                 pendingToggle?.currentStatus
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
               }`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Updating...
                 </span>
               ) : (

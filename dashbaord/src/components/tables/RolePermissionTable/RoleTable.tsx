@@ -122,13 +122,13 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="flex-1 max-w-md relative group">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#1D4ED8]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search roles..."
-            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#1D4ED8] dark:border-gray-700 dark:text-gray-200"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#0A6B43] dark:border-gray-700 dark:text-gray-200"
           />
           {searchTerm && (
             <button
@@ -333,7 +333,7 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
             <Button
               onClick={handleEdit}
               disabled={isSaving}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </Button>
@@ -363,7 +363,7 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete"}
             </Button>

@@ -282,7 +282,7 @@ const CreateSupplierPaymentForm = () => {
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting}
-            className="px-6 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-semibold rounded-xl transition disabled:opacity-50 min-w-[180px] flex items-center justify-center gap-2"
+            className="px-6 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-semibold rounded-xl transition disabled:opacity-50 min-w-[180px] flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>

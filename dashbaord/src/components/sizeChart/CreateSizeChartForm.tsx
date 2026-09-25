@@ -393,7 +393,7 @@ const CreateSizeChartForm = () => {
           </button>
           <button
             onClick={addRow}
-              className="flex items-center gap-2 px-4 py-2 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-xs font-bold rounded-lg transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-xs font-bold rounded-lg transition-all active:scale-95"
           >
             <FaPlus className="size-3" /> ADD SIZE (ROW)
           </button>
@@ -584,7 +584,7 @@ const CreateSizeChartForm = () => {
           <Button
             onClick={handleSubmit}
             disabled={isLoading}
-              className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-10 py-3.5 rounded-xl font-bold uppercase tracking-widest text-sm flex items-center gap-3 shadow-lg border-none active:scale-95 transition-all"
+              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-10 py-3.5 rounded-xl font-bold uppercase tracking-widest text-sm flex items-center gap-3 shadow-lg border-none active:scale-95 transition-all"
           >
             {isLoading ? (
               <>

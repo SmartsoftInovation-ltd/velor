@@ -49,7 +49,7 @@ const CreateDesignationForm = () => {
       <Button
         onClick={handleSubmit}
         disabled={isCreating}
-          className="w-full py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-semibold border-none transition-all active:scale-95 disabled:opacity-60"
+          className="w-full py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold border-none transition-all active:scale-95 disabled:opacity-60"
       >
         {isCreating ? (
           <div className="flex items-center justify-center gap-2">

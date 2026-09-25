@@ -436,7 +436,7 @@ const CreateCustomerForm = () => {
               <button
                 type="button"
                 onClick={removeImage}
-                  className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF] shadow-md transition-colors"
+                  className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF] shadow-md transition-colors"
               >
                 <FaTimes className="text-[10px]" />
               </button>
@@ -468,11 +468,11 @@ const CreateCustomerForm = () => {
         <Button
           onClick={handleSubmit}
           disabled={isLoading}
-            className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-6 py-2.5 rounded-xl font-semibold"
+            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-6 py-2.5 rounded-xl font-semibold"
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+              <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
               Creating...
             </span>
           ) : (
@@ -513,11 +513,11 @@ const CreateCustomerForm = () => {
             <Button
               onClick={handleAddType}
               disabled={addingType}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8]"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43]"
             >
               {addingType ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Creating...
                 </span>
               ) : (

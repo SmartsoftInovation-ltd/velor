@@ -130,7 +130,7 @@ const MoneyHandoverUpdate = () => {
         hideTitle
         actions={
           <Link to="/money-handover-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Handover List
             </Button>
           </Link>
@@ -246,12 +246,12 @@ const MoneyHandoverUpdate = () => {
                 onClick={handleSubmit}
                 disabled={loading}
                 className={`${
-   loading ?"bg-gray-400" :"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
-   } text-[#1D4ED8] px-4 py-2 rounded`}
+   loading ?"bg-gray-400" :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
+   } text-[#0A6B43] px-4 py-2 rounded`}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                    <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                     Updating...
                   </span>
                 ) : (

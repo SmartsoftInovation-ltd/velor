@@ -260,7 +260,7 @@ export default function SizeChartTable({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="h-10 w-full rounded-lg pl-9 pr-9 transition-colors"
           />
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#1D4ED8]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
@@ -314,7 +314,7 @@ export default function SizeChartTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                    className="max-md:size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -343,7 +343,7 @@ export default function SizeChartTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                      className="max-md:size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                     >
                       <FaEdit className="size-4" />
                     </Button>
@@ -443,8 +443,8 @@ export default function SizeChartTable({
               {tableData.length === 0 ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
                   <div className="relative">
-                    <span className="absolute inset-0 rounded-full bg-[#1D4ED8]/10 blur-md" />
-                    <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-[#1D4ED8]/30 bg-[#DCE8FF] text-[#1D4ED8] dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300">
+                    <span className="absolute inset-0 rounded-full bg-[#0A6B43]/10 blur-md" />
+                    <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-[#0A6B43]/30 bg-[#D5F0E3] text-[#0A6B43] dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300">
                       {searchTerm ? (
                         <FaSearch className="size-5" />
                       ) : (
@@ -461,7 +461,7 @@ export default function SizeChartTable({
                       {searchTerm ? (
                         <>
                           Nothing matched{" "}
-                          <span className="font-bold text-[#1D4ED8] dark:text-blue-400">
+                          <span className="font-bold text-[#0A6B43] dark:text-blue-400">
                             "{searchTerm}"
                           </span>
                           . Try a different term.
@@ -475,14 +475,14 @@ export default function SizeChartTable({
                   {searchTerm ? (
                     <Button
                       onClick={() => setSearchTerm("")}
-                      className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded"
+                      className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded"
                     >
                       Clear Search
                     </Button>
                   ) : (
                     canAdd && (
                       <Link to="/create-sizechart">
-                        <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+                        <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
                           Create Size Chart
                         </Button>
                       </Link>
@@ -593,7 +593,7 @@ export default function SizeChartTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                             >
                               <FaEye className="size-4" />
                             </Button>
@@ -634,7 +634,7 @@ export default function SizeChartTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -690,11 +690,11 @@ export default function SizeChartTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Deleting...
                 </span>
               ) : (
@@ -759,8 +759,8 @@ export default function SizeChartTable({
               disabled={togglePending}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
                 pendingToggle?.currentStatus
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
               }`}
             >
               {pendingToggle?.currentStatus

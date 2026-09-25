@@ -112,7 +112,7 @@ const AddOutletInfo = () => {
         hideTitle
         actions={
           <Link to="/outlet-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Outlet List
             </Button>
           </Link>
@@ -206,13 +206,13 @@ const AddOutletInfo = () => {
               <Button
                 // @ts-ignore
                 type="submit" disabled={loading}
-                className={`px-6 py-2 rounded text-white text-sm ${loading ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"}`}>
+                className={`px-6 py-2 rounded text-white text-sm ${loading ? "bg-gray-400" : "bg-brand-500 hover:bg-brand-600"}`}>
                 {loading ? "Creating…" : "Create Outlet Info"}
               </Button>
               <Link to="/outlet-list">
                 <button
                   type="button"
-                    className="px-6 py-2 rounded text-sm text-[#1D4ED8] hover:bg-red-50 dark:hover:bg-[#C7DAFF]/20 transition-colors"
+                    className="px-6 py-2 rounded text-sm text-[#0A6B43] hover:bg-red-50 dark:hover:bg-[#B8E4CF]/20 transition-colors"
                 >
                   Cancel
                 </button>

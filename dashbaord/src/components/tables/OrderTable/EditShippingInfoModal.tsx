@@ -112,7 +112,7 @@ export default function EditShippingInfoModal({
           <Button onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                 Saving...
               </span>
             ) : (
@@ -121,7 +121,7 @@ export default function EditShippingInfoModal({
           </Button>
           <Button
             onClick={onClose}
-              className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"
+              className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
           >
             Cancel
           </Button>

@@ -119,7 +119,7 @@ const QuickCreateModal = ({ type, isOpen, onClose, onCreated }: QuickCreateModal
           <Button
             onClick={handleSubmit}
             disabled={isLoading}
-              className="px-5 py-2 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-semibold border-none disabled:opacity-50 transition-colors"
+              className="px-5 py-2 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold border-none disabled:opacity-50 transition-colors"
           >
             {isLoading ? (
               <div className="flex items-center gap-2">

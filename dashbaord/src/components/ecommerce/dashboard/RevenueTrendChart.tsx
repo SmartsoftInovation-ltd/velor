@@ -25,7 +25,7 @@ export default function RevenueTrendChart({
       background: "transparent",
     },
     theme: { mode: dark ? "dark" : "light" },
-    colors: ["#465fff", "#12b76a"],
+    colors: ["#0F9D63", "#12b76a"],
     stroke: { curve: "smooth", width: [3, 2] },
     fill: {
       type: "gradient",

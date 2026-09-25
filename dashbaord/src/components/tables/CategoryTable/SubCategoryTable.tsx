@@ -219,7 +219,7 @@ const SubCategoryTable = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-[#1D4ED8] hover:text-[#1D4ED8] hover:bg-blue-50 dark:hover:bg-[#C7DAFF]/10 transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-[#0A6B43] hover:text-[#0A6B43] hover:bg-blue-50 dark:hover:bg-[#B8E4CF]/10 transition-all active:scale-90"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -242,7 +242,7 @@ const SubCategoryTable = ({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                      className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                     >
                       <FaEdit className="size-4" />
                     </Button>
@@ -282,7 +282,7 @@ const SubCategoryTable = ({
             {searchTerm && (
               <Button
                 onClick={handleClearSearch}
-                className="rounded-xl px-10 py-3 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
+                className="rounded-xl px-10 py-3 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
               >
                 Go Back to All
               </Button>
@@ -390,7 +390,7 @@ const SubCategoryTable = ({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-[#1D4ED8] hover:text-[#1D4ED8] hover:bg-blue-50 dark:hover:bg-[#C7DAFF]/10 transition-all active:scale-90"
+                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-[#0A6B43] hover:text-[#0A6B43] hover:bg-blue-50 dark:hover:bg-[#B8E4CF]/10 transition-all active:scale-90"
                             >
                               <FaEye className="size-4" />
                             </Button>
@@ -420,7 +420,7 @@ const SubCategoryTable = ({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#1D4ED8] hover:text-[#1D4ED8] dark:hover:text-[#1D4ED8] dark:bg-[#DCE8FF]/5 transition-all active:scale-90"
+                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -472,11 +472,11 @@ const SubCategoryTable = ({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 rounded-xl py-3 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg border-none font-bold transition-transform active:scale-95 disabled:active:scale-100"
+                className="flex-1 rounded-xl py-3 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg border-none font-bold transition-transform active:scale-95 disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Deleting...
                 </span>
               ) : (
@@ -511,14 +511,14 @@ const SubCategoryTable = ({
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-                className={`flex-1 rounded-xl py-3 text-[#1D4ED8] shadow-lg border-none font-bold transition-transform active:scale-95 ${pendingToggle?.currentStatus
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
+                className={`flex-1 rounded-xl py-3 text-[#0A6B43] shadow-lg border-none font-bold transition-transform active:scale-95 ${pendingToggle?.currentStatus
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
                 }`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Updating...
                 </span>
               ) : (

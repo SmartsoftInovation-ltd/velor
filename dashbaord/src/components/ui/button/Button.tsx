@@ -29,10 +29,10 @@ const Button: React.FC<ButtonProps> = ({
     md: "px-4 py-3 text-sm",
   };
 
- // One button look across the whole app: #DCE8FF, dark blue label, no border.
+ // One button look across the whole app: #D5F0E3, dark blue label, no border.
   // All three variants resolve to it so existing `variant` props keep working.
   const baseVariant =
-"bg-[#DCE8FF] text-[#1D4ED8] shadow-theme-xs hover:bg-[#C7DAFF] disabled:bg-[#EEF4FF] disabled:text-[#9DB2E8]";
+"bg-[#D5F0E3] text-[#0A6B43] shadow-theme-xs hover:bg-[#B8E4CF] disabled:bg-[#EDF8F3] disabled:text-[#8CCBAE]";
   const variantClasses = {
     primary: baseVariant,
     secondary: baseVariant,

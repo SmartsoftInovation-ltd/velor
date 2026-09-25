@@ -84,7 +84,7 @@ const AppHeader: React.FC = () => {
       <div className="flex grow flex-col items-center justify-between lg:flex-row lg:px-4">
         <div className="flex w-full items-center justify-between gap-2 border-b border-gray-200 px-3 py-2.5 dark:border-gray-800 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-3">
           <button
-            className="header-icon-button z-99999 text-gray-600 hover:bg-brand-50 hover:text-[#1D4ED8] dark:text-gray-300 dark:hover:bg-[#C7DAFF]/15 dark:hover:text-[#1D4ED8]"
+            className="header-icon-button z-99999 text-gray-600 hover:bg-brand-50 hover:text-[#0A6B43] dark:text-gray-300 dark:hover:bg-[#B8E4CF]/15 dark:hover:text-[#0A6B43]"
             onClick={handleToggle}
             aria-label="Toggle Sidebar"
           >
@@ -200,7 +200,7 @@ const AppHeader: React.FC = () => {
             <button
               onClick={toggleFullscreen}
               aria-label="Toggle fullscreen"
-                className="header-icon-button text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-[#1D4ED8]"
+                className="header-icon-button text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-[#0A6B43]"
             >
               {isFullscreen ? (
                 <MdOutlineFullscreenExit className="size-5" />

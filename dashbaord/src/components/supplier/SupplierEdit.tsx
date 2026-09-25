@@ -127,7 +127,7 @@ const SupplierEdit = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Edit Supplier</h2>
               <Link to="/supplier-list">
-                <Button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
                   Supplier List
                 </Button>
               </Link>
@@ -274,11 +274,11 @@ const SupplierEdit = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={mutation.isPending}
-                  className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-6 py-2 rounded-xl"
+                  className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-6 py-2 rounded-xl"
               >
                 {mutation.isPending ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                    <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                     Saving...
                   </span>
                 ) : (

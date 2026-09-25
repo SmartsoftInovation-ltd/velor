@@ -101,13 +101,13 @@ const CreateDeliveryChargeForm = () => {
       </div>
 
       <Button
-        className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-4 py-2 rounded"
+        className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-4 py-2 rounded"
         onClick={handleSubmit}
         disabled={isSubmitting}
       >
         {isSubmitting ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+            <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
             Saving...
           </span>
         ) : (

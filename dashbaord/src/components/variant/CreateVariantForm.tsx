@@ -1543,7 +1543,7 @@ const CreateVariantForm = ({
                     {selectedImages.length > 0 && (
                       <Button 
                         size="sm" 
-                          className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-[10px] py-1 px-3 rounded-lg flex items-center gap-1.5 shadow-lg active:scale-95"
+                          className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-[10px] py-1 px-3 rounded-lg flex items-center gap-1.5 shadow-lg active:scale-95"
                         onClick={handleDeleteGalleryImages}
                         disabled={isDeletingImages}
                       >
@@ -1609,7 +1609,7 @@ const CreateVariantForm = ({
                   {gallery.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <Button 
-                        className="w-full bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-xs font-black py-3 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all animate-pulse"
+                        className="w-full bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-xs font-black py-3 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all animate-pulse"
                         onClick={handleAddExtraImages}
                         disabled={isUploadingImages}
                       >
@@ -1721,7 +1721,7 @@ const CreateVariantForm = ({
         <div className="flex gap-4 w-full ">
           <button
             onClick={addNewRow}
-              className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-bold px-4 py-2 rounded w-full"
+              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold px-4 py-2 rounded w-full"
             disabled={isLoading}
           >
             Add New Variant
@@ -1731,10 +1731,10 @@ const CreateVariantForm = ({
       <div className="flex flex-col sm:flex-row gap-3">
         <Button
           onClick={handleSubmit}
-            className={`px-6 py-3 rounded-xl text-[#1D4ED8] font-bold transition-all uppercase tracking-wider text-xs ${
+            className={`px-6 py-3 rounded-xl text-[#0A6B43] font-bold transition-all uppercase tracking-wider text-xs ${
             isUpdate && (gallery.length > 0 || selectedImages.length > 0)
-              ? "bg-[#EEF4FF] text-[#9DB2E8] cursor-not-allowed"
-              : "bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-95"
+              ? "bg-[#EDF8F3] text-[#8CCBAE] cursor-not-allowed"
+              : "bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-95"
           }`}
           disabled={isLoading || (isUpdate && (gallery.length > 0 || selectedImages.length > 0))}
         >
@@ -1751,7 +1751,7 @@ const CreateVariantForm = ({
           <Button
             onClick={handleManualRefresh}
             disabled={isRefreshing}
-              className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
           >
             <FaSync className={isRefreshing ? "animate-spin" : ""} />
             {isRefreshing ? "Refreshing..." : "Refresh Data"}

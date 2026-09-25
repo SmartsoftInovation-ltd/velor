@@ -175,7 +175,7 @@ const ProductView = () => {
                   <Link to={`/update-product/${product.slug}`}>
                     <Button
                       size="sm"
-                        className="flex items-center gap-2 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-lg px-4 shadow-md"
+                        className="flex items-center gap-2 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-lg px-4 shadow-md"
                     >
                       <FaEdit className="size-3.5" />
                       Edit
@@ -508,13 +508,13 @@ const ProductView = () => {
               disabled={isToggling}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none transition-all ${
                 product.isActive
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
               }`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Updating...
                 </span>
               ) : (

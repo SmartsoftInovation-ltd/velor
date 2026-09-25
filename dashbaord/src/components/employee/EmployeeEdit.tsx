@@ -446,7 +446,7 @@ const EmployeeEdit = () => {
           title={
             <div className="flex justify-end">
               <Link to="/employee-list">
-                <Button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
                   Employee List
                 </Button>
               </Link>

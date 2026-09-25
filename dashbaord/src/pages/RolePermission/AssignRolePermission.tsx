@@ -345,9 +345,9 @@ const ModuleCard = ({ name, permissions, onToggle, onToggleAll }: ModuleCardProp
           onClick={onToggleAll}
           className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-black transition-all duration-150 border active:scale-95
             ${allOn
- ?"bg-[#DCE8FF] text-[#1D4ED8] border-transparent shadow-sm"
+ ?"bg-[#D5F0E3] text-[#0A6B43] border-transparent shadow-sm"
               : someOn
- ?"bg-blue-50 dark:bg-[#DCE8FF]/10 text-[#1D4ED8] dark:text-[#1D4ED8] /30"
+ ?"bg-blue-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] dark:text-[#0A6B43] /30"
                 : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300"}`}
         >
           {/* One icon slot and one label slot, always in the same positions.
@@ -384,9 +384,9 @@ const GroupHeader = ({ group, allChecked, someChecked, onToggleAll }: GroupHeade
         onClick={onToggleAll}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 border active:scale-95
           ${allChecked
- ?"bg-[#DCE8FF] text-[#1D4ED8] border-transparent shadow-md"
+ ?"bg-[#D5F0E3] text-[#0A6B43] border-transparent shadow-md"
             : someChecked
- ?"bg-blue-50 dark:bg-[#DCE8FF]/10 text-[#1D4ED8] dark:text-[#1D4ED8] /30"
+ ?"bg-blue-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] dark:text-[#0A6B43] /30"
               : "bg-white dark:bg-gray-800/80 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-sm"}`}
       >
         {allChecked ? (
@@ -643,9 +643,9 @@ const AssignRolePermission = () => {
                 onClick={toggleAllModules}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 border active:scale-95
                   ${allModulesOn
- ?"bg-[#DCE8FF] text-[#1D4ED8] border-transparent shadow-md"
+ ?"bg-[#D5F0E3] text-[#0A6B43] border-transparent shadow-md"
                     : someModulesOn
- ?"bg-blue-50 dark:bg-[#DCE8FF]/10 text-[#1D4ED8] dark:text-[#1D4ED8] /30"
+ ?"bg-blue-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] dark:text-[#0A6B43] /30"
                       : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-sm"}`}
               >
                 {allModulesOn ? (
@@ -800,14 +800,14 @@ const AssignRolePermission = () => {
             <Button
               onClick={handleDestroyDraft}
               disabled={!hasDraft || isSubmitting}
-                className="px-6 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
+                className="px-6 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
             >
               Destroy Draft
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || !selectedRole}
-                className="px-10 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
+                className="px-10 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">

@@ -747,7 +747,7 @@ const CreateEmployeeForm = () => {
                 <button
                   type="button"
                   onClick={removeProfileImage}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-medium transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-medium transition-colors"
                 >
                   <MdDelete className="size-4" />
                   Remove Photo
@@ -780,7 +780,7 @@ const CreateEmployeeForm = () => {
             <button
               type="button"
               onClick={handleTab1Next}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-semibold transition-colors"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold transition-colors"
             >
               Save & Next
               <FaArrowRight className="size-3.5" />
@@ -957,7 +957,7 @@ const CreateEmployeeForm = () => {
             <button
               type="button"
               onClick={handleTab2Next}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-semibold transition-colors"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold transition-colors"
             >
               Save & Next
               <FaArrowRight className="size-3.5" />
@@ -974,7 +974,7 @@ const CreateEmployeeForm = () => {
             <button
               type="button"
               onClick={addCertification}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-medium transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-medium transition-colors"
             >
               <FaPlus className="size-3" />
               Add Certificate
@@ -989,7 +989,7 @@ const CreateEmployeeForm = () => {
               <button
                 type="button"
                 onClick={addCertification}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-medium transition-colors"
               >
                 <FaPlus className="size-3" />
                 Add Certificate
@@ -1089,7 +1089,7 @@ const CreateEmployeeForm = () => {
             <Button
               onClick={handleSubmit}
               disabled={isLoading}
-                className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-6 py-2 rounded"
+                className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-6 py-2 rounded"
             >
               {isLoading ? "Creating..." : "Create Employee"}
             </Button>

@@ -609,8 +609,8 @@ export default function SupplierPaymentTable({
               disabled={isActioning}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:opacity-50 ${
                 selectedPayment?.isActive
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
               }`}
             >
               {isActioning
@@ -658,7 +658,7 @@ export default function SupplierPaymentTable({
             <button
               onClick={handleDelete}
               disabled={isActioning}
-                className="flex-1 py-2.5 text-sm rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-semibold transition disabled:opacity-50"
+                className="flex-1 py-2.5 text-sm rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-semibold transition disabled:opacity-50"
             >
               {isActioning ? "Deleting..." : "Yes, Delete"}
             </button>

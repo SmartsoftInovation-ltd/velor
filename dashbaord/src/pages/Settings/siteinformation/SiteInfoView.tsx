@@ -72,7 +72,7 @@ const SiteInfoView = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-gray-500 text-sm">Site information not found.</p>
-        <Link to="/site-info-list" className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white text-sm">
+        <Link to="/site-info-list" className="px-4 py-2 rounded bg-brand-500 hover:bg-brand-600 text-white text-sm">
           Back to List
         </Link>
       </div>
@@ -101,12 +101,12 @@ const SiteInfoView = () => {
         actions={
           <div className="flex items-center gap-2">
             <Link to={`/update-site-info/${site.slug}`}>
-              <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
                 Edit
               </Button>
             </Link>
             <Link to="/site-info-list">
-              <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
                 Site Info List
               </Button>
             </Link>

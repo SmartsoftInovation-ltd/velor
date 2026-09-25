@@ -205,7 +205,7 @@ const SizeChartView = () => {
                       <Link to={`/update-sizechart/${sizeChart.slug}`}>
                         <Button
                           size="sm"
-                            className="flex items-center gap-2 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl px-4 py-2 shadow-lg font-bold"
+                            className="flex items-center gap-2 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl px-4 py-2 shadow-lg font-bold"
                         >
                           <FaEdit className="size-3.5" />
                           Edit
@@ -583,13 +583,13 @@ const SizeChartView = () => {
               disabled={isToggling}
               className={`flex-1 rounded-2xl py-3 text-sm font-black uppercase tracking-widest border-none active:scale-95 transition-all ${
                 sizeChart?.isActive
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-xl"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-xl"
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-xl"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-xl"
               }`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Updating...
                 </span>
               ) : (

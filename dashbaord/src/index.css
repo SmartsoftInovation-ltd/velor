@@ -41,18 +41,19 @@ layer(base);
   --color-white: #ffffff;
   --color-black: #101828;
 
-  --color-brand-25: #f2f7ff;
-  --color-brand-50: #ecf3ff;
-  --color-brand-100: #dde9ff;
-  --color-brand-200: #c2d6ff;
-  --color-brand-300: #9cb9ff;
-  --color-brand-400: #7592ff;
-  --color-brand-500: #465fff;
-  --color-brand-600: #3641f5;
-  --color-brand-700: #2a31d8;
-  --color-brand-800: #252dae;
-  --color-brand-900: #262e89;
-  --color-brand-950: #161950;
+  /* Brand = sidebar green (same scale as accent-*) */
+  --color-brand-25: #f3fbf7;
+  --color-brand-50: #e7f6ef;
+  --color-brand-100: #c9ebdb;
+  --color-brand-200: #97d8bb;
+  --color-brand-300: #5fc196;
+  --color-brand-400: #2fae78;
+  --color-brand-500: #0f9d63;
+  --color-brand-600: #0c8553;
+  --color-brand-700: #0a6b43;
+  --color-brand-800: #085536;
+  --color-brand-900: #06432b;
+  --color-brand-950: #032518;
 
   /* Platform Console accent: ECOMPOS green rgb(15, 157, 99) */
   --color-accent-25: #f3fbf7;
@@ -161,7 +162,7 @@ layer(base);
   --shadow-theme-xl: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
     0px 8px 8px -4px rgba(16, 24, 40, 0.03);
   --shadow-datepicker: -5px 0 0 #262d3c, 5px 0 0 #262d3c;
-  --shadow-focus-ring: 0px 0px 0px 4px rgba(70, 95, 255, 0.12);
+  --shadow-focus-ring: 0px 0px 0px 4px rgba(15, 157, 99, 0.12);
   --shadow-slider-navigation: 0px 1px 2px 0px rgba(16, 24, 40, 0.1),
     0px 1px 3px 0px rgba(16, 24, 40, 0.1);
   --shadow-tooltip: 0px 4px 6px -2px rgba(16, 24, 40, 0.05),
@@ -244,6 +245,14 @@ layer(base);
       animation: none;
     }
   }
+}
+
+/* Every green-filled button/link gets the same sweep as <Button> without
+   touching each call site. Add `no-shine` to opt out. */
+:is(button, a)[class*="bg-brand-"]:not(.no-shine),
+:is(button, a)[class*="bg-accent-"]:not(.no-shine),
+:is(button, a)[class*="bg-[#D5F0E3]"]:not(.no-shine) {
+  @apply shine;
 }
 
 @utility menu-item {
@@ -617,13 +626,13 @@ span.flatpickr-weekday,
 .flatpickr-day.selected.nextMonthDay,
 .flatpickr-day.startRange.nextMonthDay,
 .flatpickr-day.endRange.nextMonthDay {
-  background: #465fff;
+  background: #0F9D63;
   @apply border-brand-500! bg-brand-500! hover:border-brand-500! hover:bg-brand-500!;
 }
 .flatpickr-day.selected.startRange + .endRange:not(:nth-child(7n + 1)),
 .flatpickr-day.startRange.startRange + .endRange:not(:nth-child(7n + 1)),
 .flatpickr-day.endRange.startRange + .endRange:not(:nth-child(7n + 1)) {
-  box-shadow: -10px 0 0 #465fff;
+  box-shadow: -10px 0 0 #0F9D63;
 }
 
 .flatpickr-months .flatpickr-prev-month svg,
@@ -909,15 +918,15 @@ span.flatpickr-weekday,
 }
 .dark .ql-toolbar button:hover .ql-stroke,
 .dark .ql-toolbar button.ql-active .ql-stroke {
-  stroke: #465fff !important;
+  stroke: #0F9D63 !important;
 }
 .dark .ql-toolbar button:hover .ql-fill,
 .dark .ql-toolbar button.ql-active .ql-fill {
-  fill: #465fff !important;
+  fill: #0F9D63 !important;
 }
 .dark .ql-toolbar .ql-picker-label:hover,
 .dark .ql-toolbar .ql-picker-label.ql-active {
-  color: #465fff !important;
+  color: #0F9D63 !important;
 }
 
 /* 80mm thermal receipt layout — shared by the on-screen offscreen snapshot
@@ -1032,7 +1041,7 @@ span.flatpickr-weekday,
     height: 52px;
     flex-shrink: 0;
     border-radius: 50%;
-    background: #465fff !important;
+    background: #0F9D63 !important;
     color: #fff;
     font-size: 22px;
     font-weight: 800;
@@ -1084,7 +1093,7 @@ span.flatpickr-weekday,
     font-weight: 800;
     letter-spacing: -0.01em;
     line-height: 1.15;
-    color: #1d4ed8;
+    color: #0A6B43;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -1180,7 +1189,7 @@ span.flatpickr-weekday,
     height: 52px;
     flex-shrink: 0;
     border-radius: 50%;
-    background: #465fff !important;
+    background: #0F9D63 !important;
     color: #fff;
     font-size: 22px;
     font-weight: 800;
@@ -1232,7 +1241,7 @@ span.flatpickr-weekday,
     font-weight: 800;
     letter-spacing: -0.01em;
     line-height: 1.15;
-    color: #1d4ed8;
+    color: #0A6B43;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

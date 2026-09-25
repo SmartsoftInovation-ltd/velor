@@ -333,7 +333,7 @@ const QuickCreateCustomerModal = ({
         <Button onClick={handleSubmit} disabled={isLoading}>
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+              <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
               Creating...
             </span>
           ) : (

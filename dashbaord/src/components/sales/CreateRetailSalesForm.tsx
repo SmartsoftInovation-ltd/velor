@@ -1180,7 +1180,7 @@ export default function CreateRetailSalesForm({
               <button
                 title="Add new customer"
                 onClick={() => setShowCreateCustomerModal(true)}
-                className="bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-95 text-[#1D4ED8] rounded-md w-8 h-8 cursor-pointer text-sm shrink-0 flex justify-center items-center transition-all shadow-sm"
+                className="bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-95 text-[#0A6B43] rounded-md w-8 h-8 cursor-pointer text-sm shrink-0 flex justify-center items-center transition-all shadow-sm"
               >
                 <IoPersonAddSharp size={16} />
               </button>
@@ -1805,7 +1805,7 @@ export default function CreateRetailSalesForm({
                   setTempMultiplePayments(multiplePayments);
                   setShowMultiplePayModal(true);
                 }}
-                  className="w-full text-xs font-bold py-2 rounded-md text-[#1D4ED8] bg-[#DCE8FF] hover:bg-[#C7DAFF] transition-colors cursor-pointer"
+                  className="w-full text-xs font-bold py-2 rounded-md text-[#0A6B43] bg-[#D5F0E3] hover:bg-[#B8E4CF] transition-colors cursor-pointer"
               >
                 {multiplePayments.length} Payment(s) — Click to Edit
               </button>
@@ -1827,7 +1827,7 @@ export default function CreateRetailSalesForm({
                       ? "Saving..."
                       : undefined
               }
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-[0.98] text-[#1D4ED8] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
             >
               {isSaving
                 ? isEdit
@@ -1849,7 +1849,7 @@ export default function CreateRetailSalesForm({
                       ? "Saving..."
                       : undefined
               }
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-[0.98] text-[#1D4ED8] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
             >
               {isSaving
                 ? isEdit
@@ -1985,7 +1985,7 @@ export default function CreateRetailSalesForm({
               { amount: "", paymentTo: "", remark: "" },
             ])
           }
-            className="w-full mt-3 text-xs font-bold py-2 rounded-md border-dashed text-[#1D4ED8] bg-[#DCE8FF] hover:bg-[#C7DAFF] transition-colors cursor-pointer"
+            className="w-full mt-3 text-xs font-bold py-2 rounded-md border-dashed text-[#0A6B43] bg-[#D5F0E3] hover:bg-[#B8E4CF] transition-colors cursor-pointer"
         >
           + Add More Payment
         </button>
@@ -2033,7 +2033,7 @@ export default function CreateRetailSalesForm({
               setMultiplePayments(tempMultiplePayments);
               setShowMultiplePayModal(false);
             }}
-              className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-[0.98] text-[#1D4ED8] text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
+              className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
           >
             Confirm
           </button>
@@ -2042,7 +2042,7 @@ export default function CreateRetailSalesForm({
               setShowMultiplePayModal(false);
               setMultiPayError("");
             }}
-              className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-[0.98] text-[#1D4ED8] text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
+              className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
           >
             Cancel
           </button>

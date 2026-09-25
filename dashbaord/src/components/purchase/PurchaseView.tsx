@@ -205,7 +205,7 @@ const PurchaseView = () => {
           <Link to={`/update-purchase/${purchase._id}`}>
             <Button
               size="sm"
-                className="flex items-center gap-2 px-5 h-10 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-bold text-sm shadow-lg transition-all active:scale-95"
+                className="flex items-center gap-2 px-5 h-10 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-bold text-sm shadow-lg transition-all active:scale-95"
             >
               <FaEdit className="size-3.5" />
               Edit Purchase

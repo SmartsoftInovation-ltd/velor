@@ -216,7 +216,7 @@ const SubCategoryUpdate = () => {
                   <Button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                      className="w-full sm:w-auto bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-10 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-bold text-sm tracking-wide transform active:scale-95"
+                      className="w-full sm:w-auto bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-10 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-bold text-sm tracking-wide transform active:scale-95"
                   >
                     {isLoading ? (
                       <div className="flex items-center gap-2">

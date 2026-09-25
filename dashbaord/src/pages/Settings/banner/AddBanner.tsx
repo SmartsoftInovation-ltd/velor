@@ -147,7 +147,7 @@ const AddBanner = () => {
         hideTitle
         actions={
           <Link to="/banner-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Banner List
             </Button>
           </Link>
@@ -257,7 +257,7 @@ const AddBanner = () => {
                         <button
                           type="button"
                           onClick={handleRemoveImage}
-                            className="bg-[#DCE8FF] text-[#1D4ED8] p-3 rounded-full hover:bg-[#C7DAFF] transform hover:scale-110 transition-all shadow-xl"
+                            className="bg-[#D5F0E3] text-[#0A6B43] p-3 rounded-full hover:bg-[#B8E4CF] transform hover:scale-110 transition-all shadow-xl"
                         >
                           <TrashBinIcon className="size-5" />
                         </button>
@@ -286,7 +286,7 @@ const AddBanner = () => {
                 // @ts-ignore
                 type="submit"
                 disabled={isLoading}
-                  className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-2.5 rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50 shadow-theme-md transition-all"
+                  className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-2.5 rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50 shadow-theme-md transition-all"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

@@ -84,7 +84,7 @@ const OrderStatusReportView = () => {
               <h2 className="text-sm font-semibold">Order Status Report</h2>
               <p className="text-xs text-gray-500 mt-0.5">{totalOrderCount} total orders · ৳{(totalAmount ?? 0).toLocaleString()}</p>
             </div>
-            <Button onClick={handlePrint} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm flex items-center gap-1">
+            <Button onClick={handlePrint} className="bg-brand-500 hover:bg-brand-600 text-white px-3 py-2 rounded text-sm flex items-center gap-1">
               <IoIosPrint /> Print
             </Button>
           </div>

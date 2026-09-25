@@ -84,14 +84,14 @@ const ProductList = () => {
               onClick={() => refetch()}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
               title="Refresh Products"
             >
               <FaSync className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
             {canAdd && (
               <Link to="/create-product">
-                <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+                <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
                   Create Product
                 </Button>
               </Link>

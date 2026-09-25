@@ -61,7 +61,7 @@ const InfoCard = ({ icon, label, value }: { icon: React.ReactNode; label: string
 // LinkCard for category/brand navigation
 const LinkCard = ({ icon, label, name, to }: { icon: React.ReactNode; label: string; name: string; to: string }) => (
   <Link to={to} className="group block">
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-200 cursor-pointer">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-500/40 hover:shadow-lg hover:shadow-brand-500/5 transition-all duration-200 cursor-pointer">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-gray-400 group-hover:text-blue-500 transition-colors">{icon}</span>
@@ -180,7 +180,7 @@ const VariantView = () => {
                 </Tooltip>
                 <Tooltip text="Edit variant">
                   <Link to={`/update-variant/${variant.slug}`}>
-                    <Button size="sm" className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl px-4 shadow-md shadow-blue-500/25">
+                    <Button size="sm" className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-4 shadow-md shadow-brand-500/25">
                       <FaEdit className="size-3.5" /> Edit
                     </Button>
                   </Link>
@@ -237,7 +237,7 @@ const VariantView = () => {
                       onClick={() => setActiveImage(url)}
                       className={`size-[72px] flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-200 ${
                         activeImage === url
-                          ? "border-blue-500 shadow-lg shadow-blue-500/20 scale-95"
+                          ? "border-blue-500 shadow-lg shadow-brand-500/20 scale-95"
                           : "border-gray-100 dark:border-gray-700 opacity-60 hover:opacity-100 hover:border-gray-300"
                       }`}
                     >
@@ -450,11 +450,11 @@ const VariantView = () => {
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none ${variant.isActive ?"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg" :"bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-lg"}`}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none ${variant.isActive ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg" :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"}`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Updating...
                 </span>
               ) : (

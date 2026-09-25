@@ -123,7 +123,7 @@ const StoreInfoList = () => {
               onClick={() => navigate(-1)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
               title="Go Back"
             >
               <FaArrowLeft className="size-3.5" />
@@ -132,14 +132,14 @@ const StoreInfoList = () => {
               onClick={() => fetchStores(1, debouncedSearch)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
               title="Refresh"
             >
               <FaSync className="size-3.5" />
             </Button>
             {canAdd && (
               <Link to="/add-store-info">
-                <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+                <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
                   Add Store Info
                 </Button>
               </Link>
@@ -269,7 +269,7 @@ const StoreInfoList = () => {
                           <span key={`e-${i}`} className="px-2 text-gray-400">…</span>
                         ) : (
                           <button key={p} onClick={() => handlePageChange(p as number)}
-                            className={`px-3 py-1.5 rounded border text-sm ${meta.page === p ? "bg-blue-500 text-white border-blue-500" : "hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"}`}>
+                            className={`px-3 py-1.5 rounded border text-sm ${meta.page === p ? "bg-brand-500 text-white border-brand-500" : "hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"}`}>
                             {p}
                           </button>
                         )

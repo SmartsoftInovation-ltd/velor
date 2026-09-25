@@ -194,7 +194,7 @@ const AddUser = () => {
         hideTitle
         actions={
           <Link to="/userlist">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               User List
             </Button>
           </Link>
@@ -389,7 +389,7 @@ const AddUser = () => {
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                      className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-md transition-colors"
+                      className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-md transition-colors"
                   >
                     <FaTimes className="size-3" />
                   </button>
@@ -423,7 +423,7 @@ const AddUser = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                  className="px-8 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="px-8 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -491,7 +491,7 @@ const AddUser = () => {
               <Button
                 onClick={handleCreateRole}
                 disabled={isCreatingRole}
-                  className="px-5 py-2 rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm font-semibold border-none disabled:opacity-50 transition-colors"
+                  className="px-5 py-2 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold border-none disabled:opacity-50 transition-colors"
               >
                 {isCreatingRole ? (
                   <div className="flex items-center gap-2">

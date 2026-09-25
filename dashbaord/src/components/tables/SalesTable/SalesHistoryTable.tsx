@@ -275,7 +275,7 @@ function MenuItem({
         disabled
           ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
           : danger
- ?"text-[#1D4ED8] hover:bg-red-50 dark:hover:bg-[#C7DAFF]/10"
+ ?"text-[#0A6B43] hover:bg-red-50 dark:hover:bg-[#B8E4CF]/10"
             : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
       }`}
     >
@@ -755,11 +755,11 @@ const SalesHistoryTable = ({
                       <Button
                         onClick={fetchSales}
                         disabled={isSubmitting}
-                          className="px-8 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-semibold shadow-lg transition-all active:scale-95 disabled:active:scale-100"
+                          className="px-8 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold shadow-lg transition-all active:scale-95 disabled:active:scale-100"
                       >
                         {isSubmitting ? (
                           <span className="flex items-center justify-center gap-2">
-                            <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                            <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                             Saving...
                           </span>
                         ) : (
@@ -882,7 +882,7 @@ const SalesHistoryTable = ({
             <Button onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Deleting...
                 </span>
               ) : (
@@ -891,7 +891,7 @@ const SalesHistoryTable = ({
             </Button>
             <Button
               onClick={closeModal}
-                className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"
+                className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
             >
               No
             </Button>

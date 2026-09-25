@@ -210,7 +210,7 @@ const BrandUpdate = () => {
                           <button
                             type="button"
                             onClick={handleRemoveImage}
-                              className="bg-[#DCE8FF] text-[#1D4ED8] p-3 rounded-full hover:bg-[#C7DAFF] shadow-xl"
+                              className="bg-[#D5F0E3] text-[#0A6B43] p-3 rounded-full hover:bg-[#B8E4CF] shadow-xl"
                           >
                             <FaTrashAlt className="size-6" />
                           </button>
@@ -229,7 +229,7 @@ const BrandUpdate = () => {
               <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-800">
                 <Button
                   onClick={handleSubmit}
-                    className="w-full sm:w-auto bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-10 py-3.5 rounded-xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-lg"
+                    className="w-full sm:w-auto bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-10 py-3.5 rounded-xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-lg"
                   disabled={mutation.isPending}
                 >
                   {mutation.isPending ? (

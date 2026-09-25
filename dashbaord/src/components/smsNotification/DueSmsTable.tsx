@@ -160,7 +160,7 @@ export default function DueSmsTable() {
               placeholder="Search by name, mobile, ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#1D4ED8] dark:border-gray-700 dark:text-gray-200"
+              className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#0A6B43] dark:border-gray-700 dark:text-gray-200"
             />
             {searchTerm && (
               <button
@@ -423,7 +423,7 @@ export default function DueSmsTable() {
             <Button
               onClick={handleSendSingle}
               disabled={!!sendingId || !smsMessage.trim()}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8]"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43]"
             >
               {sendingId ? "Sending..." : "Send SMS"}
             </Button>
@@ -475,7 +475,7 @@ export default function DueSmsTable() {
             <Button
               onClick={handleSendAll}
               disabled={sendingBulk || !bulkMessage.trim()}
-                className="flex-1 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8]"
+                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43]"
             >
               {sendingBulk ? "Queuing..." : `Send to All (${tableData.length})`}
             </Button>

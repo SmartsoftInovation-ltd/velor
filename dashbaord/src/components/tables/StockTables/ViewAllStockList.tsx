@@ -512,7 +512,7 @@ const ViewAllStockList = () => {
             {activeFilters > 0 && (
               <button
                 onClick={clearAllFilters}
-                  className="flex items-center gap-1.5 h-10 px-3 rounded-xl bg-red-50 text-[#1D4ED8] text-xs font-medium hover:bg-[#C7DAFF] transition-colors /20 dark:bg-[#DCE8FF]/10"
+                  className="flex items-center gap-1.5 h-10 px-3 rounded-xl bg-red-50 text-[#0A6B43] text-xs font-medium hover:bg-[#B8E4CF] transition-colors /20 dark:bg-[#D5F0E3]/10"
               >
                 <FaTimes size={10} />
                 Clear ({activeFilters})

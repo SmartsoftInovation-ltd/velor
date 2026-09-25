@@ -659,7 +659,7 @@ const UpdateProductForm = () => {
                   {selectedImages.length > 0 && (
                     <Button 
                       size="sm" 
-                        className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-[10px] py-1 px-3 rounded-lg flex items-center gap-1.5 shadow-lg active:scale-95"
+                        className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-[10px] py-1 px-3 rounded-lg flex items-center gap-1.5 shadow-lg active:scale-95"
                       onClick={handleDeleteGalleryImages}
                       disabled={isDeletingImages}
                     >
@@ -725,7 +725,7 @@ const UpdateProductForm = () => {
               {gallery.length > 0 && (
                 <div className="mt-6 space-y-2">
                   <Button 
-                    className="w-full bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-xs font-black py-4 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all animate-pulse"
+                    className="w-full bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-xs font-black py-4 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all animate-pulse"
                     onClick={handleAddExtraImages}
                     disabled={isUploadingImages}
                   >
@@ -741,8 +741,8 @@ const UpdateProductForm = () => {
             <Button 
               className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${
                 (gallery.length > 0 || selectedImages.length > 0)
-                  ? "bg-[#EEF4FF] text-[#9DB2E8] cursor-not-allowed"
-                  : "bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] active:scale-95"
+                  ? "bg-[#EDF8F3] text-[#8CCBAE] cursor-not-allowed"
+                  : "bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] active:scale-95"
               }`} 
               onClick={handleSubmit} 
               disabled={updateProductMutation.isPending || gallery.length > 0 || selectedImages.length > 0}

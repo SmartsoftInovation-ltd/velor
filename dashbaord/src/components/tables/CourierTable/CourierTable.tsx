@@ -209,7 +209,7 @@ export default function CourierTable() {
           </div>
           {/* Send Button */}
           <div className="w-full">
-            <button className="bg-blue-600 text-white px-6 py-2.5 rounded-md hover:bg-blue-700 w-full">
+            <button className="bg-brand-600 text-white px-6 py-2.5 rounded-md hover:bg-brand-700 w-full">
               Bluk Courier Send
             </button>
           </div>
@@ -253,7 +253,7 @@ export default function CourierTable() {
               <MobileCardRow label="Final">৳{order?.finalAmount || 0}</MobileCardRow>
               <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
                 <Button
-                  className="max-md:size-11 p-0 bg-[#DCE8FF] hover:bg-[#C7DAFF]"
+                  className="max-md:size-11 p-0 bg-[#D5F0E3] hover:bg-[#B8E4CF]"
                   onClick={() => handleCourierSend(order._id.toString())}
                   size="sm"
                 >
@@ -449,7 +449,7 @@ export default function CourierTable() {
                   <TableCell className="px-4 py-3 text-theme-sm text-center">
                     <div className="flex items-center justify-center space-x-2">
                       <Button
-                        className="bg-[#DCE8FF] hover:bg-[#C7DAFF]"
+                        className="bg-[#D5F0E3] hover:bg-[#B8E4CF]"
                         onClick={() => handleCourierSend(order._id.toString())}
                         size="sm"
                       >
@@ -481,7 +481,7 @@ export default function CourierTable() {
             <Button onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Deleting...
                 </span>
               ) : (
@@ -490,7 +490,7 @@ export default function CourierTable() {
             </Button>
             <Button
               onClick={closeModal}
-                className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"
+                className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
             >
               No
             </Button>

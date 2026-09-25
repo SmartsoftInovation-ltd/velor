@@ -332,7 +332,7 @@ const UserEdit = () => {
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                      className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] shadow-md transition-colors"
+                      className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-md transition-colors"
                   >
                     <FaTimes className="size-3" />
                   </button>
@@ -366,7 +366,7 @@ const UserEdit = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                  className="px-8 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="px-8 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

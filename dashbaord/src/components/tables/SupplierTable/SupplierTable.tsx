@@ -396,7 +396,7 @@ export default function SupplierTable({
             <button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 py-2.5 text-sm rounded-xl bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-semibold transition disabled:opacity-50 shadow-lg active:scale-95"
+                className="flex-1 py-2.5 text-sm rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-semibold transition disabled:opacity-50 shadow-lg active:scale-95"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete"}
             </button>

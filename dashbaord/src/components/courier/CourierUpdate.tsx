@@ -112,7 +112,7 @@ const CourierUpdate = () => {
         hideTitle
         actions={
           <Link to="/courier-merchant-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Courier Merchant List
             </Button>
           </Link>
@@ -129,7 +129,7 @@ const CourierUpdate = () => {
                   variant={selectedCourier === c ? "primary" : "outline"}
                   className={`px-4 py-2 rounded-md border transition ${
                     selectedCourier === c
-                      ? "bg-blue-500 border-blue-500 text-white"
+                      ? "bg-brand-500 border-brand-500 text-white"
                       : "bg-gray-50 border-gray-50 text-black hover:bg-gray-50"
                   }`}
                 >
@@ -177,7 +177,7 @@ const CourierUpdate = () => {
                   <Button
                     //@ts-ignore
                     type="submit"
-                      className="bg-[#DCE8FF] text-[#1D4ED8] px-4 py-2 rounded-md"
+                      className="bg-[#D5F0E3] text-[#0A6B43] px-4 py-2 rounded-md"
                   >
                     Update {selectedCourier}
                   </Button>

@@ -157,7 +157,7 @@ const EmployeeAdvancePaymentTable = () => {
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF] max-md:size-11 max-md:min-h-11 max-md:min-w-11"
+                  className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF] max-md:size-11 max-md:min-h-11 max-md:min-w-11"
                   onClick={() => handleDeleteModal(item.id)}
                 >
                   <MdDelete />
@@ -293,7 +293,7 @@ const EmployeeAdvancePaymentTable = () => {
                         </Button>
                         <Button
                           size="sm"
-                            className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"
+                            className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
                           onClick={() => handleDeleteModal(item.id)}
                         >
                           <MdDelete />
@@ -319,7 +319,7 @@ const EmployeeAdvancePaymentTable = () => {
             <Button onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Deleting...
                 </span>
               ) : (
@@ -328,7 +328,7 @@ const EmployeeAdvancePaymentTable = () => {
             </Button>
             <Button
               onClick={closeModal}
-                className="bg-[#DCE8FF] text-[#1D4ED8] hover:bg-[#C7DAFF]"
+                className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
             >
               No
             </Button>

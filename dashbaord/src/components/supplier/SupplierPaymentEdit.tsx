@@ -211,7 +211,7 @@ const SupplierPaymentEdit = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Edit Supplier Payment</h2>
               <Link to="/supplier-payment-list">
-                <Button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
                   Supplier Payment List
                 </Button>
               </Link>
@@ -361,7 +361,7 @@ const SupplierPaymentEdit = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] font-semibold rounded-xl transition disabled:opacity-50 min-w-[180px] flex items-center justify-center gap-2"
+                  className="px-6 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-semibold rounded-xl transition disabled:opacity-50 min-w-[180px] flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>

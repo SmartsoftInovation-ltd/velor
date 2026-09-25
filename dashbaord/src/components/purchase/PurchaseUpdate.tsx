@@ -415,7 +415,7 @@ const UpdatePurchase: React.FC = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-md font-medium">Update Purchase</h2>
               <Link to="/purchase-list">
-                <Button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
                   Purchase List
                 </Button>
               </Link>

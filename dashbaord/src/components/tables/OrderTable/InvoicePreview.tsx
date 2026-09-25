@@ -50,14 +50,14 @@
 
 //         <Button
 //           onClick={() => window.print()}
-//           className="bg-blue-500 hover:bg-blue-600 text-white rounded"
+//           className="bg-brand-500 hover:bg-brand-600 text-white rounded"
 //         >
 //           🖨️ Print
 //         </Button>
 
 //         <Button
 //           onClick={handleDownload}
-// className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded"
+// className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded"
 //         >
 //           💾 Download
 //         </Button>
@@ -237,14 +237,14 @@ const InvoicePreview = () => {
 
           <Button
             onClick={handlePrint}
-              className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded"
+              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded"
           >
             🖨️ Print
           </Button>
 
           <Button
             onClick={handleDownload}
-              className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded"
+              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded"
           >
             💾 Download
           </Button>

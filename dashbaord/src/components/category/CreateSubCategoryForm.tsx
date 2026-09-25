@@ -167,7 +167,7 @@ const CreateSubCategoryForm = () => {
         <div className="flex justify-end pt-2">
           <Tooltip text="Click to create subcategory">
             <Button
-              className="w-full sm:w-auto bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-normal text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              className="w-full sm:w-auto bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-normal text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
               onClick={handleSubmit}
               disabled={isLoading}
             >

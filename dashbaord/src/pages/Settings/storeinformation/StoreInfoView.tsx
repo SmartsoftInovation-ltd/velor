@@ -76,7 +76,7 @@ const StoreInfoView = () => {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-gray-500 text-sm">Store information not found.</p>
         <Link to="/store-info-list">
-          <Button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+          <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
             Back to List
           </Button>
         </Link>
@@ -136,7 +136,7 @@ const StoreInfoView = () => {
         hideTitle
         actions={
           <Link to="/store-info-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Store Info List
             </Button>
           </Link>

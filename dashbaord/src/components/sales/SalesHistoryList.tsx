@@ -23,7 +23,7 @@ const SalesHistoryList = () => {
         actions={
           canAdd && (
             <Link to="/create-retail-sales">
-              <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded whitespace-nowrap">
+              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded whitespace-nowrap">
                 <span className="sm:hidden">Create Sales</span>
                 <span className="hidden sm:inline">Create Retail Sales</span>
               </Button>

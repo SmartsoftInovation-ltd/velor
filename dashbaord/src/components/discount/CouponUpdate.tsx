@@ -265,7 +265,7 @@ const CouponUpdate = () => {
             </div>
 
             <div className="pt-6 border-t border-gray-100 dark:border-gray-800/50">
-              <Button disabled={loading} className="w-full md:w-auto px-8 h-12 text-sm font-medium transition-all active:scale-95 bg-blue-500 hover:bg-blue-600 text-white rounded">
+              <Button disabled={loading} className="w-full md:w-auto px-8 h-12 text-sm font-medium transition-all active:scale-95 bg-brand-500 hover:bg-brand-600 text-white rounded">
                 {loading ? "Updating..." : "Update Coupon"}
               </Button>
             </div>

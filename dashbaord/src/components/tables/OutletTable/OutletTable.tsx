@@ -354,7 +354,7 @@ const OutletInfoTable = () => {
               <button
                 onClick={confirmDelete}
                 disabled={deleteLoading}
-                  className="px-4 py-2 rounded bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] text-sm disabled:opacity-50"
+                  className="px-4 py-2 rounded bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm disabled:opacity-50"
               >
                 {deleteLoading ? "Deleting…" : "Delete"}
               </button>

@@ -454,7 +454,7 @@ const PurchaseReturnTable = () => {
               type="button"
               onClick={handleDelete}
               disabled={deleteLoading}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] disabled:opacity-60 transition-colors"
+                className="px-5 py-2.5 rounded-xl text-sm font-medium bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] disabled:opacity-60 transition-colors"
             >
               {deleteLoading ? "Deleting…" : "Delete"}
             </button>

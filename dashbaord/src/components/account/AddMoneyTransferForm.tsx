@@ -89,7 +89,7 @@ const SearchableDropdown = ({
           <button
             type="button"
             onClick={onPlusClick}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 bg-[#DCE8FF] hover:bg-[#C7DAFF] active:scale-95 text-[#1D4ED8] text-xs font-semibold rounded-lg transition-all shadow-sm"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-95 text-[#0A6B43] text-xs font-semibold rounded-lg transition-all shadow-sm"
           >
             <FaPlus className="size-3" />
             Add
@@ -132,7 +132,7 @@ const QuickAddModal = ({ onClose, onSave }: { onClose: () => void; onSave: (name
           <Button onClick={handleSave} disabled={saving} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all">
             {saving ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                 Saving...
               </span>
             ) : (
@@ -262,11 +262,11 @@ const AddMoneyTransferForm = () => {
 
         <MobileActionBar>
           <Button onClick={handleSubmit} disabled={loading}
-            className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] px-8 py-2.5 rounded-xl font-semibold border-none shadow-lg active:scale-95 transition-all"
+            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-2.5 rounded-xl font-semibold border-none shadow-lg active:scale-95 transition-all"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                 Submitting...
               </span>
             ) : (

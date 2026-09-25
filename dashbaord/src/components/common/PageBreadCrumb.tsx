@@ -38,7 +38,7 @@ const PageBreadcrumb: React.FC<BreadcrumbProps> = ({
             <ol className="flex items-center gap-1 min-w-0">
               <li className="shrink-0">
                 <Link
-                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-500 transition-colors hover:bg-[#C7DAFF] hover:text-[#1D4ED8] dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-500 transition-colors hover:bg-[#B8E4CF] hover:text-[#0A6B43] dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
                   to="/"
                 >
                   <svg
@@ -89,7 +89,7 @@ const PageBreadcrumb: React.FC<BreadcrumbProps> = ({
         <ol className="flex items-center gap-1">
           <li>
             <Link
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-500 transition-colors hover:bg-[#C7DAFF] hover:text-[#1D4ED8] dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-500 transition-colors hover:bg-[#B8E4CF] hover:text-[#0A6B43] dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
               to="/"
             >
               <svg

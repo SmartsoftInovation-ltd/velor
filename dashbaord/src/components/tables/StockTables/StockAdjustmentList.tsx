@@ -686,7 +686,7 @@ const StockAdjustmentList = () => {
               Cancel
             </Button>
             <Button
-              className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8]"
+              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43]"
               onClick={handleDelete}
               disabled={isDeleting}
             >

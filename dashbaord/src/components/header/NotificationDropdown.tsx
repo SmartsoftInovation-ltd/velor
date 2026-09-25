@@ -22,7 +22,7 @@ export default function NotificationDropdown() {
   return (
     <div className="relative">
       <button
-        className="header-icon-button dropdown-toggle text-gray-600 hover:bg-brand-50 hover:text-[#1D4ED8] dark:text-gray-300 dark:hover:bg-[#C7DAFF]/15 dark:hover:text-[#1D4ED8]"
+        className="header-icon-button dropdown-toggle text-gray-600 hover:bg-brand-50 hover:text-[#0A6B43] dark:text-gray-300 dark:hover:bg-[#B8E4CF]/15 dark:hover:text-[#0A6B43]"
         onClick={handleClick}
       >
         <span

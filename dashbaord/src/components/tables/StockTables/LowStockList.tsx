@@ -373,7 +373,7 @@ const LowStockList = () => {
         {hasFilter && (
           <button
             onClick={clearAll}
-              className="flex items-center gap-1.5 h-10 px-3 rounded-xl /20 bg-red-50 dark:bg-[#DCE8FF]/10 text-[#1D4ED8] text-xs font-medium hover:bg-[#C7DAFF] transition-colors shrink-0"
+              className="flex items-center gap-1.5 h-10 px-3 rounded-xl /20 bg-red-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] text-xs font-medium hover:bg-[#B8E4CF] transition-colors shrink-0"
           >
             <FaTimes size={10} /> Clear
           </button>

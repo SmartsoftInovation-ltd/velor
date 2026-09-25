@@ -145,7 +145,7 @@ const OutletInformationUpdate = () => {
         hideTitle
         actions={
           <Link to="/outlet-list">
-            <Button className="!bg-[#DCE8FF] hover:!bg-[#C7DAFF] !text-[#1D4ED8] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
               Outlet List
             </Button>
           </Link>
@@ -237,7 +237,7 @@ const OutletInformationUpdate = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                  className={`px-6 py-2 rounded text-[#1D4ED8] text-sm ${loading ?"bg-gray-400" :"bg-[#DCE8FF] hover:bg-[#C7DAFF]"}`}
+                  className={`px-6 py-2 rounded text-[#0A6B43] text-sm ${loading ?"bg-gray-400" :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"}`}
               >
                 {loading ? "Updating…" : "Update Outlet Info"}
               </Button>

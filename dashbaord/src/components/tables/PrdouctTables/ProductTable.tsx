@@ -378,7 +378,7 @@ export default function ProductTable({
                         {canAdd && (
                         <Link to="/create-product">
                           <Button
-                            className="bg-[#DCE8FF] hover:bg-[#C7DAFF] text-[#1D4ED8] rounded-xl px-6 py-2.5 shadow-lg active:scale-95 transition-all font-semibold text-sm border-none flex items-center gap-2"
+                            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl px-6 py-2.5 shadow-lg active:scale-95 transition-all font-semibold text-sm border-none flex items-center gap-2"
                           >
                             Create Product
                           </Button>
@@ -564,15 +564,15 @@ export default function ProductTable({
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-                className={`flex-1 rounded-xl py-2.5 font-semibold text-[#1D4ED8] transition-all shadow-lg ${
+                className={`flex-1 rounded-xl py-2.5 font-semibold text-[#0A6B43] transition-all shadow-lg ${
                 pendingToggle?.currentStatus
- ?"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
- :"bg-[#DCE8FF] hover:bg-[#C7DAFF]"
+ ?"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
+ :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
               }`}
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#1D4ED8]/30 border-t-[#1D4ED8]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
                   Updating...
                 </span>
               ) : (
