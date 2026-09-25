@@ -44,9 +44,9 @@ const LabelPrinterSettings: React.FC<LabelPrinterSettingsProps> = ({
             <button
               type="button"
               onClick={() => onPrinterTypeChange("roll")}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-medium transition-colors outline-none focus:outline-none ${
+              className={`shine flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 ${
                 printerType === "roll"
-                  ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10"
+                  ? "bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400"
                   : "bg-gray-50 dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
@@ -56,9 +56,9 @@ const LabelPrinterSettings: React.FC<LabelPrinterSettingsProps> = ({
             <button
               type="button"
               onClick={() => onPrinterTypeChange("a4")}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-medium transition-colors outline-none focus:outline-none ${
+              className={`shine flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 ${
                 printerType === "a4"
-                  ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10"
+                  ? "bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400"
                   : "bg-gray-50 dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
@@ -78,7 +78,7 @@ const LabelPrinterSettings: React.FC<LabelPrinterSettingsProps> = ({
               const found = LABEL_SIZES.find((s) => s.id === e.target.value);
               if (found) onLabelSizeChange(found);
             }}
-            className="w-full px-3 py-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
+            className="w-full px-3 py-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
           >
             {LABEL_SIZES.map((s) => (
               <option key={s.id} value={s.id}>
@@ -109,7 +109,7 @@ const LabelPrinterSettings: React.FC<LabelPrinterSettingsProps> = ({
               onClick={() => toggleOption(key)}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-md cursor-pointer transition-colors ${
                 contentOptions[key]
-                  ? "bg-brand-50 dark:bg-brand-500/10"
+                  ? "bg-accent-50 dark:bg-accent-500/15 dark:text-accent-400"
                   : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/70"
               }`}
             >
@@ -137,7 +137,7 @@ const LabelPrinterSettings: React.FC<LabelPrinterSettingsProps> = ({
             value={shopName}
             onChange={(e) => onShopNameChange(e.target.value)}
             placeholder="Shop name"
-            className="w-full px-3 py-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
+            className="w-full px-3 py-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
           />
         </div>
         <div>
@@ -148,7 +148,8 @@ const LabelPrinterSettings: React.FC<LabelPrinterSettingsProps> = ({
             <button
               type="button"
               onClick={() => onFontSizeChange(Math.max(6, fontSize - 1))}
-              className="size-9 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-bold outline-none focus:outline-none"
+              aria-label="Decrease font size"
+              className="shine size-9 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-bold outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
             >
               −
             </button>
@@ -158,7 +159,8 @@ const LabelPrinterSettings: React.FC<LabelPrinterSettingsProps> = ({
             <button
               type="button"
               onClick={() => onFontSizeChange(Math.min(24, fontSize + 1))}
-              className="size-9 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-bold outline-none focus:outline-none"
+              aria-label="Increase font size"
+              className="shine size-9 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-bold outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
             >
               +
             </button>

@@ -3,11 +3,12 @@ import { useDropzone } from "react-dropzone";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
-import axios from "axios";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { useQueryClient } from "@tanstack/react-query";
 import { TrashBinIcon } from "../../icons";
+import MobileActionBar from "../common/MobileActionBar";
+import { showApiError } from "../../utils/apiError";
 
 const CreateBrandForm = () => {
   const queryClient = useQueryClient();
@@ -95,14 +96,8 @@ const CreateBrandForm = () => {
       setImage(null);
       setPreview(null);
       setErrors({});
-    } catch (error: any) {
-      if (axios.isAxiosError(error)) {
-        console.error("Error:", error.response?.data?.message || error.message);
-        toast.error(error.response?.data?.message || "Failed to create brand");
-      } else {
-        console.error("Unexpected error:", error);
-        toast.error("An unexpected error occurred.");
-      }
+    } catch (error) {
+      showApiError(error, "Failed to create brand");
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +132,7 @@ const CreateBrandForm = () => {
             className={`
               relative mt-1.5 flex flex-col items-center justify-center w-full min-h-[200px] 
               border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300
-              ${isDragActive ? "border-brand-500 bg-brand-50 dark:bg-brand-500/5" : "border-gray-300 dark:border-gray-700 hover:border-brand-400 dark:hover:border-brand-500"}
+              ${isDragActive ? "border-accent-500 bg-accent-50 dark:bg-accent-500/5" : "border-gray-300 dark:border-gray-700 hover:border-accent-400 dark:hover:border-accent-500"}
               ${errors.image ? "border-red-500 bg-red-50 dark:bg-red-500/5" : ""}
               ${preview ? "border-none p-0" : "p-6"}
             `}
@@ -146,9 +141,9 @@ const CreateBrandForm = () => {
             
             {!preview ? (
               <div className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/10 mb-4">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50 dark:bg-accent-500/10 mb-4">
                   <svg
-                    className="h-6 w-6 text-brand-500"
+                    className="h-6 w-6 text-accent-500"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -179,8 +174,9 @@ const CreateBrandForm = () => {
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
                       onClick={handleRemoveImage}
-                        className="bg-[#D5F0E3] text-[#0A6B43] p-3 rounded-full hover:bg-[#B8E4CF] transform hover:scale-110 transition-all duration-200 shadow-xl"
+                      className="bg-accent-500 text-white p-3 rounded-full hover:bg-accent-600 transform hover:scale-110 transition-all duration-200 shadow-xl"
                       title="Remove image"
+                      aria-label="Remove image"
                     >
                       <TrashBinIcon className="size-6" />
                     </button>
@@ -197,9 +193,10 @@ const CreateBrandForm = () => {
           )}
         </div>
 
+        <MobileActionBar>
         <div className="flex justify-end pt-2">
           <Button
-            className="w-full sm:w-auto bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-normal text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+            className="w-full sm:w-auto !bg-accent-500 hover:!bg-accent-600 !text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-semibold text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
             onClick={handleSubmit}
             disabled={isLoading}
           >
@@ -213,6 +210,7 @@ const CreateBrandForm = () => {
             )}
           </Button>
         </div>
+        </MobileActionBar>
       </div>
     </div>
   );

@@ -215,14 +215,14 @@ const PurchasesSourceTab: React.FC<PurchasesSourceTabProps> = ({
     <div className="space-y-4">
       {/* Purchase picker */}
       <div className="space-y-2">
-        <div className="relative">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-3" />
+        <div className="relative group">
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-3 group-focus-within:text-accent-500 transition-colors" />
           <input
             type="text"
             value={purchaseSearch}
             onChange={(e) => setPurchaseSearch(e.target.value)}
             placeholder="Search purchases by invoice number..."
-            className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all placeholder:text-gray-400 dark:text-white"
+            className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all placeholder:text-gray-400 dark:text-white"
           />
         </div>
 
@@ -233,7 +233,7 @@ const PurchasesSourceTab: React.FC<PurchasesSourceTabProps> = ({
         >
           {isLoading ? (
             <div className="flex justify-center py-6">
-              <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+              <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
             </div>
           ) : isError ? (
             <div className="py-6 text-center text-xs text-red-500 font-medium">
@@ -258,7 +258,7 @@ const PurchasesSourceTab: React.FC<PurchasesSourceTabProps> = ({
                     key={p._id}
                     className={`absolute top-0 left-0 w-full px-3 flex items-center justify-between cursor-pointer transition-colors ${
                       selected
-                        ? "bg-brand-50 dark:bg-brand-500/10"
+                        ? "bg-accent-50 dark:bg-accent-500/15 dark:text-accent-400"
                         : "hover:bg-gray-50 dark:hover:bg-gray-800/60"
                     }`}
                     style={{
@@ -298,7 +298,7 @@ const PurchasesSourceTab: React.FC<PurchasesSourceTabProps> = ({
                     true
                   )
                 }
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-500/10 dark:hover:bg-green-500/20 transition-colors outline-none focus:outline-none"
+                className="shine px-2.5 py-1 text-xs font-medium rounded-md bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
               >
                 Select All
               </button>
@@ -310,21 +310,21 @@ const PurchasesSourceTab: React.FC<PurchasesSourceTabProps> = ({
                     false
                   )
                 }
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors outline-none focus:outline-none"
+                className="shine px-2.5 py-1 text-xs font-medium rounded-md bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
               >
                 Deselect All
               </button>
             </div>
           </div>
 
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-3" />
+          <div className="relative group">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-3 group-focus-within:text-accent-500 transition-colors" />
             <input
               type="text"
               value={itemSearch}
               onChange={(e) => setItemSearch(e.target.value)}
-              placeholder="search_purchase_items"
-              className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all placeholder:text-gray-400 dark:text-white"
+              placeholder="Search items in this purchase..."
+              className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all placeholder:text-gray-400 dark:text-white"
             />
           </div>
 
@@ -342,7 +342,7 @@ const PurchasesSourceTab: React.FC<PurchasesSourceTabProps> = ({
                     onClick={() => onToggle(queueItem)}
                     className={`flex items-center justify-between gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
                       selected
-                        ? "bg-brand-50 dark:bg-brand-500/10"
+                        ? "bg-accent-50 dark:bg-accent-500/15 dark:text-accent-400"
                         : "hover:bg-gray-50 dark:hover:bg-gray-800/60"
                     }`}
                   >
@@ -359,7 +359,7 @@ const PurchasesSourceTab: React.FC<PurchasesSourceTabProps> = ({
                     <span
                       className={`size-4 rounded-md border flex items-center justify-center shrink-0 ${
                         selected
-                          ? "bg-brand-500 border-brand-500 text-white"
+                          ? "bg-accent-500 border-accent-500 text-white"
                           : "border-gray-300 dark:border-gray-600"
                       }`}
                     >

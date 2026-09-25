@@ -99,14 +99,14 @@ function InfiniteSearchList<T>({
 
   return (
     <div className="space-y-2">
-      <div className="relative">
-        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-3" />
+      <div className="relative group">
+        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-3 group-focus-within:text-accent-500 transition-colors" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all placeholder:text-gray-400 dark:text-white"
+          className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all placeholder:text-gray-400 dark:text-white"
         />
       </div>
 
@@ -117,7 +117,7 @@ function InfiniteSearchList<T>({
       >
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+            <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         ) : isError ? (
           <div className="py-8 text-center text-xs text-red-500 font-medium">
@@ -142,7 +142,7 @@ function InfiniteSearchList<T>({
                   key={getKey(item)}
                   className={`absolute top-0 left-0 w-full cursor-pointer transition-colors ${
                     selected
-                      ? "bg-brand-50 dark:bg-brand-500/10"
+                      ? "bg-accent-50 dark:bg-accent-500/15 dark:text-accent-400"
                       : "hover:bg-gray-50 dark:hover:bg-gray-800/60"
                   }`}
                   style={{
@@ -160,7 +160,7 @@ function InfiniteSearchList<T>({
         <div ref={sentinelRef} />
         {isFetchingNextPage && (
           <div className="flex justify-center py-2">
-            <div className="size-4 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+            <div className="size-4 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         )}
       </div>

@@ -235,42 +235,35 @@ const BarcodePrint = () => {
         title="Barcode Print - Baig Ecommerce"
         description="Generate and print product barcode labels"
       />
-      <PageBreadcrumb pageTitle="" />
-
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-lg font-bold text-gray-800 dark:text-white">
-              Barcode Print
-            </h1>
-            <p className="text-xs text-gray-400">
-              Generate &amp; print product barcodes
-            </p>
+      <PageBreadcrumb
+        pageTitle="Barcode Print"
+        className="mb-3"
+        hideTitle
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.history.back()}
+              className="shine flex items-center gap-2 px-4 py-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
+            >
+              <FaArrowLeftLong className="size-3.5" /> Back
+            </button>
+            <button
+              onClick={handleClearAll}
+              className="shine px-4 py-2 text-sm font-medium rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={() => handlePrint()}
+              disabled={queue.length === 0}
+              className="shine flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded bg-accent-500 text-white hover:bg-accent-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <FaPrint className="size-3.5" />
+              Print
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => window.history.back()}
-            className="size-9 px-10 py-1 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors outline-none focus:outline-none"
-          >
-            <FaArrowLeftLong className="size-3.5" /> Back
-          </button>
-          <button
-            onClick={handleClearAll}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            Clear All
-          </button>
-          <button
-            onClick={() => handlePrint()}
-            disabled={queue.length === 0}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <FaPrint className="size-3.5" />
-            Print
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[560px_1fr] gap-6 items-start">
         {/* Left column */}
@@ -278,7 +271,7 @@ const BarcodePrint = () => {
           {/* Scan Barcode */}
           <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-3">
             <h3 className="text-sm font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-              <FaBarcode className="size-4 text-brand-500" />
+              <FaBarcode className="size-4 text-accent-500" />
               Scan Barcode
             </h3>
             <input
@@ -295,7 +288,7 @@ const BarcodePrint = () => {
               disabled={isScanning}
               autoFocus
               placeholder="Scan a product or variant barcode..."
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all placeholder:text-gray-400 dark:text-white disabled:opacity-60"
+              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all placeholder:text-gray-400 dark:text-white disabled:opacity-60"
             />
             <p className="text-xs text-gray-400">
               Focus this field and scan — the matching product/variant is
@@ -314,9 +307,9 @@ const BarcodePrint = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-2 rounded-md text-sm font-medium border transition-colors ${
+                  className={`shine py-2 rounded-md text-sm font-medium border transition-colors ${
                     activeTab === tab.id
-                      ? "border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10"
+                      ? "border-accent-500 bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400"
                       : "border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
                   }`}
                 >

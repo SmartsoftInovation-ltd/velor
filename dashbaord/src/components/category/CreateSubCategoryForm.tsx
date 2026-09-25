@@ -1,5 +1,4 @@
-import {  useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
@@ -8,37 +7,8 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SearchableSelect from "../form/SearchableSelect";
 import { showApiError } from "../../utils/apiError";
+import MobileActionBar from "../common/MobileActionBar";
 
-// Portal-based Tooltip component
-const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
-  const [visible, setVisible] = useState(false);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const ref = useRef<HTMLDivElement>(null);
-
-  const handleMouseEnter = () => {
-    if (ref.current) {
-      const rect = ref.current.getBoundingClientRect();
-      setCoords({ x: rect.left + rect.width / 2, y: rect.top - 10 });
-      setVisible(true);
-    }
-  };
-
-  return (
-    <div ref={ref} onMouseEnter={handleMouseEnter} onMouseLeave={() => setVisible(false)} className="relative inline-block">
-      {children}
-      {visible && createPortal(
-        <div 
-          className="fixed z-[9999] px-3 py-1.5 text-[11px] font-bold text-white bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full animate-in fade-in zoom-in duration-200"
-          style={{ left: coords.x, top: coords.y }}
-        >
-          {text}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900 dark:border-t-gray-800" />
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-};
 
 interface Category {
   _id: string;
@@ -164,10 +134,10 @@ const CreateSubCategoryForm = () => {
         </div>
 
         {/* Action Button */}
+        <MobileActionBar>
         <div className="flex justify-end pt-2">
-          <Tooltip text="Click to create subcategory">
             <Button
-              className="w-full sm:w-auto bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-normal text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              className="w-full sm:w-auto !bg-accent-500 hover:!bg-accent-600 !text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-semibold text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
               onClick={handleSubmit}
               disabled={isLoading}
             >
@@ -180,8 +150,8 @@ const CreateSubCategoryForm = () => {
                 "Create Subcategory"
               )}
             </Button>
-          </Tooltip>
         </div>
+        </MobileActionBar>
       </div>
     </div>
   );

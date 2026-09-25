@@ -9,7 +9,10 @@ import {
   TableRow,
 } from "../../ui/table";
 
-import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
+import MobileCardRow from "../../common/MobileCardRow";
+import ImageWithFallback from "../../common/ImageWithFallback";
+import Input from "../../form/input/InputField";
 import Button from "../../ui/button/Button";
 import { Link } from "react-router";
 import { Modal } from "../../ui/modal";
@@ -46,6 +49,7 @@ interface Image {
 
 interface Brand {
   _id: string;
+  brandSerialId?: string;
   name: string;
   image: Image;
   slug: string;
@@ -146,48 +150,31 @@ export default function BrandTable({
     setSearchTerm("");
   };
 
-  const gridTemplateColumns = "80px 2fr 1fr 1.5fr 120px 220px";
+  const gridTemplateColumns = "150px 2fr 1fr 1.5fr 120px 220px";
 
   return (
     <div className="w-full space-y-6">
-      {/* Brand Table Toolbar */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-white/[0.05] shadow-sm gap-4">
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <Tooltip text="Go Back">
-            <Button
-              onClick={() => window.history.back()}
-              variant="outline"
-              size="sm"
-              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
+      <div className="flex items-center justify-between gap-4">
+        <div className="w-full max-w-md relative group">
+          <Input
+            placeholder="Search brands..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full shadow-theme-xs h-12 pr-12 pl-11 focus:ring-2 focus:ring-accent-500/20 rounded-xl transition-all"
+          />
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 group-focus-within:text-accent-500 transition-colors" />
+
+          {searchTerm && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1"
+              title="Clear search"
+              aria-label="Clear search"
             >
-              <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </Button>
-          </Tooltip>
-
-          <div className="relative w-full md:w-80 group">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-500 transition-colors size-4" />
-            <input
-              type="text"
-              placeholder="Search brands..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm font-medium h-12"
-            />
-            
-            {searchTerm && (
-              <button 
-                onClick={handleClearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1"
-                title="Clear search"
-              >
-                <FaTimes className="size-4" />
-              </button>
-            )}
-          </div>
+              <FaTimes className="size-4" />
+            </button>
+          )}
         </div>
-
       </div>
 
       {isMobile ? (
@@ -199,33 +186,26 @@ export default function BrandTable({
             <div className="space-y-1">
               <div className="flex items-center gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="w-12 h-12 shrink-0 overflow-hidden rounded-xl border-2 border-white dark:border-gray-800 shadow-md bg-gray-100">
-                  <img src={brand.image?.url} className="w-full h-full object-cover" alt={brand.name} />
+                  <ImageWithFallback src={brand.image?.url} alt={brand.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{brand?.name || "N/A"}</p>
-                  <p className="text-xs text-gray-400">#{index + 1}</p>
+                  <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">{brand.brandSerialId || `#${index + 1}`}</p>
                 </div>
-                <Badge
-                  size="sm"
-                  variant="solid"
-                  color={brand.isActive ? "success" : "error"}
-                  className="font-black text-[10px] uppercase shrink-0"
-                >
-                  {brand.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <div className="shrink-0">
+                  <StatusPill isActive={brand.isActive} />
+                </div>
               </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Created</span>
-                <span className="text-right text-sm text-gray-800 dark:text-white/90 font-bold">
-                  {moment(brand.createdAt).format("MMM DD, YYYY")}
-                </span>
-              </div>
+              <MobileCardRow label="Created">
+                {moment(brand.createdAt).format("MMM DD, YYYY")}
+              </MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <Link to={`/brand-view/${brand.slug}`}>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View brand"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -235,11 +215,12 @@ export default function BrandTable({
                     onClick={() => handleToggleModal(brand.slug, brand.isActive)}
                     size="sm"
                     variant="outline"
-                    className={`max-md:size-11 size-10 p-0 rounded-2xl transition-all active:scale-90 border-none ${
+                    className={`max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 ${
                       brand.isActive
-                        ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                        : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                     }`}
+                    aria-label={brand.isActive ? "Deactivate brand" : "Activate brand"}
                   >
                     {brand.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                   </Button>
@@ -249,8 +230,9 @@ export default function BrandTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
-                    >
+                      className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit brand"
+                  >
                       <FaEdit className="size-4" />
                     </Button>
                   </Link>
@@ -259,7 +241,8 @@ export default function BrandTable({
                   <Button
                     onClick={() => handleDeleteModal(brand.slug)}
                     size="sm"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete brand"
                   >
                     <MdDelete className="size-5" />
                   </Button>
@@ -281,16 +264,21 @@ export default function BrandTable({
                 <FaSearch className="size-8 text-gray-300 dark:text-gray-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">No Brands Found</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[350px] leading-relaxed">
-                We couldn't find any brands matching <span className="font-bold text-brand-500">"{searchTerm}"</span>. 
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[380px] leading-relaxed">
+                {searchTerm ? (
+                  <>We couldn't find any brands matching <span className="font-bold text-accent-500">"{searchTerm}"</span>. Try checking for typos or search for a different term.</>
+                ) : (
+                  <>There are no brands yet. Once you add one, it will show up here.</>
+                )}
               </p>
-              <Button 
-                onClick={handleClearSearch} 
-                variant="outline" 
-                className="rounded-xl px-10 py-3 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-95 font-semibold text-sm"
-              >
-                Go Back to All Brands
-              </Button>
+              {searchTerm && (
+                <Button
+                  onClick={handleClearSearch}
+                  className="rounded-xl px-10 py-3 !bg-accent-500 hover:!bg-accent-600 !text-white border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
+                >
+                  Go Back to All Brands
+                </Button>
+              )}
             </div>
           ) : (
             <Table className="w-full min-w-[1000px]">
@@ -300,7 +288,7 @@ export default function BrandTable({
                   style={{ gridTemplateColumns }}
                 >
                   <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
-                    S/N
+                    Serial ID
                   </TableCell>
                   <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
                     Brand Name
@@ -340,8 +328,14 @@ export default function BrandTable({
                         gridTemplateColumns
                       }}
                     >
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-500 dark:text-gray-400 flex items-center justify-center font-medium">
-                        #{virtualRow.index + 1}
+                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center">
+                        {brand.brandSerialId ? (
+                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                            {brand.brandSerialId}
+                          </span>
+                        ) : (
+                          <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center">
                         <Tooltip text={brand?.name || "No Name"}>
@@ -359,10 +353,10 @@ export default function BrandTable({
                           onMouseMove={(e) => setHoveredImage(prev => prev ? ({ ...prev, x: e.clientX + 20, y: e.clientY - 150 }) : null)}
                           onMouseLeave={() => setHoveredImage(null)}
                         >
-                          <img
+                          <ImageWithFallback
                             src={brand.image?.url}
-                            className="w-full h-full object-cover"
                             alt={brand.name}
+                            className="w-full h-full object-cover"
                           />
                         </div>
                       </TableCell>
@@ -371,14 +365,7 @@ export default function BrandTable({
                         {moment(brand.createdAt).format("MMM DD, YYYY")}
                       </TableCell>
                       <TableCell className="px-4 py-3 flex items-center justify-center">
-                        <Badge
-                          size="sm"
-                          variant="solid"
-                          color={brand.isActive ? "success" : "error"}
-                          className="min-w-[75px] font-black text-[10px] uppercase shadow-md transition-all duration-300"
-                        >
-                          {brand.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        <StatusPill isActive={brand.isActive} />
                       </TableCell>
 
                       <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
@@ -388,8 +375,9 @@ export default function BrandTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
-                            >
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View brand"
+                  >
                               <FaEye className="size-4" />
                             </Button>
                           </Link>
@@ -401,12 +389,13 @@ export default function BrandTable({
                             onClick={() => handleToggleModal(brand.slug, brand.isActive)}
                             size="sm"
                             variant="outline"
-                            className={`size-10 p-0 rounded-2xl transition-all active:scale-90 border-none ${
-                              brand.isActive
-                                ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                                : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
-                            }`}
-                          >
+                            className={`size-10 p-0 !rounded border-none transition-all active:scale-90 ${
+                      brand.isActive
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
+                    }`}
+                    aria-label={brand.isActive ? "Deactivate brand" : "Activate brand"}
+                  >
                             {brand.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                           </Button>
                         </Tooltip>}
@@ -417,8 +406,9 @@ export default function BrandTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
-                            >
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit brand"
+                  >
                               <FaEdit className="size-4" />
                             </Button>
                           </Link>
@@ -429,8 +419,9 @@ export default function BrandTable({
                           <Button
                             onClick={() => handleDeleteModal(brand.slug)}
                             size="sm"
-                            className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
-                          >
+                            className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete brand"
+                  >
                             <MdDelete className="size-5" />
                           </Button>
                         </Tooltip>}
@@ -453,10 +444,12 @@ export default function BrandTable({
           style={{ left: hoveredImage.x, top: hoveredImage.y }}
         >
           <div className="p-1 bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 animate-in zoom-in-75 duration-200">
-            <img
+            <ImageWithFallback
               src={hoveredImage.url}
+              alt={`${hoveredImage.name} preview`}
               className="max-w-[350px] max-h-[350px] rounded-[24px] object-contain shadow-inner"
-              alt="Preview"
+              fallbackClassName="size-[220px] rounded-[24px]"
+              iconClassName="size-20"
             />
             <div className="p-3 text-center">
               <span className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-[3px]">{hoveredImage.name}</span>
@@ -482,11 +475,11 @@ export default function BrandTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -529,15 +522,11 @@ export default function BrandTable({
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
-                pendingToggle?.currentStatus
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
-              }`}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

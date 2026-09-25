@@ -120,24 +120,27 @@ const SubCategoryUpdate = () => {
       />
       <PageBreadcrumb pageTitle="Update Subcategory" />
       
-      <div className="mt-10 w-full space-y-6">
+      <div className="w-full space-y-6">
         <ComponentCard
           title={
             <div className="flex justify-between items-center w-full">
               <div className="flex items-center gap-3">
                 <Tooltip text="Go Back">
-                  <button 
+                  <Button
                     onClick={() => navigate(-1)}
-                    className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 hover:text-brand-500 border border-gray-100 dark:border-gray-700 transition-all active:scale-90"
+                    size="sm"
+                    variant="outline"
+                    aria-label="Go back"
+                    className="size-10 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-accent-600 transition-all active:scale-90"
                   >
                     <FaArrowLeft className="size-4" />
-                  </button>
+                  </Button>
                 </Tooltip>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">Edit Subcategory</h2>
+                <h2 className="text-md font-medium text-gray-800 dark:text-white/90">Update Subcategory</h2>
               </div>
               <Tooltip text="View List">
                 <Link to="/subcategory-list">
-                  <Button size="sm" variant="outline" className="rounded-xl font-bold border-gray-200 dark:border-gray-700">
+                  <Button size="sm" className="!bg-accent-500 hover:!bg-accent-600 !text-white px-4 py-2 rounded-lg shadow-lg shadow-accent-500/20">
                     SubCategory List
                   </Button>
                 </Link>
@@ -147,7 +150,7 @@ const SubCategoryUpdate = () => {
         >
           {isFetching ? (
             <div className="py-20 flex flex-col items-center justify-center space-y-4">
-              <div className="size-12 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+              <div className="size-12 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
               <p className="text-gray-500 font-medium animate-pulse">Loading data...</p>
             </div>
           ) : (
@@ -162,8 +165,8 @@ const SubCategoryUpdate = () => {
                     id="category"
                     className={`
                       w-full h-11 px-4 py-2 bg-white dark:bg-gray-800 border rounded-xl text-sm transition-all duration-200 outline-none
-                      appearance-none cursor-pointer focus:ring-2 focus:ring-brand-500/20
-                      ${errors.category ? "border-red-500 focus:border-red-500" : "border-gray-200 dark:border-gray-700 focus:border-brand-500"}
+                      appearance-none cursor-pointer focus:ring-2 focus:ring-accent-500/20
+                      ${errors.category ? "border-red-500 focus:border-red-500" : "border-gray-200 dark:border-gray-700 focus:border-accent-500"}
                     `}
                     value={selectedCategory}
                     onChange={(e) => {
@@ -178,7 +181,7 @@ const SubCategoryUpdate = () => {
                       </option>
                     ))}
                   </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-hover:text-brand-500 transition-colors">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-hover:text-accent-500 transition-colors">
                     <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -216,7 +219,7 @@ const SubCategoryUpdate = () => {
                   <Button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                      className="w-full sm:w-auto bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-10 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-bold text-sm tracking-wide transform active:scale-95"
+                      className="w-full sm:w-auto !bg-accent-500 hover:!bg-accent-600 !text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-theme-md font-bold text-sm tracking-wide transform active:scale-95 disabled:opacity-50 disabled:active:scale-100"
                   >
                     {isLoading ? (
                       <div className="flex items-center gap-2">

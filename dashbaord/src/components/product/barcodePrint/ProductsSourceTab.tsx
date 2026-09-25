@@ -69,13 +69,13 @@ const ProductsSourceTab: React.FC<ProductsSourceTabProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-sm font-semibold text-brand-600 dark:text-brand-400">
+            <span className="text-sm font-semibold text-accent-600 dark:text-accent-400">
               ৳{(p.retailPrice ?? 0).toLocaleString()}
             </span>
             <span
               className={`size-4 rounded-md border flex items-center justify-center ${
                 selected
-                  ? "bg-brand-500 border-brand-500 text-white"
+                  ? "bg-accent-500 border-accent-500 text-white"
                   : "border-gray-300 dark:border-gray-600"
               }`}
             >

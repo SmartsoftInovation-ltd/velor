@@ -38,7 +38,7 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
   );
 };
 
-const GRID = "80px 1.5fr 1.5fr 1fr 1fr 1fr 1fr 200px";
+const GRID = "150px 1.5fr 1.5fr 1fr 1fr 1fr 1fr 220px";
 
 const SubCategorySkeleton = () => (
   <div className="w-full animate-pulse">
@@ -103,14 +103,15 @@ const SubCategoryList = () => {
                 onClick={() => refetch()}
                 size="sm"
                 variant="outline"
-                className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+                aria-label="Refresh subcategories"
+                className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               >
                 <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
               </Button>
             </Tooltip>
             {canAdd && (
               <Link to="/create-subcategory">
-                <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+                <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                   Create SubCategory
                 </Button>
               </Link>
@@ -125,7 +126,7 @@ const SubCategoryList = () => {
           ) : isError ? (
             <div className="text-center py-20 min-h-100">
               <p className="text-red-500 font-bold mb-4">{getApiErrorMessage(error, "Error fetching subcategories!")}</p>
-              <Button size="sm" onClick={() => refetch()} className="bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-6">
+              <Button size="sm" onClick={() => refetch()} className="!bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl px-6">
                 Try Again
               </Button>
             </div>

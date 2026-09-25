@@ -11,7 +11,7 @@ import {
 } from "../../ui/table";
 import toast from "react-hot-toast";
 import { Link } from "react-router";
-import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
 import Button from "../../ui/button/Button";
 import { Modal } from "../../ui/modal";
 import axiosSecure from "../../../hooks/useAxiosSecure";
@@ -64,6 +64,7 @@ interface ProductImage {
 
 interface Product {
   _id: string;
+  productSerialId?: string;
   name: string;
   barCode: string;
   sku: string;
@@ -230,13 +231,14 @@ export default function ProductTable({
             }}
             autoComplete="off"
             placeholder="Scan barcode or search products by name..."
-            className="w-full shadow-theme-xs h-12 pr-12 pl-11 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-gray-400"
+            className="w-full shadow-theme-xs h-12 pr-12 pl-11 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition-all placeholder:text-gray-400"
           />
           <button
             type="button"
             onClick={focusSearchInput}
             title="Click to resume scanning"
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 group-focus-within:text-brand-500 transition-colors"
+            aria-label="Resume scanning"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-500 group-focus-within:text-accent-500 transition-colors"
           >
             <MdOutlineQrCodeScanner className="size-4" />
           </button>
@@ -258,7 +260,7 @@ export default function ProductTable({
           items={products}
           getKey={(product) => product._id}
           emptyMessage={searchTerm ? `No products found matching "${searchTerm}"` : "No products available"}
-          renderCard={(product) => (
+          renderCard={(product, index) => (
             <div className="space-y-1">
               <div className="flex items-center gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="w-12 h-12 shrink-0 overflow-hidden rounded-xl border-2 border-white dark:border-gray-800 shadow-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -270,11 +272,12 @@ export default function ProductTable({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{product.name}</p>
+                  <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">{product.productSerialId || `#${index + 1}`}</p>
                   <p className="text-xs text-gray-400 truncate">{product.category?.name || "N/A"}</p>
                 </div>
-                <Badge size="sm" color={product.isActive ? "success" : "error"} className="shrink-0">
-                  {product.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <div className="shrink-0">
+                  <StatusPill isActive={product.isActive} />
+                </div>
               </div>
               <MobileCardRow label="SKU">{product.variantType === "multipleVariant" ? "N/A" : (product.sku || "N/A")}</MobileCardRow>
               <MobileCardRow label="Brand">{product.brand?.name || "N/A"}</MobileCardRow>
@@ -282,7 +285,9 @@ export default function ProductTable({
               <MobileCardRow label="Buy Rate">{renderCellValue(product, "purchasePrice")}</MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <Link to={`/product-view/${product.slug}`}>
-                  <Button size="sm" variant="outline" className="max-md:size-11 size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-blue-500 hover:border-blue-400 transition-all active:scale-90">
+                  <Button size="sm" variant="outline" className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View product"
+                  >
                     <FaEye className="size-4" />
                   </Button>
                 </Link>
@@ -291,25 +296,30 @@ export default function ProductTable({
                     onClick={() => handleToggleModal(product.slug, product.isActive)}
                     size="sm"
                     variant="outline"
-                    className={`max-md:size-11 size-9 p-0 rounded-xl transition-all active:scale-90 border-none ${
+                    className={`max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 ${
                       product.isActive
-                        ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                        : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                     }`}
+                    aria-label={product.isActive ? "Deactivate product" : "Activate product"}
                   >
-                    {product.isActive ? <FaToggleOn className="size-6" /> : <FaToggleOff className="size-6" />}
+                    {product.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                   </Button>
                 )}
                 {canEdit && (
                   <Link to={`/update-product/${product.slug}`}>
-                    <Button size="sm" variant="outline" className="max-md:size-11 size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90">
+                    <Button size="sm" variant="outline" className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit product"
+                  >
                       <FaEdit className="size-4" />
                     </Button>
                   </Link>
                 )}
                 {canDelete && (
-                  <Button onClick={() => handleDeleteModal(product.slug)} size="sm" className="max-md:size-11 size-9 p-0 rounded-xl bg-red-500 text-white hover:bg-red-600 shadow-md transition-all active:scale-90">
-                    <MdDelete className="size-4" />
+                  <Button onClick={() => handleDeleteModal(product.slug)} size="sm" className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete product"
+                  >
+                    <MdDelete className="size-5" />
                   </Button>
                 )}
               </div>
@@ -317,7 +327,7 @@ export default function ProductTable({
           )}
         />
       ) : (
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden shadow-theme-sm">
         <div
           ref={parentRef}
           className="no-scrollbar max-w-full overflow-auto max-h-[600px]"
@@ -325,18 +335,19 @@ export default function ProductTable({
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow className="uppercase">
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Barcode</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">SKU</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Images</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Product Name</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Category</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">SubCategory</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Brand</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Buy Rate</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Retail Price</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">WH Price</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Status</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Actions</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Serial ID</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Barcode</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">SKU</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Images</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Product Name</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Category</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">SubCategory</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Brand</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Buy Rate</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Retail Price</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">WH Price</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Status</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Actions</TableCell>
               </TableRow>
             </TableHeader>
 
@@ -348,7 +359,7 @@ export default function ProductTable({
             >
               {products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="p-0 border-none">
+                  <TableCell colSpan={13} className="p-0 border-none">
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center bg-white dark:bg-gray-900 rounded-b-xl">
                       <div className="size-20 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-6 animate-in zoom-in duration-300">
                         <FaSearch className="size-8 text-gray-300 dark:text-gray-600" />
@@ -359,7 +370,7 @@ export default function ProductTable({
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[380px] leading-relaxed">
                         {searchTerm ? (
                           <>
-                            We couldn't find any products matching <span className="font-bold text-brand-500">"{searchTerm}"</span>. Try checking for typos or search for a different term.
+                            We couldn't find any products matching <span className="font-bold text-accent-500">"{searchTerm}"</span>. Try checking for typos or search for a different term.
                           </>
                         ) : (
                           "Your product inventory is currently empty. Get started by creating your first product!"
@@ -378,7 +389,7 @@ export default function ProductTable({
                         {canAdd && (
                         <Link to="/create-product">
                           <Button
-                            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl px-6 py-2.5 shadow-lg active:scale-95 transition-all font-semibold text-sm border-none flex items-center gap-2"
+                            className="!bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl px-6 py-2.5 shadow-lg active:scale-95 transition-all font-semibold text-sm border-none flex items-center gap-2"
                           >
                             Create Product
                           </Button>
@@ -392,13 +403,22 @@ export default function ProductTable({
                 <>
                   {paddingTop > 0 && (
                     <TableRow>
-                      <TableCell colSpan={12} style={{ height: paddingTop }}>{null}</TableCell>
+                      <TableCell colSpan={13} style={{ height: paddingTop }}>{null}</TableCell>
                     </TableRow>
                   )}
                   {virtualRows.map((virtualRow) => {
                     const product = products[virtualRow.index];
                     return (
                       <TableRow key={product._id} className="dark:text-gray-400">
+                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                          {product.productSerialId ? (
+                            <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                              {product.productSerialId}
+                            </span>
+                          ) : (
+                            <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm text-center">{product.variantType === "multipleVariant" ? "N/A" : (product.barCode || "N/A")}</TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm text-center">{product.variantType === "multipleVariant" ? "N/A" : (product.sku || "N/A")}</TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm">
@@ -432,9 +452,7 @@ export default function ProductTable({
                         <TableCell className="px-4 py-3 text-theme-sm text-center">{renderCellValue(product, "wholesalePrice")}</TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm text-center">
                           <div className="flex justify-center">
-                            <Badge size="sm" color={product.isActive ? "success" : "error"}>
-                              {product.isActive ? "Active" : "Inactive"}
-                            </Badge>
+                            <StatusPill isActive={product.isActive} />
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm">
@@ -442,7 +460,9 @@ export default function ProductTable({
                             {/* View Action */}
                             <Tooltip text="View Product">
                               <Link to={`/product-view/${product.slug}`}>
-                                <Button size="sm" variant="outline" className="size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-blue-500 hover:border-blue-400 transition-all active:scale-90">
+                                <Button size="sm" variant="outline" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View product"
+                  >
                                   <FaEye className="size-4" />
                                 </Button>
                               </Link>
@@ -455,13 +475,14 @@ export default function ProductTable({
                                 onClick={() => handleToggleModal(product.slug, product.isActive)}
                                 size="sm"
                                 variant="outline"
-                                className={`size-9 p-0 rounded-xl transition-all active:scale-90 border-none ${
-                                  product.isActive
-                                    ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                                    : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
-                                }`}
-                              >
-                                {product.isActive ? <FaToggleOn className="size-6" /> : <FaToggleOff className="size-6" />}
+                                className={`size-10 p-0 !rounded border-none transition-all active:scale-90 ${
+                      product.isActive
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
+                    }`}
+                    aria-label={product.isActive ? "Deactivate product" : "Activate product"}
+                  >
+                                {product.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                               </Button>
                             </Tooltip>
                             )}
@@ -470,7 +491,9 @@ export default function ProductTable({
                             {canEdit && (
                             <Tooltip text="Edit Product">
                               <Link to={`/update-product/${product.slug}`}>
-                                <Button size="sm" variant="outline" className="size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90">
+                                <Button size="sm" variant="outline" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit product"
+                  >
                                   <FaEdit className="size-4" />
                                 </Button>
                               </Link>
@@ -480,8 +503,10 @@ export default function ProductTable({
                             {/* Delete Action */}
                             {canDelete && (
                             <Tooltip text="Delete Product">
-                              <Button onClick={() => handleDeleteModal(product.slug)} size="sm" className="size-9 p-0 rounded-xl bg-red-500 text-white hover:bg-red-600 shadow-md transition-all active:scale-90">
-                                <MdDelete className="size-4" />
+                              <Button onClick={() => handleDeleteModal(product.slug)} size="sm" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete product"
+                  >
+                                <MdDelete className="size-5" />
                               </Button>
                             </Tooltip>
                             )}
@@ -492,7 +517,7 @@ export default function ProductTable({
                   })}
                   {paddingBottom > 0 && (
                     <TableRow>
-                      <TableCell colSpan={12} style={{ height: paddingBottom }}>{null}</TableCell>
+                      <TableCell colSpan={13} style={{ height: paddingBottom }}>{null}</TableCell>
                     </TableRow>
                   )}
                 </>
@@ -514,10 +539,10 @@ export default function ProductTable({
           </p>
           <div className="flex items-center gap-3 mt-8">
             <Button onClick={closeModal} variant="outline" className="flex-1 rounded-xl py-2.5">Cancel</Button>
-            <Button onClick={handleDelete} disabled={isDeleting} className="bg-red-500 text-white hover:bg-red-600 flex-1 rounded-xl py-2.5 shadow-lg shadow-red-500/20 disabled:active:scale-100">
+            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100">
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -564,15 +589,11 @@ export default function ProductTable({
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-                className={`flex-1 rounded-xl py-2.5 font-semibold text-[#0A6B43] transition-all shadow-lg ${
-                pendingToggle?.currentStatus
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
-              }`}
+                className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

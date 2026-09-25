@@ -22,7 +22,7 @@ const PrintQueuePanel: React.FC<PrintQueuePanelProps> = ({
             Print Queue
           </h3>
           {queue.length > 0 && (
-            <span className="size-5 flex items-center justify-center rounded-full bg-brand-500 text-white text-[10px] font-bold">
+            <span className="size-5 flex items-center justify-center rounded-full bg-accent-500 text-white text-[10px] font-bold">
               {queue.length}
             </span>
           )}
@@ -59,7 +59,8 @@ const PrintQueuePanel: React.FC<PrintQueuePanelProps> = ({
                   onClick={() =>
                     onQuantityChange(item.key, Math.max(1, item.quantity - 1))
                   }
-                  className="size-7 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-sm outline-none focus:outline-none"
+                  aria-label="Decrease quantity"
+                  className="shine size-7 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
                 >
                   −
                 </button>
@@ -73,19 +74,21 @@ const PrintQueuePanel: React.FC<PrintQueuePanelProps> = ({
                       Math.max(1, parseInt(e.target.value) || 1)
                     )
                   }
-                  className="w-12 text-center text-sm py-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-brand-500"
+                  className="w-12 text-center text-sm py-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
                 />
                 <button
                   type="button"
                   onClick={() => onQuantityChange(item.key, item.quantity + 1)}
-                  className="size-7 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-sm outline-none focus:outline-none"
+                  aria-label="Increase quantity"
+                  className="shine size-7 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
                 >
                   +
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemove(item.key)}
-                  className="size-7 flex items-center justify-center rounded-md bg-red-500 hover:bg-red-600 text-white transition-colors ml-1 outline-none focus:outline-none"
+                  aria-label="Remove from queue"
+                  className="shine size-7 flex items-center justify-center rounded bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 transition-colors ml-1 outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
                 >
                   <FaTimes className="size-3" />
                 </button>

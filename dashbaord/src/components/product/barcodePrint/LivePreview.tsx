@@ -41,7 +41,8 @@ const LivePreview = forwardRef<HTMLDivElement, LivePreviewProps>(
             <button
               type="button"
               onClick={() => setZoom((z) => Math.max(50, z - 10))}
-              className="size-8 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 outline-none focus:outline-none"
+              aria-label="Zoom out"
+              className="shine size-8 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
             >
               <FaSearchMinus className="size-3" />
             </button>
@@ -51,7 +52,8 @@ const LivePreview = forwardRef<HTMLDivElement, LivePreviewProps>(
             <button
               type="button"
               onClick={() => setZoom((z) => Math.min(200, z + 10))}
-              className="size-8 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 outline-none focus:outline-none"
+              aria-label="Zoom in"
+              className="shine size-8 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20"
             >
               <FaSearchPlus className="size-3" />
             </button>

@@ -9,6 +9,7 @@ import {
 } from "../../ui/table";
 
 import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
 import Button from "../../ui/button/Button";
 import Input from "../../form/input/InputField";
 import { Link } from "react-router";
@@ -32,6 +33,7 @@ interface Category {
 }
 
 interface SubCategory {
+  subCategorySerialId?: string;
   discount: any;
   _id: string;
   name: string;
@@ -158,7 +160,7 @@ const SubCategoryTable = ({
     setSearchTerm("");
   };
 
-  const gridTemplateColumns = "80px 1.5fr 1.5fr 1fr 1fr 1fr 1fr 200px";
+  const gridTemplateColumns = "150px 1.5fr 1.5fr 1fr 1fr 1fr 1fr 220px";
 
   return (
     <div className="w-full">
@@ -168,9 +170,9 @@ const SubCategoryTable = ({
             placeholder="Search subcategories..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full shadow-theme-xs h-12 pr-12 pl-11 focus:ring-2 focus:ring-brand-500/20 rounded-xl transition-all"
+            className="w-full shadow-theme-xs h-12 pr-12 pl-11 focus:ring-2 focus:ring-accent-500/20 rounded-xl transition-all"
           />
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 group-focus-within:text-brand-500 transition-colors" />
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 group-focus-within:text-accent-500 transition-colors" />
 
           {searchTerm && (
             <button
@@ -191,19 +193,14 @@ const SubCategoryTable = ({
           emptyMessage={`No subcategories found matching "${searchTerm}"`}
           renderCard={(subcategory, index) => (
             <div className="space-y-1">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
+              <div className="flex items-center gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{subcategory.name}</p>
-                  <p className="text-xs text-gray-400">#{index + 1}</p>
+                  <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">{subcategory.subCategorySerialId || `#${index + 1}`}</p>
                 </div>
-                <Badge
-                  size="sm"
-                  variant="solid"
-                  color={subcategory.isActive ? "success" : "error"}
-                  className="font-black text-[10px] uppercase shrink-0"
-                >
-                  {subcategory.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <div className="shrink-0">
+                  <StatusPill isActive={subcategory.isActive} />
+                </div>
               </div>
               <MobileCardRow label="Parent Category">{subcategory?.category?.name || "N/A"}</MobileCardRow>
               <MobileCardRow label="Discount">{subcategory?.discount?.discountName || "N/A"}</MobileCardRow>
@@ -219,7 +216,8 @@ const SubCategoryTable = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-[#0A6B43] hover:text-[#0A6B43] hover:bg-blue-50 dark:hover:bg-[#B8E4CF]/10 transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View subcategory"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -229,10 +227,12 @@ const SubCategoryTable = ({
                     onClick={() => handleToggleModal(subcategory.slug, subcategory.isActive)}
                     size="sm"
                     variant="outline"
-                    className={`max-md:size-11 size-10 p-0 rounded-2xl transition-all active:scale-90 border-none ${subcategory.isActive
-                      ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                      : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
-                      }`}
+                    className={`max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 ${
+                      subcategory.isActive
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
+                    }`}
+                    aria-label={subcategory.isActive ? "Deactivate subcategory" : "Activate subcategory"}
                   >
                     {subcategory.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                   </Button>
@@ -242,8 +242,9 @@ const SubCategoryTable = ({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
-                    >
+                      className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit subcategory"
+                  >
                       <FaEdit className="size-4" />
                     </Button>
                   </Link>
@@ -252,7 +253,8 @@ const SubCategoryTable = ({
                   <Button
                     onClick={() => handleDeleteModal(subcategory.slug)}
                     size="sm"
-                    className="max-md:size-11 size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete subcategory"
                   >
                     <MdDelete className="size-5" />
                   </Button>
@@ -266,7 +268,7 @@ const SubCategoryTable = ({
         {tableData.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center py-24 px-6">
             <div className="relative mb-6">
-              <div className="absolute inset-0 rounded-full bg-brand-500/10 blur-2xl" />
+              <div className="absolute inset-0 rounded-full bg-accent-500/10 blur-2xl" />
               <div className="relative size-24 rounded-full bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/50 flex items-center justify-center ring-8 ring-gray-50 dark:ring-gray-800/40 animate-in zoom-in duration-300">
                 <FaLayerGroup className="size-9 text-gray-300 dark:text-gray-600" />
               </div>
@@ -274,7 +276,7 @@ const SubCategoryTable = ({
             <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">No Subcategories Found</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[380px] leading-relaxed">
               {searchTerm ? (
-                <>We couldn't find any subcategories matching <span className="font-bold text-brand-500">"{searchTerm}"</span>. Try checking for typos or search for a different term.</>
+                <>We couldn't find any subcategories matching <span className="font-bold text-accent-500">"{searchTerm}"</span>. Try checking for typos or search for a different term.</>
               ) : (
                 <>There are no subcategories yet. Once you add one, it will show up here.</>
               )}
@@ -282,7 +284,7 @@ const SubCategoryTable = ({
             {searchTerm && (
               <Button
                 onClick={handleClearSearch}
-                className="rounded-xl px-10 py-3 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
+                className="rounded-xl px-10 py-3 !bg-accent-500 hover:!bg-accent-600 !text-white border-none font-semibold text-sm shadow-lg transition-all active:scale-95"
               >
                 Go Back to All
               </Button>
@@ -301,7 +303,7 @@ const SubCategoryTable = ({
                 style={{ gridTemplateColumns }}
               >
                 <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
-                  S/N
+                  Serial ID
                 </TableCell>
                 <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
                   Subcategory Name
@@ -347,8 +349,14 @@ const SubCategoryTable = ({
                         gridTemplateColumns
                       }}
                     >
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-500 dark:text-gray-400 flex items-center justify-center font-medium">
-                        #{virtualRow.index + 1}
+                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center">
+                        {subcategory.subCategorySerialId ? (
+                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                            {subcategory.subCategorySerialId}
+                          </span>
+                        ) : (
+                          <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center">
                         <Tooltip text={subcategory.name}>
@@ -374,14 +382,7 @@ const SubCategoryTable = ({
                             : <span className="text-gray-400 font-semibold text-xs">N/A</span>}
                       </TableCell>
                       <TableCell className="px-4 py-3 flex items-center justify-center">
-                        <Badge
-                          size="sm"
-                          variant="solid"
-                          color={subcategory.isActive ? "success" : "error"}
-                          className="min-w-[75px] font-black text-[10px] uppercase shadow-md transition-all duration-300"
-                        >
-                          {subcategory.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        <StatusPill isActive={subcategory.isActive} />
                       </TableCell>
                       <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
                         {/* View */}
@@ -390,8 +391,9 @@ const SubCategoryTable = ({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-[#0A6B43] hover:text-[#0A6B43] hover:bg-blue-50 dark:hover:bg-[#B8E4CF]/10 transition-all active:scale-90"
-                            >
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View subcategory"
+                  >
                               <FaEye className="size-4" />
                             </Button>
                           </Link>
@@ -403,11 +405,13 @@ const SubCategoryTable = ({
                             onClick={() => handleToggleModal(subcategory.slug, subcategory.isActive)}
                             size="sm"
                             variant="outline"
-                            className={`size-10 p-0 rounded-2xl transition-all active:scale-90 border-none ${subcategory.isActive
-                              ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                              : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
-                              }`}
-                          >
+                            className={`size-10 p-0 !rounded border-none transition-all active:scale-90 ${
+                      subcategory.isActive
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
+                    }`}
+                    aria-label={subcategory.isActive ? "Deactivate subcategory" : "Activate subcategory"}
+                  >
                             {subcategory.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                           </Button>
                         </Tooltip>
@@ -420,8 +424,9 @@ const SubCategoryTable = ({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
-                            >
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit subcategory"
+                  >
                               <FaEdit className="size-4" />
                             </Button>
                           </Link>
@@ -434,8 +439,9 @@ const SubCategoryTable = ({
                           <Button
                             onClick={() => handleDeleteModal(subcategory.slug)}
                             size="sm"
-                            className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
-                          >
+                            className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete subcategory"
+                  >
                             <MdDelete className="size-5" />
                           </Button>
                         </Tooltip>
@@ -452,7 +458,7 @@ const SubCategoryTable = ({
       )}
 
       {/* Delete Modal */}
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} className="max-w-[450px]">
+      <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setSelectedSubCategory(null); }} className="max-w-[450px]">
         <div className="bg-white dark:bg-gray-900 p-8 text-center">
           <div className="size-16 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center mx-auto mb-4">
             <MdDelete className="size-8 text-red-500" />
@@ -472,15 +478,15 @@ const SubCategoryTable = ({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 rounded-xl py-3 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg border-none font-bold transition-transform active:scale-95 disabled:active:scale-100"
+                className="flex-1 rounded-xl py-3 !bg-error-500 hover:!bg-error-600 !text-white text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
-                "Confirm Delete"
+                "Yes, Delete"
               )}
             </Button>
           </div>
@@ -491,7 +497,7 @@ const SubCategoryTable = ({
       <Modal isOpen={showToggleModal} onClose={() => setShowToggleModal(false)} className="max-w-[450px]">
         <div className="bg-white dark:bg-gray-900 p-8 text-center">
           <div className={`size-16 rounded-full flex items-center justify-center mx-auto mb-4 ${pendingToggle?.currentStatus ? "bg-red-50 dark:bg-red-500/10" : "bg-green-50 dark:bg-green-500/10"}`}>
-            {pendingToggle?.currentStatus ? <FaToggleOff className="size-8 text-red-500" /> : <FaToggleOn className="size-8 text-green-500" />}
+            {pendingToggle?.currentStatus ? <FaToggleOn className="size-8 text-red-500" /> : <FaToggleOff className="size-8 text-green-500" />}
           </div>
           <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
             {pendingToggle?.currentStatus ? "Deactivate" : "Activate"} Subcategory
@@ -511,14 +517,11 @@ const SubCategoryTable = ({
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-                className={`flex-1 rounded-xl py-3 text-[#0A6B43] shadow-lg border-none font-bold transition-transform active:scale-95 ${pendingToggle?.currentStatus
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
-                }`}
+                className="flex-1 rounded-xl py-3 text-sm font-semibold border-none active:scale-95 transition-all !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg disabled:active:scale-100"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

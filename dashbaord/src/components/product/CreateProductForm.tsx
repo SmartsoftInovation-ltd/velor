@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import { FaTrashAlt, FaCloudUploadAlt, FaSync, FaInfoCircle, FaCubes, FaGlobe, FaSearchPlus, FaBarcode, FaTimesCircle, FaRulerCombined } from "react-icons/fa";
+import { FaTrashAlt, FaCloudUploadAlt, FaInfoCircle, FaCubes, FaGlobe, FaSearchPlus, FaBarcode, FaTimesCircle, FaRulerCombined } from "react-icons/fa";
 import { MdOutlineQrCodeScanner } from "react-icons/md";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Input from "../form/input/InputField";
@@ -90,7 +90,7 @@ const RequiredAsterisk = () => <span className="text-red-500 ml-0.5 font-bold">*
 const SectionCard = ({ icon, title, children, className = "" }: any) => (
   <div className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-theme-sm overflow-hidden ${className}`}>
     <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-      <div className="flex items-center justify-center size-8 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-500">{icon}</div>
+      <div className="flex items-center justify-center size-8 rounded-xl bg-accent-50 dark:bg-accent-500/10 text-accent-500">{icon}</div>
       <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">{title}</h3>
     </div>
     <div className="p-6">{children}</div>
@@ -102,18 +102,18 @@ const FieldError = ({ msg }: { msg?: string }) => msg ? <p className="text-red-5
 const DropZone = ({ onDrop, multiple = false, preview, onRemove, label, height = "py-8" }: any) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple, accept: { "image/*": [] }, maxSize: 5 * 1024 * 1024 });
   return (
-    <div {...getRootProps()} className={`relative mt-1.5 flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${isDragActive ? "border-brand-500 bg-brand-50" : "border-gray-200 dark:border-gray-700 hover:border-brand-400"} ${preview ? "border-none p-0" : height + " px-6"}`}>
+    <div {...getRootProps()} className={`relative mt-1.5 flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${isDragActive ? "border-accent-500 bg-accent-50" : "border-gray-200 dark:border-gray-700 hover:border-accent-400"} ${preview ? "border-none p-0" : height + " px-6"}`}>
       <input {...getInputProps()} />
       {preview ? (
         <div className="relative w-full aspect-[1.91/1] rounded-xl overflow-hidden shadow-theme-md bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 group">
           <img src={preview} className="w-full h-full object-contain" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="bg-red-500 text-white p-3 rounded-full shadow-xl transform scale-75 group-hover:scale-100 transition-all duration-300"><FaTrashAlt /></button>
+            <button onClick={(e) => { e.stopPropagation(); onRemove(); }} aria-label="Remove image" className="bg-red-500 text-white p-3 rounded-full shadow-xl transform scale-75 group-hover:scale-100 transition-all duration-300"><FaTrashAlt /></button>
           </div>
         </div>
       ) : (
         <div className="text-center">
-          <div className="size-14 mx-auto mb-3 bg-brand-50 dark:bg-brand-500/10 rounded-2xl flex items-center justify-center text-brand-500"><FaCloudUploadAlt className="text-2xl" /></div>
+          <div className="size-14 mx-auto mb-3 bg-accent-50 dark:bg-accent-500/10 rounded-2xl flex items-center justify-center text-accent-500"><FaCloudUploadAlt className="text-2xl" /></div>
           <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{label}</p>
           <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-tight">PNG, JPG or WebP (Max 5MB)</p>
         </div>
@@ -125,7 +125,7 @@ const DropZone = ({ onDrop, multiple = false, preview, onRemove, label, height =
 const GalleryDropZone = ({ onDrop, galleryCount }: any) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: true, accept: { "image/*": [] }, maxSize: 5 * 1024 * 1024 });
   return (
-    <div {...getRootProps()} className={`border-2 border-dashed rounded-2xl py-5 px-4 text-center cursor-pointer transition-all duration-300 ${isDragActive ? "border-brand-500 bg-brand-50" : "border-gray-200 dark:border-gray-700 hover:border-brand-400 bg-gray-50/50 dark:bg-gray-800/30"}`}>
+    <div {...getRootProps()} className={`border-2 border-dashed rounded-2xl py-5 px-4 text-center cursor-pointer transition-all duration-300 ${isDragActive ? "border-accent-500 bg-accent-50" : "border-gray-200 dark:border-gray-700 hover:border-accent-400 bg-gray-50/50 dark:bg-gray-800/30"}`}>
       <input {...getInputProps()} />
       <FaCloudUploadAlt className="mx-auto text-3xl text-gray-300 dark:text-gray-600 mb-2" />
       <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Add Gallery Images</p>
@@ -687,14 +687,15 @@ const CreateProductForm = () => {
                       type="button"
                       onClick={focusBarcodeInput}
                       title="Click to scan"
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 transition-colors"
+                      aria-label="Focus barcode input"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-500 transition-colors"
                     >
                       <MdOutlineQrCodeScanner size={16} />
                     </button>
                   </div>
                 </div>
                 <div className="md:col-span-1">
-                  <button type="button" onClick={generateBarcode} className="w-full h-11 rounded-xl bg-orange-500 hover:bg-orange-600 transition-all flex items-center justify-center shadow-sm group">
+                  <button type="button" onClick={generateBarcode} aria-label="Generate barcode" title="Generate barcode" className="shine w-full h-11 rounded-xl bg-orange-500 hover:bg-orange-600 transition-all flex items-center justify-center shadow-sm group">
                     <FaBarcode className="text-white text-xl group-hover:scale-110 transition-transform" />
                   </button>
                 </div>
@@ -786,7 +787,7 @@ const CreateProductForm = () => {
                 <div className="md:col-span-3">
                   <div className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20">
                     <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <FaRulerCombined className="text-brand-500" /> Product Dimension
+                      <FaRulerCombined className="text-accent-500" /> Product Dimension
                     </h4>
                     <div className="grid grid-cols-3 gap-3">
                       <div><Label>Width</Label><Input type="number" name="dimensions.width" value={formData.dimensions.width} onChange={handleInputChange} placeholder="e.g. 10 cm/m" /></div>
@@ -813,27 +814,27 @@ const CreateProductForm = () => {
                 <div className="md:col-span-2">
                   <Label>Tags (Comma separated)</Label>
                   <div className="flex gap-2 mt-1.5">
-                    <input type="text" value={tagInput} onChange={(e)=>setTagInput(e.target.value)} className="flex-1 h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white outline-none focus:border-brand-500 dark:focus:border-brand-400 transition-all dark:placeholder:text-white/60" placeholder="e.g. electronics, mobile, sale" />
-                    <button type="button" onClick={applyTags} className="bg-brand-500 text-white px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">Apply Tags</button>
+                    <input type="text" value={tagInput} onChange={(e)=>setTagInput(e.target.value)} className="flex-1 h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white outline-none focus:border-accent-500 dark:focus:border-accent-400 focus:ring-2 focus:ring-accent-500/20 transition-all dark:placeholder:text-white/60" placeholder="e.g. electronics, mobile, sale" />
+                    <button type="button" onClick={applyTags} className="shine bg-accent-500 text-white px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-accent-600 transition-colors shadow-lg shadow-accent-500/20">Apply Tags</button>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {formData.tag.split(",").map(x=>x.trim()).filter(Boolean).map((t, idx)=>(<span key={idx} className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase flex items-center gap-2 ${tagColors[idx % tagColors.length]}`}>{t}<button type="button" onClick={()=>removeTag(t)} className="hover:scale-125 transition-transform"><FaTimesCircle /></button></span>))}
+                    {formData.tag.split(",").map(x=>x.trim()).filter(Boolean).map((t, idx)=>(<span key={idx} className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase flex items-center gap-2 ${tagColors[idx % tagColors.length]}`}>{t}<button type="button" onClick={()=>removeTag(t)} aria-label={`Remove ${t}`} className="hover:scale-125 transition-transform"><FaTimesCircle /></button></span>))}
                   </div>
                 </div>
 
                 <div className="md:col-span-2">
                   <Label>Meta Keywords (Comma separated)</Label>
                   <div className="flex gap-2 mt-1.5">
-                    <input type="text" value={metaKeywordInput} onChange={(e)=>setMetaKeywordInput(e.target.value)} className="flex-1 h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-brand-500 dark:focus:border-brand-400 transition-all dark:placeholder:text-white/60" placeholder="e.g. phones, mobile, electronics" />
-                    <button type="button" onClick={applyMetaKeywords} className="bg-brand-500 text-white px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">Apply</button>
+                    <input type="text" value={metaKeywordInput} onChange={(e)=>setMetaKeywordInput(e.target.value)} className="flex-1 h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white outline-none focus:border-accent-500 dark:focus:border-accent-400 focus:ring-2 focus:ring-accent-500/20 transition-all dark:placeholder:text-white/60" placeholder="e.g. phones, mobile, electronics" />
+                    <button type="button" onClick={applyMetaKeywords} className="shine bg-accent-500 text-white px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-accent-600 transition-colors shadow-lg shadow-accent-500/20">Apply</button>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3 min-h-[30px]">
-                    {formData.seo.metaKeywords.split(",").map(x=>x.trim()).filter(Boolean).map((k, idx)=>(<span key={idx} className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase flex items-center gap-2 ${tagColors[idx % tagColors.length]}`}>{k}<button type="button" onClick={()=>removeMetaKeyword(k)} className="hover:scale-125 transition-transform"><FaTimesCircle /></button></span>))}
+                    {formData.seo.metaKeywords.split(",").map(x=>x.trim()).filter(Boolean).map((k, idx)=>(<span key={idx} className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase flex items-center gap-2 ${tagColors[idx % tagColors.length]}`}>{k}<button type="button" onClick={()=>removeMetaKeyword(k)} aria-label={`Remove ${k}`} className="hover:scale-125 transition-transform"><FaTimesCircle /></button></span>))}
                   </div>
                   <FieldError msg={errors.metaKeywords} />
                 </div>
 
-                <div className="md:col-span-2"><Label>Meta Description</Label><textarea name="seo.metaDescription" value={formData.seo.metaDescription} onChange={handleInputChange} className="w-full h-[120px] p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white resize-y outline-none focus:ring-2 focus:ring-brand-500/20 dark:placeholder:text-white/60" placeholder="Describe your product for search engines (max 160 characters)..." /><FieldError msg={errors.metaDescription} /></div>
+                <div className="md:col-span-2"><Label>Meta Description</Label><textarea name="seo.metaDescription" value={formData.seo.metaDescription} onChange={handleInputChange} className="w-full h-[120px] p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white resize-y outline-none focus:ring-2 focus:ring-accent-500/20 dark:placeholder:text-white/60" placeholder="Describe your product for search engines (max 160 characters)..." /><FieldError msg={errors.metaDescription} /></div>
                 <div className="md:col-span-2">
                   <Label>SEO ogImage</Label>
                   <DropZone onDrop={onOgImageDrop} preview={ogImagePreview} onRemove={() => { setOgImage(null); setOgImagePreview(null); }} label="Upload Social Preview Image" />
@@ -847,9 +848,9 @@ const CreateProductForm = () => {
         <div className="space-y-6 lg:sticky lg:top-6">
           <div className={blurClass + " space-y-6"}>
             <SectionCard icon={<FaSearchPlus />} title={<>Thumbnail{!isMultiple && <RequiredAsterisk />}</>}><DropZone onDrop={onThumbnailDrop} preview={thumbnailPreview} onRemove={() => { setThumbnail(null); setThumbnailPreview(null); }} label="Upload thumbnail" /><FieldError msg={errors.thumbnail} /></SectionCard>
-            <SectionCard icon={<FaCloudUploadAlt />} title={<>Gallery{!isMultiple && <RequiredAsterisk />}</>}><GalleryDropZone onDrop={onGalleryDrop} galleryCount={gallery.length} /><FieldError msg={errors.gallery} /><div className="grid grid-cols-3 gap-2 mt-4">{galleryPreviews.map((u, i) => (<div key={i} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-gray-50 dark:bg-gray-800"><img src={u} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><button onClick={()=>removeGalleryImage(i)} className="bg-red-500 text-white p-2 rounded-full shadow-lg transform scale-75 group-hover:scale-100 transition-all duration-300"><FaTrashAlt className="size-3" /></button></div><div className="absolute bottom-0 left-0 right-0 bg-black/20 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><p className="text-[8px] text-white font-medium text-center">{formatBytes(gallery[i]?.size)}</p></div></div>))}</div></SectionCard>
+            <SectionCard icon={<FaCloudUploadAlt />} title={<>Gallery{!isMultiple && <RequiredAsterisk />}</>}><GalleryDropZone onDrop={onGalleryDrop} galleryCount={gallery.length} /><FieldError msg={errors.gallery} /><div className="grid grid-cols-3 gap-2 mt-4">{galleryPreviews.map((u, i) => (<div key={i} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-gray-50 dark:bg-gray-800"><img src={u} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><button onClick={()=>removeGalleryImage(i)} aria-label="Remove image" className="bg-red-500 text-white p-2 rounded-full shadow-lg transform scale-75 group-hover:scale-100 transition-all duration-300"><FaTrashAlt className="size-3" /></button></div><div className="absolute bottom-0 left-0 right-0 bg-black/20 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><p className="text-[8px] text-white font-medium text-center">{formatBytes(gallery[i]?.size)}</p></div></div>))}</div></SectionCard>
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 p-5 shadow-theme-sm"><Button className="w-full bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] py-4 rounded-2xl font-black uppercase tracking-widest text-sm active:scale-95 transition-all" onClick={handleSubmit} disabled={createProductMutation.isPending}>{createProductMutation.isPending ? <FaSync className="animate-spin mx-auto" /> : "Submit Product"}</Button></div>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 p-5 shadow-theme-sm"><Button className="w-full !bg-accent-500 hover:!bg-accent-600 !text-white py-4 rounded-xl font-semibold text-sm active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100" onClick={handleSubmit} disabled={createProductMutation.isPending}>{createProductMutation.isPending ? <span className="flex items-center justify-center gap-2"><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Processing...</span> : "Submit Product"}</Button></div>
         </div>
       </div>
     </div>

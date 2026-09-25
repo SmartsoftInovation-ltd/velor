@@ -10,6 +10,7 @@ interface ButtonProps {
   disabled?: boolean; // Disabled state
   className?: string; // Additional classes
   title?: string; // Tooltip title
+  "aria-label"?: string; // Accessible name for icon-only buttons
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -22,6 +23,7 @@ const Button: React.FC<ButtonProps> = ({
   className = "",
   disabled = false,
   title,
+  "aria-label": ariaLabel,
 }) => {
   // Size Classes
   const sizeClasses = {
@@ -50,6 +52,7 @@ const Button: React.FC<ButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={ariaLabel}
     >
       {startIcon ? <span className="flex items-center">{startIcon}</span> : null}
       {/* Wrapped so React keeps a stable host node for the label. A bare string
