@@ -84,11 +84,8 @@ const productCreateSchema = joi
     wholesalePrice: joi.number().min(0).optional().allow(null),
     retailProfitMarginByPercentage: joi.number().min(0).max(100).optional().allow(null),
     wholesaleProfitMarginPercentage: joi.number().min(0).max(100).optional().allow(null),
-    alertQuantity: joi.number().min(0).when("variantType", {
-      is: "singleVariant",
-      then: joi.required(),
-      otherwise: joi.optional(),
-    }),
+    // Stock Amount: empty means 0, i.e. alert only once out of stock.
+    alertQuantity: joi.number().min(0).optional(),
 
     variantType: joi
       .string()

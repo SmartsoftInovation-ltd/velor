@@ -1171,10 +1171,10 @@ export default function InteractiveDashboard() {
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {[p.name, p.barCode, p.color, p.size].filter(Boolean).join(" · ")}
+                          {[p.name, p.variantName, p.color, p.size].filter(Boolean).join(" · ")}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {formatCurrency(p.retailPrice)}
+                          {[p.barCode, formatCurrency(p.retailPrice), `Alert at ${p.alertQty}`].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                       <span

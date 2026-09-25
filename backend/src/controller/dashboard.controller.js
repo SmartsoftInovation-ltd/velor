@@ -9,6 +9,7 @@ const {
 const salesModel = require("../models/sales.model");
 const productModel = require("../models/product.model");
 const variantModel = require("../models/variant.model");
+const { buildLowStockStages } = require("../utils/lowStock.util");
 const { customerModel, customerPaymentRecived, customerAdvancePaymentModel } = require("../models/customer.model");
 const { SupplierModel, SupplierDuePayment } = require("../models/supplier.model");
 const employeeModel = require("../models/employee.model");
@@ -426,13 +427,25 @@ exports.getOverview = asynchandeler(async (req, res) => {
       },
     ]),
 
-    // 10. Low-stock products (<= 5 units, active)
-    productModel
-      .find({ isActive: true, stock: { $lte: 5 } })
-      .sort({ stock: 1 })
-      .limit(8)
-      .select("name stock retailPrice barCode color size")
-      .lean(),
+    // 10. Low-stock items: each product or variant at or below its own
+    // Stock Amount, emptiest first.
+    productModel.aggregate([
+      ...buildLowStockStages({ isActive: { $ne: false } }),
+      { $sort: { rowStock: 1, rowShortfall: -1, name: 1 } },
+      { $limit: 8 },
+      {
+        $project: {
+          name: 1,
+          variantName: "$stockRows.variantName",
+          stock: "$rowStock",
+          alertQty: "$rowAlertQty",
+          retailPrice: "$stockRows.retailPrice",
+          barCode: "$stockRows.barcode",
+          color: "$stockRows.color",
+          size: "$stockRows.size",
+        },
+      },
+    ]),
 
     // 11. Total customers
     customerModel.countDocuments({}),
@@ -745,14 +758,20 @@ exports.getOverview = asynchandeler(async (req, res) => {
         (r.customerType?.type === "listed" ? "Listed customer" : "Walking"),
       createdAt: r.createdAt,
     })),
-    lowStock: lowStockProducts.map((p) => ({
-      name: p.name,
-      stock: p.stock ?? 0,
-      retailPrice: Math.round(p.retailPrice || 0),
-      barCode: p.barCode || "",
-      color: p.color || "",
-      size: p.size || "",
-    })),
+    lowStock: lowStockProducts.map((p) => {
+      // "N/A" is the schema placeholder for an unset size/color.
+      const attr = (v) => (v && v !== "N/A" ? String(v) : "");
+      return {
+        name: p.name,
+        variantName: p.variantName && p.variantName !== "Single" ? p.variantName : "",
+        stock: p.stock ?? 0,
+        alertQty: p.alertQty ?? 0,
+        retailPrice: Math.round(p.retailPrice || 0),
+        barCode: p.barCode || "",
+        color: attr(p.color),
+        size: attr(p.size),
+      };
+    }),
     invoices: (() => {
       const byStatus = { complete: 0, pending: 0, draft: 0 };
       invoiceStatusAgg.forEach((r) => {

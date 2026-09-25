@@ -77,7 +77,7 @@ const flattenLowStock = (products: Product[]): LowStockRow[] => {
     if (p.variantType === "multipleVariant" && p.variant?.length) {
       for (const v of p.variant) {
         const stock = v.stockVariant ?? 0;
-        const alert = v.alertQuantity ?? p.alertQuantity ?? 5;
+        const alert = v.alertQuantity ?? p.alertQuantity ?? 0;
         if (stock <= alert) {
           rows.push({
             key:           `m-${p._id}-${v._id}`,
@@ -99,7 +99,7 @@ const flattenLowStock = (products: Product[]): LowStockRow[] => {
       }
     } else if (p.variantType === "singleVariant") {
       const stock = p.stock ?? 0;
-      const alert = p.alertQuantity ?? 5;
+      const alert = p.alertQuantity ?? 0;
       if (stock <= alert) {
         rows.push({
           key:           `s-${p._id}`,

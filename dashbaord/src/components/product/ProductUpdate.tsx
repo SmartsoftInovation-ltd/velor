@@ -497,6 +497,8 @@ const UpdateProductForm = () => {
     } else {
       // For Single Variant, send all fields
       Object.entries(formData).forEach(([k, v]) => {
+        // An empty Stock Amount is saved as 0: alert once out of stock.
+        if (k === "alertQuantity" && v === "") v = "0";
         appendToFormData(k, v);
       });
     }
@@ -564,7 +566,7 @@ const UpdateProductForm = () => {
                     <div className="md:col-span-3"><Label>Wholesale Price</Label><Input type="number" name="wholesalePrice" value={formData.wholesalePrice} onChange={handleInputChange} placeholder="e.g. 700" /></div>
                   )}
                 </div>
-                <div><Label>Alert Variant Stock<RequiredAsterisk /></Label><Input type="number" name="alertQuantity" value={formData.alertQuantity} onChange={handleInputChange} placeholder="e.g. 5" /></div>
+                <div><Label>Alert Variant Stock</Label><Input type="number" name="alertQuantity" value={formData.alertQuantity} onChange={handleInputChange} placeholder="e.g. 5" /></div>
               </div>
             </SectionCard>
           )}

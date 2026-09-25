@@ -162,7 +162,7 @@ const productSchema = new mongoose.Schema(
     },
     specifications: { type: String, default: null },
 
-    alertQuantity: { type: Number, default: 5 },
+    alertQuantity: { type: Number, min: 0, default: 0 },
     stockAlert: { type: Boolean, default: false },
     instock: { type: Boolean },
     stockAdjustmentPlus: {

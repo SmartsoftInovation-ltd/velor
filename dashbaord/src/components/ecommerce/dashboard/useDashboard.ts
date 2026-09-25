@@ -83,7 +83,9 @@ export interface RecentSale {
 
 export interface LowStockItem {
   name: string;
+  variantName: string;
   stock: number;
+  alertQty: number;
   retailPrice: number;
   barCode: string;
   color: string;

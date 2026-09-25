@@ -121,7 +121,7 @@ const variantSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    alertVariantStock: { type: Number, min: 0, default: 5 },
+    alertVariantStock: { type: Number, min: 0, default: 0 },
 
     // Pricing
     purchasePrice: { type: Number, min: 0, default: 0 },
@@ -146,7 +146,7 @@ const variantSchema = new mongoose.Schema(
     groupUnit: { type: String },
     groupUnitQuantity: { type: Number },
     specifications: { type: String, default: null },
-    alertQuantity: { type: Number, default: 5 },
+    alertQuantity: { type: Number, min: 0, default: 0 },
     stockAlert: { type: Boolean, default: false },
     instock: { type: Boolean },
     isActive: { type: Boolean, default: true, index: true },

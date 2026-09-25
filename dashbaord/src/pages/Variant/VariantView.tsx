@@ -291,7 +291,7 @@ const VariantView = () => {
                 <InfoCard icon={<FaBoxes className="size-3.5" />} label="Stock Variant" value={
                   <div className="flex items-center gap-2">
                     <span>{variant.stockVariant ?? 0}</span>
-                    {(variant.stockVariant ?? 0) <= (variant.alertVariantStock ?? 5) && (
+                    {(variant.stockVariant ?? 0) <= (variant.alertQuantity ?? variant.alertVariantStock ?? 0) && (
                       <span className="px-1.5 py-0.5 bg-red-50 text-red-500 text-[10px] font-bold rounded-md">LOW</span>
                     )}
                   </div>

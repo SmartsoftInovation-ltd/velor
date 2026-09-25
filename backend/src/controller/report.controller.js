@@ -22,6 +22,7 @@ const Supplier = require("../models/supplier.model").SupplierModel;
 const SupplierDuePayment = require("../models/supplier.model").SupplierDuePayment;
 const StoreInformation = require("../models/storeInformation.model");
 const Product = require("../models/product.model");
+const { buildLowStockStages } = require("../utils/lowStock.util");
 const {
   getCache,
   setCache,
@@ -2575,105 +2576,7 @@ exports.getLowStockReport = asynchandeler(async (req, res) => {
     });
   }
 
-  const pipeline = [
-    { $match: match },
-    {
-      $lookup: {
-        from: "variants",
-        localField: "_id",
-        foreignField: "product",
-        as: "variants",
-        pipeline: [
-          { $match: { isActive: { $ne: false } } },
-          {
-            $project: {
-              variantName: 1,
-              barCode: 1,
-              sku: 1,
-              size: 1,
-              color: 1,
-              purchasePrice: 1,
-              retailPrice: 1,
-              wholesalePrice: 1,
-              stockVariant: 1,
-              unit: 1,
-              groupUnit: 1,
-              groupUnitQuantity: 1,
-              alertQuantity: 1,
-              alertVariantStock: 1,
-            },
-          },
-        ],
-      },
-    },
-    // A multi-variant product contributes one row per variant; a product with
-    // no variants is its own row.
-    {
-      $addFields: {
-        stockRows: {
-          $cond: [
-            { $gt: [{ $size: "$variants" }, 0] },
-            {
-              $map: {
-                input: "$variants",
-                as: "v",
-                in: {
-                  variantId: "$$v._id",
-                  variantName: "$$v.variantName",
-                  barcode: { $ifNull: ["$$v.barCode", { $ifNull: ["$$v.sku", "$barCode"] }] },
-                  size: { $ifNull: ["$$v.size", "$size"] },
-                  color: { $ifNull: ["$$v.color", "$color"] },
-                  buyRate: { $ifNull: ["$$v.purchasePrice", "$purchasePrice"] },
-                  wsPrice: { $ifNull: ["$$v.wholesalePrice", "$wholesalePrice"] },
-                  retailPrice: { $ifNull: ["$$v.retailPrice", "$retailPrice"] },
-                  unit: { $ifNull: ["$$v.unit", "$unit"] },
-                  groupUnit: { $ifNull: ["$$v.groupUnit", "$groupUnit"] },
-                  groupUnitQuantity: { $ifNull: ["$$v.groupUnitQuantity", "$groupUnitQuantity"] },
-                  stock: { $ifNull: ["$$v.stockVariant", 0] },
-                  // The variant's own alert wins; the product's is the fallback
-                  // and 5 is the schema default both share.
-                  alertQty: {
-                    $ifNull: [
-                      "$$v.alertQuantity",
-                      { $ifNull: ["$$v.alertVariantStock", { $ifNull: ["$alertQuantity", 5] }] },
-                    ],
-                  },
-                },
-              },
-            },
-            [
-              {
-                variantId: null,
-                variantName: "Single",
-                barcode: { $ifNull: ["$barCode", "$sku"] },
-                size: "$size",
-                color: "$color",
-                buyRate: "$purchasePrice",
-                wsPrice: "$wholesalePrice",
-                retailPrice: "$retailPrice",
-                unit: "$unit",
-                groupUnit: "$groupUnit",
-                groupUnitQuantity: "$groupUnitQuantity",
-                stock: { $ifNull: ["$stock", 0] },
-                alertQty: { $ifNull: ["$alertQuantity", 5] },
-              },
-            ],
-          ],
-        },
-      },
-    },
-    { $unwind: "$stockRows" },
-    {
-      $addFields: {
-        rowStock: { $ifNull: ["$stockRows.stock", 0] },
-        rowAlertQty: { $ifNull: ["$stockRows.alertQty", 5] },
-        rowBuyRate: { $ifNull: ["$stockRows.buyRate", 0] },
-      },
-    },
-    // The report's whole point: only items at or below their alert level.
-    { $match: { $expr: { $lte: ["$rowStock", "$rowAlertQty"] } } },
-    { $addFields: { rowShortfall: { $subtract: ["$rowAlertQty", "$rowStock"] } } },
-  ];
+  const pipeline = buildLowStockStages(match);
 
   if (searchTerm) {
     const isBarcode = /^\d{6,20}$/.test(searchTerm);
