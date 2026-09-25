@@ -5,6 +5,8 @@ import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import type { Employee } from "../../components/tables/EmployeeTable/EmployeeTable";
+import StatusPill from "../../components/common/StatusPill";
+import { usePermission } from "../../hooks/usePermission";
 
 // ---------- Types ----------
 interface EmployeeFull extends Employee {
@@ -99,6 +101,7 @@ function formatCurrency(val?: number | null): string {
 // ---------- Component ----------
 const EmployeeView = () => {
   const { id } = useParams<{ id: string }>();
+  const canEdit = usePermission("employee", "edit");
   const navigate = useNavigate();
 
   const {
@@ -122,7 +125,7 @@ const EmployeeView = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[500px]">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -133,7 +136,7 @@ const EmployeeView = () => {
         <p className="text-red-500 font-bold mb-4">Employee not found.</p>
         <button
           onClick={() => navigate("/employee-list")}
-          className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold"
+          className="shine px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold"
         >
           Back to List
         </button>
@@ -156,20 +159,22 @@ const EmployeeView = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/employee-list")}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+            className="shine flex items-center gap-2 h-10 px-4 rounded-xl border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 text-sm font-semibold transition-all active:scale-95"
           >
             <FaArrowLeft className="size-3.5" />
             Back to List
           </button>
+          {canEdit && (
           <div className="ml-auto">
             <button
               onClick={() => navigate(`/employee-edit/${employee._id}`)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-brand-500 hover:bg-brand-600 text-white rounded-xl transition active:scale-95 shadow-md"
+              className="shine flex items-center gap-2 h-10 px-4 text-sm font-semibold bg-accent-500 hover:bg-accent-600 text-white rounded-xl transition active:scale-95 shadow-md"
             >
               <FaEdit className="size-3.5" />
               Edit Employee
             </button>
           </div>
+          )}
         </div>
 
         {/* Hero profile card — minimal */}
@@ -194,15 +199,7 @@ const EmployeeView = () => {
                 <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate">
                   {employee.fullName}
                 </h1>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    employee.isActive
-                      ? "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400"
-                      : "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400"
-                  }`}
-                >
-                  {employee.isActive ? "Active" : "Inactive"}
-                </span>
+                <StatusPill isActive={employee.isActive} />
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                 {employee.designation?.name || "—"}
@@ -211,7 +208,7 @@ const EmployeeView = () => {
                 )}
               </p>
               <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
-                <span className="font-mono bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md">
+                <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
                   {employee.employeeId || "—"}
                 </span>
                 {employee.mobile && (
@@ -387,7 +384,7 @@ const EmployeeView = () => {
                   </div>
                   <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-between">
                     <span className="text-sm font-bold text-gray-900 dark:text-gray-100">Net Salary</span>
-                    <span className="text-base font-bold font-mono text-brand-600 dark:text-brand-400">
+                    <span className="text-base font-bold font-mono text-accent-600 dark:text-accent-400">
                       ৳ {formatCurrency(employee.salary.netSalary)}
                     </span>
                   </div>

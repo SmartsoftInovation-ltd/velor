@@ -2,6 +2,9 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import DatePicker from "../form/date-picker";
 import Button from "../ui/button/Button";
+import SectionCard from "../common/SectionCard";
+import MobileActionBar from "../common/MobileActionBar";
+import { FaUser, FaMoneyBillWave } from "react-icons/fa";
 import SearchableSelect from "../form/SearchableSelect";
 import Select from "../form/Select";
 import { useEffect, useState, useCallback } from "react";
@@ -164,132 +167,124 @@ const CustomerPaymentReceiveForm = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-        {/* Customer */}
-        <div className="flex flex-col">
-          <Label>Customer <RequiredStar /></Label>
-          <SearchableSelect
-            options={customers}
-            value={selectedCustomer}
-            onChange={handleCustomerChange}
-            placeholder="Select Customer"
-            searchPlaceholder="Search by name or mobile..."
-            hasError={!!errors.customer}
-          />
-          {errors.customer && <p className="text-xs text-red-500 mt-1">Customer is required</p>}
+      <SectionCard icon={<FaUser />} title="Customer">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col">
+              <Label>Customer <RequiredStar /></Label>
+              <SearchableSelect
+                options={customers}
+                value={selectedCustomer}
+                onChange={handleCustomerChange}
+                placeholder="Select Customer"
+                searchPlaceholder="Search by name or mobile..."
+                hasError={!!errors.customer}
+              />
+              {errors.customer && <p className="text-xs text-red-500 mt-1">Customer is required</p>}
+            </div>
+            <div className="flex flex-col">
+              <Label>Due Balance</Label>
+              <Input type="text" value={form.dueBalance} readOnly />
+            </div>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Reference Invoice (Optional)</Label>
+              <Select
+                options={[{ label: "Select Invoice #", value: "" }]}
+                value={selectedInvoice}
+                onChange={(value) => {
+                  setSelectedInvoice(value);
+                  handleChange("referenceInvoice", value);
+                }}
+              />
+            </div>
         </div>
-
-        {/* Due Balance */}
-        <div className="flex flex-col">
-          <Label>Due Balance</Label>
-          <Input type="text" value={form.dueBalance} readOnly />
+      </SectionCard>
+      <SectionCard icon={<FaMoneyBillWave />} title="Payment">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col">
+              <Label>Paid Amount <RequiredStar /></Label>
+              <Input
+                type="number"
+                className={errors.paidAmount ? "border-red-500" : ""}
+                value={form.paidAmount}
+                onChange={(e) => {
+                  handleChange("paidAmount", e.target.value);
+                  if (errors.paidAmount) setErrors((prev: any) => ({ ...prev, paidAmount: false }));
+                }}
+              />
+              {errors.paidAmount && <p className="text-xs text-red-500 mt-1">Paid amount is required</p>}
+            </div>
+            <div className="flex flex-col">
+              <Label>Payment Mode <RequiredStar /></Label>
+              <SearchableSelect
+                options={accounts}
+                value={selectedPaymentMode}
+                onChange={(value) => {
+                  setSelectedPaymentMode(value);
+                  handleChange("paymentMode", value);
+                  if (errors.paymentMode) setErrors((prev: any) => ({ ...prev, paymentMode: false }));
+                }}
+                placeholder="Select Account"
+                searchPlaceholder="Search account..."
+                hasError={!!errors.paymentMode}
+              />
+              {errors.paymentMode && <p className="text-xs text-red-500 mt-1">Payment mode is required</p>}
+            </div>
+            <div className="flex flex-col">
+              <Label>Date <RequiredStar /></Label>
+              <DatePicker
+                id="cpr-date"
+                placeholder="Select a date"
+                defaultDate={today}
+                onChange={handleDateChange}
+              />
+              {errors.date && <p className="text-xs text-red-500 mt-1">Date is required</p>}
+            </div>
+            <div className="flex flex-col">
+              <Label>Less Amount</Label>
+              <Input
+                type="number"
+                value={form.lessAmount}
+                onChange={(e) => handleChange("lessAmount", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label>Cash Back</Label>
+              <Input
+                type="number"
+                value={form.cashBack}
+                onChange={(e) => handleChange("cashBack", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Remarks</Label>
+              <Input
+                type="text"
+                placeholder="Enter Remarks"
+                value={form.remarks}
+                onChange={(e) => handleChange("remarks", e.target.value)}
+              />
+            </div>
         </div>
+      </SectionCard>
 
-        {/* Reference Invoice */}
-        <div className="flex flex-col">
-          <Label>Reference Invoice (Optional)</Label>
-          <Select
-            options={[{ label: "Select Invoice #", value: "" }]}
-            value={selectedInvoice}
-            onChange={(value) => {
-              setSelectedInvoice(value);
-              handleChange("referenceInvoice", value);
-            }}
-          />
+      <MobileActionBar>
+        <div className="flex justify-end pt-2">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+              className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-7 py-2.5 !rounded-xl text-sm min-w-36 disabled:opacity-60"
+          >
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Receiving...
+              </span>
+            ) : (
+              "Receive Payment"
+            )}
+          </Button>
         </div>
-
-        {/* Paid Amount */}
-        <div className="flex flex-col">
-          <Label>Paid Amount <RequiredStar /></Label>
-          <Input
-            type="number"
-            className={errors.paidAmount ? "border-red-500" : ""}
-            value={form.paidAmount}
-            onChange={(e) => {
-              handleChange("paidAmount", e.target.value);
-              if (errors.paidAmount) setErrors((prev: any) => ({ ...prev, paidAmount: false }));
-            }}
-          />
-          {errors.paidAmount && <p className="text-xs text-red-500 mt-1">Paid amount is required</p>}
-        </div>
-
-        {/* Payment Mode */}
-        <div className="flex flex-col">
-          <Label>Payment Mode <RequiredStar /></Label>
-          <SearchableSelect
-            options={accounts}
-            value={selectedPaymentMode}
-            onChange={(value) => {
-              setSelectedPaymentMode(value);
-              handleChange("paymentMode", value);
-              if (errors.paymentMode) setErrors((prev: any) => ({ ...prev, paymentMode: false }));
-            }}
-            placeholder="Select Account"
-            searchPlaceholder="Search account..."
-            hasError={!!errors.paymentMode}
-          />
-          {errors.paymentMode && <p className="text-xs text-red-500 mt-1">Payment mode is required</p>}
-        </div>
-
-        {/* Date */}
-        <div className="flex flex-col">
-          <Label>Date <RequiredStar /></Label>
-          <DatePicker
-            id="cpr-date"
-            placeholder="Select a date"
-            defaultDate={today}
-            onChange={handleDateChange}
-          />
-          {errors.date && <p className="text-xs text-red-500 mt-1">Date is required</p>}
-        </div>
-
-        {/* Less Amount */}
-        <div className="flex flex-col">
-          <Label>Less Amount</Label>
-          <Input
-            type="number"
-            value={form.lessAmount}
-            onChange={(e) => handleChange("lessAmount", e.target.value)}
-          />
-        </div>
-
-        {/* Cash Back */}
-        <div className="flex flex-col">
-          <Label>Cash Back</Label>
-          <Input
-            type="number"
-            value={form.cashBack}
-            onChange={(e) => handleChange("cashBack", e.target.value)}
-          />
-        </div>
-
-        {/* Remarks */}
-        <div className="flex flex-col">
-          <Label>Remarks</Label>
-          <Input
-            type="text"
-            placeholder="Enter Remarks"
-            value={form.remarks}
-            onChange={(e) => handleChange("remarks", e.target.value)}
-          />
-        </div>
-      </div>
-
-      <Button
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-          className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-4 py-2 rounded"
-      >
-        {isSubmitting ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
-            Receiving...
-          </span>
-        ) : (
-          "Receive Payment"
-        )}
-      </Button>
+      </MobileActionBar>
     </div>
   );
 };

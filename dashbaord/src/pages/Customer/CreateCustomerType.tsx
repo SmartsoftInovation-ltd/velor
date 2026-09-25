@@ -19,7 +19,7 @@ const CreateCustomerType = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Create Customer Type</h2>
               <Link to="/customer-type-list">
-                <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
+                <Button className="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded">
                   Customer Type List
                 </Button>
               </Link>

@@ -197,7 +197,7 @@ const CustomerTypeTable = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -210,7 +210,7 @@ const CustomerTypeTable = () => {
         </p>
         <button
           onClick={() => refetch()}
-          className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold"
+          className="shine px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold"
         >
           Try Again
         </button>
@@ -229,7 +229,7 @@ const CustomerTypeTable = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by customer type..."
-            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition"
           />
           {searchTerm && (
             <button
@@ -245,7 +245,7 @@ const CustomerTypeTable = () => {
           <button
             onClick={fetchTypes}
             disabled={isFetching}
-            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:border-brand-500 transition disabled:opacity-50"
+            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-accent-500 hover:border-accent-500 transition disabled:opacity-50"
           >
             <FaSync
               className={`size-3.5 ${isFetching ? "animate-spin" : ""}`}
@@ -276,22 +276,26 @@ const CustomerTypeTable = () => {
               </div>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => {
                     setSelected(item);
                     setEditName(item.customerType);
                     setEditError("");
                     setShowEditModal(true);
                   }}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                  aria-label="Edit customer type"
                 >
                   <FaEdit className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setSelected(item);
                     setShowDeleteModal(true);
                   }}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all active:scale-90"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                  aria-label="Delete customer type"
                 >
                   <MdDelete className="size-5" />
                 </button>
@@ -343,7 +347,7 @@ const CustomerTypeTable = () => {
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-accent-500 hover:bg-accent-600 text-white transition-colors"
                 >
                   <FaTimes className="size-3" />
                   Clear search
@@ -385,24 +389,28 @@ const CustomerTypeTable = () => {
                     <div className="px-4 flex items-center justify-center gap-2">
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelected(item);
                             setEditName(item.customerType);
                             setEditError("");
                             setShowEditModal(true);
                           }}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit customer type"
                         >
                           <FaEdit className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelected(item);
                             setShowDeleteModal(true);
                           }}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete customer type"
                         >
                           <MdDelete className="size-5" />
                         </button>
@@ -426,8 +434,8 @@ const CustomerTypeTable = () => {
         }}
       >
         <div className="p-8">
-          <div className="flex items-center justify-center size-16 bg-brand-50 dark:bg-brand-500/10 rounded-full mb-5 mx-auto">
-            <FaEdit className="size-7 text-brand-500" />
+          <div className="flex items-center justify-center size-16 bg-accent-50 dark:bg-accent-500/10 rounded-full mb-5 mx-auto">
+            <FaEdit className="size-7 text-accent-500" />
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white text-center mb-6">
             Edit Customer Type
@@ -444,7 +452,7 @@ const CustomerTypeTable = () => {
                 setEditError("");
               }}
               onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition ${editError ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition ${editError ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
               placeholder="Enter customer type name"
               autoFocus
             />
@@ -468,11 +476,11 @@ const CustomerTypeTable = () => {
             <Button
               onClick={handleEdit}
               disabled={isSaving}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
+                className="flex-1 !bg-accent-500 hover:!bg-accent-600 !text-white font-semibold rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
             >
               {isSaving ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Saving...
                 </span>
               ) : (
@@ -522,11 +530,11 @@ const CustomerTypeTable = () => {
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (

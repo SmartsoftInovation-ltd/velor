@@ -25,6 +25,7 @@ import {
   secondaryButtonClass,
   Select,
 } from "../PlatformConsole/ui";
+import MobileActionBar from "../../components/common/MobileActionBar";
 
 /**
  * Taking an order at the counter — over the phone, or for someone standing
@@ -332,8 +333,8 @@ const CreateOrder = () => {
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white/90">Add products</h2>
             </div>
             <div className="relative px-5 py-4">
-              <div className="relative">
-                <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <div className="relative group">
+                <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-gray-400 group-focus-within:text-accent-500 transition-colors" />
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -406,7 +407,7 @@ const CreateOrder = () => {
                         type="button"
                         aria-label={`Reduce ${line.name}`}
                         onClick={() => setQuantity(line.key, line.quantity - 1)}
-                        className="inline-flex size-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400"
+                        className="shine inline-flex size-8 max-md:size-11 items-center justify-center rounded bg-gray-100 text-gray-600 transition-all active:scale-90 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
                       >
                         <FiMinus className="size-3.5" />
                       </button>
@@ -414,13 +415,13 @@ const CreateOrder = () => {
                         value={line.quantity}
                         onChange={(event) => setQuantity(line.key, Number(event.target.value) || 1)}
                         aria-label={`Quantity for ${line.name}`}
-                        className="h-8 w-12 rounded-lg border border-gray-200 text-center text-sm tabular-nums dark:border-gray-800 dark:bg-gray-900 dark:text-white/90"
+                        className="h-8 w-12 rounded-lg border border-gray-200 text-center text-sm tabular-nums dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 focus:border-accent-400 focus:outline-none focus:ring-3 focus:ring-accent-500/20"
                       />
                       <button
                         type="button"
                         aria-label={`Add one ${line.name}`}
                         onClick={() => setQuantity(line.key, line.quantity + 1)}
-                        className="inline-flex size-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-white/5 dark:text-gray-400"
+                        className="shine inline-flex size-8 max-md:size-11 items-center justify-center rounded bg-gray-100 text-gray-600 transition-all active:scale-90 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
                       >
                         <FiPlus className="size-3.5" />
                       </button>
@@ -434,7 +435,7 @@ const CreateOrder = () => {
                       type="button"
                       aria-label={`Remove ${line.name}`}
                       onClick={() => removeLine(line.key)}
-                      className="inline-flex size-8 items-center justify-center rounded-lg text-error-500 transition hover:bg-error-50 dark:hover:bg-error-500/15"
+                      className="shine size-8 max-md:size-11 inline-flex items-center justify-center rounded bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 transition-all active:scale-90"
                     >
                       <FiTrash2 className="size-4" />
                     </button>
@@ -604,9 +605,9 @@ const CreateOrder = () => {
                       type="button"
                       onClick={addSource}
                       disabled={!newSource.trim() || savingSource}
-                      className={`${primaryButtonClass} shrink-0`}
+                      className={`shine ${primaryButtonClass} shrink-0`}
                     >
-                      {savingSource ? "Adding…" : "Add"}
+                      {savingSource ? <span className="flex items-center gap-2"><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Adding…</span> : "Add"}
                     </button>
                   </div>
                 </div>
@@ -641,6 +642,7 @@ const CreateOrder = () => {
                 <span className="tabular-nums">{money(quote?.finalAmount ?? 0)}</span>
               </div>
             </div>
+            <MobileActionBar>
             <div className="flex gap-2 border-t border-gray-100 px-5 py-4 dark:border-gray-800">
               <button
                 type="button"
@@ -651,15 +653,20 @@ const CreateOrder = () => {
                   setDeliveryChargeId("");
                   setOrderFrom("");
                 }}
-                className={secondaryButtonClass}
+                className={`shine ${secondaryButtonClass}`}
                 disabled={lines.length === 0 && !customer.fullName}
               >
                 Clear
               </button>
-              <button type="button" onClick={placeOrder} disabled={!canPlace} className={`${primaryButtonClass} flex-1`}>
-                {placing ? "Placing…" : `Place order ${quote ? money(quote.finalAmount) : ""}`}
+              <button type="button" onClick={placeOrder} disabled={!canPlace} className={`shine ${primaryButtonClass} flex-1`}>
+                {placing ? (
+                  <span className="flex items-center justify-center gap-2"><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Placing…</span>
+                ) : (
+                  `Place order ${quote ? money(quote.finalAmount) : ""}`
+                )}
               </button>
             </div>
+            </MobileActionBar>
           </div>
         </div>
       </div>

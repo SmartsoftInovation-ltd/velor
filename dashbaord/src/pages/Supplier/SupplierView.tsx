@@ -4,6 +4,7 @@ import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ComponentCard from "../../components/common/ComponentCard";
 import Button from "../../components/ui/button/Button";
+import StatusPill from "../../components/common/StatusPill";
 import axiosSecure from "../../hooks/useAxiosSecure";
 
 const SupplierView = () => {
@@ -29,7 +30,7 @@ const SupplierView = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -45,7 +46,7 @@ const SupplierView = () => {
           </p>
           <Button
             onClick={() => navigate("/supplier-list")}
-            className="bg-brand-500 hover:bg-brand-600 text-white px-5 py-2 rounded-xl"
+            className="!bg-accent-500 hover:!bg-accent-600 !text-white px-5 py-2 !rounded-xl font-semibold"
           >
             Back to List
           </Button>
@@ -74,13 +75,13 @@ const SupplierView = () => {
                   onClick={() =>
                     navigate(`/supplier-edit/${supplier.supplierId}`)
                   }
-                  className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded"
+                  className="!bg-accent-500 hover:!bg-accent-600 !text-white px-4 py-2 !rounded font-semibold"
                 >
                   Edit
                 </Button>
                 <Button
                   onClick={() => navigate("/supplier-list")}
-                  className="bg-gray-500 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded"
+                  className="px-4 py-2 !rounded !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold"
                 >
                   Back
                 </Button>
@@ -99,15 +100,7 @@ const SupplierView = () => {
                 <span className="font-mono">{supplier.supplierId || "—"}</span>
               </p>
             </div>
-            <span
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
-                supplier.isActive
-                  ? "bg-green-100 text-green-600 dark:bg-green-500/10 dark:text-green-400"
-                  : "bg-red-100 text-red-500 dark:bg-red-500/10 dark:text-red-400"
-              }`}
-            >
-              {supplier.isActive ? "Active" : "Inactive"}
-            </span>
+            <StatusPill isActive={supplier.isActive} />
           </div>
 
           {/* Info grid */}

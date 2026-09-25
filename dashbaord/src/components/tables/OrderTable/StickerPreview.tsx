@@ -104,28 +104,31 @@ const StickerPreview = () => {
       <div className="mt-6 flex gap-3 print:hidden">
         <button
           onClick={() => navigate(-1)}
-          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+          type="button"
+          className="shine inline-flex items-center gap-2 rounded border border-accent-100 bg-accent-50 px-4 py-2 text-sm font-semibold text-accent-600 hover:bg-accent-100 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400"
         >
           ← Go Back
         </button>
         <button
           onClick={() => window.print()}
-          className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded"
+          type="button"
+          className="shine rounded bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600"
         >
-          🖨️ Print
+          Print
         </button>
         <button
           onClick={handleDownload}
           disabled={isDownloading}
-            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-4 py-2 rounded"
+          type="button"
+          className="shine inline-flex items-center gap-2 rounded border border-accent-100 bg-accent-50 px-4 py-2 text-sm font-semibold text-accent-600 hover:bg-accent-100 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 disabled:opacity-60"
         >
           {isDownloading ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+              <span className="size-4 animate-spin rounded-full border-2 border-accent-600/30 border-t-accent-600" />
               Downloading...
             </span>
           ) : (
-            "💾 Download"
+            "Download"
           )}
         </button>
       </div>

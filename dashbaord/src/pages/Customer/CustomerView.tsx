@@ -45,7 +45,7 @@ const CustomerView = () => {
         <p className="text-red-500 font-bold text-lg">Customer not found.</p>
         <button
           onClick={() => navigate("/customer-list")}
-          className="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-semibold transition-colors"
+          className="px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-semibold transition-colors"
         >
           Back to List
         </button>
@@ -70,7 +70,7 @@ const CustomerView = () => {
           </button>
           <button
             onClick={() => navigate(`/customer-edit/${customer.customerId}`)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-semibold transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-xl text-sm font-semibold transition-colors"
           >
             <MdEdit className="size-4" />
             Edit Customer

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
+import MobileActionBar from "../common/MobileActionBar";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
 
@@ -40,16 +41,17 @@ const CreateSectionForm = () => {
           placeholder="e.g. Sales, Operations, Support..."
           value={name}
           onChange={(e) => { setName(e.target.value); setNameError(""); }}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !isCreating) handleSubmit(); }}
           className={nameError ? "border-red-500 focus:border-red-500" : ""}
         />
         {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
       </div>
 
+      <MobileActionBar>
       <Button
         onClick={handleSubmit}
         disabled={isCreating}
-          className="w-full py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold border-none transition-all active:scale-95 disabled:opacity-60"
+          className="w-full py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl font-semibold border-none transition-all active:scale-95 disabled:opacity-60"
       >
         {isCreating ? (
           <div className="flex items-center justify-center gap-2">
@@ -58,6 +60,7 @@ const CreateSectionForm = () => {
           </div>
         ) : "Create Section"}
       </Button>
+      </MobileActionBar>
     </div>
   );
 };

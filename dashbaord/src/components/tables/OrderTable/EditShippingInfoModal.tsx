@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "../../ui/modal";
 import Input from "../../form/input/InputField";
 import Button from "../../ui/button/Button";
@@ -23,6 +23,12 @@ export default function EditShippingInfoModal({
 }: EditShippingInfoModalProps) {
   const [formData, setFormData] = useState(shippingInfo || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // The modal stays mounted, so reload the fields each time it opens —
+  // otherwise it keeps showing whichever order it was first created with.
+  useEffect(() => {
+    if (isOpen) setFormData(shippingInfo || {});
+  }, [isOpen, shippingInfo]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -54,10 +60,10 @@ export default function EditShippingInfoModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white p-6 rounded-lg shadow-lg">
-        <h2 className="text-lg font-bold mb-4">Edit Shipping Info</h2>
+      <div className="p-8">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Edit Shipping Info</h2>
 
-        <div className="grid grid-cols-2 gap-4 py-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-5">
           <Input
             name="fullName"
             value={formData.fullName || ""}
@@ -90,15 +96,16 @@ export default function EditShippingInfoModal({
           />
 
           {/* Delivery Zone Dropdown */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="md:col-span-2">
+            <label htmlFor="ship-zone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Delivery Zone
             </label>
             <select
+              id="ship-zone"
               name="deliveryZone"
               value={formData.deliveryZone || ""}
               onChange={handleChange}
-              className="w-full border rounded px-3 py-2 text-sm"
+              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 focus:border-accent-300 focus:outline-none focus:ring-3 focus:ring-accent-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
             >
               <option value="">-- Select Zone --</option>
               <option value="inside_dhaka">Inside Dhaka</option>
@@ -108,22 +115,23 @@ export default function EditShippingInfoModal({
           </div>
         </div>
 
-        <div className="flex justify-end mt-6 gap-x-2">
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+        <div className="flex gap-3 mt-4">
+          <Button onClick={onClose} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex-1 !bg-accent-500 hover:!bg-accent-600 !text-white !rounded-xl py-2.5 text-sm font-semibold"
+          >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 Saving...
               </span>
             ) : (
               "Save"
             )}
-          </Button>
-          <Button
-            onClick={onClose}
-              className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
-          >
-            Cancel
           </Button>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { MdDelete } from "react-icons/md";
-import { FaPlus, FaArrowRight, FaArrowLeft } from "react-icons/fa";
+import { FaPlus, FaUser, FaBriefcase, FaAddressBook, FaMoneyBillWave, FaUserFriends, FaCertificate, FaCamera } from "react-icons/fa";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
@@ -12,6 +12,8 @@ import Button from "../ui/button/Button";
 import SearchableSelect from "../form/SearchableSelect";
 import DatePicker from "../form/date-picker";
 import QuickCreateModal from "./QuickCreateModal";
+import SectionCard from "../common/SectionCard";
+import MobileActionBar from "../common/MobileActionBar";
 import { showApiError } from "../../utils/apiError";
 
 // ---------- Types ----------
@@ -181,8 +183,8 @@ const CertImageDropzone = ({
       {...getRootProps()}
       className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors duration-150 ${
         isDragActive
-          ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10"
-          : "border-gray-300 dark:border-gray-600 hover:border-brand-400 bg-gray-50 dark:bg-gray-800/50"
+          ? "border-accent-500 bg-accent-50 dark:bg-accent-500/10"
+          : "border-gray-300 dark:border-gray-600 hover:border-accent-400 bg-gray-50 dark:bg-gray-800/50"
       }`}
     >
       <input {...getInputProps()} />
@@ -198,7 +200,6 @@ const CertImageDropzone = ({
 
 const CreateEmployeeForm = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<1 | 2 | 3>(1);
   const [designationList, setDesignationList] = useState<
     { label: string; value: string }[]
   >([]);
@@ -353,14 +354,6 @@ const CreateEmployeeForm = () => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleTab1Next = () => {
-    if (validateTab1()) setActiveTab(2);
-  };
-
-  const handleTab2Next = () => {
-    if (validateTab2()) setActiveTab(3);
-  };
-
   const handleSubmit = async () => {
     if (!validateTab1()) {
       setActiveTab(1);
@@ -433,41 +426,20 @@ const CreateEmployeeForm = () => {
     }
   };
 
-  const tabs = [
-    { id: 1 as const, label: "Employee Information" },
-    { id: 2 as const, label: "Salary & Joining Date" },
-    { id: 3 as const, label: "Certifications" },
-  ];
+  // The form used to be a 3-step wizard; it is one page of sections now, so a
+  // failed validation scrolls to the section that holds the error instead.
+  const setActiveTab = (tab: 1 | 2 | 3) =>
+    document
+      .getElementById(tab === 1 ? "sec-personal" : tab === 2 ? "sec-salary" : "sec-certs")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
-    <div className="w-full flex flex-col">
-      {/* Tab bar */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => {
-              if (tab.id > 1 && !validateTab1()) return;
-              setActiveTab(tab.id);
-            }}
-            className={`px-5 py-3 text-sm font-medium transition-colors duration-150 border-b-2 -mb-px  ${
-              activeTab === tab.id
-                ? "border-brand-500 text-brand-600 dark:text-brand-400 bg-gray-500/10 dark:bg-gray-700/10"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab panels — all rendered, toggled via hidden; fixed width prevents any reflow */}
-      <div className="w-full">
-        {/* Tab 1 — Employee Information */}
-        <div className={`w-full space-y-6 ${activeTab !== 1 ? " hidden" : ""}`}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="flex flex-col">
+    <div className="w-full">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 pb-10">
+        <div className="xl:col-span-2 space-y-6">
+          <SectionCard id="sec-personal" icon={<FaUser />} title="Personal Information">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col md:col-span-2">
               <Label htmlFor="fullName">
                 Full Name <span className="text-red-500">*</span>
               </Label>
@@ -487,7 +459,33 @@ const CreateEmployeeForm = () => {
                 </p>
               )}
             </div>
-
+            <div className="flex flex-col">
+              <Label>
+                Gender <span className="text-red-500">*</span>
+              </Label>
+              <SearchableSelect
+                options={GENDERS}
+                value={form.gender}
+                hasError={!!tab1Errors.gender}
+                placeholder="Select Gender"
+                searchPlaceholder="Search gender..."
+                onChange={(val) => {
+                  handleChange("gender", val);
+                  setTab1Errors((prev) => ({ ...prev, gender: undefined }));
+                }}
+              />
+              {tab1Errors.gender && (
+                <p className="text-red-500 text-xs mt-1">{tab1Errors.gender}</p>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <DatePicker
+                id="dob"
+                label="Date Of Birth"
+                placeholder="Select a date"
+                onChange={(date: any) => handleChange("dateOfBirth", date)}
+              />
+            </div>
             <div className="flex flex-col">
               <Label>NID Number</Label>
               <Input
@@ -497,7 +495,67 @@ const CreateEmployeeForm = () => {
                 onChange={(e) => handleChange("nidNumber", e.target.value)}
               />
             </div>
+            <div className="flex flex-col">
+              <Label>Blood Group</Label>
+              <Input
+                type="text"
+                placeholder="Enter Blood Group"
+                value={form.bloodGroup}
+                onChange={(e) => handleChange("bloodGroup", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label>Religion</Label>
+              <Input
+                type="text"
+                placeholder="Enter Religion"
+                value={form.religion}
+                onChange={(e) => handleChange("religion", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label>Nationality</Label>
+              <Input
+                type="text"
+                placeholder="Enter Nationality"
+                value={form.nationality}
+                onChange={(e) => handleChange("nationality", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label>Father's Name</Label>
+              <Input
+                type="text"
+                placeholder="Enter Father's Name"
+                value={form.fathersName}
+                onChange={(e) => handleChange("fathersName", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label>Mother's Name</Label>
+              <Input
+                type="text"
+                placeholder="Enter Mother's Name"
+                value={form.mothersName}
+                onChange={(e) => handleChange("mothersName", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Educational Qualification</Label>
+              <Input
+                type="text"
+                placeholder="Enter Educational Qualification"
+                value={form.educationalQualification}
+                onChange={(e) =>
+                  handleChange("educationalQualification", e.target.value)
+                }
+              />
+            </div>
+          </div>
+          </SectionCard>
 
+          <SectionCard id="sec-job" icon={<FaBriefcase />} title="Job & Organisation">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="flex flex-col">
               <Label>
                 Designation <span className="text-red-500">*</span>
@@ -520,8 +578,8 @@ const CreateEmployeeForm = () => {
                   />
                 </div>
                 <button type="button" onClick={() => setQuickCreate("designation")}
-                  className="shrink-0 size-[42px] flex items-center justify-center rounded-xl bg-brand-500 hover:bg-brand-600 text-white transition-colors"
-                  title="Add Designation">
+                  className="shine shrink-0 size-11 flex items-center justify-center rounded-lg border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-colors"
+                  title="Add Designation" aria-label="Add designation">
                   <FaPlus className="size-3.5" />
                 </button>
               </div>
@@ -531,7 +589,6 @@ const CreateEmployeeForm = () => {
                 </p>
               )}
             </div>
-
             <div className="flex flex-col">
               <Label>
                 Department <span className="text-red-500">*</span>
@@ -554,8 +611,8 @@ const CreateEmployeeForm = () => {
                   />
                 </div>
                 <button type="button" onClick={() => setQuickCreate("department")}
-                  className="shrink-0 size-[42px] flex items-center justify-center rounded-xl bg-brand-500 hover:bg-brand-600 text-white transition-colors"
-                  title="Add Department">
+                  className="shine shrink-0 size-11 flex items-center justify-center rounded-lg border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-colors"
+                  title="Add Department" aria-label="Add department">
                   <FaPlus className="size-3.5" />
                 </button>
               </div>
@@ -565,7 +622,6 @@ const CreateEmployeeForm = () => {
                 </p>
               )}
             </div>
-
             <div className="flex flex-col">
               <Label>Section</Label>
               <div className="flex gap-2">
@@ -579,218 +635,12 @@ const CreateEmployeeForm = () => {
                   />
                 </div>
                 <button type="button" onClick={() => setQuickCreate("section")}
-                  className="shrink-0 size-[42px] flex items-center justify-center rounded-xl bg-brand-500 hover:bg-brand-600 text-white transition-colors"
-                  title="Add Section">
+                  className="shine shrink-0 size-11 flex items-center justify-center rounded-lg border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-colors"
+                  title="Add Section" aria-label="Add section">
                   <FaPlus className="size-3.5" />
                 </button>
               </div>
             </div>
-
-            <div className="flex flex-col">
-              <Label>Educational Qualification</Label>
-              <Input
-                type="text"
-                placeholder="Enter Educational Qualification"
-                value={form.educationalQualification}
-                onChange={(e) =>
-                  handleChange("educationalQualification", e.target.value)
-                }
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <DatePicker
-                id="dob"
-                label="Date Of Birth"
-                placeholder="Select a date"
-                onChange={(date: any) => handleChange("dateOfBirth", date)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>
-                Gender <span className="text-red-500">*</span>
-              </Label>
-              <SearchableSelect
-                options={GENDERS}
-                value={form.gender}
-                hasError={!!tab1Errors.gender}
-                placeholder="Select Gender"
-                searchPlaceholder="Search gender..."
-                onChange={(val) => {
-                  handleChange("gender", val);
-                  setTab1Errors((prev) => ({ ...prev, gender: undefined }));
-                }}
-              />
-              {tab1Errors.gender && (
-                <p className="text-red-500 text-xs mt-1">{tab1Errors.gender}</p>
-              )}
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Religion</Label>
-              <Input
-                type="text"
-                placeholder="Enter Religion"
-                value={form.religion}
-                onChange={(e) => handleChange("religion", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Blood Group</Label>
-              <Input
-                type="text"
-                placeholder="Enter Blood Group"
-                value={form.bloodGroup}
-                onChange={(e) => handleChange("bloodGroup", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Nationality</Label>
-              <Input
-                type="text"
-                placeholder="Enter Nationality"
-                value={form.nationality}
-                onChange={(e) => handleChange("nationality", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Father's Name</Label>
-              <Input
-                type="text"
-                placeholder="Enter Father's Name"
-                value={form.fathersName}
-                onChange={(e) => handleChange("fathersName", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Mother's Name</Label>
-              <Input
-                type="text"
-                placeholder="Enter Mother's Name"
-                value={form.mothersName}
-                onChange={(e) => handleChange("mothersName", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>
-                Primary Mobile <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                type="text"
-                placeholder="Enter Primary Mobile Number"
-                value={form.mobile}
-                onChange={(e) => handleChange("mobile", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Secondary Mobile</Label>
-              <Input
-                type="text"
-                placeholder="Enter Secondary Mobile Number"
-                value={form.secondaryMobile}
-                onChange={(e) =>
-                  handleChange("secondaryMobile", e.target.value)
-                }
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Email Address</Label>
-              <Input
-                type="text"
-                placeholder="Enter Email Address"
-                value={form.email}
-                onChange={(e) => handleChange("email", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Present Address</Label>
-              <Input
-                type="text"
-                placeholder="Enter Present Address"
-                value={form.presentAddress}
-                onChange={(e) => handleChange("presentAddress", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <Label>Permanent Address</Label>
-              <Input
-                type="text"
-                placeholder="Enter Permanent Address"
-                value={form.permanentAddress}
-                onChange={(e) =>
-                  handleChange("permanentAddress", e.target.value)
-                }
-              />
-            </div>
-          </div>
-
-          {/* Profile Photo */}
-          <div className="flex flex-col gap-2">
-            <Label>Photo</Label>
-            {preview ? (
-              <div className="flex items-center gap-4">
-                <img
-                  src={preview}
-                  alt="Employee preview"
-                  className="size-24 rounded-xl object-cover border border-gray-200 dark:border-gray-700"
-                />
-                <button
-                  type="button"
-                  onClick={removeProfileImage}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-medium transition-colors"
-                >
-                  <MdDelete className="size-4" />
-                  Remove Photo
-                </button>
-              </div>
-            ) : (
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors duration-150 ${
-                  isDragActive
-                    ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10"
-                    : "border-gray-300 dark:border-gray-600 hover:border-brand-400 dark:hover:border-brand-500 bg-gray-50 dark:bg-gray-800/50"
-                }`}
-              >
-                <input {...getInputProps()} />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {isDragActive
-                    ? "Drop the photo here..."
-                    : "Drag & drop a photo here, or click to select"}
-                </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  PNG, JPG, GIF — max 1MB
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Tab 1 footer */}
-          <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={handleTab1Next}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold transition-colors"
-            >
-              Save & Next
-              <FaArrowRight className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Tab 2 — Salary & Joining Date */}
-        <div className={`w-full space-y-6${activeTab !== 2 ? " hidden" : ""}`}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col">
               <DatePicker
                 id="joining"
@@ -811,43 +661,67 @@ const CreateEmployeeForm = () => {
                 </p>
               )}
             </div>
+          </div>
+          </SectionCard>
 
+          <SectionCard id="sec-contact" icon={<FaAddressBook />} title="Contact & Address">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="flex flex-col">
-              <Label>Reference Person Name</Label>
+              <Label>
+                Primary Mobile <span className="text-red-500">*</span>
+              </Label>
               <Input
                 type="text"
-                placeholder="Enter Reference Person Name"
-                value={form.referencePersonName}
+                placeholder="Enter Primary Mobile Number"
+                value={form.mobile}
+                onChange={(e) => handleChange("mobile", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label>Secondary Mobile</Label>
+              <Input
+                type="text"
+                placeholder="Enter Secondary Mobile Number"
+                value={form.secondaryMobile}
                 onChange={(e) =>
-                  handleChange("referencePersonName", e.target.value)
+                  handleChange("secondaryMobile", e.target.value)
                 }
               />
             </div>
-
-            <div className="flex flex-col">
-              <Label>Reference Person Details</Label>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Email Address</Label>
+              <Input
+                type="email"
+                placeholder="Enter Email Address"
+                value={form.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Present Address</Label>
               <Input
                 type="text"
-                placeholder="Enter Reference Person Details"
-                value={form.referencePersonDetails}
+                placeholder="Enter Present Address"
+                value={form.presentAddress}
+                onChange={(e) => handleChange("presentAddress", e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Permanent Address</Label>
+              <Input
+                type="text"
+                placeholder="Enter Permanent Address"
+                value={form.permanentAddress}
                 onChange={(e) =>
-                  handleChange("referencePersonDetails", e.target.value)
+                  handleChange("permanentAddress", e.target.value)
                 }
               />
             </div>
+          </div>
+          </SectionCard>
 
-            <div className="flex flex-col">
-              <Label>Reference Mobile</Label>
-              <Input
-                type="text"
-                placeholder="Enter Reference Mobile Number"
-                value={form.referenceMobile}
-                onChange={(e) =>
-                  handleChange("referenceMobile", e.target.value)
-                }
-              />
-            </div>
-
+          <SectionCard id="sec-salary" icon={<FaMoneyBillWave />} title="Salary & Payroll">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             <div className="flex flex-col">
               <Label>
                 Basic Salary <span className="text-red-500">*</span>
@@ -871,7 +745,6 @@ const CreateEmployeeForm = () => {
                 </p>
               )}
             </div>
-
             <div className="flex flex-col">
               <Label>House Rent</Label>
               <Input
@@ -883,7 +756,6 @@ const CreateEmployeeForm = () => {
                 }
               />
             </div>
-
             <div className="flex flex-col">
               <Label>Medical Allowance</Label>
               <Input
@@ -895,7 +767,6 @@ const CreateEmployeeForm = () => {
                 }
               />
             </div>
-
             <div className="flex flex-col">
               <Label>Others Allowance</Label>
               <Input
@@ -907,7 +778,6 @@ const CreateEmployeeForm = () => {
                 }
               />
             </div>
-
             <div className="flex flex-col">
               <Label>Special Allowance</Label>
               <Input
@@ -919,7 +789,6 @@ const CreateEmployeeForm = () => {
                 }
               />
             </div>
-
             <div className="flex flex-col">
               <Label>Provident Fund</Label>
               <Input
@@ -932,55 +801,67 @@ const CreateEmployeeForm = () => {
               />
             </div>
           </div>
+          </SectionCard>
 
-          <div className="flex flex-col">
-            <Label>Comments</Label>
-            <textarea
-              placeholder="Enter Comments"
-              value={form.comments}
-              onChange={(e) => handleChange("comments", e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all resize-none"
-            />
+          <SectionCard id="sec-ref" icon={<FaUserFriends />} title="Reference & Notes">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col">
+              <Label>Reference Person Name</Label>
+              <Input
+                type="text"
+                placeholder="Enter Reference Person Name"
+                value={form.referencePersonName}
+                onChange={(e) =>
+                  handleChange("referencePersonName", e.target.value)
+                }
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label>Reference Mobile</Label>
+              <Input
+                type="text"
+                placeholder="Enter Reference Mobile Number"
+                value={form.referenceMobile}
+                onChange={(e) =>
+                  handleChange("referenceMobile", e.target.value)
+                }
+              />
+            </div>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Reference Person Details</Label>
+              <Input
+                type="text"
+                placeholder="Enter Reference Person Details"
+                value={form.referencePersonDetails}
+                onChange={(e) =>
+                  handleChange("referencePersonDetails", e.target.value)
+                }
+              />
+            </div>
+            <div className="flex flex-col md:col-span-2">
+              <Label>Comments</Label>
+              <textarea
+                placeholder="Enter Comments"
+                value={form.comments}
+                onChange={(e) => handleChange("comments", e.target.value)}
+                rows={3}
+                className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all resize-none"
+              />
+            </div>
           </div>
+          </SectionCard>
 
-          {/* Tab 2 footer */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={() => setActiveTab(1)}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-semibold transition-colors"
-            >
-              <FaArrowLeft className="size-3.5" />
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={handleTab2Next}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold transition-colors"
-            >
-              Save & Next
-              <FaArrowRight className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Tab 3 — Certifications */}
-        <div className={`w-full space-y-6${activeTab !== 3 ? " hidden" : ""}`}>
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Certifications ({certifications.length})
-            </h3>
-            <button
-              type="button"
-              onClick={addCertification}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-medium transition-colors"
-            >
-              <FaPlus className="size-3" />
-              Add Certificate
-            </button>
-          </div>
-
+          <SectionCard
+            id="sec-certs"
+            icon={<FaCertificate />}
+            title={`Certifications (${certifications.length})`}
+            action={
+              <button type="button" onClick={addCertification} className="shine flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 text-xs font-semibold transition-colors">
+                <FaPlus className="size-3" />
+                Add Certificate
+              </button>
+            }
+          >
           {certifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30">
               <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-4">
@@ -989,7 +870,7 @@ const CreateEmployeeForm = () => {
               <button
                 type="button"
                 onClick={addCertification}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-medium transition-colors"
+                  className="shine flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 text-xs font-semibold transition-colors"
               >
                 <FaPlus className="size-3" />
                 Add Certificate
@@ -1009,7 +890,8 @@ const CreateEmployeeForm = () => {
                     <button
                       type="button"
                       onClick={() => removeCertification(index)}
-                      className="size-8 flex items-center justify-center rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                      aria-label={`Remove certificate ${index + 1}`}
+                      className="shine size-8 flex items-center justify-center rounded bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 transition-all active:scale-90"
                     >
                       <MdDelete className="size-4" />
                     </button>
@@ -1075,28 +957,71 @@ const CreateEmployeeForm = () => {
               ))}
             </div>
           )}
-
-          {/* Tab 3 footer */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={() => setActiveTab(2)}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-semibold transition-colors"
-            >
-              <FaArrowLeft className="size-3.5" />
-              Back
-            </button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isLoading}
-                className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-6 py-2 rounded"
-            >
-              {isLoading ? "Creating..." : "Create Employee"}
-            </Button>
-          </div>
+          </SectionCard>
         </div>
+
+        <aside className="space-y-6 xl:sticky xl:top-24 self-start">
+          <SectionCard id="sec-photo" icon={<FaCamera />} title="Photo">
+          <div className="flex flex-col gap-2">
+                        {preview ? (
+              <div className="flex flex-col items-center gap-4">
+                <img
+                  src={preview}
+                  alt="Employee preview"
+                  className="size-40 rounded-2xl object-cover border border-gray-200 dark:border-gray-700"
+                />
+                <button
+                  type="button"
+                  onClick={removeProfileImage}
+                    className="shine flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 text-sm font-medium transition-colors"
+                >
+                  <MdDelete className="size-4" />
+                  Remove Photo
+                </button>
+              </div>
+            ) : (
+              <div
+                {...getRootProps()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors duration-150 ${
+                  isDragActive
+                    ? "border-accent-500 bg-accent-50 dark:bg-accent-500/10"
+                    : "border-gray-300 dark:border-gray-600 hover:border-accent-400 dark:hover:border-accent-500 bg-gray-50 dark:bg-gray-800/50"
+                }`}
+              >
+                <input {...getInputProps()} />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {isDragActive
+                    ? "Drop the photo here..."
+                    : "Drag & drop a photo here, or click to select"}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  PNG, JPG, GIF — max 1MB
+                </p>
+              </div>
+            )}
+          </div>
+          </SectionCard>
+
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-theme-sm">
+            <MobileActionBar>
+              <Button
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="w-full !bg-accent-500 hover:!bg-accent-600 !text-white font-semibold py-3 !rounded-xl disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Creating…
+                  </span>
+                ) : (
+                  "Create Employee"
+                )}
+              </Button>
+            </MobileActionBar>
+          </div>
+        </aside>
       </div>
-      {/* end tab panels wrapper */}
 
       <QuickCreateModal
         type={quickCreate ?? "designation"}

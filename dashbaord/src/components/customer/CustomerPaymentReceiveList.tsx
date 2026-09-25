@@ -53,13 +53,14 @@ const CustomerPaymentReceiveList = () => {
               onClick={() => navigate(-1)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Go Back"
+              aria-label="Go Back"
             >
               <FaArrowLeft className="size-3.5" />
             </Button>
             <Link to="/customer-payment-receive">
-              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+              <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                 Receive Payment
               </Button>
             </Link>
@@ -77,7 +78,7 @@ const CustomerPaymentReceiveList = () => {
               <p className="text-red-500 font-bold mb-4 text-lg">Failed to load payments!</p>
               <button
                 onClick={() => refetch()}
-                className="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-bold transition-colors"
+                className="px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold transition-colors"
               >
                 Try Again
               </button>

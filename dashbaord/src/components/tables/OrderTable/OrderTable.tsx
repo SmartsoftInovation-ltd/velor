@@ -133,12 +133,12 @@ export default function OrderTable() {
           items={tableData}
           getKey={(order) => order._id}
           emptyMessage="No orders found"
-          renderCard={(order) => (
+          renderCard={(order, index) => (
             <div className="space-y-1">
               <div className="mb-2 flex items-start justify-between gap-3 border-b border-gray-100 pb-2 dark:border-white/[0.05]">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-gray-800 dark:text-white/90">
-                    {order.invoiceId}
+                  <p className="truncate">
+                    <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{order.invoiceId || `#${index + 1}`}</span>
                   </p>
                   <p className="text-xs text-gray-400">
                     {moment(order?.createdAt).format("YYYY-MM-DD HH:mm")}
@@ -169,24 +169,21 @@ export default function OrderTable() {
               <div className="pt-2">
                 <OrderStatus order={order} />
               </div>
-              <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 dark:border-white/[0.05]">
-                <Link to={`/sticker/${order._id}`} className="flex-1">
-                  <Button size="sm" variant="secondary" className="min-h-11 w-full">
-                    <TbSticker2 />
-                  </Button>
+              <div className="mt-2 flex items-center justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/[0.05]">
+                <Link to={`/sticker/${order._id}`} aria-label="Print sticker" className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 max-md:size-11">
+                  <TbSticker2 className="size-4" />
                 </Link>
-                <Link to={`/invoice/${order._id}`} className="flex-1">
-                  <Button size="sm" className="min-h-11 w-full">
-                    <IoIosPrint />
-                  </Button>
+                <Link to={`/invoice/${order._id}`} aria-label="Print invoice" className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 max-md:size-11">
+                  <IoIosPrint className="size-4" />
                 </Link>
                 {canDelete && (
                   <Button
                     onClick={() => handleDeleteModal(order._id)}
                     size="sm"
-                    className="min-h-11 flex-1 bg-red-500 text-white hover:bg-red-600"
+                    aria-label="Delete order"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
                   >
-                    <MdDelete />
+                    <MdDelete className="size-5" />
                   </Button>
                 )}
               </div>
@@ -203,7 +200,7 @@ export default function OrderTable() {
                   isHeader
                   className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
-                  Invoice ID.
+                  Invoice ID
                 </TableCell>
                 <TableCell
                   isHeader
@@ -251,12 +248,16 @@ export default function OrderTable() {
             </TableHeader>
 
             <TableBody className="divide-y-2 divide-gray-200 dark:divide-white/[0.05]">
-              {tableData.map((order) => (
-                <TableRow className="dark:text-gray-400 text-center hover:bg-gray-50">
+              {tableData.map((order, index) => (
+                <TableRow key={order._id} className="dark:text-gray-400 text-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                   <TableCell className="px-4 py-3 text-theme-sm">
                     <div className="space-y-1">
-                      <p className="font-medium text-gray-800">
-                        {order.invoiceId}
+                      <p>
+                        {order.invoiceId ? (
+                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{order.invoiceId}</span>
+                        ) : (
+                          <span className="font-medium text-gray-500 dark:text-gray-400">#{index + 1}</span>
+                        )}
                       </p>
                       <p className="text-gray-600">
                         {moment(order?.createdAt).format("YYYY-MM-DD")}
@@ -383,24 +384,21 @@ export default function OrderTable() {
                     <OrderStatus order={order} />
                   </TableCell>
                   <TableCell className="px-4 py-3 text-theme-sm text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <Button size="sm" variant="secondary">
-                        <Link to={`/sticker/${order._id}`}>
-                          <TbSticker2 />
-                        </Link>
-                      </Button>
-                      <Button size="sm">
-                        <Link to={`/invoice/${order._id}`}>
-                          <IoIosPrint />
-                        </Link>
-                      </Button>
+                    <div className="flex items-center justify-center gap-2">
+                      <Link to={`/sticker/${order._id}`} aria-label="Print sticker" className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10">
+                        <TbSticker2 className="size-4" />
+                      </Link>
+                      <Link to={`/invoice/${order._id}`} aria-label="Print invoice" className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10">
+                        <IoIosPrint className="size-4" />
+                      </Link>
                       {canDelete && (
                       <Button
                         onClick={() => handleDeleteModal(order._id)}
                         size="sm"
-                        className="bg-red-500 text-white hover:bg-red-600"
+                        aria-label="Delete order"
+                        className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
                       >
-                        <MdDelete />
+                        <MdDelete className="size-5" />
                       </Button>
                       )}
                     </div>
@@ -413,27 +411,31 @@ export default function OrderTable() {
       </div>
       )}
       <Modal isOpen={showDeleteModal} onClose={closeModal}>
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-lg font-bold">Confirm Deletion</h2>
-          <p className="mt-2 text-gray-600">
-            Are you sure you want to delete this order?
+        <div className="p-8">
+          <div className="flex items-center justify-center size-16 bg-red-50 dark:bg-red-500/10 rounded-full mb-5 mx-auto">
+            <MdDelete className="size-8 text-red-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white text-center">Delete Order?</h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed">
+            Are you sure you want to <span className="font-semibold text-red-500">delete</span> this order? This action cannot be undone.
           </p>
-          <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete} disabled={isDeleting}>
+          <div className="flex gap-3 mt-7">
+            <Button onClick={closeModal} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white !rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+            >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
-                "Yes"
+                "Yes, Delete"
               )}
-            </Button>
-            <Button
-              onClick={closeModal}
-                className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
-            >
-              No
             </Button>
           </div>
         </div>

@@ -50,7 +50,7 @@
 
 //         <Button
 //           onClick={() => window.print()}
-//           className="bg-brand-500 hover:bg-brand-600 text-white rounded"
+//           className="bg-accent-500 hover:bg-accent-600 text-white rounded"
 //         >
 //           🖨️ Print
 //         </Button>
@@ -230,23 +230,23 @@ const InvoicePreview = () => {
         <div className="mb-6 flex justify-center gap-4 print:hidden">
           <Button
             onClick={() => navigate(-1)}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+            className="px-4 py-2 !rounded !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm"
           >
             ← Go Back
           </Button>
 
           <Button
             onClick={handlePrint}
-              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded"
+            className="px-4 py-2 !rounded !bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm"
           >
-            🖨️ Print
+            Print
           </Button>
 
           <Button
             onClick={handleDownload}
-              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded"
+            className="px-4 py-2 !rounded !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm"
           >
-            💾 Download
+            Download
           </Button>
         </div>
 

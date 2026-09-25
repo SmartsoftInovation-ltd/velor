@@ -137,7 +137,7 @@ const CustomerAdvancePaymentEdit = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-md font-medium">
                 Edit Advance Payment —{" "}
-                <span className="text-brand-500">{payment.customer?.fullName}</span>
+                <span className="text-accent-500">{payment.customer?.fullName}</span>
               </h2>
               <Button
                 onClick={() => navigate("/advance-payment-list")}
@@ -203,11 +203,11 @@ const CustomerAdvancePaymentEdit = () => {
             <Button
               onClick={handleSubmit}
               disabled={isLoading}
-                className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-6 py-2 rounded"
+                className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-6 py-2 rounded"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Saving...
                 </span>
               ) : (

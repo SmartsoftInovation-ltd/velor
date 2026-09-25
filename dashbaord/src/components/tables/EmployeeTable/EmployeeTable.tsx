@@ -14,7 +14,7 @@ import {
 import { IoIosPrint } from "react-icons/io";
 import { usePermission } from "../../../hooks/usePermission";
 import { Modal } from "../../ui/modal";
-import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
 import Button from "../../ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
@@ -105,8 +105,8 @@ const Tooltip = ({
   );
 };
 
-const gridTemplateColumns = "1fr 72px 1fr 1fr 1fr 1fr 190px";
-const COLUMNS = ["Employee ID", "Photo", "Name", "Designation", "Contact", "Joining Date", "Actions"];
+const gridTemplateColumns = "150px 72px 1fr 1fr 1fr 1fr 120px 200px";
+const COLUMNS = ["Serial ID", "Photo", "Name", "Designation", "Contact", "Joining Date", "Status", "Actions"];
 
 function getImageUrl(image: Employee["image"]): string {
   if (!image) return "";
@@ -167,7 +167,7 @@ export default function EmployeeTable({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by serial, name, mobile..."
-            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition"
           />
           {searchTerm && (
             <button
@@ -183,7 +183,8 @@ export default function EmployeeTable({
           <button
             onClick={fetchEmployees}
             disabled={isFetching}
-            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:border-brand-500 transition disabled:opacity-50"
+            aria-label="Refresh"
+            className="shine size-9 flex items-center justify-center rounded-md border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-all active:scale-90 disabled:opacity-50"
           >
             <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
@@ -200,7 +201,7 @@ export default function EmployeeTable({
           items={employees}
           getKey={(emp) => emp._id}
           emptyMessage="No employees found"
-          renderCard={(emp) => {
+          renderCard={(emp, index) => {
             const photoUrl = getImageUrl(emp.image);
             return (
               <div className="space-y-1">
@@ -212,15 +213,15 @@ export default function EmployeeTable({
                       className="size-12 shrink-0 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm"
                     />
                   ) : (
-                    <div className="size-12 shrink-0 rounded-full bg-brand-100 dark:bg-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm">
+                    <div className="size-12 shrink-0 rounded-full bg-accent-100 dark:bg-accent-500/20 flex items-center justify-center text-accent-600 dark:text-accent-400 font-bold text-sm">
                       {emp.fullName?.charAt(0)?.toUpperCase() || "?"}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{emp.fullName}</p>
-                    <Badge size="sm" variant="light" color="primary" className="font-mono mt-0.5">
-                      {emp.employeeId || "—"}
-                    </Badge>
+                    <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">
+                      {emp.employeeId || `#${index + 1}`}
+                    </p>
                   </div>
                 </div>
                 <MobileCardRow label="Designation">
@@ -235,26 +236,32 @@ export default function EmployeeTable({
                 </MobileCardRow>
                 <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                   <button
+                    type="button"
                     onClick={() => navigate(`/employee-view/${emp._id}`)}
-                    className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-blue-400 hover:text-blue-500 hover:border-blue-400 transition-all active:scale-90"
+                    className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                    aria-label="View employee"
                   >
                     <FaEye className="size-4" />
                   </button>
                   {canEdit && (
                     <button
+                      type="button"
                       onClick={() => navigate(`/employee-edit/${emp._id}`)}
-                      className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90"
+                      className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                      aria-label="Edit employee"
                     >
                       <FaEdit className="size-4" />
                     </button>
                   )}
                   {canDelete && (
                     <button
+                      type="button"
                       onClick={() => {
                         setSelectedEmployee(emp);
                         setShowDeleteModal(true);
                       }}
-                      className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all active:scale-90"
+                      className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                      aria-label="Delete employee"
                     >
                       <MdDelete className="size-5" />
                     </button>
@@ -295,7 +302,7 @@ export default function EmployeeTable({
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="mt-2 text-xs text-brand-500 hover:underline"
+                  className="mt-2 text-xs text-accent-500 hover:underline"
                 >
                   Clear search
                 </button>
@@ -318,9 +325,11 @@ export default function EmployeeTable({
                   >
                     {/* Employee ID */}
                     <div className="px-4 flex items-center justify-center">
-                      <Badge size="sm" variant="light" color="primary" className="font-mono">
-                        {emp.employeeId || "—"}
-                      </Badge>
+                      {emp.employeeId ? (
+                        <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{emp.employeeId}</span>
+                      ) : (
+                        <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                      )}
                     </div>
 
                     {/* Photo */}
@@ -332,7 +341,7 @@ export default function EmployeeTable({
                           className="size-10 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm"
                         />
                       ) : (
-                        <div className="size-10 rounded-full bg-brand-100 dark:bg-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm">
+                        <div className="size-10 rounded-full bg-accent-100 dark:bg-accent-500/20 flex items-center justify-center text-accent-600 dark:text-accent-400 font-bold text-sm">
                           {emp.fullName?.charAt(0)?.toUpperCase() || "?"}
                         </div>
                       )}
@@ -373,20 +382,29 @@ export default function EmployeeTable({
                       </span>
                     </div>
 
+                    {/* Status */}
+                    <div className="px-4 flex items-center justify-center">
+                      <StatusPill isActive={emp.isActive !== false} />
+                    </div>
+
                     {/* Actions: View → Edit → Delete */}
                     <div className="px-4 flex items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
+                          type="button"
                           onClick={() => navigate(`/employee-view/${emp._id}`)}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-blue-400 hover:text-blue-500 hover:border-blue-400 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="View employee"
                         >
                           <FaEye className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="Print">
                         <button
+                          type="button"
                           onClick={() => navigate(`/employee-invoice-print/${emp._id}`)}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-purple-400 hover:text-purple-500 hover:border-purple-400 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="Print employee"
                         >
                           <IoIosPrint className="size-4" />
                         </button>
@@ -394,8 +412,10 @@ export default function EmployeeTable({
                       {canEdit && (
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() => navigate(`/employee-edit/${emp._id}`)}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit employee"
                         >
                           <FaEdit className="size-4" />
                         </button>
@@ -404,11 +424,13 @@ export default function EmployeeTable({
                       {canDelete && (
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedEmployee(emp);
                             setShowDeleteModal(true);
                           }}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete employee"
                         >
                           <MdDelete className="size-5" />
                         </button>
@@ -460,7 +482,7 @@ export default function EmployeeTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete"}
             </Button>

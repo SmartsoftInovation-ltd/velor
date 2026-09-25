@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import { IoIosPrint } from "react-icons/io";
 import { Modal } from "../../ui/modal";
-import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
 import Button from "../../ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
@@ -102,7 +102,7 @@ const Tooltip = ({
 
 const gridTemplateColumns = "150px 130px 130px 1fr 1fr 1fr 1fr 1fr 100px 170px";
 const COLUMNS = [
-  "Serial",
+  "Serial ID",
   "Date",
   "Created At",
   "Supplier",
@@ -240,7 +240,7 @@ export default function SupplierPaymentTable({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by serial, supplier, or txn ID..."
-            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition"
           />
           {searchTerm && (
             <button
@@ -256,7 +256,7 @@ export default function SupplierPaymentTable({
           <button
             onClick={fetchPayments}
             disabled={isFetching}
-            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:border-brand-500 transition disabled:opacity-50"
+            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-accent-500 hover:border-accent-500 transition disabled:opacity-50"
           >
             <FaSync
               className={`size-3.5 ${isFetching ? "animate-spin" : ""}`}
@@ -275,25 +275,18 @@ export default function SupplierPaymentTable({
           items={payments}
           getKey={(item) => item._id}
           emptyMessage="No payments found"
-          renderCard={(item) => (
+          renderCard={(item, index) => (
             <div className="space-y-1">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">
                     {item.supplier?.supplierName || item.supplierId}
                   </p>
-                  <Badge size="sm" variant="light" color="primary" className="font-mono mt-1">
-                    {item.supplierPaymentSerialId || "—"}
-                  </Badge>
+                  <p className="mt-1">
+                    <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{item.supplierPaymentSerialId || `#${index + 1}`}</span>
+                  </p>
                 </div>
-                <Badge
-                  size="sm"
-                  variant="solid"
-                  color={item.isActive ? "success" : "error"}
-                  className="text-[10px] font-bold uppercase shrink-0"
-                >
-                  {item.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <StatusPill isActive={item.isActive} />
               </div>
               <MobileCardRow label="Date">
                 <span className="block">{formatDate(item.date)}</span>
@@ -319,38 +312,42 @@ export default function SupplierPaymentTable({
               <MobileCardRow label="Account">{item.paymentMethod?.[0]?.name || "N/A"}</MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => navigate(`/supplier-payment-invoice-print/${item._id}`)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="Print payment"
                 >
                   <IoIosPrint className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => navigate(`/supplier-payment-edit/${item._id}`)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                  aria-label="Edit payment"
                 >
                   <FaEdit className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedPayment(item);
                     setShowToggleModal(true);
                   }}
-                  className={`max-md:size-11 size-10 p-0 flex items-center justify-center rounded text-white transition-colors ${
-                    item.isActive
-                      ? "bg-green-500 hover:bg-green-600"
-                      : "bg-red-500 hover:bg-red-600"
-                  }`}
+                  className={`shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 ${item.isActive ? "bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25" : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10"}`}
+                  aria-label={item.isActive ? "Deactivate payment" : "Activate payment"}
                 >
-                  {item.isActive ? <FaToggleOn className="size-5" /> : <FaToggleOff className="size-5" />}
+                  {item.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedPayment(item);
                     setShowDeleteModal(true);
                   }}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                  aria-label="Delete payment"
                 >
-                  <MdDelete className="size-4" />
+                  <MdDelete className="size-5" />
                 </button>
               </div>
             </div>
@@ -367,7 +364,7 @@ export default function SupplierPaymentTable({
             <div
               key={col}
               className={`px-3 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 ${
-                col === "Serial" || col === "Status" || col === "Actions"
+                col === "Serial ID" || col === "Status" || col === "Actions"
                   ? "text-center"
                   : "text-left"
               }`}
@@ -389,7 +386,7 @@ export default function SupplierPaymentTable({
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="mt-2 text-xs text-brand-500 hover:underline"
+                  className="mt-2 text-xs text-accent-500 hover:underline"
                 >
                   Clear search
                 </button>
@@ -416,14 +413,11 @@ export default function SupplierPaymentTable({
                   >
                     {/* Serial */}
                     <div className="px-3 flex justify-center">
-                      <Badge
-                        size="sm"
-                        variant="light"
-                        color="primary"
-                        className="font-mono"
-                      >
-                        {item.supplierPaymentSerialId || "—"}
-                      </Badge>
+                      {item.supplierPaymentSerialId ? (
+                        <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{item.supplierPaymentSerialId}</span>
+                      ) : (
+                        <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                      )}
                     </div>
 
                     {/* Date */}
@@ -479,68 +473,69 @@ export default function SupplierPaymentTable({
 
                     {/* Status badge */}
                     <div className="px-3 flex justify-center">
-                      <Badge
-                        size="sm"
-                        variant="solid"
-                        color={item.isActive ? "success" : "error"}
-                        className="text-[10px] font-bold uppercase"
-                      >
-                        {item.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                      <StatusPill isActive={item.isActive} />
                     </div>
 
                     {/* Actions: Print + Edit + Toggle + Delete */}
                     <div className="px-3 flex items-center justify-center gap-1.5">
                       <Tooltip text="Print">
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(`/supplier-payment-invoice-print/${item._id}`)
                           }
-                          className="size-8 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="Print payment"
                         >
-                          <IoIosPrint className="size-3.5" />
+                          <IoIosPrint className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(`/supplier-payment-edit/${item._id}`)
                           }
-                          className="size-8 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit payment"
                         >
-                          <FaEdit className="size-3.5" />
+                          <FaEdit className="size-4" />
                         </button>
                       </Tooltip>
 
                       <Tooltip text={item.isActive ? "Deactivate" : "Activate"}>
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedPayment(item);
                             setShowToggleModal(true);
                           }}
-                          className={`size-8 flex items-center justify-center rounded text-white transition-colors ${
+                          aria-label={item.isActive ? "Deactivate payment" : "Activate payment"}
+                          className={`shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 ${
                             item.isActive
-                              ? "bg-green-500 hover:bg-green-600"
-                              : "bg-red-500 hover:bg-red-600"
+                              ? "bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25"
+                              : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10"
                           }`}
                         >
                           {item.isActive ? (
-                            <FaToggleOn className="size-4" />
+                            <FaToggleOn className="size-7" />
                           ) : (
-                            <FaToggleOff className="size-4" />
+                            <FaToggleOff className="size-7" />
                           )}
                         </button>
                       </Tooltip>
 
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedPayment(item);
                             setShowDeleteModal(true);
                           }}
-                          className="size-8 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700 dark:bg-gray-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete payment"
                         >
-                          <MdDelete className="size-4" />
+                          <MdDelete className="size-5" />
                         </button>
                       </Tooltip>
                     </div>
@@ -607,11 +602,7 @@ export default function SupplierPaymentTable({
             <Button
               onClick={handleToggle}
               disabled={isActioning}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:opacity-50 ${
-                selectedPayment?.isActive
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
-              }`}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:opacity-50 !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isActioning
                 ? "Updating..."
@@ -658,7 +649,7 @@ export default function SupplierPaymentTable({
             <button
               onClick={handleDelete}
               disabled={isActioning}
-                className="flex-1 py-2.5 text-sm rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-semibold transition disabled:opacity-50"
+                className="flex-1 py-2.5 text-sm rounded-xl shine bg-error-500 hover:bg-error-600 text-white font-semibold transition disabled:opacity-50"
             >
               {isActioning ? "Deleting..." : "Yes, Delete"}
             </button>

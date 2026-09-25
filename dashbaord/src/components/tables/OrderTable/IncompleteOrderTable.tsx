@@ -132,7 +132,7 @@ export default function IncompleteOrderTable() {
                   isHeader
                   className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
                 >
-                  Invoice ID.
+                  Invoice ID
                 </TableCell>
                 <TableCell
                   isHeader
@@ -175,12 +175,16 @@ export default function IncompleteOrderTable() {
 
             <TableBody className="divide-y-2 divide-gray-200 dark:divide-white/[0.05]">
               {tableData.length > 0 ? (
-                tableData.map((order) => (
-                  <TableRow className="dark:text-gray-400 text-center hover:bg-gray-50">
+                tableData.map((order, index) => (
+                  <TableRow key={order._id} className="dark:text-gray-400 text-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                     <TableCell className="px-4 py-3 text-theme-sm">
                       <div className="space-y-1">
-                        <p className="font-medium text-gray-800">
-                          {order.invoiceId}
+                        <p>
+                          {order.invoiceId ? (
+                            <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{order.invoiceId}</span>
+                          ) : (
+                            <span className="font-medium text-gray-500 dark:text-gray-400">#{index + 1}</span>
+                          )}
                         </p>
                         <p className="text-gray-600">
                           {moment(order?.createdAt).format("YYYY-MM-DD")}
@@ -302,19 +306,22 @@ export default function IncompleteOrderTable() {
                       <OrderStatus order={order} />
                     </TableCell>
                     <TableCell className="px-4 py-3 text-theme-sm text-center">
-                      <div className="flex items-center justify-center space-x-2">
+                      <div className="flex items-center justify-center gap-2">
                         <Button
                           onClick={() => handleEditModal(order)}
                           size="sm"
+                          aria-label="Edit shipping info"
+                          className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
                         >
-                          <FaEdit />
+                          <FaEdit className="size-4" />
                         </Button>
                         <Button
                           onClick={() => handleDeleteModal(order._id)}
                           size="sm"
-                          className="bg-red-500 text-white hover:bg-red-600"
+                          aria-label="Delete order"
+                          className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
                         >
-                          <MdDelete />
+                          <MdDelete className="size-5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -324,7 +331,7 @@ export default function IncompleteOrderTable() {
                 <TableRow>
                   <TableCell
                     //@ts-ignore
-                    colSpan={8}
+                    colSpan={7}
                     className="px-4 py-3 text-theme-sm text-center"
                   >
                     No incomplete orders found.
@@ -336,27 +343,31 @@ export default function IncompleteOrderTable() {
         </div>
       </div>
       <Modal isOpen={showDeleteModal} onClose={closeModal}>
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-lg font-bold">Confirm Deletion</h2>
-          <p className="mt-2 text-gray-600">
-            Are you sure you want to delete this order?
+        <div className="p-8">
+          <div className="flex items-center justify-center size-16 bg-red-50 dark:bg-red-500/10 rounded-full mb-5 mx-auto">
+            <MdDelete className="size-8 text-red-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white text-center">Delete Order?</h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed">
+            Are you sure you want to <span className="font-semibold text-red-500">delete</span> this order? This action cannot be undone.
           </p>
-          <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete} disabled={isDeleting}>
+          <div className="flex gap-3 mt-7">
+            <Button onClick={closeModal} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white !rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+            >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
-                "Yes"
+                "Yes, Delete"
               )}
-            </Button>
-            <Button
-              onClick={closeModal}
-                className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
-            >
-              No
             </Button>
           </div>
         </div>

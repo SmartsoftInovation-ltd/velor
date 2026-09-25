@@ -71,7 +71,7 @@ interface DepartmentTableProps {
 }
 
 const gridTemplateColumns = "1fr 1fr 1fr";
-const COLUMNS = ["Serial No", "Department Name", "Actions"];
+const COLUMNS = ["Serial ID", "Department Name", "Actions"];
 
 export default function DepartmentTable({
   departments,
@@ -156,11 +156,12 @@ export default function DepartmentTable({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by department name..."
-            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
+              aria-label="Clear search"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <FaTimes className="size-3" />
@@ -172,7 +173,8 @@ export default function DepartmentTable({
           <button
             onClick={fetchDepartments}
             disabled={isFetching}
-            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:border-brand-500 transition disabled:opacity-50"
+            aria-label="Refresh"
+            className="shine size-9 flex items-center justify-center rounded-md border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-all active:scale-90 disabled:opacity-50"
           >
             <FaSync
               className={`size-3.5 ${isFetching ? "animate-spin" : ""}`}
@@ -196,27 +198,31 @@ export default function DepartmentTable({
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{item.name}</p>
-                  <p className="text-xs text-gray-400">#{index + 1}</p>
+                  <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">#{index + 1}</p>
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => {
                     setSelected(item);
                     setEditName(item.name);
                     setEditError("");
                     setShowEditModal(true);
                   }}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                  aria-label="Edit department"
                 >
                   <FaEdit className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setSelected(item);
                     setShowDeleteModal(true);
                   }}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all active:scale-90"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                  aria-label="Delete department"
                 >
                   <MdDelete className="size-5" />
                 </button>
@@ -255,7 +261,7 @@ export default function DepartmentTable({
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="mt-2 text-xs text-brand-500 hover:underline"
+                  className="mt-2 text-xs text-accent-500 hover:underline"
                 >
                   Clear search
                 </button>
@@ -281,8 +287,8 @@ export default function DepartmentTable({
                     }}
                   >
                     {/* # */}
-                    <div className="px-4 flex items-center justify-center text-xs font-mono text-gray-400 dark:text-gray-500">
-                      {virtualRow.index + 1}
+                    <div className="px-4 flex items-center justify-center">
+                      <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                     </div>
 
                     {/* Name */}
@@ -296,24 +302,28 @@ export default function DepartmentTable({
                     <div className="px-4 flex items-center justify-center gap-2">
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelected(item);
                             setEditName(item.name);
                             setEditError("");
                             setShowEditModal(true);
                           }}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit department"
                         >
                           <FaEdit className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelected(item);
                             setShowDeleteModal(true);
                           }}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete department"
                         >
                           <MdDelete className="size-5" />
                         </button>
@@ -337,8 +347,8 @@ export default function DepartmentTable({
         }}
       >
         <div className="p-8">
-          <div className="flex items-center justify-center size-16 bg-brand-50 dark:bg-brand-500/10 rounded-full mb-5 mx-auto">
-            <FaEdit className="size-7 text-brand-500" />
+          <div className="flex items-center justify-center size-16 bg-accent-50 dark:bg-accent-500/10 rounded-full mb-5 mx-auto">
+            <FaEdit className="size-7 text-accent-500" />
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white text-center mb-6">
             Edit Department
@@ -355,7 +365,7 @@ export default function DepartmentTable({
                 setEditError("");
               }}
               onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition ${editError ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition ${editError ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
               placeholder="Enter department name"
               autoFocus
             />
@@ -379,7 +389,7 @@ export default function DepartmentTable({
             <Button
               onClick={handleEdit}
               disabled={isSaving}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
+                className="flex-1 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </Button>
@@ -421,7 +431,7 @@ export default function DepartmentTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete"}
             </Button>

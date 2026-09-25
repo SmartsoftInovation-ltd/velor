@@ -136,7 +136,7 @@ export default function SupplierTable({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by serial, name, or mobile..."
-            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition"
           />
           {searchTerm && (
             <button
@@ -152,7 +152,7 @@ export default function SupplierTable({
           <button
             onClick={fetchSuppliers}
             disabled={isFetching}
-            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-brand-500 hover:border-brand-500 transition disabled:opacity-50"
+            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-accent-500 hover:border-accent-500 transition disabled:opacity-50"
           >
             <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
@@ -169,13 +169,13 @@ export default function SupplierTable({
           items={suppliers}
           getKey={(item) => item._id}
           emptyMessage="No suppliers found"
-          renderCard={(item) => (
+          renderCard={(item, index) => (
             <div className="space-y-1">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{item.supplierName}</p>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[11px] font-mono font-semibold mt-1">
-                    {item.supplierSerialId || "—"}
+                  <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 inline-block mt-1">
+                    {item.supplierSerialId || `#${index + 1}`}
                   </span>
                 </div>
               </div>
@@ -194,31 +194,39 @@ export default function SupplierTable({
               </MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => navigate(`/supplier-profile-print/${item.supplierId}`)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="Print supplier"
                 >
                   <IoIosPrint className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => openViewModal(item)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="View supplier"
                 >
                   <FaEye className="size-4" />
                 </button>
                 {canEdit && (
                   <button
+                    type="button"
                     onClick={() => navigate(`/supplier-edit/${item.supplierId}`)}
-                    className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
+                    className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                    aria-label="Edit supplier"
                   >
                     <FaEdit className="size-4" />
                   </button>
                 )}
                 {canDelete && (
                   <button
+                    type="button"
                     onClick={() => openDeleteModal(item)}
-                    className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                    className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                    aria-label="Delete supplier"
                   >
-                    <MdDelete className="size-4" />
+                    <MdDelete className="size-5" />
                   </button>
                 )}
               </div>
@@ -250,7 +258,7 @@ export default function SupplierTable({
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="mt-2 text-xs text-brand-500 hover:underline"
+                  className="mt-2 text-xs text-accent-500 hover:underline"
                 >
                   Clear search
                 </button>
@@ -272,8 +280,8 @@ export default function SupplierTable({
                   >
                     {/* Serial ID */}
                     <div className="px-3 flex justify-center">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[11px] font-mono font-semibold whitespace-nowrap">
-                        {item.supplierSerialId || "—"}
+                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">
+                        {item.supplierSerialId || `#${virtualRow.index + 1}`}
                       </span>
                     </div>
 
@@ -324,39 +332,47 @@ export default function SupplierTable({
                     <div className="px-3 flex items-center justify-center gap-1.5">
                       <Tooltip text="Print">
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(`/supplier-profile-print/${item.supplierId}`)
                           }
-                          className="size-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="Print supplier"
                         >
-                          <IoIosPrint className="size-3.5" />
+                          <IoIosPrint className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="View">
                         <button
+                          type="button"
                           onClick={() => openViewModal(item)}
-                          className="size-8 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="View supplier"
                         >
-                          <FaEye className="size-3.5" />
+                          <FaEye className="size-4" />
                         </button>
                       </Tooltip>
                       {canEdit && (
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() => navigate(`/supplier-edit/${item.supplierId}`)}
-                          className="size-8 flex items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit supplier"
                         >
-                          <FaEdit className="size-3.5" />
+                          <FaEdit className="size-4" />
                         </button>
                       </Tooltip>
                       )}
                       {canDelete && (
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => openDeleteModal(item)}
-                          className="size-8 flex items-center justify-center rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete supplier"
                         >
-                          <MdDelete className="size-4" />
+                          <MdDelete className="size-5" />
                         </button>
                       </Tooltip>
                       )}
@@ -396,7 +412,7 @@ export default function SupplierTable({
             <button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 py-2.5 text-sm rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-semibold transition disabled:opacity-50 shadow-lg active:scale-95"
+                className="flex-1 py-2.5 text-sm rounded-xl shine bg-error-500 hover:bg-error-600 text-white font-semibold transition disabled:opacity-50 shadow-lg active:scale-95"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete"}
             </button>

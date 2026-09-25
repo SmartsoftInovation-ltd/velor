@@ -225,7 +225,8 @@ const OrderStatus = ({ order }: OrderStatusProps) => {
       <select
         value={status}
         onChange={handleChange}
-        className="border rounded-md px-2 py-1 text-sm focus:outline-none"
+        aria-label="Order status"
+        className="h-9 rounded-md border border-gray-300 bg-transparent px-2 text-sm text-gray-700 focus:border-accent-300 focus:outline-none focus:ring-3 focus:ring-accent-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
       >
         {statuses.map((s) => (
           <option key={s} value={s}>

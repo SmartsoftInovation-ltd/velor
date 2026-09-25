@@ -7,7 +7,9 @@ import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
 import SearchableSelect from "../form/SearchableSelect";
 import DatePicker from "../form/date-picker";
-import ComponentCard from "../common/ComponentCard";
+import SectionCard from "../common/SectionCard";
+import MobileActionBar from "../common/MobileActionBar";
+import { FaTruck, FaMoneyBillWave, FaStickyNote } from "react-icons/fa";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import PageMeta from "../common/PageMeta";
 import axiosSecure from "../../hooks/useAxiosSecure";
@@ -180,7 +182,7 @@ const SupplierPaymentEdit = () => {
   if (paymentLoading || suppliersLoading || accountsLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -190,7 +192,7 @@ const SupplierPaymentEdit = () => {
       <div className="text-center py-20">
         <p className="text-red-500 font-bold mb-4">Payment not found</p>
         <Link to="/supplier-payment-list">
-          <Button className="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-xl">
+          <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white px-6 py-2 !rounded-xl">
             Back to List
           </Button>
         </Link>
@@ -204,149 +206,138 @@ const SupplierPaymentEdit = () => {
         title="Edit Supplier Payment - Baig Ecommerce"
         description="Update a supplier due payment"
       />
-      <PageBreadcrumb pageTitle="Edit Supplier Payment" />
+      <PageBreadcrumb
+        pageTitle="Edit Supplier Payment"
+        className="mb-3"
+        hideTitle
+        actions={
+          <Link to="/supplier-payment-list">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
+              Supplier Payment List
+            </Button>
+          </Link>
+        }
+      />
       <div className="space-y-6">
-        <ComponentCard
-          title={
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Edit Supplier Payment</h2>
-              <Link to="/supplier-payment-list">
-                <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
-                  Supplier Payment List
-                </Button>
-              </Link>
-            </div>
-          }
-        >
-          <div className="space-y-8">
-            {/* Txn ID badge */}
-            {payment.transactionId && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Transaction ID:
-                </span>
-                <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-200">
-                  {payment.transactionId}
-                </span>
-              </div>
-            )}
-
-            {/* Row 1 — Date + Supplier */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Date */}
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  Date <span className="text-red-500">*</span>
-                </Label>
-                <DatePicker
-                  id="edit-supplier-payment-date"
-                  placeholder="Select date"
-                  defaultDate={form.date}
-                  onChange={(_: Date[], dateStr: string) => set("date", dateStr)}
-                />
-                {errors.date && (
-                  <p className="text-xs text-red-500">{errors.date}</p>
-                )}
-              </div>
-
-              {/* Supplier */}
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  Supplier Name <span className="text-red-500">*</span>
-                </Label>
-                <SearchableSelect
-                  options={suppliers}
-                  value={form.supplierId}
-                  onChange={handleSupplierChange}
-                  placeholder="Select supplier..."
-                  searchPlaceholder="Search by name or mobile..."
-                  hasError={!!errors.supplierId}
-                />
-                {errors.supplierId && (
-                  <p className="text-xs text-red-500">{errors.supplierId}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Due balance info */}
-            {selectedSupplier && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
-                <div className="size-2 rounded-full bg-amber-500 shrink-0" />
-                <p className="text-sm text-amber-800 dark:text-amber-300">
-                  Outstanding due for{" "}
-                  <span className="font-semibold">
-                    {selectedSupplier.label.split(" —")[0]}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <SectionCard icon={<FaTruck />} title="Supplier & Date">
+              {payment.transactionId && (
+                <div className="mb-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    Transaction ID:
                   </span>
-                  :{" "}
-                  <span className="font-bold text-amber-600 dark:text-amber-400">
-                    ৳{selectedSupplier.totalPurchaseDue.toLocaleString()}
+                  <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-200">
+                    {payment.transactionId}
                   </span>
-                </p>
-              </div>
-            )}
-
-            {/* Row 2 — Paid + Less + Payment Mode */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Paid Amount */}
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  Paid Amount <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 dark:text-gray-400">
-                    ৳
-                  </span>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={form.paidAmount}
-                    className={`pl-8 ${errors.paidAmount ? "border-red-400" : ""}`}
-                    onChange={(e) => set("paidAmount", e.target.value)}
-                  />
                 </div>
-                {errors.paidAmount && (
-                  <p className="text-xs text-red-500">{errors.paidAmount}</p>
-                )}
-              </div>
-
-              {/* Less Amount */}
-              <div className="flex flex-col gap-1.5">
-                <Label>Less / Discount</Label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 dark:text-gray-400">
-                    ৳
-                  </span>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={form.lessAmount}
-                    className="pl-8"
-                    onChange={(e) => set("lessAmount", e.target.value)}
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <Label>
+                    Date <span className="text-red-500">*</span>
+                  </Label>
+                  <DatePicker
+                    id="edit-supplier-payment-date"
+                    placeholder="Select date"
+                    defaultDate={form.date}
+                    onChange={(_: Date[], dateStr: string) => set("date", dateStr)}
                   />
+                  {errors.date && (
+                    <p className="text-xs text-red-500">{errors.date}</p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>
+                    Supplier Name <span className="text-red-500">*</span>
+                  </Label>
+                  <SearchableSelect
+                    options={suppliers}
+                    value={form.supplierId}
+                    onChange={handleSupplierChange}
+                    placeholder="Select supplier..."
+                    searchPlaceholder="Search by name or mobile..."
+                    hasError={!!errors.supplierId}
+                  />
+                  {errors.supplierId && (
+                    <p className="text-xs text-red-500">{errors.supplierId}</p>
+                  )}
                 </div>
               </div>
-
-              {/* Payment Mode */}
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  Payment Mode <span className="text-red-500">*</span>
-                </Label>
-                <SearchableSelect
-                  options={accounts}
-                  value={form.paymentMode}
-                  onChange={(value) => set("paymentMode", value)}
-                  placeholder="Select account..."
-                  searchPlaceholder="Search account..."
-                  hasError={!!errors.paymentMode}
-                />
-                {errors.paymentMode && (
-                  <p className="text-xs text-red-500">{errors.paymentMode}</p>
-                )}
+              {selectedSupplier && (
+                <div className="mt-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
+                  <div className="size-2 rounded-full bg-amber-500 shrink-0" />
+                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                    Outstanding due for{" "}
+                    <span className="font-semibold">
+                      {selectedSupplier.label.split(" —")[0]}
+                    </span>
+                    :{" "}
+                    <span className="font-bold text-amber-600 dark:text-amber-400">
+                      ৳{selectedSupplier.totalPurchaseDue.toLocaleString()}
+                    </span>
+                  </p>
+                </div>
+              )}
+            </SectionCard>
+            <SectionCard icon={<FaMoneyBillWave />} title="Payment">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <Label>
+                    Paid Amount <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                      ৳
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={form.paidAmount}
+                      className={`pl-8 ${errors.paidAmount ? "border-red-400" : ""}`}
+                      onChange={(e) => set("paidAmount", e.target.value)}
+                    />
+                  </div>
+                  {errors.paidAmount && (
+                    <p className="text-xs text-red-500">{errors.paidAmount}</p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Less / Discount</Label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                      ৳
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={form.lessAmount}
+                      className="pl-8"
+                      onChange={(e) => set("lessAmount", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <Label>
+                    Payment Mode <span className="text-red-500">*</span>
+                  </Label>
+                  <SearchableSelect
+                    options={accounts}
+                    value={form.paymentMode}
+                    onChange={(value) => set("paymentMode", value)}
+                    placeholder="Select account..."
+                    searchPlaceholder="Search account..."
+                    hasError={!!errors.paymentMode}
+                  />
+                  {errors.paymentMode && (
+                    <p className="text-xs text-red-500">{errors.paymentMode}</p>
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Remarks */}
-            <div className="flex flex-col gap-1.5 max-w-lg">
+            </SectionCard>
+          </div>
+          <SectionCard icon={<FaStickyNote />} title="Remarks" className="self-start">
+            <div className="flex flex-col gap-1.5">
               <Label>Remarks</Label>
               <Input
                 type="text"
@@ -355,33 +346,34 @@ const SupplierPaymentEdit = () => {
                 onChange={(e) => set("remarks", e.target.value)}
               />
             </div>
+          </SectionCard>
+        </div>
 
-            {/* Submit */}
-            <div className="flex items-center gap-4 pt-2">
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-semibold rounded-xl transition disabled:opacity-50 min-w-[180px] flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  "Update Payment"
-                )}
-              </Button>
-              <button
-                type="button"
-                onClick={() => navigate("/supplier-payment-list")}
-                className="px-6 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-              >
-                Cancel
-              </button>
-            </div>
+        <MobileActionBar>
+          <div className="flex items-center justify-end gap-3 pt-1">
+            <Button
+              onClick={() => navigate("/supplier-payment-list")}
+              variant="outline"
+              className="px-6 py-2.5 text-sm !rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="px-7 py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white font-semibold !rounded-xl transition disabled:opacity-50 min-w-[180px] flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Payment"
+              )}
+            </Button>
           </div>
-        </ComponentCard>
+        </MobileActionBar>
       </div>
     </>
   );

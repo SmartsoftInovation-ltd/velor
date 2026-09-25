@@ -184,7 +184,7 @@ const CustomerPaymentReceiveTable = ({
   };
 
   const headers = [
-    "ID",
+    "Serial ID",
     "Customer Name",
     "Date",
     "Created At",
@@ -207,7 +207,7 @@ const CustomerPaymentReceiveTable = ({
               onClick={() => window.history.back()}
               variant="outline"
               size="sm"
-              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
+              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-accent-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
             >
               <svg
                 className="size-5"
@@ -226,13 +226,13 @@ const CustomerPaymentReceiveTable = ({
           </Tooltip>
 
           <div className="relative w-full md:w-80 group">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-500 transition-colors size-4" />
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-accent-500 transition-colors size-4" />
             <input
               type="text"
               placeholder="Search by serial, customer, payment ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm font-medium h-12"
+              className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition-all text-sm font-medium h-12"
             />
             {searchTerm && (
               <button
@@ -254,7 +254,7 @@ const CustomerPaymentReceiveTable = ({
               onClick={handleRefresh}
               size="sm"
               variant="outline"
-              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
+              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-accent-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
             >
               <FaSync className="size-4" />
             </Button>
@@ -270,15 +270,15 @@ const CustomerPaymentReceiveTable = ({
           emptyMessage={
             searchTerm ? `No payments match "${searchTerm}"` : "No payments yet"
           }
-          renderCard={(payment) => (
+          renderCard={(payment, index) => (
             <div className="space-y-1">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">
                     {payment.customer?.fullName || "—"}
                   </p>
-                  <span className="inline-flex items-center text-xs font-mono bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-lg mt-1">
-                    {payment.paymentId || "—"}
+                  <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 inline-block mt-1">
+                    {payment.paymentId || `#${index + 1}`}
                   </span>
                 </div>
               </div>
@@ -322,26 +322,32 @@ const CustomerPaymentReceiveTable = ({
               <MobileCardRow label="Account">{payment.paymentMode?.name || "N/A"}</MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() =>
                     navigate(`/customer-payment-receive-invoice-print/${payment._id}`)
                   }
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="Print payment"
                 >
                   <IoIosPrint className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() =>
                     navigate(`/customer-payment-receive-edit/${payment.customer._id}`)
                   }
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                  aria-label="Edit payment"
                 >
                   <FaEdit className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleDeleteModal(payment._id)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                  aria-label="Delete payment"
                 >
-                  <MdDelete className="size-4" />
+                  <MdDelete className="size-5" />
                 </button>
               </div>
             </div>
@@ -413,8 +419,8 @@ const CustomerPaymentReceiveTable = ({
                   >
                     {/* Payment ID */}
                     <div className="flex items-center justify-center px-1">
-                      <span className="text-xs font-mono bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-lg">
-                        {payment.paymentId || "—"}
+                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                        {payment.paymentId || `#${virtualRow.index + 1}`}
                       </span>
                     </div>
 
@@ -495,34 +501,40 @@ const CustomerPaymentReceiveTable = ({
                     <div className="flex items-center justify-center gap-1.5">
                       <Tooltip text="Print">
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(
                               `/customer-payment-receive-invoice-print/${payment._id}`,
                             )
                           }
-                          className="size-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="Print payment"
                         >
-                          <IoIosPrint className="size-3.5" />
+                          <IoIosPrint className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(
                               `/customer-payment-receive-edit/${payment.customer._id}`,
                             )
                           }
-                          className="size-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit payment"
                         >
-                          <FaEdit className="size-3.5" />
+                          <FaEdit className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => handleDeleteModal(payment._id)}
-                          className="size-8 flex items-center justify-center rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete payment"
                         >
-                          <MdDelete className="size-4" />
+                          <MdDelete className="size-5" />
                         </button>
                       </Tooltip>
                     </div>
@@ -561,11 +573,11 @@ const CustomerPaymentReceiveTable = ({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (

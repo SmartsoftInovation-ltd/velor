@@ -62,8 +62,9 @@ const ShippingInfo = ({ order }: { order: any }) => {
       </p> */}
 
       <button
+        type="button"
         onClick={openModal}
-          className="bg-[#D5F0E3] font-medium py-1 px-3 rounded-3xl text-[#0A6B43] hover:bg-[#B8E4CF] transition"
+        className="shine rounded-full border border-accent-100 bg-accent-50 px-3 py-1 text-xs font-semibold text-accent-600 hover:bg-accent-100 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25 transition"
       >
         Fraud Check
       </button>

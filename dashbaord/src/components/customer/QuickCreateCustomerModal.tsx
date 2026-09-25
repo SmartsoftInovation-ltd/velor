@@ -50,7 +50,7 @@ const emptyForm = {
 };
 
 const fieldCls =
-  "w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20";
+  "w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20";
 const normalBorder = "border-gray-200 dark:border-gray-700";
 const errorBorder = "border-red-400 dark:border-red-500";
 
@@ -239,7 +239,7 @@ const QuickCreateCustomerModal = ({
                         setTypeDropdownOpen(false);
                         if (errors.customerType) setErrors((p) => ({ ...p, customerType: "" }));
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-brand-50 dark:hover:bg-gray-700 transition-colors"
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-accent-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       {t.customerType}
                     </button>
@@ -333,7 +333,7 @@ const QuickCreateCustomerModal = ({
         <Button onClick={handleSubmit} disabled={isLoading}>
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+              <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               Creating...
             </span>
           ) : (

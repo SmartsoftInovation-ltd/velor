@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
 import Button from "../../ui/button/Button";
 import { Modal } from "../../ui/modal";
 import toast from "react-hot-toast";
@@ -124,7 +124,7 @@ const CustomerTable = ({
   });
 
   const gridTemplateColumns =
-    "1fr 60px 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 148px";
+    "1fr 60px 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 200px";
 
   const handleDeleteModal = (customerId: string) => {
     setSelectedCustomer(customerId);
@@ -237,7 +237,7 @@ const CustomerTable = ({
               onClick={() => window.history.back()}
               variant="outline"
               size="sm"
-              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
+              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-accent-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
             >
               <svg
                 className="size-5"
@@ -256,13 +256,13 @@ const CustomerTable = ({
           </Tooltip>
 
           <div className="relative w-full md:w-80 group">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-500 transition-colors size-4" />
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-accent-500 transition-colors size-4" />
             <input
               type="text"
               placeholder="Search by serial, name, mobile..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm font-medium h-12"
+              className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition-all text-sm font-medium h-12"
             />
             {searchTerm && (
               <button
@@ -293,7 +293,7 @@ const CustomerTable = ({
               }}
               size="sm"
               variant="outline"
-              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
+              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-accent-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
             >
               <FaSync className="size-5" />
             </Button>
@@ -311,7 +311,7 @@ const CustomerTable = ({
               ? `No customers match "${searchTerm}"`
               : "No customers yet"
           }
-          renderCard={(customer) => (
+          renderCard={(customer, index) => (
             <div className="space-y-1">
               <div className="flex items-center gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 {customer.image?.url ? (
@@ -321,24 +321,17 @@ const CustomerTable = ({
                     alt={customer.fullName}
                   />
                 ) : (
-                  <div className="w-12 h-12 shrink-0 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm">
+                  <div className="w-12 h-12 shrink-0 rounded-full bg-accent-100 dark:bg-accent-500/15 flex items-center justify-center text-accent-600 dark:text-accent-400 font-bold text-sm">
                     {customer.fullName?.charAt(0)?.toUpperCase() || "C"}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{customer.fullName || "—"}</p>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[11px] font-mono font-semibold mt-1">
-                    {customer.customSerialId || "—"}
+                  <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 inline-block mt-1">
+                    {customer.customSerialId || `#${index + 1}`}
                   </span>
                 </div>
-                <Badge
-                  size="sm"
-                  variant="solid"
-                  color={customer.isActive ? "success" : "error"}
-                  className="text-[10px] font-bold uppercase shrink-0"
-                >
-                  {customer.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <StatusPill isActive={customer.isActive} />
               </div>
               <MobileCardRow label="Customer ID">{customer.customerId || "N/A"}</MobileCardRow>
               <MobileCardRow label="Type">{customer.customerType?.customerType || "N/A"}</MobileCardRow>
@@ -357,39 +350,43 @@ const CustomerTable = ({
               <MobileCardRow label="Due Limit">{customer.dueLimit != null ? customer.dueLimit : "N/A"}</MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => handleViewCustomer(customer)}
-                  className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="View customer"
                 >
                   <FaEye className="size-4" />
                 </button>
                 {canToggle && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleToggleModal(customer.customerId, customer.isActive, customer.fullName)
                     }
-                    className={`max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl transition-colors ${
-                      customer.isActive
-                        ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                        : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
-                    }`}
+                    className={`shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 ${customer.isActive ? "bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25" : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10"}`}
+                    aria-label={customer.isActive ? "Deactivate customer" : "Activate customer"}
                   >
-                    {customer.isActive ? <FaToggleOn className="size-6" /> : <FaToggleOff className="size-6" />}
+                    {customer.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                   </button>
                 )}
                 {canEdit && (
                   <button
+                    type="button"
                     onClick={() => navigate(`/customer-edit/${customer.customerId}`)}
-                    className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                    className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                    aria-label="Edit customer"
                   >
                     <FaEdit className="size-4" />
                   </button>
                 )}
                 {canDelete && (
                   <button
+                    type="button"
                     onClick={() => handleDeleteModal(customer.customerId)}
-                    className="max-md:size-11 size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                    className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                    aria-label="Delete customer"
                   >
-                    <MdDelete className="size-4" />
+                    <MdDelete className="size-5" />
                   </button>
                 )}
               </div>
@@ -467,7 +464,7 @@ const CustomerTable = ({
               canAdd ? (
               <button
                 onClick={() => navigate("/create-customer")}
-                className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
+                className="px-5 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
               >
                 + Add Customer
               </button>
@@ -501,8 +498,8 @@ const CustomerTable = ({
                   >
                     {/* Serial ID */}
                     <div className="flex items-center justify-center px-1">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[11px] font-mono font-semibold whitespace-nowrap">
-                        {customer.customSerialId || "—"}
+                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">
+                        {customer.customSerialId || `#${virtualRow.index + 1}`}
                       </span>
                     </div>
 
@@ -515,7 +512,7 @@ const CustomerTable = ({
                           alt={customer.fullName}
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm">
+                        <div className="w-9 h-9 rounded-full bg-accent-100 dark:bg-accent-500/15 flex items-center justify-center text-accent-600 dark:text-accent-400 font-bold text-sm">
                           {customer.fullName?.charAt(0)?.toUpperCase() || "C"}
                         </div>
                       )}
@@ -593,24 +590,19 @@ const CustomerTable = ({
 
                     {/* Status */}
                     <div className="flex items-center justify-center">
-                      <Badge
-                        size="sm"
-                        variant="solid"
-                        color={customer.isActive ? "success" : "error"}
-                        className="text-[10px] font-bold uppercase"
-                      >
-                        {customer.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                      <StatusPill isActive={customer.isActive} />
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
+                          type="button"
                           onClick={() => handleViewCustomer(customer)}
-                          className="size-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="View customer"
                         >
-                          <FaEye className="size-3.5" />
+                          <FaEye className="size-4" />
                         </button>
                       </Tooltip>
 
@@ -625,37 +617,43 @@ const CustomerTable = ({
                               customer.fullName,
                             )
                           }
-                          className={`size-8 flex items-center justify-center rounded-xl transition-colors ${
+                          type="button"
+                          aria-label={customer.isActive ? "Deactivate customer" : "Activate customer"}
+                          className={`shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 ${
                             customer.isActive
-                              ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                              : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                              ? "bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25"
+                              : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10"
                           }`}
                         >
                           {customer.isActive ? (
-                            <FaToggleOn className="size-5" />
+                            <FaToggleOn className="size-7" />
                           ) : (
-                            <FaToggleOff className="size-5" />
+                            <FaToggleOff className="size-7" />
                           )}
                         </button>
                       </Tooltip>}
 
                       {canEdit && <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(`/customer-edit/${customer.customerId}`)
                           }
-                          className="size-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit customer"
                         >
-                          <FaEdit className="size-3.5" />
+                          <FaEdit className="size-4" />
                         </button>
                       </Tooltip>}
 
                       {canDelete && <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => handleDeleteModal(customer.customerId)}
-                          className="size-8 flex items-center justify-center rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete customer"
                         >
-                          <MdDelete className="size-4" />
+                          <MdDelete className="size-5" />
                         </button>
                       </Tooltip>}
                     </div>
@@ -694,11 +692,11 @@ const CustomerTable = ({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -764,15 +762,11 @@ const CustomerTable = ({
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
-                pendingToggle?.currentStatus
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
-              }`}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : pendingToggle?.currentStatus ? (

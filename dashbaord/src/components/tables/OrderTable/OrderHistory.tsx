@@ -77,8 +77,8 @@ const OrderHistory = () => {
       <StatBox
         title="Orders"
         count={totalOrder}
-        color="bg-blue-300"
-        bgColor="bg-blue-50"
+        color="bg-accent-100"
+        bgColor="bg-accent-50"
       />
 
       {stats.map((item) => {
