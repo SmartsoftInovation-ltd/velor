@@ -124,19 +124,20 @@ const SalesReturnTable = () => {
     <div className="w-full space-y-4">
       {/* Toolbar */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-52">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 pointer-events-none" />
+        <div className="relative group flex-1 min-w-52">
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 pointer-events-none group-focus-within:text-accent-500 transition-colors" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by invoice or customer…"
-            className="w-full pl-11 pr-10 py-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+            className="w-full pl-11 pr-10 py-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm("")}
+              aria-label="Clear search"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
             >
               <FaTimes className="size-3.5" />
@@ -148,23 +149,24 @@ const SalesReturnTable = () => {
           type="button"
           onClick={fetchReturns}
           disabled={isFetching}
-          className="size-11 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all disabled:opacity-50"
+          aria-label="Refresh sales returns"
+          className="shine size-11 flex items-center justify-center rounded-xl border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-all active:scale-90 disabled:opacity-50"
         >
-          <FaSync className={`size-4 ${isFetching ? "animate-spin text-brand-500" : ""}`} />
+          <FaSync className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
         </button>
       </div>
 
       {/* Table */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+          <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
         </div>
       ) : isError ? (
         <div className="text-center py-20">
           <p className="text-red-500 font-bold mb-4">Error fetching sales returns!</p>
           <button
             onClick={() => queryClient.invalidateQueries({ queryKey: ["sales-returns"] })}
-            className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold"
+            className="shine px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold"
           >
             Try Again
           </button>
@@ -186,7 +188,7 @@ const SalesReturnTable = () => {
             <button
               type="button"
               onClick={() => setSearchTerm("")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white transition-colors"
+              className="shine flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-accent-500 hover:bg-accent-600 text-white transition-colors"
             >
               <FaTimes className="size-3" />
               Clear search
@@ -199,30 +201,30 @@ const SalesReturnTable = () => {
           items={tableData}
           getKey={(sr) => sr._id}
           emptyMessage="No sales returns found"
-          renderCard={(sr) => (
+          renderCard={(sr, index) => (
             <div className="space-y-1">
               <div className="mb-2 flex items-start justify-between gap-3 border-b border-gray-100 pb-2 dark:border-gray-800">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-gray-800 dark:text-white">
-                    {sr.returnId || "—"}
+                  <p>
+                    <span className="inline-block rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{sr.returnId || `#${index + 1}`}</span>
                   </p>
                   <p className="mt-0.5 text-[11px] text-gray-400">
                     {moment(sr.date || sr.createdAt).format("DD-MM-YYYY")}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Link to={`/sales-return-invoice-print/${sr._id}`}>
-                    <button
-                      type="button"
-                      className="flex size-11 items-center justify-center rounded-xl border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400"
-                    >
-                      <FaEye className="size-3.5" />
-                    </button>
+                  <Link
+                    to={`/sales-return-invoice-print/${sr._id}`}
+                    aria-label="View return"
+                    className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 max-md:size-11 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  >
+                    <FaEye className="size-3.5" />
                   </Link>
                   <button
                     type="button"
                     onClick={() => handleDeleteModal(sr._id)}
-                    className="flex size-11 items-center justify-center rounded-xl border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                    aria-label="Delete return"
+                    className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 max-md:size-11 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
                   >
                     <MdDelete className="size-5" />
                   </button>
@@ -267,16 +269,16 @@ const SalesReturnTable = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                {tableData.map((sr) => (
+                {tableData.map((sr, index) => (
                   <tr
                     key={sr._id}
                     className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors"
                   >
                     {/* Return # */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                      <p className="text-sm font-bold text-gray-800 dark:text-white">
-                        {sr.returnId || "—"}
-                      </p>
+                      <span className="inline-block rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                        {sr.returnId || `#${index + 1}`}
+                      </span>
                       <p className="text-[11px] text-gray-400 mt-0.5">
                         {moment(sr.createdAt).format("HH:mm:ss")}
                       </p>
@@ -284,7 +286,7 @@ const SalesReturnTable = () => {
 
                     {/* Original Invoice */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                      <span className="text-sm font-semibold text-brand-600 dark:text-brand-400">
+                      <span className="text-sm font-semibold text-accent-600 dark:text-accent-400">
                         {sr.invoiceNumber?.invoiceNumber || "—"}
                       </span>
                     </td>
@@ -305,7 +307,7 @@ const SalesReturnTable = () => {
 
                     {/* Refund */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                      <span className="text-sm font-bold text-brand-600 dark:text-brand-400 tabular-nums">
+                      <span className="text-sm font-bold text-accent-600 dark:text-accent-400 tabular-nums">
                         ৳{fmt(sr.totalReturnAmount)}
                       </span>
                     </td>
@@ -320,26 +322,25 @@ const SalesReturnTable = () => {
                     {/* Action */}
                     <td className="px-4 py-3.5">
                       <div className="flex items-center justify-end gap-2">
-                        <Link to={`/sales-return-invoice-print/${sr._id}`}>
-                          <button
-                            type="button"
-                            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-brand-400 hover:text-brand-500 transition-all"
-                          >
-                            <FaEye className="size-3.5" />
-                          </button>
+                        <Link
+                          to={`/sales-return-invoice-print/${sr._id}`}
+                          aria-label="View return"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                        >
+                          <FaEye className="size-3.5" />
                         </Link>
-                        <Link to={`/sales-return-invoice-print/${sr._id}`}>
-                          <button
-                            type="button"
-                            className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-purple-400 hover:text-purple-500 transition-all"
-                          >
-                            <IoIosPrint className="size-4" />
-                          </button>
+                        <Link
+                          to={`/sales-return-invoice-print/${sr._id}`}
+                          aria-label="Print return invoice"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                        >
+                          <IoIosPrint className="size-4" />
                         </Link>
                         <button
                           type="button"
                           onClick={() => handleDeleteModal(sr._id)}
-                          className="size-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+                          aria-label="Delete return"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
                         >
                           <MdDelete className="size-5" />
                         </button>
@@ -383,9 +384,16 @@ const SalesReturnTable = () => {
               type="button"
               onClick={handleDelete}
               disabled={deleteLoading}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] disabled:opacity-60 transition-colors"
+              className="shine px-5 py-2.5 rounded-xl text-sm font-semibold bg-error-500 hover:bg-error-600 text-white disabled:opacity-60 transition-colors"
             >
-              {deleteLoading ? "Deleting…" : "Delete"}
+              {deleteLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Deleting…
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </button>
           </div>
         </div>

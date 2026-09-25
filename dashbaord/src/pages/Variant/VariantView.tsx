@@ -49,9 +49,9 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 
 // InfoCard sub-component
 const InfoCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) => (
-  <div className="group bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-500/30 hover:shadow-md transition-all duration-200">
+  <div className="group bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-accent-200 dark:hover:border-accent-500/30 hover:shadow-md transition-all duration-200">
     <div className="flex items-center gap-2 mb-2">
-      <span className="text-gray-400 group-hover:text-blue-500 transition-colors">{icon}</span>
+      <span className="text-gray-400 group-hover:text-accent-500 transition-colors">{icon}</span>
       <p className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label}</p>
     </div>
     <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{value}</div>
@@ -61,17 +61,17 @@ const InfoCard = ({ icon, label, value }: { icon: React.ReactNode; label: string
 // LinkCard for category/brand navigation
 const LinkCard = ({ icon, label, name, to }: { icon: React.ReactNode; label: string; name: string; to: string }) => (
   <Link to={to} className="group block">
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-500/40 hover:shadow-lg hover:shadow-brand-500/5 transition-all duration-200 cursor-pointer">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-accent-300 dark:hover:border-accent-500/40 hover:shadow-lg hover:shadow-accent-500/5 transition-all duration-200 cursor-pointer">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-gray-400 group-hover:text-blue-500 transition-colors">{icon}</span>
+          <span className="text-gray-400 group-hover:text-accent-500 transition-colors">{icon}</span>
           <p className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label}</p>
         </div>
-        <FaExternalLinkAlt className="size-2.5 text-gray-300 group-hover:text-blue-400 transition-colors" />
+        <FaExternalLinkAlt className="size-2.5 text-gray-300 group-hover:text-accent-400 transition-colors" />
       </div>
       <div className="flex items-center gap-1.5 mt-1">
-        <span className="text-sm font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{name}</span>
-        <FaChevronRight className="size-2.5 text-gray-300 group-hover:text-blue-400 translate-x-0 group-hover:translate-x-0.5 transition-all" />
+        <span className="text-sm font-bold text-gray-700 dark:text-gray-200 group-hover:text-accent-600 dark:group-hover:text-accent-400 transition-colors">{name}</span>
+        <FaChevronRight className="size-2.5 text-gray-300 group-hover:text-accent-400 translate-x-0 group-hover:translate-x-0.5 transition-all" />
       </div>
     </div>
   </Link>
@@ -120,7 +120,7 @@ const VariantView = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[400px] gap-4">
-        <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-blue-500" />
+        <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-accent-500" />
         <p className="text-sm text-gray-400 animate-pulse">Loading variant details...</p>
       </div>
     );
@@ -180,7 +180,7 @@ const VariantView = () => {
                 </Tooltip>
                 <Tooltip text="Edit variant">
                   <Link to={`/update-variant/${variant.slug}`}>
-                    <Button size="sm" className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-4 shadow-md shadow-brand-500/25">
+                    <Button size="sm" className="flex items-center gap-2 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-lg px-4 shadow-md font-semibold">
                       <FaEdit className="size-3.5" /> Edit
                     </Button>
                   </Link>
@@ -237,7 +237,7 @@ const VariantView = () => {
                       onClick={() => setActiveImage(url)}
                       className={`size-[72px] flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-200 ${
                         activeImage === url
-                          ? "border-blue-500 shadow-lg shadow-brand-500/20 scale-95"
+                          ? "border-accent-500 shadow-lg shadow-accent-500/20 scale-95"
                           : "border-gray-100 dark:border-gray-700 opacity-60 hover:opacity-100 hover:border-gray-300"
                       }`}
                     >
@@ -250,7 +250,7 @@ const VariantView = () => {
               {/* Quick Badges */}
               <div className="flex flex-wrap gap-2">
                 {variant.size && (
-                  <span className="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-[11px] font-bold uppercase tracking-wider">
+                  <span className="px-3 py-1.5 bg-accent-50 dark:bg-accent-500/10 border border-accent-100 dark:border-accent-500/20 text-accent-600 dark:text-accent-400 rounded-xl text-[11px] font-bold uppercase tracking-wider">
                     Size: {variant.size}
                   </span>
                 )}
@@ -275,12 +275,12 @@ const VariantView = () => {
             {/* === RIGHT: Details === */}
             <div className="lg:col-span-7 space-y-5">
               {/* Name Banner */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-500/5 dark:to-indigo-500/5 rounded-3xl p-6 border border-blue-100/60 dark:border-blue-500/10">
+              <div className="bg-gradient-to-br from-accent-50 to-accent-50 dark:from-accent-500/5 dark:to-accent-500/5 rounded-3xl p-6 border border-accent-100/60 dark:border-accent-500/10">
                 <p className="text-[10px] uppercase font-black tracking-[2.5px] text-orange-500 mb-1">Parent Product</p>
                 <p className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-3">
                   {variant.product?.name || "N/A"}
                 </p>
-                <p className="text-[10px] uppercase font-black tracking-[2.5px] text-blue-500 mb-1">Variant Name</p>
+                <p className="text-[10px] uppercase font-black tracking-[2.5px] text-accent-500 mb-1">Variant Name</p>
                 <h1 className="text-2xl font-black text-gray-900 dark:text-white">{variant.variantName}</h1>
               </div>
 
@@ -376,7 +376,7 @@ const VariantView = () => {
             {variant.specifications && (
               <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                 <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                  <FaInfoCircle className="text-blue-500 size-4" />
+                  <FaInfoCircle className="text-accent-500 size-4" />
                   <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest">Specifications</h3>
                 </div>
                 <div
@@ -390,7 +390,7 @@ const VariantView = () => {
             {variant.seo && (
               <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                 <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                  <FaGlobe className="text-blue-500 size-4" />
+                  <FaGlobe className="text-accent-500 size-4" />
                   <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest">SEO / Meta Information</h3>
                 </div>
                 <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
@@ -450,11 +450,11 @@ const VariantView = () => {
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none ${variant.isActive ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg" :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"}`}
+                className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

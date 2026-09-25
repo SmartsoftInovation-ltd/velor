@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
@@ -124,9 +124,9 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`h-9 pl-3 pr-8 rounded-lg border text-xs bg-white dark:bg-gray-800 outline-none appearance-none cursor-pointer transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 ${
+        className={`h-9 pl-3 pr-8 rounded-lg border text-xs bg-white dark:bg-gray-800 outline-none appearance-none cursor-pointer transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 ${
           value
-            ? "border-brand-500 text-gray-800 dark:text-gray-100 font-semibold"
+            ? "border-accent-500 text-gray-800 dark:text-gray-100 font-semibold"
             : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
         }`}
       >
@@ -139,7 +139,10 @@ function FilterSelect({
 }
 
 // ── Action menu ────────────────────────────────────────────────────────────
+// Row actions live in this dropdown (not inline buttons) by design; only its
+// look follows the redesign: soft accent trigger, one soft tone per action.
 interface ActionMenuProps {
+  invoiceNumber?: string;
   canEdit: boolean;
   canDelete: boolean;
   onView: () => void;
@@ -150,14 +153,16 @@ interface ActionMenuProps {
   onDelete: () => void;
 }
 
-const MENU_WIDTH = 192;
+const MENU_WIDTH = 200;
 const MENU_HEIGHT = 300;
 
-function ActionMenu({ canEdit, canDelete, onView, onInvoice, onReceipt, onChallan, onEdit, onDelete }: ActionMenuProps) {
+function ActionMenu({ invoiceNumber, canEdit, canDelete, onView, onInvoice, onReceipt, onChallan, onEdit, onDelete }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
 
   // The table scrolls inside an overflow container, which would clip an
   // absolutely-positioned menu — so the menu is fixed and positioned from the
@@ -183,12 +188,32 @@ function ActionMenu({ canEdit, canDelete, onView, onInvoice, onReceipt, onChalla
     document.addEventListener("mousedown", handler);
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
+    // Keyboard users land on the first item.
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
     return () => {
       document.removeEventListener("mousedown", handler);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
     };
   }, [open]);
+
+  const closeAndFocus = () => {
+    setOpen(false);
+    btnRef.current?.focus();
+  };
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? [],
+    );
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length]?.focus({ preventScroll: true }); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus({ preventScroll: true }); }
+    else if (e.key === "Home") { e.preventDefault(); items[0]?.focus({ preventScroll: true }); }
+    else if (e.key === "End") { e.preventDefault(); items[items.length - 1]?.focus({ preventScroll: true }); }
+    else if (e.key === "Escape") { e.preventDefault(); closeAndFocus(); }
+    else if (e.key === "Tab") setOpen(false);
+  };
 
   const run = (fn: () => void) => {
     setOpen(false);
@@ -199,49 +224,56 @@ function ActionMenu({ canEdit, canDelete, onView, onInvoice, onReceipt, onChalla
     <div ref={ref} className="inline-block">
       <button
         ref={btnRef}
+        type="button"
         onClick={() => (open ? setOpen(false) : openMenu())}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold transition-colors"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        aria-label={invoiceNumber ? `Actions for invoice ${invoiceNumber}` : "Actions"}
+        className="shine flex items-center gap-1.5 h-9 max-md:h-11 px-3 rounded border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 text-xs font-semibold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40"
       >
-        options
+        Options
         <FaChevronDown className={`size-2.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
         <div
+          ref={menuRef}
+          id={menuId}
+          role="menu"
+          aria-orientation="vertical"
+          onKeyDown={handleMenuKeyDown}
           style={{ top: pos.top, left: pos.left, width: MENU_WIDTH }}
-          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden p-1"
         >
-          <MenuItem icon={<FaEye className="size-3.5 text-blue-500" />} onClick={() => run(onView)}>
+          <MenuItem tone="view" icon={<FaEye className="size-3.5" />} onClick={() => run(onView)}>
             View Details
           </MenuItem>
 
-          <MenuItem icon={<IoIosPrint className="size-3.5 text-gray-500" />} onClick={() => run(onReceipt)}>
+          <MenuItem tone="neutral" icon={<IoIosPrint className="size-3.5" />} onClick={() => run(onReceipt)}>
             Print Receipt
           </MenuItem>
 
-          <MenuItem icon={<HiOutlineDocumentText className="size-3.5 text-gray-500" />} onClick={() => run(onInvoice)}>
+          <MenuItem tone="neutral" icon={<HiOutlineDocumentText className="size-3.5" />} onClick={() => run(onInvoice)}>
             Print Invoice
           </MenuItem>
 
-          <MenuItem icon={<FiBox className="size-3.5 text-gray-500" />} onClick={() => run(onChallan)}>
+          <MenuItem tone="neutral" icon={<FiBox className="size-3.5" />} onClick={() => run(onChallan)}>
             Print Challan
           </MenuItem>
 
+          {(canEdit || canDelete) && (
+            <div role="separator" className="my-1 h-px bg-gray-100 dark:bg-gray-700" />
+          )}
+
           {canEdit && (
-            <MenuItem
-              icon={<FaEdit className="size-3.5 text-orange-400" />}
-              onClick={() => run(onEdit)}
-            >
+            <MenuItem tone="edit" icon={<FaEdit className="size-3.5" />} onClick={() => run(onEdit)}>
               Edit Sale
             </MenuItem>
           )}
 
           {canDelete && (
-            <MenuItem
-              icon={<MdDelete className="size-3.5 text-red-500" />}
-              danger
-              onClick={() => run(onDelete)}
-            >
+            <MenuItem tone="danger" icon={<MdDelete className="size-4" />} onClick={() => run(onDelete)}>
               Delete
             </MenuItem>
           )}
@@ -251,35 +283,48 @@ function ActionMenu({ canEdit, canDelete, onView, onInvoice, onReceipt, onChalla
   );
 }
 
+// Soft icon chip per action, same tones as the row action buttons elsewhere.
+const MENU_TONES = {
+  view: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400",
+  neutral: "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400",
+  edit: "bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-400",
+  danger: "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400",
+};
+
 function MenuItem({
   icon,
   children,
   onClick,
   disabled,
-  danger,
+  tone = "neutral",
   title,
 }: {
   icon: React.ReactNode;
   children: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
-  danger?: boolean;
+  tone?: keyof typeof MENU_TONES;
   title?: string;
 }) {
   return (
     <button
+      type="button"
+      role="menuitem"
+      tabIndex={-1}
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors ${
+      className={`shine w-full flex items-center gap-2.5 px-2.5 py-2 max-md:py-2.5 rounded text-xs font-medium text-left transition-colors focus-visible:outline-none ${
         disabled
           ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
-          : danger
- ?"text-[#0A6B43] hover:bg-red-50 dark:hover:bg-[#B8E4CF]/10"
-            : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+          : tone === "danger"
+            ? "text-error-600 hover:bg-error-50 focus-visible:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/15 dark:focus-visible:bg-error-500/15"
+            : "text-gray-700 dark:text-gray-200 hover:bg-accent-50 hover:text-accent-700 focus-visible:bg-accent-50 focus-visible:text-accent-700 dark:hover:bg-accent-500/15 dark:hover:text-accent-400 dark:focus-visible:bg-accent-500/15"
       }`}
     >
-      <span className={disabled ? "opacity-40" : ""}>{icon}</span>
+      <span className={`size-7 flex items-center justify-center rounded shrink-0 ${MENU_TONES[tone]} ${disabled ? "opacity-40" : ""}`}>
+        {icon}
+      </span>
       {children}
     </button>
   );
@@ -354,7 +399,7 @@ const statusColors: Record<string, string> = {
   paid: "bg-green-100 text-green-700",
   partial: "bg-yellow-100 text-yellow-700",
   due: "bg-red-100 text-red-700",
-  complete: "bg-blue-100 text-blue-700",
+  complete: "bg-accent-50 text-accent-700 dark:bg-accent-500/15 dark:text-accent-400",
   pending: "bg-orange-100 text-orange-700",
   draft: "bg-gray-100 text-gray-600",
 };
@@ -576,13 +621,14 @@ const SalesHistoryTable = ({
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 mb-5 rounded-xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/3 p-2.5">
-        <div className="relative flex-1 min-w-56">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3 text-gray-400" />
+        <div className="relative group flex-1 min-w-56">
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3 text-gray-400 group-focus-within:text-accent-500 transition-colors" />
           <input
+            aria-label="Search sales"
             placeholder="Search by invoice number or customer…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-100 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-full h-9 pl-8 pr-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-100 outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
           />
         </div>
 
@@ -636,6 +682,7 @@ const SalesHistoryTable = ({
           <button
             onClick={clearFilters}
             title="Clear filters"
+            aria-label="Clear filters"
             className="size-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
           >
             <FaTimes className="size-3" />
@@ -658,14 +705,15 @@ const SalesHistoryTable = ({
             <div className="space-y-1">
               <div className="mb-2 flex items-start justify-between gap-3 border-b border-gray-100 pb-2 dark:border-white/[0.05]">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-blue-600">
-                    {sale.invoiceNumber}
+                  <p className="truncate">
+                    <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{sale.invoiceNumber}</span>
                   </p>
                   <p className="text-xs text-gray-400">
                     {formatDate(sale.date)} · {formatTime(sale.createdAt)}
                   </p>
                 </div>
                 <ActionMenu
+                  invoiceNumber={sale.invoiceNumber}
                   canEdit={canEdit}
                   canDelete={canDelete}
                   onView={() =>
@@ -755,12 +803,12 @@ const SalesHistoryTable = ({
                       <Button
                         onClick={fetchSales}
                         disabled={isSubmitting}
-                          className="px-8 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold shadow-lg transition-all active:scale-95 disabled:active:scale-100"
+                          className="px-8 py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white !rounded-xl font-semibold shadow-lg transition-all active:scale-95 disabled:active:scale-100"
                       >
                         {isSubmitting ? (
                           <span className="flex items-center justify-center gap-2">
-                            <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
-                            Saving...
+                            <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            Loading...
                           </span>
                         ) : (
                           "Try Again"
@@ -785,7 +833,7 @@ const SalesHistoryTable = ({
                       </h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-8">
                         {search
-                          ? <>No results for <span className="font-bold text-brand-500">"{search}"</span>. Try a different search term.</>
+                          ? <>No results for <span className="font-bold text-accent-500">"{search}"</span>. Try a different search term.</>
                           : salesList.length > 0
                             ? "No sales match the current filters."
                             : "No sales have been recorded yet."}
@@ -807,8 +855,8 @@ const SalesHistoryTable = ({
               {!loading && !isError &&
                 filtered.map((sale) => (
                   <TableRow key={sale._id} className="dark:text-gray-400">
-                    <TableCell className="px-4 py-3 text-theme-sm font-semibold text-blue-600 text-center">
-                      {sale.invoiceNumber}
+                    <TableCell className="px-4 py-3 text-center">
+                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{sale.invoiceNumber}</span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-theme-sm whitespace-nowrap text-center">
                       <div>{formatDate(sale.date)}</div>
@@ -845,6 +893,7 @@ const SalesHistoryTable = ({
                     </TableCell>
                     <TableCell className="px-4 py-3 text-theme-sm text-center">
                       <ActionMenu
+                        invoiceNumber={sale.invoiceNumber}
                         canEdit={canEdit}
                         canDelete={canDelete}
                         onView={() =>
@@ -873,27 +922,31 @@ const SalesHistoryTable = ({
       </div>
       )}
       <Modal isOpen={showDeleteModal} onClose={closeModal}>
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-lg font-bold">Confirm Deletion</h2>
-          <p className="mt-2 text-gray-600">
-            Are you sure you want to delete this sale?
+        <div className="p-8">
+          <div className="flex items-center justify-center size-16 bg-red-50 dark:bg-red-500/10 rounded-full mb-5 mx-auto">
+            <MdDelete className="size-8 text-red-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white text-center">Delete Sale?</h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed">
+            Are you sure you want to <span className="font-semibold text-red-500">delete</span> this sale? This action cannot be undone.
           </p>
-          <div className="flex justify-end mt-4 gap-x-2">
-            <Button onClick={handleDelete} disabled={isDeleting}>
+          <div className="flex gap-3 mt-7">
+            <Button onClick={closeModal} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white !rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+            >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
-                "Yes"
+                "Yes, Delete"
               )}
-            </Button>
-            <Button
-              onClick={closeModal}
-                className="bg-[#D5F0E3] text-[#0A6B43] hover:bg-[#B8E4CF]"
-            >
-              No
             </Button>
           </div>
         </div>

@@ -8,8 +8,8 @@ const SalesEmptyState = () => {
   return (
     <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 px-4 py-10">
       <div className="relative">
-        <span className="absolute inset-0 rounded-full bg-teal-500/10 blur-md" />
-        <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-teal-300 bg-teal-50 text-teal-600 dark:border-teal-500/40 dark:bg-teal-500/10 dark:text-teal-300">
+        <span className="absolute inset-0 rounded-full bg-accent-500/10 blur-md" />
+        <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-accent-300 bg-accent-50 text-accent-600 dark:border-accent-500/40 dark:bg-accent-500/15 dark:text-accent-400">
           <BsBoxSeam className="size-6" />
         </span>
       </div>
@@ -25,11 +25,11 @@ const SalesEmptyState = () => {
 
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className="flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-          <MdOutlineQrCodeScanner className="size-3.5 text-teal-600 dark:text-teal-400" />
+          <MdOutlineQrCodeScanner className="size-3.5 text-accent-600 dark:text-accent-400" />
           Scan barcode
         </span>
         <span className="flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-          <FaSearch className="size-3 text-teal-600 dark:text-teal-400" />
+          <FaSearch className="size-3 text-accent-600 dark:text-accent-400" />
           Search by name or SKU
         </span>
       </div>

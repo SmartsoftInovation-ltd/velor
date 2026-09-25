@@ -40,7 +40,7 @@ const UpdateVariant = () => {
         <Button
           onClick={() => navigate(-1)}
           variant="outline"
-          className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:text-brand-500 hover:border-brand-300 transition-all shadow-sm rounded-xl px-4 py-2"
+          className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:text-accent-500 hover:border-accent-300 transition-all shadow-sm rounded-xl px-4 py-2"
         >
           <FaArrowLeft className="size-4" />
           <span className="font-semibold text-sm">Back</span>

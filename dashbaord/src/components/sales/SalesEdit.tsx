@@ -34,7 +34,7 @@ const SalesEdit = () => {
   if (isLoading)
     return (
       <div className="flex justify-center min-h-100 items-center">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
 
@@ -46,7 +46,7 @@ const SalesEdit = () => {
         </p>
         <Button
           onClick={() => refetch()}
-          className="px-6 py-2 bg-brand-500 text-white rounded-xl"
+          className="px-6 py-2 !bg-accent-500 hover:!bg-accent-600 !text-white !rounded-xl font-semibold"
         >
           Try Again
         </Button>

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DatePicker from "../form/date-picker";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
+import MobileActionBar from "../common/MobileActionBar";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { MdDelete, MdOutlineQrCodeScanner } from "react-icons/md";
 import { FaSpinner, FaBoxOpen } from "react-icons/fa";
@@ -569,7 +570,7 @@ const CreatePurchaseForm = () => {
             Products
           </p>
           {tableProducts.length > 0 && (
-            <span className="text-xs font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-medium text-accent-600 dark:text-accent-400 bg-accent-50 dark:bg-accent-500/10 px-2.5 py-0.5 rounded-full">
               {tableProducts.length} item{tableProducts.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -585,7 +586,8 @@ const CreatePurchaseForm = () => {
               type="button"
               onClick={focusSearchInput}
               title="Click to resume scanning"
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 transition-colors"
+              aria-label="Resume scanning"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-500 transition-colors"
             >
               <MdOutlineQrCodeScanner size={14} />
             </button>
@@ -600,10 +602,10 @@ const CreatePurchaseForm = () => {
               autoComplete="off"
               disabled={isScanning}
               placeholder="Scan barcode or search by product name…"
-              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all duration-200"
+              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all duration-200"
             />
             {searchLoading && (
-              <FaSpinner className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-500 size-3.5 animate-spin" />
+              <FaSpinner className="absolute right-3.5 top-1/2 -translate-y-1/2 text-accent-500 size-3.5 animate-spin" />
             )}
 
             {/* Dropdown */}
@@ -611,7 +613,7 @@ const CreatePurchaseForm = () => {
               <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
                 {searchLoading ? (
                   <div className="flex items-center gap-3 px-4 py-4 text-sm text-gray-400">
-                    <FaSpinner className="animate-spin text-brand-500 size-4 shrink-0" />
+                    <FaSpinner className="animate-spin text-accent-500 size-4 shrink-0" />
                     <span>Searching products…</span>
                   </div>
                 ) : searchResults.length > 0 ? (
@@ -673,7 +675,7 @@ const CreatePurchaseForm = () => {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-semibold text-brand-600 dark:text-brand-400">
+                            <p className="text-sm font-semibold text-accent-600 dark:text-accent-400">
                               ৳{item.purchasePrice ?? 0}
                             </p>
                             <p className="text-[11px] text-gray-400 mt-0.5">
@@ -799,7 +801,7 @@ const CreatePurchaseForm = () => {
                             )
                           }
                           onWheel={blurOnWheel}
-                          className="w-20 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all tabular-nums"
+                          className="w-20 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500/20 transition-all tabular-nums"
                         />
                       </td>
                       <td className="px-3 py-2.5">
@@ -815,7 +817,7 @@ const CreatePurchaseForm = () => {
                             )
                           }
                           onWheel={blurOnWheel}
-                          className="w-14 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all tabular-nums"
+                          className="w-14 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500/20 transition-all tabular-nums"
                         />
                       </td>
                       <td className="px-3 py-2.5">
@@ -830,7 +832,7 @@ const CreatePurchaseForm = () => {
                             )
                           }
                           onWheel={blurOnWheel}
-                          className="w-20 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all tabular-nums"
+                          className="w-20 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500/20 transition-all tabular-nums"
                         />
                       </td>
                       <td className="px-3 py-2.5">
@@ -845,7 +847,7 @@ const CreatePurchaseForm = () => {
                             )
                           }
                           onWheel={blurOnWheel}
-                          className="w-20 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all tabular-nums"
+                          className="w-20 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500/20 transition-all tabular-nums"
                         />
                       </td>
                       <td className="px-3 py-2.5">
@@ -857,7 +859,8 @@ const CreatePurchaseForm = () => {
                         <button
                           type="button"
                           onClick={() => removeRow(index)}
-                          className="size-7 flex items-center justify-center rounded-lg bg-red-500 text-gray-300 dark:text-gray-600 hover:text-white hover:bg-red-500/80 dark:hover:bg-red-500 transition-all duration-200 "
+                          aria-label="Remove item"
+                          className="shine size-8 flex items-center justify-center rounded bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 transition-all active:scale-90"
                         >
                           <MdDelete className="size-4" />
                         </button>
@@ -910,7 +913,7 @@ const CreatePurchaseForm = () => {
                     )
                   }
                   onWheel={blurOnWheel}
-                  className="w-full pl-4 pr-0 py-0 text-base font-bold bg-transparent text-gray-800 dark:text-white outline-none tabular-nums border-0 border-b border-gray-200 dark:border-gray-700 rounded-none focus:border-brand-500 transition-colors"
+                  className="w-full pl-4 pr-0 py-0 text-base font-bold bg-transparent text-gray-800 dark:text-white outline-none tabular-nums border-0 border-b border-gray-200 dark:border-gray-700 rounded-none focus:border-accent-500 transition-colors"
                 />
               </div>
             </div>
@@ -935,17 +938,17 @@ const CreatePurchaseForm = () => {
                     )
                   }
                   onWheel={blurOnWheel}
-                  className="w-full pl-4 pr-0 py-0 text-base font-bold bg-transparent text-gray-800 dark:text-white outline-none tabular-nums border-0 border-b border-gray-200 dark:border-gray-700 rounded-none focus:border-brand-500 transition-colors"
+                  className="w-full pl-4 pr-0 py-0 text-base font-bold bg-transparent text-gray-800 dark:text-white outline-none tabular-nums border-0 border-b border-gray-200 dark:border-gray-700 rounded-none focus:border-accent-500 transition-colors"
                 />
               </div>
             </div>
 
             {/* Payable — read-only, accent */}
-            <div className="rounded-xl bg-brand-50 dark:bg-brand-500/10 px-4 py-3 space-y-1">
-              <p className="text-[10px] font-semibold text-brand-500 dark:text-brand-400 uppercase tracking-wider">
+            <div className="rounded-xl bg-accent-50 dark:bg-accent-500/10 px-4 py-3 space-y-1">
+              <p className="text-[10px] font-semibold text-accent-500 dark:text-accent-400 uppercase tracking-wider">
                 Payable
               </p>
-              <p className="text-base font-bold text-brand-600 dark:text-brand-400 tabular-nums">
+              <p className="text-base font-bold text-accent-600 dark:text-accent-400 tabular-nums">
                 ৳{fmt(formData.payable)}
               </p>
             </div>
@@ -967,7 +970,7 @@ const CreatePurchaseForm = () => {
                     handleFormChange("paid", parseFloat(e.target.value) || 0)
                   }
                   onWheel={blurOnWheel}
-                  className="w-full pl-4 pr-0 py-0 text-base font-bold bg-transparent text-gray-800 dark:text-white outline-none tabular-nums border-0 border-b border-gray-200 dark:border-gray-700 rounded-none focus:border-brand-500 transition-colors"
+                  className="w-full pl-4 pr-0 py-0 text-base font-bold bg-transparent text-gray-800 dark:text-white outline-none tabular-nums border-0 border-b border-gray-200 dark:border-gray-700 rounded-none focus:border-accent-500 transition-colors"
                 />
               </div>
             </div>
@@ -1004,15 +1007,16 @@ const CreatePurchaseForm = () => {
       </div>
 
       {/* ── Submit ── */}
-      <div className="flex items-center justify-end gap-3 pt-1">
+      <MobileActionBar>
+<div className="flex items-center justify-end gap-3 pt-1">
         <Button
           onClick={handleSubmit}
           disabled={submitLoading}
-            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-7 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-60 min-w-36"
+            className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-7 py-2.5 rounded-xl text-sm transition-all disabled:opacity-60 min-w-36"
         >
           {submitLoading ? (
             <span className="flex items-center justify-center gap-2">
-              <FaSpinner className="animate-spin size-3.5" />
+              <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               Creating…
             </span>
           ) : (
@@ -1020,6 +1024,7 @@ const CreatePurchaseForm = () => {
           )}
         </Button>
       </div>
+</MobileActionBar>
     </div>
   );
 };

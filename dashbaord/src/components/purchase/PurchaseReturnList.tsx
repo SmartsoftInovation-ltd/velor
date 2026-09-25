@@ -20,7 +20,7 @@ const PurchaseReturnList = () => {
         hideTitle
         actions={
           <Link to="/purchase-return">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
               Purchase Return
             </Button>
           </Link>

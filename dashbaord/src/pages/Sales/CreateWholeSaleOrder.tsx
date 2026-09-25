@@ -20,7 +20,7 @@ const CreateWholeSaleOrder = () => {
         hideTitle
         actions={
           <Link to="/sale-order-list" className="w-full sm:w-auto">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] px-4 py-2 rounded w-full sm:w-auto">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-4 py-2 rounded w-full sm:w-auto">
               Order List
             </Button>
           </Link>

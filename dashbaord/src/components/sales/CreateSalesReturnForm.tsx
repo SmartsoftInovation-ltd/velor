@@ -350,11 +350,11 @@ const CreateSalesReturnForm = () => {
               {selectedSale ? (
                 <div
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm rounded-xl border ${
-                    errors.invoice ? "border-red-400" : "border-[#0A6B43]/40 bg-[#D5F0E3]/40 dark:bg-blue-500/5"
+                    errors.invoice ? "border-red-400" : "border-accent-500/40 bg-accent-50/60 dark:bg-accent-500/15"
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <FaFileInvoice className="size-3.5 text-[#0A6B43] shrink-0" />
+                    <FaFileInvoice className="size-3.5 text-accent-600 shrink-0" />
                     <span className="text-sm font-medium text-gray-800 dark:text-white truncate">
                       {selectedSale.invoiceNumber}
                     </span>
@@ -365,6 +365,7 @@ const CreateSalesReturnForm = () => {
                   <button
                     type="button"
                     onClick={clearInvoice}
+                    aria-label="Clear invoice"
                     className="text-gray-400 hover:text-red-500 transition-colors shrink-0 ml-2"
                   >
                     <FaTimes className="size-3" />
@@ -374,10 +375,11 @@ const CreateSalesReturnForm = () => {
                 <button
                   type="button"
                   onClick={() => setInvoicePickerOpen((v) => !v)}
+                  aria-expanded={invoicePickerOpen}
                   className={`w-full flex items-center gap-2 px-3.5 py-2.5 text-sm rounded-xl border text-left ${
                     errors.invoice
                       ? "border-red-400"
-                      : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-[#0A6B43]/50"
+                      : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-accent-500/50"
                   } text-gray-400 transition-all`}
                 >
                   <FaSearch className="size-3.5 shrink-0" />
@@ -415,7 +417,7 @@ const CreateSalesReturnForm = () => {
                           </p>
                           <p className="text-xs text-gray-400 truncate">{customerLabel(item)}</p>
                         </div>
-                        <span className="text-sm font-bold text-[#0A6B43] dark:text-blue-400 tabular-nums shrink-0 ml-2">
+                        <span className="text-sm font-bold text-accent-600 dark:text-accent-400 tabular-nums shrink-0 ml-2">
                           ৳{fmt(item.total || 0)}
                         </span>
                       </div>
@@ -447,10 +449,10 @@ const CreateSalesReturnForm = () => {
         <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 dark:border-gray-800">
             <div className="flex items-center gap-2">
-              <FaBoxOpen className="size-3.5 text-[#0A6B43]" />
+              <FaBoxOpen className="size-3.5 text-accent-600" />
               <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Items to Return</p>
               {selectedItems.length > 0 && (
-                <span className="text-xs font-bold text-[#0A6B43] dark:text-blue-400 bg-[#D5F0E3] dark:bg-blue-500/10 size-5 rounded-full flex items-center justify-center">
+                <span className="text-xs font-bold text-accent-600 dark:text-accent-400 bg-accent-50 dark:bg-accent-500/15 size-5 rounded-full flex items-center justify-center">
                   {selectedItems.length}
                 </span>
               )}
@@ -459,7 +461,7 @@ const CreateSalesReturnForm = () => {
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="text-xs font-medium text-[#0A6B43] dark:text-blue-400 hover:underline"
+                className="text-xs font-medium text-accent-600 dark:text-accent-400 hover:underline"
               >
                 {returnItems.every((it) => it.selected) ? "Deselect All" : "Select All"}
               </button>
@@ -476,8 +478,8 @@ const CreateSalesReturnForm = () => {
             {!selectedSale ? (
               <div className="flex flex-col items-center justify-center gap-3 px-4 py-10">
                 <div className="relative">
-                  <span className="absolute inset-0 rounded-full bg-[#0A6B43]/10 blur-md" />
-                  <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-[#0A6B43]/30 bg-[#D5F0E3] text-[#0A6B43] dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300">
+                  <span className="absolute inset-0 rounded-full bg-accent-500/10 blur-md" />
+                  <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-accent-500/30 bg-accent-50 text-accent-600 dark:border-accent-500/40 dark:bg-accent-500/15 dark:text-accent-400">
                     <FaFileInvoice className="size-6" />
                   </span>
                 </div>
@@ -491,18 +493,18 @@ const CreateSalesReturnForm = () => {
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <span className="flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                    <FaSearch className="size-3 text-[#0A6B43] dark:text-blue-400" />
+                    <FaSearch className="size-3 text-accent-600 dark:text-accent-400" />
                     Search by invoice number
                   </span>
                   <span className="flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                    <FaBoxOpen className="size-3 text-[#0A6B43] dark:text-blue-400" />
+                    <FaBoxOpen className="size-3 text-accent-600 dark:text-accent-400" />
                     Only unreturned items load
                   </span>
                 </div>
               </div>
             ) : loadingDetail ? (
               <div className="py-8 text-center">
-                <FaSpinner className="animate-spin text-[#0A6B43] size-6 mx-auto" />
+                <FaSpinner className="animate-spin text-accent-600 size-6 mx-auto" />
               </div>
             ) : returnItems.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
@@ -529,7 +531,7 @@ const CreateSalesReturnForm = () => {
                     style={{ animationDelay: `${Math.min(idx, 12) * 40}ms` }}
                     className={`animate-row-in flex items-center gap-3 rounded-xl border-l-4 px-3 py-3 cursor-pointer transition-colors ${
                       item.selected
-                        ? "border-l-[#0A6B43] bg-[#D5F0E3]/60 dark:bg-blue-500/10"
+                        ? "border-l-accent-500 bg-accent-50/60 dark:bg-accent-500/15"
                         : "border-l-transparent bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-800/70"
                     }`}
                   >
@@ -539,7 +541,7 @@ const CreateSalesReturnForm = () => {
                       checked={item.selected}
                       onChange={() => toggleItem(item.key)}
                       onClick={(e) => e.stopPropagation()}
-                      className="size-4 rounded border-gray-300 text-[#0A6B43] focus:ring-[#0A6B43]/30 shrink-0"
+                      className="size-4 rounded border-gray-300 text-accent-600 focus:ring-accent-500/30 shrink-0"
                     />
 
                     {/* Image */}
@@ -587,7 +589,8 @@ const CreateSalesReturnForm = () => {
                         type="button"
                         disabled={!item.selected || item.quantity <= 1}
                         onClick={() => stepQuantity(item.key, -1)}
-                        className="size-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Decrease quantity"
+                        className="shine size-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       >
                         <FaMinus className="size-2.5" />
                       </button>
@@ -598,7 +601,8 @@ const CreateSalesReturnForm = () => {
                         type="button"
                         disabled={!item.selected || item.quantity >= item.maxQuantity}
                         onClick={() => stepQuantity(item.key, 1)}
-                        className="size-7 flex items-center justify-center rounded-lg bg-[#D5F0E3] dark:bg-blue-500/10 text-[#0A6B43] dark:text-blue-400 hover:bg-[#B8E4CF] dark:hover:bg-blue-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Increase quantity"
+                        className="shine size-7 flex items-center justify-center rounded-lg bg-accent-50 dark:bg-accent-500/15 text-accent-600 dark:text-accent-400 hover:bg-accent-100 dark:hover:bg-accent-500/25 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       >
                         <FaPlus className="size-2.5" />
                       </button>
@@ -608,7 +612,7 @@ const CreateSalesReturnForm = () => {
                     <div className="text-right w-20 shrink-0">
                       <p
                         className={`text-sm font-bold tabular-nums ${
-                          isOverQty ? "text-red-500" : "text-[#0A6B43] dark:text-blue-400"
+                          isOverQty ? "text-red-500" : "text-accent-600 dark:text-accent-400"
                         }`}
                       >
                         ৳{fmt(item.selected ? item.unitPrice * item.quantity : 0)}
@@ -627,22 +631,22 @@ const CreateSalesReturnForm = () => {
         {/* Summary */}
         <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
           <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-2.5 dark:border-gray-800">
-            <HiOutlineReceiptRefund className="size-4 text-[#0A6B43]" />
+            <HiOutlineReceiptRefund className="size-4 text-accent-600" />
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Summary</p>
           </div>
           <div className="space-y-3 p-3.5">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500 dark:text-gray-400">Return Value</p>
-              <p className="text-base font-bold text-[#0A6B43] dark:text-blue-400 tabular-nums">
+              <p className="text-base font-bold text-accent-600 dark:text-accent-400 tabular-nums">
                 ৳{fmt(totalReturnAmount)}
               </p>
             </div>
 
-            <div className="rounded-xl border border-[#0A6B43]/15 bg-[#D5F0E3] px-4 py-3 text-center dark:border-blue-500/20 dark:bg-blue-500/10">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-[#0A6B43]/70 dark:text-blue-300/80">
+            <div className="rounded-xl border border-accent-500/15 bg-accent-50 px-4 py-3 text-center dark:border-accent-500/20 dark:bg-accent-500/15">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-accent-600/70 dark:text-accent-400/80">
                 Refund to Customer
               </p>
-              <p className="mt-0.5 text-2xl font-bold tabular-nums text-[#0A6B43] dark:text-blue-300">
+              <p className="mt-0.5 text-2xl font-bold tabular-nums text-accent-600 dark:text-accent-400">
                 ৳{fmt(totalReturnAmount)}
               </p>
             </div>
@@ -664,7 +668,7 @@ const CreateSalesReturnForm = () => {
                     </div>
                     <div className="px-3.5 py-2.5">
                       <p className="text-[10px] text-gray-400 mb-0.5">After Return</p>
-                      <p className="text-sm font-bold text-[#0A6B43] dark:text-blue-400 tabular-nums">
+                      <p className="text-sm font-bold text-accent-600 dark:text-accent-400 tabular-nums">
                         ৳
                         {fmt(
                           Math.max(
@@ -735,7 +739,7 @@ const CreateSalesReturnForm = () => {
                   }}
                   className={`w-full px-2.5 py-2.5 text-xs rounded-xl border ${
                     errors.returnReason ? "border-red-400" : "border-gray-200 dark:border-gray-700"
-                  } bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-[#0A6B43] focus:ring-2 focus:ring-[#0A6B43]/20 transition-all placeholder:text-gray-400`}
+                  } bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all placeholder:text-gray-400`}
                 />
               </div>
               {errors.returnReason && (
@@ -765,7 +769,7 @@ const CreateSalesReturnForm = () => {
                 rows={3}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-[#0A6B43] focus:ring-2 focus:ring-[#0A6B43]/20 transition-all placeholder:text-gray-400 resize-none"
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all placeholder:text-gray-400 resize-none"
               />
             </div>
           </div>
@@ -777,7 +781,7 @@ const CreateSalesReturnForm = () => {
             type="button"
             onClick={resetForm}
             disabled={isLoading}
-            className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="shine rounded-xl border border-gray-200 bg-gray-50 px-5 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Reset
           </button>
@@ -785,7 +789,7 @@ const CreateSalesReturnForm = () => {
             type="button"
             onClick={handleSubmit}
             disabled={isLoading}
-              className="rounded-xl bg-[#D5F0E3] px-5 py-2.5 text-sm font-semibold text-[#0A6B43] transition-all hover:bg-[#B8E4CF] disabled:opacity-60"
+              className="shine rounded-xl bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-accent-600 disabled:opacity-60"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">

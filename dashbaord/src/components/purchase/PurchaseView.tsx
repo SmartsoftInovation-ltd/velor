@@ -152,7 +152,7 @@ const PurchaseView = () => {
   if (isLoading)
     return (
       <div className="flex justify-center min-h-100 items-center">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
 
@@ -160,7 +160,7 @@ const PurchaseView = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-100 text-center">
         <p className="text-red-500 font-bold text-lg mb-4">Failed to load purchase!</p>
-        <Button onClick={() => refetch()} className="px-6 py-2 bg-brand-500 text-white rounded-xl">
+        <Button onClick={() => refetch()} className="px-6 py-2 bg-accent-500 text-white rounded-xl">
           Try Again
         </Button>
       </div>
@@ -185,7 +185,7 @@ const PurchaseView = () => {
               onClick={() => navigate(-1)}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 h-10 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-brand-500 font-semibold text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-10 !rounded-xl !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm transition-all active:scale-95"
             >
               <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -196,7 +196,7 @@ const PurchaseView = () => {
               onClick={() => refetch()}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 h-10 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-brand-500 font-semibold text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-10 !rounded-xl !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm transition-all active:scale-95"
             >
               <FaSync className="size-3.5" />
               Refresh
@@ -205,7 +205,7 @@ const PurchaseView = () => {
           <Link to={`/update-purchase/${purchase._id}`}>
             <Button
               size="sm"
-                className="flex items-center gap-2 px-5 h-10 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-bold text-sm shadow-lg transition-all active:scale-95"
+                className="flex items-center gap-2 px-5 h-10 !bg-accent-500 hover:!bg-accent-600 !text-white !rounded-xl font-semibold text-sm shadow-lg transition-all active:scale-95"
             >
               <FaEdit className="size-3.5" />
               Edit Purchase
@@ -268,8 +268,8 @@ const PurchaseView = () => {
           {/* Supplier section */}
           {purchase.supplierId && (
             <div className="px-6 pb-6">
-              <div className="bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-xl p-4">
-                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">Supplier Information</p>
+              <div className="bg-accent-50/50 dark:bg-accent-500/5 border border-accent-100 dark:border-accent-500/20 rounded-xl p-4">
+                <p className="text-[10px] font-black text-accent-600 dark:text-accent-400 uppercase tracking-widest mb-3">Supplier Information</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Name</p>

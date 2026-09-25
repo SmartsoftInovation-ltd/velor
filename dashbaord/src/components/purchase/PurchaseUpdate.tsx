@@ -5,6 +5,7 @@ import DatePicker from "../form/date-picker";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
+import MobileActionBar from "../common/MobileActionBar";
 import {
   Table,
   TableBody,
@@ -398,7 +399,7 @@ const UpdatePurchase: React.FC = () => {
   if (fetchLoading)
     return (
       <div className="flex justify-center min-h-100 items-center">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
 
@@ -415,7 +416,7 @@ const UpdatePurchase: React.FC = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-md font-medium">Update Purchase</h2>
               <Link to="/purchase-list">
-                <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
+                <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-4 py-2 rounded">
                   Purchase List
                 </Button>
               </Link>
@@ -714,9 +715,10 @@ const UpdatePurchase: React.FC = () => {
                               <Button
                                 onClick={() => removeRow(index)}
                                 size="sm"
-                                className="bg-red-500 text-white hover:bg-red-600"
+                                aria-label="Remove product"
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
                               >
-                                <MdDelete />
+                                <MdDelete className="size-5" />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -798,9 +800,24 @@ const UpdatePurchase: React.FC = () => {
               </div>
             </div>
 
-            <Button onClick={handleSubmit} disabled={submitLoading}>
-              {submitLoading ? "Updating..." : "Update Purchase"}
-            </Button>
+            <MobileActionBar>
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitLoading}
+                  className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-7 py-2.5 rounded-xl text-sm transition-all disabled:opacity-60"
+                >
+                  {submitLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Updating...
+                    </span>
+                  ) : (
+                    "Update Purchase"
+                  )}
+                </Button>
+              </div>
+            </MobileActionBar>
           </div>
         </ComponentCard>
       </div>

@@ -92,9 +92,9 @@ const MultiSelect = ({
         type="button"
         onClick={() => { setOpen(!open); setSearch(""); }}
         className={`w-full min-h-11 flex flex-wrap items-center gap-1.5 px-3 py-2 text-sm rounded-xl border transition-all ${
-          open ? "border-brand-500 ring-2 ring-brand-500/20 bg-white dark:bg-gray-900"
+          open ? "border-accent-500 ring-2 ring-accent-500/20 bg-white dark:bg-gray-900"
           : error ? "border-red-500 bg-white dark:bg-gray-900"
-          : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-brand-400"
+          : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-accent-400"
         }`}
       >
         {selected.length === 0 ? (
@@ -106,9 +106,9 @@ const MultiSelect = ({
             {selected.map((v) => {
               const opt = options.find((o) => o.value === v);
               return (
-                <span key={v} className="flex items-center gap-1 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-lg text-xs font-semibold">
+                <span key={v} className="flex items-center gap-1 bg-accent-50 dark:bg-accent-500/15 text-accent-700 dark:text-accent-300 px-2 py-0.5 rounded-lg text-xs font-semibold">
                   {opt?.label ?? v.slice(-6)}
-                  <span onClick={(e) => { e.stopPropagation(); toggle(v); }} className="text-brand-400 hover:text-red-500 cursor-pointer">
+                  <span onClick={(e) => { e.stopPropagation(); toggle(v); }} className="text-accent-400 hover:text-red-500 cursor-pointer">
                     <FaTimes className="size-2.5" />
                   </span>
                 </span>
@@ -117,7 +117,7 @@ const MultiSelect = ({
             <span className="ml-auto" />
           </>
         )}
-        <FaChevronDown className={`ml-auto size-3 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180 text-brand-500" : ""}`} />
+        <FaChevronDown className={`ml-auto size-3 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180 text-accent-500" : ""}`} />
       </button>
 
       {open && (
@@ -127,7 +127,7 @@ const MultiSelect = ({
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-3" />
               <input autoFocus type="text" value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 outline-none focus:border-brand-500 transition-all placeholder:text-gray-400 dark:text-white" />
+                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 outline-none focus:border-accent-500 transition-all placeholder:text-gray-400 dark:text-white" />
             </div>
           </div>
           <div className="max-h-52 overflow-y-auto py-1">
@@ -140,10 +140,10 @@ const MultiSelect = ({
               return (
                 <button key={opt.value} type="button" onClick={() => toggle(opt.value)}
                   className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
-                    checked ? "bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300"
+                    checked ? "bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300"
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                   }`}>
-                  <span className={`size-4 rounded flex items-center justify-center border shrink-0 ${checked ? "bg-brand-500 border-brand-500" : "border-gray-300 dark:border-gray-600"}`}>
+                  <span className={`size-4 rounded flex items-center justify-center border shrink-0 ${checked ? "bg-accent-500 border-accent-500" : "border-gray-300 dark:border-gray-600"}`}>
                     {checked && <FaCheck className="size-2.5 text-white" />}
                   </span>
                   {opt.label}
@@ -339,7 +339,7 @@ const CreateSizeChartForm = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white transition-all resize-none"
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white transition-all resize-none"
             />
           </div>
         </div>
@@ -373,7 +373,7 @@ const CreateSizeChartForm = () => {
       {/* ── Section 3: Visual Size Chart Editor ── */}
       <section className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-theme-sm">
         <div className="flex items-center gap-2 mb-1">
-          <FaTable className="size-3.5 text-brand-500" />
+          <FaTable className="size-3.5 text-accent-500" />
           <h3 className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">
             Direct Visual Size Chart Editor
           </h3>
@@ -387,13 +387,13 @@ const CreateSizeChartForm = () => {
           <button
             onClick={addColumn}
             disabled={columns.length >= 10}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-all active:scale-95"
+            className="shine flex items-center gap-2 px-4 py-2 bg-accent-500 hover:bg-accent-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-all active:scale-95"
           >
             <FaPlus className="size-3" /> ADD ATTRIBUTE (COLUMN)
           </button>
           <button
             onClick={addRow}
-              className="flex items-center gap-2 px-4 py-2 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-xs font-bold rounded-lg transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 shine bg-accent-50 hover:bg-accent-100 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25 text-xs font-bold rounded-lg transition-all active:scale-95"
           >
             <FaPlus className="size-3" /> ADD SIZE (ROW)
           </button>
@@ -420,6 +420,7 @@ const CreateSizeChartForm = () => {
                     {/* Delete column — visible on hover */}
                     <button
                       onClick={() => removeColumn(i)}
+                      aria-label="Remove column"
                       disabled={columns.length <= 1}
                       className="absolute top-1.5 right-1.5 size-4 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20 text-red-500 opacity-0 group-hover:opacity-100 disabled:hidden transition-opacity"
                     >
@@ -435,7 +436,7 @@ const CreateSizeChartForm = () => {
                       className={`w-full text-center text-xs font-black uppercase tracking-wide bg-transparent border-b pb-0.5 outline-none placeholder:text-gray-300 dark:text-white transition-colors ${
                         errors[`col_label_${i}`]
                           ? "border-red-400 text-red-500"
-                          : "border-transparent focus:border-brand-400 text-gray-700 dark:text-gray-200"
+                          : "border-transparent focus:border-accent-400 text-gray-700 dark:text-gray-200"
                       }`}
                     />
 
@@ -443,7 +444,7 @@ const CreateSizeChartForm = () => {
                     <select
                       value={col.unit}
                       onChange={(e) => updateColumnUnit(i, e.target.value)}
-                      className="w-full text-center text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-transparent outline-none cursor-pointer mt-0.5 hover:text-brand-500 transition-colors"
+                      className="w-full text-center text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-transparent outline-none cursor-pointer mt-0.5 hover:text-accent-500 transition-colors"
                     >
                       {UNIT_OPTIONS.map((u) => (
                         <option key={u.value} value={u.value}>{u.label}</option>
@@ -464,7 +465,7 @@ const CreateSizeChartForm = () => {
               {rows.map((row, ri) => (
                 <tr
                   key={ri}
-                  className="border-b border-gray-100 dark:border-gray-800 last:border-none hover:bg-brand-50/30 dark:hover:bg-brand-500/5 transition-colors"
+                  className="border-b border-gray-100 dark:border-gray-800 last:border-none hover:bg-accent-50/30 dark:hover:bg-accent-500/5 transition-colors"
                 >
                   {/* Size label cell */}
                   <td className="px-3 py-2.5">
@@ -473,10 +474,10 @@ const CreateSizeChartForm = () => {
                       value={row.label}
                       onChange={(e) => updateRowLabel(ri, e.target.value)}
                       placeholder="S"
-                      className={`w-full h-9 px-3 text-sm font-bold text-center rounded-lg border outline-none focus:ring-1 focus:ring-brand-500/20 transition-all bg-white dark:bg-gray-900 dark:text-white placeholder:text-gray-300 ${
+                      className={`w-full h-9 px-3 text-sm font-bold text-center rounded-lg border outline-none focus:ring-1 focus:ring-accent-500/20 transition-all bg-white dark:bg-gray-900 dark:text-white placeholder:text-gray-300 ${
                         errors[`row_label_${ri}`]
                           ? "border-red-400 focus:border-red-400"
-                          : "border-gray-200 dark:border-gray-700 focus:border-brand-500"
+                          : "border-gray-200 dark:border-gray-700 focus:border-accent-500"
                       }`}
                     />
                     {errors[`row_label_${ri}`] && (
@@ -492,7 +493,7 @@ const CreateSizeChartForm = () => {
                         value={val}
                         onChange={(e) => updateRowValue(ri, ci, e.target.value)}
                         placeholder="—"
-                        className="w-full h-9 px-3 text-sm text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white placeholder:text-gray-300 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition-all"
+                        className="w-full h-9 px-3 text-sm text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-white placeholder:text-gray-300 outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500/20 transition-all"
                       />
                     </td>
                   ))}
@@ -501,6 +502,7 @@ const CreateSizeChartForm = () => {
                   <td className="px-3 py-2.5 border-l border-gray-100 dark:border-gray-800 text-center">
                     <button
                       onClick={() => removeRow(ri)}
+                      aria-label="Remove size row"
                       disabled={rows.length <= 1}
                       className="size-8 flex items-center justify-center mx-auto rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-20 transition-colors"
                     >
@@ -584,7 +586,7 @@ const CreateSizeChartForm = () => {
           <Button
             onClick={handleSubmit}
             disabled={isLoading}
-              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-10 py-3.5 rounded-xl font-bold uppercase tracking-widest text-sm flex items-center gap-3 shadow-lg border-none active:scale-95 transition-all"
+              className="!bg-accent-500 hover:!bg-accent-600 !text-white px-10 py-3.5 rounded-xl font-bold uppercase tracking-widest text-sm flex items-center gap-3 shadow-lg border-none active:scale-95 transition-all"
           >
             {isLoading ? (
               <>

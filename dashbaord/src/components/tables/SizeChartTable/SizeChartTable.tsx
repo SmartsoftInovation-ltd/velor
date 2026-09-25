@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
 import Button from "../../ui/button/Button";
 import Input from "../../form/input/InputField";
 import { Link } from "react-router";
@@ -181,7 +181,7 @@ export default function SizeChartTable({
     overscan: 10,
   });
 
-  const gridTemplateColumns = "70px 2fr 130px 1.5fr 70px 70px 110px 120px 200px";
+  const gridTemplateColumns = "110px 2fr 130px 1.5fr 70px 70px 110px 120px 220px";
 
   const getApplicableItems = (chart: SizeChart): ApplicableItem[] => {
     switch (chart.applicableLevel) {
@@ -258,12 +258,13 @@ export default function SizeChartTable({
             placeholder="Search size charts..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-10 w-full rounded-lg pl-9 pr-9 transition-colors"
+            className="h-10 w-full rounded-lg pl-9 pr-9 transition-colors focus:ring-2 focus:ring-accent-500/20"
           />
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-accent-500" />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
+              aria-label="Clear search"
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 transition-colors hover:text-red-500"
             >
               <FaTimes className="size-3.5" />
@@ -283,19 +284,12 @@ export default function SizeChartTable({
             <div>
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div>
-                  <span className="text-xs text-gray-400">#{index + 1}</span>
                   <h3 className="font-bold text-sm text-gray-800 dark:text-white/90">
                     {chart.name ?? "—"}
                   </h3>
+                  <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">#{index + 1}</p>
                 </div>
-                <Badge
-                  size="sm"
-                  variant="solid"
-                  color={chart.isActive ? "success" : "error"}
-                  className="min-w-18.75 font-black text-[10px] uppercase shadow-md"
-                >
-                  {chart.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <StatusPill isActive={chart.isActive} />
               </div>
               <MobileCardRow label="Level">
                 <span className={`text-[10px] font-bold capitalize px-2.5 py-1 rounded-lg ${levelStyle[chart.applicableLevel]}`}>
@@ -314,7 +308,8 @@ export default function SizeChartTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="max-md:size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View size chart"
                   >
                     <FaEye className="size-4" />
                   </Button>
@@ -325,11 +320,12 @@ export default function SizeChartTable({
                     disabled={togglePending}
                     size="sm"
                     variant="outline"
-                    className={`max-md:size-11 p-0 rounded-2xl transition-all active:scale-90 border-none ${
+                    className={`max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 ${
                       chart.isActive
-                        ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                        : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                     }`}
+                    aria-label={chart.isActive ? "Deactivate size chart" : "Activate size chart"}
                   >
                     {chart.isActive ? (
                       <FaToggleOn className="size-7" />
@@ -343,8 +339,9 @@ export default function SizeChartTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="max-md:size-11 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
-                    >
+                      className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit size chart"
+                  >
                       <FaEdit className="size-4" />
                     </Button>
                   </Link>
@@ -353,7 +350,8 @@ export default function SizeChartTable({
                   <Button
                     onClick={() => handleDeleteModal(chart.slug)}
                     size="sm"
-                    className="max-md:size-11 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                    className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete size chart"
                   >
                     <MdDelete className="size-5" />
                   </Button>
@@ -376,7 +374,7 @@ export default function SizeChartTable({
                   isHeader
                   className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
                 >
-                  S/N
+                  Serial ID
                 </TableCell>
                 <TableCell
                   isHeader
@@ -443,8 +441,8 @@ export default function SizeChartTable({
               {tableData.length === 0 ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
                   <div className="relative">
-                    <span className="absolute inset-0 rounded-full bg-[#0A6B43]/10 blur-md" />
-                    <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-[#0A6B43]/30 bg-[#D5F0E3] text-[#0A6B43] dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300">
+                    <span className="absolute inset-0 rounded-full bg-accent-500/10 blur-md" />
+                    <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-accent-500/30 bg-accent-50 text-accent-600 dark:border-accent-500/40 dark:bg-accent-500/10 dark:text-accent-400">
                       {searchTerm ? (
                         <FaSearch className="size-5" />
                       ) : (
@@ -461,7 +459,7 @@ export default function SizeChartTable({
                       {searchTerm ? (
                         <>
                           Nothing matched{" "}
-                          <span className="font-bold text-[#0A6B43] dark:text-blue-400">
+                          <span className="font-bold text-accent-500 dark:text-accent-400">
                             "{searchTerm}"
                           </span>
                           . Try a different term.
@@ -475,14 +473,14 @@ export default function SizeChartTable({
                   {searchTerm ? (
                     <Button
                       onClick={() => setSearchTerm("")}
-                      className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded"
+                      className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded"
                     >
                       Clear Search
                     </Button>
                   ) : (
                     canAdd && (
                       <Link to="/create-sizechart">
-                        <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+                        <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                           Create Size Chart
                         </Button>
                       </Link>
@@ -537,7 +535,7 @@ export default function SizeChartTable({
                                 const label = item.name ?? "";
                                 return (
                                   <Tooltip key={item._id} text={label}>
-                                    <span className="text-[10px] font-semibold bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-md truncate max-w-20">
+                                    <span className="text-[10px] font-semibold bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300 px-2 py-0.5 rounded-md truncate max-w-20">
                                       {label.length > 10 ? `${label.substring(0, 10)}…` : label || "—"}
                                     </span>
                                   </Tooltip>
@@ -576,14 +574,7 @@ export default function SizeChartTable({
                       </TableCell>
 
                       <TableCell className="px-4 py-3 flex items-center justify-center">
-                        <Badge
-                          size="sm"
-                          variant="solid"
-                          color={chart.isActive ? "success" : "error"}
-                          className="min-w-18.75 font-black text-[10px] uppercase shadow-md"
-                        >
-                          {chart.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        <StatusPill isActive={chart.isActive} />
                       </TableCell>
 
                       <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
@@ -593,8 +584,9 @@ export default function SizeChartTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
-                            >
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View size chart"
+                  >
                               <FaEye className="size-4" />
                             </Button>
                           </Link>
@@ -612,11 +604,12 @@ export default function SizeChartTable({
                             disabled={togglePending}
                             size="sm"
                             variant="outline"
-                            className={`size-10 p-0 rounded-2xl transition-all active:scale-90 border-none ${
+                            className={`size-10 p-0 !rounded border-none transition-all active:scale-90 ${
                               chart.isActive
-                                ? "text-green-500 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/15"
-                                : "text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
+                                ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                                : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                             }`}
+                            aria-label={chart.isActive ? "Deactivate size chart" : "Activate size chart"}
                           >
                             {chart.isActive ? (
                               <FaToggleOn className="size-7" />
@@ -634,8 +627,9 @@ export default function SizeChartTable({
                             <Button
                               size="sm"
                               variant="outline"
-                                className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90"
-                            >
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit size chart"
+                  >
                               <FaEdit className="size-4" />
                             </Button>
                           </Link>
@@ -648,8 +642,9 @@ export default function SizeChartTable({
                           <Button
                             onClick={() => handleDeleteModal(chart.slug)}
                             size="sm"
-                            className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 dark:bg-red-500/80 dark:hover:bg-red-500 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
-                          >
+                            className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete size chart"
+                  >
                             <MdDelete className="size-5" />
                           </Button>
                         </Tooltip>
@@ -690,11 +685,11 @@ export default function SizeChartTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -757,11 +752,7 @@ export default function SizeChartTable({
             <Button
               onClick={handleToggleStatus}
               disabled={togglePending}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
-                pendingToggle?.currentStatus
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
-              }`}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {pendingToggle?.currentStatus
                 ? "Yes, Deactivate"

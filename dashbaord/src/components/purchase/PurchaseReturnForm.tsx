@@ -6,6 +6,7 @@ import { MdDelete, MdOutlineQrCodeScanner } from "react-icons/md";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
+import MobileActionBar from "../common/MobileActionBar";
 import DatePicker from "../form/date-picker";
 import SearchableSelect from "../form/SearchableSelect";
 import { showApiError } from "../../utils/apiError";
@@ -454,8 +455,8 @@ const PurchaseReturnForm = () => {
                     errors.supplier
                       ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
                       : selectedSupplier
-                        ? "border-brand-400 bg-brand-50/30 dark:bg-brand-500/5"
-                        : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 focus:border-brand-500 focus:ring-brand-500/20"
+                        ? "border-accent-400 bg-accent-50/30 dark:bg-accent-500/5"
+                        : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-accent-500/20"
                   } text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 transition-all duration-200`}
                 />
                 {supplierQuery && (
@@ -553,7 +554,7 @@ const PurchaseReturnForm = () => {
               placeholder="Optional notes…"
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-gray-400 resize-y"
+              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all placeholder:text-gray-400 resize-y"
             />
           </div>
         </div>
@@ -604,7 +605,7 @@ const PurchaseReturnForm = () => {
             Return Products
           </p>
           {returnItems.length > 0 && (
-            <span className="text-xs font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-medium text-accent-600 dark:text-accent-400 bg-accent-50 dark:bg-accent-500/10 px-2.5 py-0.5 rounded-full">
               {returnItems.length} item{returnItems.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -620,7 +621,8 @@ const PurchaseReturnForm = () => {
               type="button"
               onClick={focusProductSearch}
               title="Click to resume scanning"
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 transition-colors"
+              aria-label="Resume scanning"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-500 transition-colors"
             >
               <MdOutlineQrCodeScanner size={14} />
             </button>
@@ -635,10 +637,10 @@ const PurchaseReturnForm = () => {
               disabled={isScanning}
               placeholder="Scan barcode or search by product/variant name…"
               autoComplete="off"
-              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all duration-200"
+              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all duration-200"
             />
             {productSearching ? (
-              <FaSpinner className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-500 size-3.5 animate-spin" />
+              <FaSpinner className="absolute right-3.5 top-1/2 -translate-y-1/2 text-accent-500 size-3.5 animate-spin" />
             ) : productQuery ? (
               <button
                 type="button"
@@ -659,7 +661,7 @@ const PurchaseReturnForm = () => {
             <div className="absolute z-50 left-5 right-5 mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
               {productSearching ? (
                 <div className="flex items-center gap-3 px-4 py-4 text-sm text-gray-400">
-                  <FaSpinner className="animate-spin text-brand-500 size-4 shrink-0" />
+                  <FaSpinner className="animate-spin text-accent-500 size-4 shrink-0" />
                   <span>Searching…</span>
                 </div>
               ) : productResults.length > 0 ? (
@@ -726,7 +728,7 @@ const PurchaseReturnForm = () => {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
+                          <p className="text-sm font-semibold text-accent-600 dark:text-accent-400 tabular-nums">
                             ৳{item.purchasePrice ?? 0}
                           </p>
                           <p
@@ -866,7 +868,7 @@ const PurchaseReturnForm = () => {
                           className={`w-20 text-center text-xs font-semibold h-8 rounded-lg border px-2 outline-none focus:ring-2 transition-all tabular-nums ${
                             isOverStock
                               ? "border-red-400 focus:ring-red-400/20 bg-red-50 dark:bg-red-500/10 text-red-600"
-                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:ring-brand-500/20 focus:border-brand-500"
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:ring-accent-500/20 focus:border-accent-500"
                           }`}
                         />
                         {isOverStock && (
@@ -888,7 +890,8 @@ const PurchaseReturnForm = () => {
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
-                          className="size-7 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all"
+                          aria-label="Remove item"
+                          className="shine size-8 flex items-center justify-center rounded bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 transition-all active:scale-90"
                         >
                           <MdDelete className="size-4" />
                         </button>
@@ -986,15 +989,16 @@ const PurchaseReturnForm = () => {
       )}
 
       {/* ── Submit ────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-end gap-3 pt-1">
+      <MobileActionBar>
+<div className="flex items-center justify-end gap-3 pt-1">
         <Button
           onClick={handleSubmit}
           disabled={isLoading}
-            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 min-w-52"
+            className="!bg-accent-500 hover:!bg-accent-600 !text-white px-8 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 min-w-52"
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
-              <FaSpinner className="animate-spin size-3.5" />
+              <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               Submitting…
             </span>
           ) : (
@@ -1002,6 +1006,7 @@ const PurchaseReturnForm = () => {
           )}
         </Button>
       </div>
+</MobileActionBar>
     </div>
   );
 };

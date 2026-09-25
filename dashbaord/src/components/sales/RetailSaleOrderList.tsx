@@ -25,7 +25,7 @@ const RetailSaleOrderList = () => {
               <h2 className="text-md font-medium">Retail Sale Order List</h2>
               {canAdd && (
                 <Link to="/retail-sale-order">
-                  <Button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded">
+                  <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                     Create Retail Sale Order
                   </Button>
                 </Link>

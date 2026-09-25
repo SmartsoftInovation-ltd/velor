@@ -205,6 +205,7 @@ const SalesView = () => {
     data: sale,
     isLoading,
     isError,
+    isFetching,
     refetch,
   } = useQuery<Sale>({
     queryKey: ["sale-invoice", invoiceNumber],
@@ -221,7 +222,7 @@ const SalesView = () => {
   if (isLoading)
     return (
       <div className="flex justify-center min-h-100 items-center">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
 
@@ -233,7 +234,7 @@ const SalesView = () => {
         </p>
         <Button
           onClick={() => refetch()}
-          className="px-6 py-2 bg-brand-500 text-white rounded-xl"
+          className="px-6 py-2 !bg-accent-500 hover:!bg-accent-600 !text-white !rounded-xl font-semibold"
         >
           Try Again
         </Button>
@@ -302,7 +303,7 @@ const SalesView = () => {
               onClick={() => navigate(-1)}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 h-10 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-brand-500 font-semibold text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-10 !rounded-xl !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm transition-all active:scale-95"
             >
               <svg
                 className="size-4"
@@ -323,9 +324,9 @@ const SalesView = () => {
               onClick={() => refetch()}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 h-10 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-brand-500 font-semibold text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-10 !rounded-xl !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm transition-all active:scale-95"
             >
-              <FaSync className="size-3.5" />
+              <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
@@ -335,7 +336,7 @@ const SalesView = () => {
               onClick={() => navigate(`/sales-receipt-print/${enc}`)}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 h-10 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-brand-500 font-semibold text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-10 !rounded-xl !border-none !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10 font-semibold text-sm transition-all active:scale-95"
             >
               <FiPrinter className="size-3.5" />
               Receipt
@@ -344,7 +345,7 @@ const SalesView = () => {
               onClick={() => navigate(`/sales-invoice-print/${enc}`)}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 h-10 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-brand-500 font-semibold text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-10 !rounded-xl !border-none !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10 font-semibold text-sm transition-all active:scale-95"
             >
               <FiFileText className="size-3.5" />
               Invoice
@@ -353,7 +354,7 @@ const SalesView = () => {
               onClick={() => navigate(`/sales-challan-print/${enc}`)}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 h-10 rounded-xl border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-brand-500 font-semibold text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 h-10 !rounded-xl !border-none !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10 font-semibold text-sm transition-all active:scale-95"
             >
               <FiBox className="size-3.5" />
               Challan
@@ -416,12 +417,12 @@ const SalesView = () => {
 
           {/* Customer */}
           <div className="px-6 pb-6">
-            <div className="bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-xl p-4">
+            <div className="bg-accent-50/50 dark:bg-accent-500/5 border border-accent-100 dark:border-accent-500/20 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-3">
-                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                <p className="text-[10px] font-black text-accent-600 dark:text-accent-400 uppercase tracking-widest">
                   Customer Information
                 </p>
-                <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-500 text-[9px] font-black uppercase">
+                <span className="px-2 py-0.5 rounded-full bg-accent-100 dark:bg-accent-500/20 text-accent-700 dark:text-accent-400 text-[9px] font-black uppercase">
                   {ct?.type || "—"}
                 </span>
               </div>

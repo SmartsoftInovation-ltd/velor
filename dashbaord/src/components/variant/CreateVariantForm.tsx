@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
+import MobileActionBar from "../common/MobileActionBar";
 import SearchableSelect from "../form/SearchableSelect";
 import Select from "../form/Select";
 import axiosSecure from "../../hooks/useAxiosSecure";
@@ -141,7 +142,7 @@ const clearDraftFiles = async () => {
 const SectionCard = ({ icon, title, children, className = "" }: any) => (
   <div className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-theme-sm overflow-hidden ${className}`}>
     <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-      <div className="flex items-center justify-center size-8 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-500">{icon}</div>
+      <div className="flex items-center justify-center size-8 rounded-xl bg-accent-50 dark:bg-accent-500/10 text-accent-500">{icon}</div>
       <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">{title}</h3>
     </div>
     <div className="p-6">{children}</div>
@@ -159,10 +160,10 @@ const MultiImageZone = ({ images, onDrop, onRemove, label }: any) => {
 
   return (
     <div className="space-y-4">
-      <div {...getRootProps()} className={`relative  flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl py-8 px-6 cursor-pointer transition-all duration-300 ${isDragActive ? "border-brand-500 bg-brand-50" : "border-gray-200 dark:border-gray-700 hover:border-brand-400"}`}>
+      <div {...getRootProps()} className={`relative  flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl py-8 px-6 cursor-pointer transition-all duration-300 ${isDragActive ? "border-accent-500 bg-accent-50" : "border-gray-200 dark:border-gray-700 hover:border-accent-400"}`}>
         <input {...getInputProps()} />
         <div className="text-center">
-          <div className="size-14 mx-auto mb-3 bg-brand-50 dark:bg-brand-500/10 rounded-2xl flex items-center justify-center text-brand-500"><FaCloudUploadAlt className="text-2xl" /></div>
+          <div className="size-14 mx-auto mb-3 bg-accent-50 dark:bg-accent-500/10 rounded-2xl flex items-center justify-center text-accent-500"><FaCloudUploadAlt className="text-2xl" /></div>
           <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{label}</p>
           <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-tight">Up to 10 images. Max 5MB each.</p>
         </div>
@@ -187,7 +188,7 @@ const MultiImageZone = ({ images, onDrop, onRemove, label }: any) => {
 const DropZone = ({ onDrop, multiple = false, preview, onRemove, label, height = "py-8" }: any) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple, accept: { "image/*": [] }, maxSize: 5 * 1024 * 1024 });
   return (
-    <div {...getRootProps()} className={`relative  flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${isDragActive ? "border-brand-500 bg-brand-50" : "border-gray-200 dark:border-gray-700 hover:border-brand-400"} ${preview ? "border-none p-0" : height + " px-6"}`}>
+    <div {...getRootProps()} className={`relative  flex flex-col items-center justify-center w-full border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${isDragActive ? "border-accent-500 bg-accent-50" : "border-gray-200 dark:border-gray-700 hover:border-accent-400"} ${preview ? "border-none p-0" : height + " px-6"}`}>
       <input {...getInputProps()} />
       {preview ? (
         <div className="relative w-full aspect-[1.91/1] rounded-xl overflow-hidden shadow-theme-md bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800 group">
@@ -198,7 +199,7 @@ const DropZone = ({ onDrop, multiple = false, preview, onRemove, label, height =
         </div>
       ) : (
         <div className="text-center">
-          <div className="size-14 mx-auto mb-3 bg-brand-50 dark:bg-brand-500/10 rounded-2xl flex items-center justify-center text-brand-500"><FaCloudUploadAlt className="text-2xl" /></div>
+          <div className="size-14 mx-auto mb-3 bg-accent-50 dark:bg-accent-500/10 rounded-2xl flex items-center justify-center text-accent-500"><FaCloudUploadAlt className="text-2xl" /></div>
           <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{label}</p>
           <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-tight">PNG, JPG or WebP (Max 5MB)</p>
         </div>
@@ -210,7 +211,7 @@ const DropZone = ({ onDrop, multiple = false, preview, onRemove, label, height =
 const GalleryDropZone = ({ onDrop, galleryCount }: any) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: true, accept: { "image/*": [] }, maxSize: 5 * 1024 * 1024 });
   return (
-    <div {...getRootProps()} className={`border-2 border-dashed rounded-2xl py-5 px-4 text-center cursor-pointer transition-all duration-300 ${isDragActive ? "border-brand-500 bg-brand-50" : "border-gray-200 dark:border-gray-700 hover:border-brand-400 bg-gray-50/50 dark:bg-gray-800/30"}`}>
+    <div {...getRootProps()} className={`border-2 border-dashed rounded-2xl py-5 px-4 text-center cursor-pointer transition-all duration-300 ${isDragActive ? "border-accent-500 bg-accent-50" : "border-gray-200 dark:border-gray-700 hover:border-accent-400 bg-gray-50/50 dark:bg-gray-800/30"}`}>
       <input {...getInputProps()} />
       <FaCloudUploadAlt className="mx-auto text-3xl text-gray-300 dark:text-gray-600 mb-2" />
       <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Add Gallery Images</p>
@@ -1107,9 +1108,10 @@ const CreateVariantForm = ({
         {variantForms.length > 1 && (
           <Button
             onClick={() => removeRow(formIndex)}
-            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+            aria-label="Remove variant"
+            className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
           >
-            <MdDelete size={25} />
+            <MdDelete className="size-5" />
           </Button>
         )}
       </div>
@@ -1217,7 +1219,8 @@ const CreateVariantForm = ({
                 type="button"
                 onClick={() => focusBarcodeInput(formIndex)}
                 title="Click to scan"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 transition-colors"
+                aria-label="Focus barcode input"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-500 transition-colors"
               >
                 <MdOutlineQrCodeScanner size={16} />
               </button>
@@ -1230,7 +1233,8 @@ const CreateVariantForm = ({
                 handleInputChange(formIndex, "sku", code.slice(-6));
               }}
               title="Generate random barcode"
-              className="px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors h-11 flex items-center justify-center shadow-sm"
+              aria-label="Generate barcode"
+              className="shine px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors h-11 flex items-center justify-center shadow-sm"
             >
               <FaBarcode className="text-xl" />
             </button>
@@ -1481,7 +1485,7 @@ const CreateVariantForm = ({
             <div className="md:col-span-2">
               <Label>Tags (Comma separated)</Label>
               <div className="flex gap-2 mt-1.5">
-                <input type="text" value={formData.tagInput} onChange={(e) => setVariantForms(prev => prev.map((f, i) => i === formIndex ? { ...f, tagInput: e.target.value } : f))} className="flex-1 h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white outline-none focus:border-brand-500 dark:focus:border-brand-400 transition-all dark:placeholder:text-white/60" placeholder="e.g. electronics, sale" />
+                <input type="text" value={formData.tagInput} onChange={(e) => setVariantForms(prev => prev.map((f, i) => i === formIndex ? { ...f, tagInput: e.target.value } : f))} className="flex-1 h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 dark:focus:border-accent-400 transition-all dark:placeholder:text-white/60" placeholder="e.g. electronics, sale" />
                 <button type="button" onClick={() => {
                   if (!formData.tagInput.trim()) return;
                   const newTags = formData.tagInput.split(",").map((t: string) => t.trim()).filter(Boolean);
@@ -1489,7 +1493,7 @@ const CreateVariantForm = ({
                   const uniqueTags = Array.from(new Set([...existingTags, ...newTags]));
                   handleInputChange(formIndex, "seo", { ...formData.formData.seo, metaKeywords: uniqueTags });
                   setVariantForms(prev => prev.map((f, i) => i === formIndex ? { ...f, tagInput: "" } : f));
-                }} className="bg-brand-500 text-white px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">Apply Tags</button>
+                }} className="shine bg-accent-500 text-white px-6 rounded-xl font-bold uppercase text-[10px] hover:bg-accent-600 transition-colors shadow-lg shadow-accent-500/20">Apply Tags</button>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
                 {formData.formData.seo?.metaKeywords?.map((tag: string, tagIdx: number) => (
@@ -1543,7 +1547,7 @@ const CreateVariantForm = ({
                     {selectedImages.length > 0 && (
                       <Button 
                         size="sm" 
-                          className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-[10px] py-1 px-3 rounded-lg flex items-center gap-1.5 shadow-lg active:scale-95"
+                          className="!bg-error-500 hover:!bg-error-600 !text-white text-[10px] py-1 px-3 rounded-lg flex items-center gap-1.5 shadow-lg active:scale-95"
                         onClick={handleDeleteGalleryImages}
                         disabled={isDeletingImages}
                       >
@@ -1560,7 +1564,7 @@ const CreateVariantForm = ({
                       <div 
                         key={`exist-${i}`} 
                         className={`relative aspect-square rounded-xl overflow-hidden border group shadow-sm transition-all cursor-zoom-in ${
-                          selectedImages.includes(img.publicId) ? "ring-2 ring-red-500 border-red-500" : "border-gray-200 hover:border-brand-400 dark:border-gray-800"
+                          selectedImages.includes(img.publicId) ? "ring-2 ring-red-500 border-red-500" : "border-gray-200 hover:border-accent-400 dark:border-gray-800"
                         }`}
                       >
                         <img src={img.url} className={`w-full h-full object-cover transition-all ${selectedImages.includes(img.publicId) ? "opacity-40" : "opacity-80 group-hover:opacity-100 group-hover:scale-110"}`} alt="existing" />
@@ -1588,7 +1592,7 @@ const CreateVariantForm = ({
                         </div>
                         
                         {!selectedImages.includes(img.publicId) && (
-                          <div className="absolute bottom-1 left-1 bg-blue-500/90 text-[8px] text-white px-1.5 py-0.5 rounded-md font-bold uppercase backdrop-blur-sm">Stored</div>
+                          <div className="absolute bottom-1 left-1 bg-accent-500/90 text-[8px] text-white px-1.5 py-0.5 rounded-md font-bold uppercase backdrop-blur-sm">Stored</div>
                         )}
                       </div>
                     ))}
@@ -1609,7 +1613,7 @@ const CreateVariantForm = ({
                   {gallery.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <Button 
-                        className="w-full bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-xs font-black py-3 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all animate-pulse"
+                        className="w-full !bg-accent-500 hover:!bg-accent-600 !text-white text-xs font-black py-3 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all animate-pulse"
                         onClick={handleAddExtraImages}
                         disabled={isUploadingImages}
                       >
@@ -1721,43 +1725,44 @@ const CreateVariantForm = ({
         <div className="flex gap-4 w-full ">
           <button
             onClick={addNewRow}
-              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold px-4 py-2 rounded w-full"
+              className="shine border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 font-bold px-4 py-2 rounded w-full"
             disabled={isLoading}
           >
             Add New Variant
           </button>
         </div>
       )}
+      <MobileActionBar>
       <div className="flex flex-col sm:flex-row gap-3">
         <Button
           onClick={handleSubmit}
-            className={`px-6 py-3 rounded-xl text-[#0A6B43] font-bold transition-all uppercase tracking-wider text-xs ${
-            isUpdate && (gallery.length > 0 || selectedImages.length > 0)
-              ? "bg-[#EDF8F3] text-[#8CCBAE] cursor-not-allowed"
-              : "bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-95"
-          }`}
+          className="px-6 py-3 rounded-xl font-semibold uppercase tracking-wider text-xs transition-all !bg-accent-500 hover:!bg-accent-600 !text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           disabled={isLoading || (isUpdate && (gallery.length > 0 || selectedImages.length > 0))}
         >
-          {isLoading
-            ? isUpdate
-              ? "Updating..."
-              : "Creating..."
-            : isUpdate
-            ? "Update Variant"
-            : "Create Variants"}
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              {isUpdate ? "Updating..." : "Creating..."}
+            </span>
+          ) : isUpdate ? (
+            "Update Variant"
+          ) : (
+            "Create Variants"
+          )}
         </Button>
 
         {isUpdate && (
           <Button
             onClick={handleManualRefresh}
             disabled={isRefreshing}
-              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+              className="!border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
           >
             <FaSync className={isRefreshing ? "animate-spin" : ""} />
             {isRefreshing ? "Refreshing..." : "Refresh Data"}
           </Button>
         )}
       </div>
+      </MobileActionBar>
       {isUpdate && (gallery.length > 0 || selectedImages.length > 0) && (
         <p className="text-[10px] text-red-500 font-bold mt-2 uppercase tracking-wider">
           Please complete uploading new images or deleting selected stored images before updating the variant details

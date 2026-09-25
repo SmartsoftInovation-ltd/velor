@@ -8,7 +8,7 @@ import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ComponentCard from "../../components/common/ComponentCard";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/ui/button/Button";
-import Badge from "../../components/ui/badge/Badge";
+import StatusPill from "../../components/common/StatusPill";
 import { Modal } from "../../components/ui/modal";
 import toast from "react-hot-toast";
 import moment from "moment";
@@ -205,7 +205,7 @@ const SizeChartView = () => {
                       <Link to={`/update-sizechart/${sizeChart.slug}`}>
                         <Button
                           size="sm"
-                            className="flex items-center gap-2 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl px-4 py-2 shadow-lg font-bold"
+                            className="flex items-center gap-2 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl px-4 py-2 shadow-lg font-bold"
                         >
                           <FaEdit className="size-3.5" />
                           Edit
@@ -258,26 +258,19 @@ const SizeChartView = () => {
 
               {/* ── Basic Info Grid ── */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-brand-500/30 transition-all sm:col-span-2">
+                <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-accent-500/30 transition-all sm:col-span-2">
                   <p className="text-[10px] uppercase font-medium text-gray-400 mb-2">Name</p>
                   <p className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">
                     {sizeChart.name}
                   </p>
                   <div className="mt-3">
-                    <Badge
-                      variant="solid"
-                      size="sm"
-                      color={sizeChart.isActive ? "success" : "error"}
-                      className="uppercase font-black tracking-widest text-[10px] px-4 py-1.5 rounded-full shadow-lg"
-                    >
-                      {sizeChart.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                    <StatusPill isActive={sizeChart.isActive} />
                   </div>
                 </div>
 
-                <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-brand-500/30 transition-all">
+                <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-accent-500/30 transition-all">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <FaLink className="text-brand-500 size-3" />
+                    <FaLink className="text-accent-500 size-3" />
                     <p className="text-[10px] uppercase font-medium text-gray-400">Slug</p>
                   </div>
                   <p className="text-sm font-bold text-gray-700 dark:text-gray-300 font-mono bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg inline-block border border-gray-100 dark:border-gray-800">
@@ -286,7 +279,7 @@ const SizeChartView = () => {
                 </div>
 
                 {sizeChart.description && (
-                  <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-brand-500/30 transition-all sm:col-span-2 lg:col-span-3">
+                  <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-accent-500/30 transition-all sm:col-span-2 lg:col-span-3">
                     <p className="text-[10px] uppercase font-medium text-gray-400 mb-2">Description</p>
                     <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                       {sizeChart.description}
@@ -294,12 +287,12 @@ const SizeChartView = () => {
                   </div>
                 )}
 
-                <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-blue-500/30 transition-all sm:col-span-2 lg:col-span-3">
+                <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800 hover:border-accent-500/30 transition-all sm:col-span-2 lg:col-span-3">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <FaIdCard className="text-blue-500 size-3" />
+                    <FaIdCard className="text-accent-500 size-3" />
                     <p className="text-[10px] uppercase font-medium text-gray-400">System ID</p>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 font-mono break-all selection:bg-blue-100 dark:selection:bg-blue-900/30">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-mono break-all selection:bg-accent-100 dark:selection:bg-accent-900/30">
                     {sizeChart._id}
                   </p>
                 </div>
@@ -308,8 +301,8 @@ const SizeChartView = () => {
               {/* ── Applicable Info ── */}
               <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[28px] p-6 border border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="size-9 rounded-xl bg-brand-500/10 flex items-center justify-center">
-                    <FaLayerGroup className="text-brand-500 size-4" />
+                  <div className="size-9 rounded-xl bg-accent-500/10 flex items-center justify-center">
+                    <FaLayerGroup className="text-accent-500 size-4" />
                   </div>
                   <h3 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-[3px]">
                     Applicable Scope
@@ -332,7 +325,7 @@ const SizeChartView = () => {
                       <div className="flex flex-wrap gap-2">
                         {applicableItems.map((item) => (
                           <Tooltip key={item._id} text={item._id}>
-                            <span className="text-xs font-semibold bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 px-3 py-1 rounded-lg border border-brand-100 dark:border-brand-500/20">
+                            <span className="text-xs font-semibold bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300 px-3 py-1 rounded-lg border border-accent-100 dark:border-accent-500/20">
                               {item.name}
                             </span>
                           </Tooltip>
@@ -375,8 +368,8 @@ const SizeChartView = () => {
               {/* ── Size Chart Table ── */}
               <div className="rounded-[28px] border border-gray-100 dark:border-gray-800 overflow-hidden">
                 <div className="flex items-center gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
-                  <div className="size-9 rounded-xl bg-brand-500/10 flex items-center justify-center">
-                    <FaTable className="text-brand-500 size-4" />
+                  <div className="size-9 rounded-xl bg-accent-500/10 flex items-center justify-center">
+                    <FaTable className="text-accent-500 size-4" />
                   </div>
                   <h3 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-[3px]">
                     Size Chart
@@ -427,7 +420,7 @@ const SizeChartView = () => {
                           sizeChart.rows.map((row, ri) => (
                             <tr
                               key={ri}
-                              className={`border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors hover:bg-brand-50/30 dark:hover:bg-brand-500/5 ${
+                              className={`border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors hover:bg-accent-50/30 dark:hover:bg-accent-500/5 ${
                                 ri % 2 === 0
                                   ? "bg-white dark:bg-gray-900"
                                   : "bg-gray-50/60 dark:bg-gray-800/30"
@@ -457,14 +450,14 @@ const SizeChartView = () => {
               {sizeChart.videoUrl && (
                 <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-2 mb-3">
-                    <FaVideo className="text-brand-500 size-3.5" />
+                    <FaVideo className="text-accent-500 size-3.5" />
                     <p className="text-[10px] uppercase font-black tracking-widest text-gray-400">Video Guide URL</p>
                   </div>
                   <a
                     href={sizeChart.videoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-brand-500 hover:text-brand-600 font-medium break-all underline underline-offset-2"
+                    className="text-sm text-accent-500 hover:text-accent-600 font-medium break-all underline underline-offset-2"
                   >
                     {sizeChart.videoUrl}
                   </a>
@@ -475,7 +468,7 @@ const SizeChartView = () => {
               {sizeChart.sizeLabels && sizeChart.sizeLabels.length > 0 && (
                 <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-[24px] p-6 border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-2 mb-3">
-                    <FaTags className="text-brand-500 size-3.5" />
+                    <FaTags className="text-accent-500 size-3.5" />
                     <p className="text-[10px] uppercase font-black tracking-widest text-gray-400">Size Labels</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -581,15 +574,11 @@ const SizeChartView = () => {
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-              className={`flex-1 rounded-2xl py-3 text-sm font-black uppercase tracking-widest border-none active:scale-95 transition-all ${
-                sizeChart?.isActive
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-xl"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-xl"
-              }`}
+              className="flex-1 rounded-2xl py-3 text-sm font-black uppercase tracking-widest border-none active:scale-95 transition-all !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

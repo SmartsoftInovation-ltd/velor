@@ -20,7 +20,7 @@ const CreateSalesReturn = () => {
         hideTitle
         actions={
           <Link to="/sales-return-list">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-4 py-2 rounded">
               Sales Return List
             </Button>
           </Link>

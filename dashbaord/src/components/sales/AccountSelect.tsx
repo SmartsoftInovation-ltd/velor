@@ -38,7 +38,7 @@ const accountTone = (name: string) => {
     return "bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400";
   if (n.includes("bank") || n.includes("cheque") || n.includes("card"))
     return "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400";
-  return "bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300";
+  return "bg-accent-50 text-accent-700 dark:bg-accent-500/15 dark:text-accent-400";
 };
 
 // Custom account picker for the POS payment box. A native <select> can't be
@@ -165,7 +165,7 @@ const AccountSelect = ({
           disabled
             ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-700"
             : open
-              ? "cursor-pointer border-teal-500 bg-white ring-2 ring-teal-500/20 dark:bg-gray-800"
+              ? "cursor-pointer border-accent-500 bg-white ring-2 ring-accent-500/20 dark:bg-gray-800"
               : "cursor-pointer border-gray-300 bg-white hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800"
         }`}
       >
@@ -193,7 +193,7 @@ const AccountSelect = ({
         <FaChevronDown
           className={`size-2.5 shrink-0 text-gray-400 transition-transform ${
             open
-              ? `text-teal-500 ${placement === "bottom" ? "rotate-180" : "-rotate-180"}`
+              ? `text-accent-500 ${placement === "bottom" ? "rotate-180" : "-rotate-180"}`
               : ""
           }`}
         />
@@ -236,7 +236,7 @@ const AccountSelect = ({
                     onClick={() => pick(a._id)}
                     className={`flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors ${
                       idx === activeIndex
-                        ? "bg-teal-50 dark:bg-teal-500/10"
+                        ? "bg-accent-50 dark:bg-accent-500/15"
                         : "hover:bg-gray-50 dark:hover:bg-white/[0.04]"
                     }`}
                   >
@@ -250,7 +250,7 @@ const AccountSelect = ({
                     <span
                       className={`flex-1 truncate ${
                         isSelected
-                          ? "font-bold text-teal-700 dark:text-teal-300"
+                          ? "font-bold text-accent-700 dark:text-accent-400"
                           : "font-semibold text-gray-700 dark:text-gray-200"
                       }`}
                     >
@@ -267,7 +267,7 @@ const AccountSelect = ({
                         ৳{Number(a.balance).toFixed(2)}
                       </span>
                     )}
-                    {isSelected && <FaCheck className="size-2.5 shrink-0 text-teal-600" />}
+                    {isSelected && <FaCheck className="size-2.5 shrink-0 text-accent-600" />}
                   </button>
                 );
               })}

@@ -26,7 +26,7 @@ const DraftOrderList = () => {
         actions={
           canAdd && (
             <Link to="/create-retail-sales" className="w-full sm:w-auto">
-              <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded w-full sm:w-auto">
+              <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded w-full sm:w-auto">
                 Create Retail Sales
               </Button>
             </Link>

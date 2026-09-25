@@ -110,13 +110,13 @@ const invoiceStatusMeta: Record<string, { icon: IconType; tone: string }> = {
     },
 };
 const inputCls =
-    "border border-gray-300 dark:border-gray-600 rounded-md text-xs h-7 px-2 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-full box-border transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20";
+    "border border-gray-300 dark:border-gray-600 rounded-md text-xs h-7 px-2 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-full box-border transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20";
 const readonlyInputCls =
     "border border-gray-200 dark:border-gray-700 rounded-md text-xs h-7 px-2 bg-gray-50 dark:bg-gray-700 outline-none w-full box-border text-gray-700 dark:text-gray-200 font-semibold";
 function RightRow({ label, children, emphasis }: { label: string; children: React.ReactNode; emphasis?: boolean }) {
     return (
         <div className={`flex items-center gap-2 mb-1.5 ${emphasis ? "py-0.5" : ""}`}>
-            <span className={`text-[11px] font-bold uppercase w-28 flex-shrink-0 tracking-wide ${emphasis ? "text-teal-700" : "text-gray-500 dark:text-gray-400"}`}>
+            <span className={`text-[11px] font-bold uppercase w-28 flex-shrink-0 tracking-wide ${emphasis ? "text-accent-700" : "text-gray-500 dark:text-gray-400"}`}>
                 {label}
             </span>
             {children}
@@ -1078,7 +1078,7 @@ export default function CreateWholeSalesForm({
                                 defaultDate={date}
                                 onChange={(_selectedDates: Date[], dateStr: string) => setDate(dateStr)}
                                 isStatic={false}
-                                inputClassName={`border rounded-md text-xs h-9 px-2.5 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36 transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 ${date ? "border-gray-300 dark:border-gray-600" : "border-red-400 dark:border-red-500"
+                                inputClassName={`border rounded-md text-xs h-9 px-2.5 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36 transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 ${date ? "border-gray-300 dark:border-gray-600" : "border-red-400 dark:border-red-500"
                                     }`}
                             />
                         </div>
@@ -1091,7 +1091,7 @@ export default function CreateWholeSalesForm({
                                 defaultDate={deliveryDate}
                                 onChange={(_selectedDates: Date[], dateStr: string) => setDeliveryDate(dateStr)}
                                 isStatic={false}
-                                inputClassName="border border-gray-300 dark:border-gray-600 rounded-md text-xs h-9 px-2.5 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36 transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                                inputClassName="border border-gray-300 dark:border-gray-600 rounded-md text-xs h-9 px-2.5 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36 transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
                             />
                         </div>
 
@@ -1099,7 +1099,7 @@ export default function CreateWholeSalesForm({
                         <div className="relative flex-1" ref={customerDropdownRef}>
                             <button
                                 onClick={() => setCustomerDropdownOpen((prev) => !prev)}
-                                className={`w-full h-9 border rounded-md text-xs px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none text-left flex items-center justify-between transition-colors ${customerDropdownOpen ? "border-teal-500 ring-2 ring-teal-500/20" : "border-gray-300 dark:border-gray-600 hover:border-gray-400"}`}
+                                className={`w-full h-9 border rounded-md text-xs px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none text-left flex items-center justify-between transition-colors ${customerDropdownOpen ? "border-accent-500 ring-2 ring-accent-500/20" : "border-gray-300 dark:border-gray-600 hover:border-gray-400"}`}
                             >
                                 <span className={selectedCustomerId || isWalking ? "text-gray-800 dark:text-gray-100 font-medium" : "text-gray-400"}>
                                     {isWalking
@@ -1119,14 +1119,14 @@ export default function CreateWholeSalesForm({
                                             placeholder="Search customer..."
                                             value={customerSearch}
                                             onChange={(e) => setCustomerSearch(e.target.value)}
-                                            className="w-full border border-gray-300 dark:border-gray-600 rounded-md text-xs h-7 px-2 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-colors"
+                                            className="w-full border border-gray-300 dark:border-gray-600 rounded-md text-xs h-7 px-2 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-colors"
                                         />
                                     </div>
 
                                     {/* Walking Option */}
                                     <div
                                         onClick={handleWalkingSelect}
-                                        className="px-3 py-2.5 text-xs cursor-pointer hover:bg-teal-100 dark:hover:bg-teal-800 transition-colors border-b border-gray-200 dark:border-gray-700 font-bold text-teal-700 bg-teal-50 dark:bg-teal-900"
+                                        className="px-3 py-2.5 text-xs cursor-pointer hover:bg-accent-100 dark:hover:bg-accent-500/25 transition-colors border-b border-gray-200 dark:border-gray-700 font-bold text-accent-700 bg-accent-50 dark:bg-accent-500/15"
                                     >
                                         Walking Customer
                                     </div>
@@ -1141,7 +1141,7 @@ export default function CreateWholeSalesForm({
                                                 <div
                                                     key={c.id}
                                                     onClick={() => handleCustomerSelect(c)}
-                                                    className="px-3 py-2.5 text-xs cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-b-0"
+                                                    className="px-3 py-2.5 text-xs cursor-pointer hover:bg-accent-50 dark:hover:bg-accent-500/15 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-b-0"
                                                 >
                                                     <span className="font-medium text-gray-800 dark:text-gray-100">{c.fullName}</span>
                                                     <span className="text-gray-400 ml-2">{c.mobileNumber}</span>
@@ -1164,13 +1164,13 @@ export default function CreateWholeSalesForm({
                             placeholder="Customer Name"
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            className="w-full sm:flex-1 sm:min-w-[140px] border border-gray-300 dark:border-gray-600 rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                            className="w-full sm:flex-1 sm:min-w-[140px] border border-gray-300 dark:border-gray-600 rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
                         />
                         <input
                             placeholder={isWalking ? "Mobile Number *" : "Mobile Number"}
                             value={mobile}
                             onChange={(e) => setMobile(e.target.value)}
-                            className={`w-full sm:flex-1 sm:min-w-[140px] border rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 ${isWalking && !mobile.trim()
+                            className={`w-full sm:flex-1 sm:min-w-[140px] border rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 ${isWalking && !mobile.trim()
                                 ? "border-red-400 dark:border-red-500"
                                 : "border-gray-300 dark:border-gray-600"
                                 }`}
@@ -1179,19 +1179,21 @@ export default function CreateWholeSalesForm({
                             placeholder="youremail@gmail.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full sm:flex-1 sm:min-w-[140px] border border-gray-300 dark:border-gray-600 rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                            className="w-full sm:flex-1 sm:min-w-[140px] border border-gray-300 dark:border-gray-600 rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
                         />
                         <div className="flex w-full sm:contents gap-2">
                             <input
                                 placeholder="Enter Address Here"
                                 value={address}
                                 onChange={(e) => setAddress(e.target.value)}
-                                className="w-full sm:flex-[2] sm:min-w-[160px] border border-gray-300 dark:border-gray-600 rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                                className="w-full sm:flex-[2] sm:min-w-[160px] border border-gray-300 dark:border-gray-600 rounded-md text-xs h-8 px-2.5 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
                             />
                             <button
                                 title="Add new customer"
                                 onClick={() => setShowCreateCustomerModal(true)}
-                                className="bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-95 text-[#0A6B43] rounded-md w-8 h-8 cursor-pointer text-sm shrink-0 flex justify-center items-center transition-all shadow-sm"
+                                type="button"
+                aria-label="Add new customer"
+                className="shine bg-accent-50 hover:bg-accent-100 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400 active:scale-95 rounded w-8 h-8 cursor-pointer text-sm shrink-0 flex justify-center items-center transition-all shadow-sm"
                             >
                                 <IoPersonAddSharp size={16} />
                             </button>
@@ -1213,13 +1215,13 @@ export default function CreateWholeSalesForm({
                                 onBlur={handleSearchBlur}
                                 autoComplete="off"
                                 disabled={isScanning}
-                                className="w-full border border-gray-300 dark:border-gray-600 rounded-md h-9 pl-9 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 disabled:bg-gray-100 dark:bg-gray-900 disabled:cursor-wait shadow-sm"
+                                className="w-full border border-gray-300 dark:border-gray-600 rounded-md h-9 pl-9 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 disabled:bg-gray-100 dark:bg-gray-900 disabled:cursor-wait shadow-sm"
                             />
                             <button
                                 type="button"
                                 onClick={focusSearchInput}
                                 title="Click to resume scanning"
-                                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-teal-600 transition-colors"
+                                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-600 transition-colors"
                             >
                                 <MdOutlineQrCodeScanner size={16} />
                             </button>
@@ -1252,7 +1254,7 @@ export default function CreateWholeSalesForm({
                                             <div
                                                 key={p._id}
                                                 onClick={() => selectProduct(p)}
-                                                className="flex justify-between items-center px-3 py-2.5 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-xs hover:bg-teal-50 dark:bg-teal-900 transition-colors"
+                                                className="flex justify-between items-center px-3 py-2.5 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 text-xs hover:bg-accent-50 dark:hover:bg-accent-500/15 transition-colors"
                                             >
                                                 <span>
                                                     <strong className="text-gray-800 dark:text-gray-100">{displayName}</strong>
@@ -1265,7 +1267,7 @@ export default function CreateWholeSalesForm({
                                                         never sells at retail, so falling
                                                         back to retailPrice would show a
                                                         price it will not charge. */}
-                                                    <span className="text-teal-600 ml-2 font-semibold">| ৳{p.wholesalePrice}</span>
+                                                    <span className="text-accent-600 ml-2 font-semibold">| ৳{p.wholesalePrice}</span>
                                                 </span>
                                             </div>
                                         );
@@ -1275,13 +1277,13 @@ export default function CreateWholeSalesForm({
                         </div>
 
                         {/* Wholesale Inputs */}
-                        <div className="flex flex-wrap items-center bg-teal-600 text-white p-1.5 rounded-md gap-1.5 shadow-md">
+                        <div className="flex flex-wrap items-center bg-accent-600 text-white p-1.5 rounded-md gap-1.5 shadow-md">
                             <div className="bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white/90 text-gray-800 dark:text-gray-100 px-2 h-8 flex items-center justify-center text-[11px] font-bold rounded shadow-sm tracking-wide whitespace-nowrap flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto">GROUP QTY</div>
                             <input
                                 placeholder="CTN,BOX"
                                 value={draftGroupQty}
                                 onChange={(e) => setDraftGroupQty(e.target.value)}
-                                className="h-8 px-2 text-xs outline-none rounded border border-teal-700/30 text-center text-gray-800 dark:text-gray-100 font-bold shadow-inner bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white focus:ring-2 focus:ring-white/50 transition-shadow flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-20"
+                                className="h-8 px-2 text-xs outline-none rounded border border-accent-700/30 text-center text-gray-800 dark:text-gray-100 font-bold shadow-inner bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white focus:ring-2 focus:ring-white/50 transition-shadow flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-20"
                             />
 
                             <input
@@ -1289,7 +1291,7 @@ export default function CreateWholeSalesForm({
                                 placeholder={draftProduct?.groupUnit || "Group"}
                                 value={draftProduct ? packSizeOf(draftProduct) : ""}
                                 title={draftProduct?.groupUnit ? `Units per ${draftProduct.groupUnit}` : "Units per group"}
-                                className="h-8 px-2 text-xs outline-none rounded border border-teal-700/30 text-center text-gray-600 dark:text-gray-300 font-bold shadow-inner bg-gray-50 dark:bg-gray-700 cursor-not-allowed flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-20"
+                                className="h-8 px-2 text-xs outline-none rounded border border-accent-700/30 text-center text-gray-600 dark:text-gray-300 font-bold shadow-inner bg-gray-50 dark:bg-gray-700 cursor-not-allowed flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-20"
                             />
 
                             <div className="bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white/90 text-gray-800 dark:text-gray-100 px-2 h-8 flex items-center justify-center text-[11px] font-bold rounded shadow-sm tracking-wide whitespace-nowrap flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto">QTY</div>
@@ -1304,7 +1306,7 @@ export default function CreateWholeSalesForm({
                                         handleAddDraftProduct();
                                     }
                                 }}
-                                className="h-8 px-2 text-xs outline-none rounded border border-teal-700/30 text-center text-gray-800 dark:text-gray-100 font-bold shadow-inner bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white focus:ring-2 focus:ring-white/50 transition-shadow flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-16"
+                                className="h-8 px-2 text-xs outline-none rounded border border-accent-700/30 text-center text-gray-800 dark:text-gray-100 font-bold shadow-inner bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white focus:ring-2 focus:ring-white/50 transition-shadow flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-16"
                             />
 
                             <div className="bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white/90 text-gray-800 dark:text-gray-100 px-2 h-8 flex items-center justify-center text-[11px] font-bold rounded shadow-sm tracking-wide whitespace-nowrap flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto">PRICE</div>
@@ -1313,12 +1315,13 @@ export default function CreateWholeSalesForm({
                                 placeholder="Amount"
                                 value={draftPrice}
                                 title="Wholesale price — set on the product"
-                                className="h-8 px-2 text-xs outline-none rounded border border-teal-700/30 text-center text-gray-600 dark:text-gray-300 font-bold shadow-inner bg-gray-50 dark:bg-gray-700 cursor-not-allowed flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-20"
+                                className="h-8 px-2 text-xs outline-none rounded border border-accent-700/30 text-center text-gray-600 dark:text-gray-300 font-bold shadow-inner bg-gray-50 dark:bg-gray-700 cursor-not-allowed flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto sm:w-20"
                             />
 
                             <button
                                 onClick={handleAddDraftProduct}
-                                className="bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-95 text-[#0A6B43] px-4 h-8 flex items-center justify-center gap-1.5 text-xs font-bold rounded transition-all cursor-pointer shadow-md whitespace-nowrap flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto"
+                                type="button"
+                                className="shine bg-white hover:bg-accent-50 active:scale-95 text-accent-700 dark:bg-gray-900 dark:text-accent-400 dark:hover:bg-gray-800 px-4 h-8 flex items-center justify-center gap-1.5 text-xs font-bold rounded transition-all cursor-pointer shadow-md whitespace-nowrap flex-1 sm:flex-none basis-[calc(33.333%-0.5rem)] sm:basis-auto"
                             >
                                 <FaCartPlus size={14} /> Add
                             </button>
@@ -1328,8 +1331,8 @@ export default function CreateWholeSalesForm({
                     {/* Table */}
                     <div className="flex-1 min-h-[55vh] md:min-h-0 overflow-auto bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                         <table className={`w-full min-w-[980px] md:min-w-0 border-collapse text-xs bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white ${tableProducts.length === 0 ? "h-full" : ""}`}>
-                            <thead className="sticky top-0 z-20 bg-teal-600">
-                                <tr className="bg-teal-600 text-white">
+                            <thead className="sticky top-0 z-20 bg-accent-600">
+                                <tr className="bg-accent-600 text-white">
                                     <th className="px-2 py-2.5 text-center font-bold tracking-wide whitespace-nowrap">BARCODE</th>
                                     <th className="px-2 py-2.5 text-center font-bold tracking-wide whitespace-nowrap">PRODUCT DESCRIPTION</th>
                                     <th className="px-2 py-2.5 text-center font-bold tracking-wide whitespace-nowrap w-20">COLOR</th>
@@ -1374,7 +1377,7 @@ export default function CreateWholeSalesForm({
                                     return (
                                         <tr
                                             key={p.id}
-                                            className={`border-b border-gray-100 dark:border-gray-700 hover:bg-teal-50 dark:bg-teal-900/40 transition-colors ${i % 2 === 0 ? "bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white" : "bg-gray-50 dark:bg-gray-700/70 dark:bg-gray-700/70"} ${p.id === newRowId ? "animate-row-in" : ""}`}
+                                            className={`border-b border-gray-100 dark:border-gray-700 hover:bg-accent-50 dark:hover:bg-accent-500/10 transition-colors ${i % 2 === 0 ? "bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white" : "bg-gray-50 dark:bg-gray-700/70 dark:bg-gray-700/70"} ${p.id === newRowId ? "animate-row-in" : ""}`}
                                         >
                                             <td className="px-1 py-1 text-center">
                                                 <input value={p.barcode} readOnly className={`${readonlyInputCls} w-full text-center font-mono`} />
@@ -1430,7 +1433,7 @@ export default function CreateWholeSalesForm({
                                                         title={`Original ${p.salesRate}, net rate ${netRate}`}
                                                     >
                                                         {/* Net rate hidden per request — keep for easy re-enable.
-                                                        <span className="text-teal-600 dark:text-teal-400 font-bold">
+                                                        <span className="text-accent-600 dark:text-accent-400 font-bold">
                                                             {netRate}
                                                         </span>
                                                         */}
@@ -1483,8 +1486,10 @@ export default function CreateWholeSalesForm({
                                                     />
                                                     <button
                                                         onClick={() => removeRow(p.id)}
+                                                        type="button"
+                                                        aria-label="Remove item"
                                                         title="Remove item"
-                                                        className="bg-red-500 hover:bg-red-600 active:scale-90 text-white rounded w-5 h-5 cursor-pointer text-xs flex-shrink-0 transition-all flex items-center justify-center"
+                                                        className="bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 active:scale-90 rounded size-6 cursor-pointer text-xs flex-shrink-0 transition-all flex items-center justify-center"
                                                     >
                                                         <MdDelete className="size-3.5" />
                                                     </button>
@@ -1509,7 +1514,7 @@ export default function CreateWholeSalesForm({
                         <div className="flex flex-wrap items-end gap-3">
                             <div className="min-w-52 flex-[2]">
                                 <label className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    <FaUserTie className="size-2.5 text-teal-600 dark:text-teal-400" />
+                                    <FaUserTie className="size-2.5 text-accent-600 dark:text-accent-400" />
                                     Sales Man
                                 </label>
                                 <PickerSelect
@@ -1529,7 +1534,7 @@ export default function CreateWholeSalesForm({
 
                             <div className="min-w-40 flex-1">
                                 <label className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    <FaFileInvoiceDollar className="size-2.5 text-teal-600 dark:text-teal-400" />
+                                    <FaFileInvoiceDollar className="size-2.5 text-accent-600 dark:text-accent-400" />
                                     Invoice Status
                                 </label>
                                 <PickerSelect
@@ -1547,14 +1552,14 @@ export default function CreateWholeSalesForm({
 
                             <div className="min-w-52 flex-[2]">
                                 <label className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    <MdOutlineStickyNote2 className="size-3 text-teal-600 dark:text-teal-400" />
+                                    <MdOutlineStickyNote2 className="size-3 text-accent-600 dark:text-accent-400" />
                                     Remarks
                                 </label>
                                 <input
                                     value={remarks}
                                     onChange={(e) => setRemarks(e.target.value)}
                                     placeholder="Optional note for this invoice"
-                                    className="h-7 w-full rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                    className="h-7 w-full rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                                 />
                             </div>
 
@@ -1566,7 +1571,7 @@ export default function CreateWholeSalesForm({
                                 aria-pressed={sendSms}
                                 className={`flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-bold transition-colors cursor-pointer ${
                                     sendSms
-                                        ? "border-teal-600 bg-teal-600 text-white"
+                                        ? "border-accent-600 bg-accent-600 text-white"
                                         : "border-gray-300 bg-white text-gray-500 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400"
                                 }`}
                             >
@@ -1597,7 +1602,7 @@ export default function CreateWholeSalesForm({
                     <div className="flex items-center gap-2 mb-1.5">
                         <span className="text-[11px] font-bold uppercase w-28 flex-shrink-0 tracking-wide text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1">
                             DISCOUNT %
-                            <span className="text-[9px] font-semibold normal-case text-teal-600 dark:text-teal-400">
+                            <span className="text-[9px] font-semibold normal-case text-accent-600 dark:text-accent-400">
                                 (max {discountLimit}%)
                             </span>
                         </span>
@@ -1682,7 +1687,7 @@ export default function CreateWholeSalesForm({
                                 type="checkbox"
                                 checked={customerAdvance}
                                 onChange={(e) => handleCustomerAdvanceToggle(e.target.checked)}
-                                className="w-3.5 h-3.5 accent-teal-600 cursor-pointer"
+                                className="w-3.5 h-3.5 accent-accent-600 cursor-pointer"
                             />
                         </span>
                         <input
@@ -1695,7 +1700,7 @@ export default function CreateWholeSalesForm({
                     <hr className="border-gray-200 dark:border-gray-700 my-2" />
 
                     <RightRow label="PAYABLE" emphasis>
-                        <input value={payable.toFixed(2)} readOnly className={`${readonlyInputCls} flex-1 !bg-teal-50 dark:bg-teal-900 !text-teal-800 !border-teal-200 text-sm text-right`} />
+                        <input value={payable.toFixed(2)} readOnly className={`${readonlyInputCls} flex-1 !bg-accent-50 dark:bg-accent-500/15 !text-accent-800 !border-accent-200 text-sm text-right`} />
                     </RightRow>
 
                     <RightRow label="PAID">
@@ -1743,7 +1748,7 @@ export default function CreateWholeSalesForm({
                         <button
                             onClick={() => setPaymentType("single")}
                             className={`flex-1 text-xs font-bold py-2 rounded-md border-none cursor-pointer transition-colors ${paymentType === "single"
-                                ? "bg-teal-700 text-white shadow-sm"
+                                ? "bg-accent-700 text-white shadow-sm"
                                 : "bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-200"
                                 }`}
                         >
@@ -1756,7 +1761,7 @@ export default function CreateWholeSalesForm({
                                 setShowMultiplePayModal(true);
                             }}
                             className={`flex-1 text-xs font-bold py-2 rounded-md border-none cursor-pointer transition-colors ${paymentType === "multiple"
-                                ? "bg-teal-700 text-white shadow-sm"
+                                ? "bg-accent-700 text-white shadow-sm"
                                 : "bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-200"
                                 }`}
                         >
@@ -1775,7 +1780,7 @@ export default function CreateWholeSalesForm({
                                     readOnly
                                     className={`${readonlyInputCls} flex-1 pr-16 hidden`}
                                 />
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-teal-600 font-bold bg-teal-50 dark:bg-teal-900 px-1 rounded hidden">AUTO</span>
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-accent-600 font-bold bg-accent-50 dark:bg-accent-500/15 px-1 rounded hidden">AUTO</span>
                             </div>
                             <AccountSelect
                                 accounts={accountList}
@@ -1799,7 +1804,7 @@ export default function CreateWholeSalesForm({
                                     setTempMultiplePayments(multiplePayments);
                                     setShowMultiplePayModal(true);
                                 }}
-                                  className="w-full text-xs font-bold py-2 rounded-md text-[#0A6B43] bg-[#D5F0E3] hover:bg-[#B8E4CF] transition-colors cursor-pointer"
+                                  className="w-full text-xs font-bold py-2 rounded-md shine text-accent-600 bg-accent-50 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 transition-colors cursor-pointer"
                             >
                                 {multiplePayments.length} Payment(s) — Click to Edit
                             </button>
@@ -1821,7 +1826,7 @@ export default function CreateWholeSalesForm({
                                             ? "Saving..."
                                             : undefined
                             }
-                              className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
+                              className="shine flex-1 bg-accent-500 hover:bg-accent-600 active:scale-[0.98] text-white text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
                         >
                             {isSaving ? (isEdit ? "UPDATING..." : "SAVING...") : (isEdit ? "UPDATE" : "SAVE")}
                         </button>
@@ -1837,7 +1842,7 @@ export default function CreateWholeSalesForm({
                                             ? "Saving..."
                                             : undefined
                             }
-                              className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
+                              className="shine flex-1 bg-accent-500 hover:bg-accent-600 active:scale-[0.98] text-white text-xs font-bold py-2.5 rounded-md cursor-pointer transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:active:scale-100"
                         >
                             {isSaving ? (isEdit ? "UPDATING..." : "SAVING...") : (isEdit ? "UPDATE & PRINT" : "SAVE & PRINT")}
                         </button>
@@ -1935,7 +1940,7 @@ export default function CreateWholeSalesForm({
                 </div>
                 <button
                     onClick={() => setTempMultiplePayments((prev) => [...prev, { amount: "", paymentTo: "", remark: "" }])}
-                      className="w-full mt-3 text-xs font-bold py-2 rounded-md border-dashed text-[#0A6B43] bg-[#D5F0E3] hover:bg-[#B8E4CF] transition-colors cursor-pointer"
+                      className="w-full mt-3 text-xs font-bold py-2 rounded-md shine text-accent-600 bg-accent-50 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 transition-colors cursor-pointer"
                 >
                     + Add More Payment
                 </button>
@@ -1945,7 +1950,7 @@ export default function CreateWholeSalesForm({
                     const paidNum = parseFloat(paid) || 0;
                     const isOver = totalEntered > paidNum;
                     return (
-                        <div className={`flex items-center justify-between mt-3 px-1 py-1.5 rounded text-xs font-semibold ${isOver ? "bg-red-50 text-red-600" : "bg-teal-50 dark:bg-teal-900 text-teal-700"
+                        <div className={`flex items-center justify-between mt-3 px-1 py-1.5 rounded text-xs font-semibold ${isOver ? "bg-red-50 text-red-600" : "bg-accent-50 dark:bg-accent-500/15 text-accent-700"
                             }`}>
                             <span>Total entered: <strong>৳{totalEntered.toFixed(2)}</strong></span>
                             <span>Paid: <strong>৳{paidNum.toFixed(2)}</strong></span>
@@ -1966,13 +1971,13 @@ export default function CreateWholeSalesForm({
                             setMultiplePayments(tempMultiplePayments);
                             setShowMultiplePayModal(false);
                         }}
-                          className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
+                          className="shine flex-1 bg-accent-500 hover:bg-accent-600 active:scale-[0.98] text-white text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
                     >
                         Confirm
                     </button>
                     <button
                         onClick={() => { setShowMultiplePayModal(false); setMultiPayError(""); }}
-                          className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] active:scale-[0.98] text-[#0A6B43] text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
+                          className="shine flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 active:scale-[0.98] text-xs font-bold py-2 rounded-md transition-all cursor-pointer"
                     >
                         Cancel
                     </button>

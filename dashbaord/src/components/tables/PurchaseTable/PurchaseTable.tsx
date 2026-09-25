@@ -100,7 +100,7 @@ interface Purchase {
 
 // ---------- Columns ----------
 const COLS = [
-  { label: "Serial", w: "flex-1" },
+  { label: "Serial ID", w: "flex-1" },
   { label: "Invoice", w: "flex-1" },
   { label: "Date", w: "flex-1" },
   { label: "Created At", w: "flex-1" },
@@ -229,17 +229,18 @@ const PurchaseTable = () => {
       <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm gap-4">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative w-full md:w-80 group">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-500 transition-colors size-4" />
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-accent-500 transition-colors size-4" />
             <input
               type="text"
               placeholder="Search by invoice or supplier..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm font-medium h-12"
+              className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition-all text-sm font-medium h-12"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
+                aria-label="Clear search"
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1"
               >
                 <FaTimes className="size-4" />
@@ -254,7 +255,8 @@ const PurchaseTable = () => {
               onClick={fetchPurchases}
               size="sm"
               variant="outline"
-              className="size-11 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 transition-all active:scale-90 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm"
+              aria-label="Refresh purchases"
+              className="size-11 p-0 rounded-md flex items-center justify-center !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
             >
               <FaSync className="size-4" />
             </Button>
@@ -273,7 +275,7 @@ const PurchaseTable = () => {
             </p>
             <Button
               onClick={fetchPurchases}
-                className="px-6 py-2 bg-[#D5F0E3] text-[#0A6B43] rounded-xl font-bold"
+                className="px-6 py-2 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl font-semibold"
             >
               Try Again
             </Button>
@@ -309,12 +311,12 @@ const PurchaseTable = () => {
               items={filtered}
               getKey={(purchase) => purchase._id}
               emptyMessage={searchTerm ? `No results for "${searchTerm}"` : "No purchase records yet. Add your first purchase."}
-              renderCard={(purchase) => (
+              renderCard={(purchase, index) => (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                     <div className="min-w-0 flex-1">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400 text-[10px] font-mono font-bold uppercase tracking-wider whitespace-nowrap">
-                        {purchase.serial || "—"}
+                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">
+                        {purchase.serial || `#${index + 1}`}
                       </span>
                       <p className="text-sm font-bold text-gray-800 dark:text-white truncate mt-1">{purchase.invoiceNumber}</p>
                     </div>
@@ -345,8 +347,9 @@ const PurchaseTable = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
-                      >
+                        className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View purchase"
+                  >
                         <FaEye className="size-4" />
                       </Button>
                     </Link>
@@ -354,7 +357,8 @@ const PurchaseTable = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
+                        className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                        aria-label="Print invoice"
                       >
                         <IoIosPrint className="size-4" />
                       </Button>
@@ -364,8 +368,9 @@ const PurchaseTable = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="max-md:size-11 size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
-                        >
+                          className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit purchase"
+                  >
                           <FaEdit className="size-4" />
                         </Button>
                       </Link>
@@ -374,8 +379,9 @@ const PurchaseTable = () => {
                       <Button
                         onClick={() => handleDeleteModal(purchase._id)}
                         size="sm"
-                        className="max-md:size-11 size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
-                      >
+                        className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete purchase"
+                  >
                         <MdDelete className="size-5" />
                       </Button>
                     )}
@@ -420,7 +426,7 @@ const PurchaseTable = () => {
                     <>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm">
                         No results for{" "}
-                        <span className="font-bold text-brand-500">
+                        <span className="font-bold text-accent-500">
                           "{searchTerm}"
                         </span>
                       </p>
@@ -457,9 +463,11 @@ const PurchaseTable = () => {
                         }}
                       >
                         <div className="flex-1 min-w-0 px-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400 text-[10px] font-mono font-bold uppercase tracking-wider whitespace-nowrap">
-                            {purchase.serial || "—"}
-                          </span>
+                          {purchase.serial ? (
+                            <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">{purchase.serial}</span>
+                          ) : (
+                            <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0 px-2">
                           <span className="text-sm font-bold text-gray-800 dark:text-white truncate block">
@@ -515,8 +523,9 @@ const PurchaseTable = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                  className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
-                              >
+                                  className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View purchase"
+                  >
                                 <FaEye className="size-4" />
                               </Button>
                             </Link>
@@ -528,7 +537,8 @@ const PurchaseTable = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                  className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
+                                  className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                        aria-label="Print invoice"
                               >
                                 <IoIosPrint className="size-4" />
                               </Button>
@@ -540,8 +550,9 @@ const PurchaseTable = () => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                    className="size-10 p-0 rounded-2xl border-gray-200 dark:border-gray-700 text-gray-500 dark:text-[#0A6B43] hover:text-[#0A6B43] dark:bg-[#D5F0E3]/5 transition-all active:scale-90 flex items-center justify-center"
-                                >
+                                    className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit purchase"
+                  >
                                   <FaEdit className="size-4" />
                                 </Button>
                               </Link>
@@ -552,8 +563,9 @@ const PurchaseTable = () => {
                               <Button
                                 onClick={() => handleDeleteModal(purchase._id)}
                                 size="sm"
-                                className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
-                              >
+                                className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete purchase"
+                  >
                                 <MdDelete className="size-5" />
                               </Button>
                             </Tooltip>
@@ -594,11 +606,11 @@ const PurchaseTable = () => {
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
