@@ -203,19 +203,19 @@ _.route("/customer-due-list").post(
 _.route("/employee-list").post(
   authGuard,
   reportLimiter,
-  authorize("employee", "view"),
+  authorize("employee-list-report", "view"),
   reportController.getEmployeeListReport,
 );
 _.route("/employee-payment").post(
   authGuard,
   reportLimiter,
-  authorize("employee", "view"),
+  authorize("employee-payment-report", "view"),
   reportController.getEmployeePaymentReport,
 );
 _.route("/employee-payment/employees").get(
   authGuard,
   reportLimiter,
-  authorize("employee", "view"),
+  authorize("employee-payment-report", "view"),
   reportController.getEmployeePaymentEmployees,
 );
 

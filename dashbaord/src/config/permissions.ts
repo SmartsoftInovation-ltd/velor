@@ -84,6 +84,8 @@ export const PERMISSIONS = {
   SIZE_WISE_STOCK_REPORT: "size-wise-stock-report",
   STOCK_ADJUSTMENT_REPORT: "stock-adjustment-report",
   LOW_STOCK_REPORT: "low-stock-report",
+  EMPLOYEE_LIST_REPORT: "employee-list-report",
+  EMPLOYEE_PAYMENT_REPORT: "employee-payment-report",
   TRANSACTION_REPORT: "transaction-report",
   TRANSACTION_SUMMARY: "transaction-summary",
   CASH_LEDGER: "cash-ledger",
@@ -198,6 +200,6 @@ export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/account-transaction-summary": PERMISSIONS.ACCOUNT_TRANSACTION_SUMMARY,
   "/account-balance": PERMISSIONS.ACCOUNT_BALANCE,
   "/fund-handover": PERMISSIONS.FUND_HANDOVER,
-  "/employee-list-report": PERMISSIONS.EMPLOYEE,
-  "/employee-payment-report": PERMISSIONS.EMPLOYEE,
+  "/employee-list-report": PERMISSIONS.EMPLOYEE_LIST_REPORT,
+  "/employee-payment-report": PERMISSIONS.EMPLOYEE_PAYMENT_REPORT,
 };

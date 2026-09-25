@@ -67,11 +67,42 @@ const PRINTABLE_MODULES = new Set([
   "Advance Payment",
 ]);
 
+// Every report on the /all-reports hub, grouped as the hub groups them. Each
+// is its own permission, so a role can be given any mix of reports.
+const REPORT_GROUPS: { label: string; modules: string[] }[] = [
+  {
+    label: "Purchase Report",
+    modules: ["Purchase Invoice", "Purchase Product Report", "Purchase Summary", "Purchase Return Report", "Purchase Return Summary"],
+  },
+  { label: "Order Report", modules: ["Order Invoice", "Order Status Report"] },
+  { label: "Sales Report", modules: ["Sales Invoice Report", "Sales Product Report", "Sales Summary Report"] },
+  {
+    label: "Customer Report",
+    modules: [
+      "Customer Sales Invoice Report", "Customer Sales Product Report", "Customer Sales Summary Report",
+      "Customer Payment Report", "Customer Balance Summary Report", "Customer Ledger Report", "Customer Due List Report",
+    ],
+  },
+  { label: "Supplier Report", modules: ["Supplier Purchase Invoice Report", "Supplier Payment Report"] },
+  {
+    label: "Stock Report",
+    modules: [
+      "Stock Report", "Stock Details Report", "Product Ledger Report", "Size Color Stock Report",
+      "Size Wise Stock Report", "Stock Adjustment Report", "Low Stock Report",
+    ],
+  },
+  {
+    label: "Accounts Report",
+    modules: [
+      "Transaction Report", "Transaction Summary", "Cash Ledger", "Transaction Account Wise",
+      "Account Transaction Summary", "Account Balance", "Fund Handover",
+    ],
+  },
+  { label: "Employee Report", modules: ["Employee List Report", "Employee Payment Report"] },
+];
+
 const REPORT_MODULES = new Set([
-  "Purchase Invoice", "Purchase Summary", "Purchase Return Report",
-  "Order Invoice", "Order Status Report",
-  "Transaction Report", "Transaction Summary", "Cash Ledger",
-  "Transaction Account Wise", "Account Transaction Summary", "Account Balance", "Fund Handover",
+  ...REPORT_GROUPS.flatMap((g) => g.modules),
   "Barcode Print",
 ]);
 
@@ -134,7 +165,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   { label: "Product",       icon: MdOutlineInventory2,  color: "from-blue-500 to-blue-600",     modules: ["Category", "Sub Category", "Brand", "Product", "Barcode Print"] },
   { label: "Variant & Size", icon: HiOutlineAdjustments, color: "from-cyan-500 to-teal-600",    modules: ["Variant", "Size Chart"] },
   { label: "Purchase",      icon: TbBrandBootstrap,     color: "from-orange-500 to-amber-600",  modules: ["Purchase", "Purchase Return"] },
-  { label: "Sales",    icon: MdSecurity, color: "from-emerald-500 to-green-700",  modules: ["Retail Sales", "Wholesale Sales", "Sales History"] },
+  { label: "Sales",    icon: MdSecurity, color: "from-emerald-500 to-green-700",  modules: ["Retail Sales", "Wholesale Sales", "Sales History", "Retail Sale Order", "Whole Sale Order"] },
   { label: "Discount",      icon: TbRosetteDiscount,    color: "from-pink-500 to-rose-600",     modules: ["Discount", "Discount Banner", "Coupon"] },
   {
     label: "Stock", icon: TbPackage, color: "from-yellow-500 to-orange-500",
@@ -152,15 +183,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
   },
   { label: "SMS Notifications", icon: MdSecurity, color: "from-fuchsia-500 to-purple-600", modules: ["Send SMS", "Send Bulk SMS", "SMS Info"] },
   { label: "User Role & Permission",  icon: MdDashboard,    color: "from-violet-500 to-purple-600",   modules: ["Create User", "Create Role", "Create Permission"] },
-  {
-    label: "Report & Analytics", icon: TbReportAnalytics, color: "from-slate-500 to-gray-700",
-    modules: [
-      "Purchase Invoice", "Purchase Summary", "Purchase Return Report",
-      "Order Invoice", "Order Status Report",
-      "Transaction Report", "Transaction Summary", "Cash Ledger",
-      "Transaction Account Wise", "Account Transaction Summary", "Account Balance", "Fund Handover",
-    ],
-  },
+  ...REPORT_GROUPS.map((g) => ({
+    label: g.label, icon: TbReportAnalytics, color: "from-slate-500 to-gray-700", modules: g.modules,
+  })),
+
 ];
 
 // ---------- Helpers ----------

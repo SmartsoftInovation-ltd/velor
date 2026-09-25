@@ -1020,15 +1020,15 @@ export default function App() {
                 />
                 <Route
                   path="/order-invoice/view"
-                  element={<OrderInvoiceView />}
+                  element={<ProtectedRoute module="order-invoice" action="view"><OrderInvoiceView /></ProtectedRoute>}
                 />
                 <Route
                   path="/order-status-report"
-                  element={<OrderStatusReport />}
+                  element={<ProtectedRoute module="order-status-report" action="view"><OrderStatusReport /></ProtectedRoute>}
                 />
                 <Route
                   path="/order-status-report/view"
-                  element={<OrderStatusReportView />}
+                  element={<ProtectedRoute module="order-status-report" action="view"><OrderStatusReportView /></ProtectedRoute>}
                 />
 
                 <Route
@@ -1197,19 +1197,19 @@ export default function App() {
 
                 <Route
                   path="/transaction-report"
-                  element={<TransactionReport />}
+                  element={<ProtectedRoute module="transaction-report" action="view"><TransactionReport /></ProtectedRoute>}
                 />
                 <Route
                   path="/transaction-report/view"
-                  element={<TransactionReportView />}
+                  element={<ProtectedRoute module="transaction-report" action="view"><TransactionReportView /></ProtectedRoute>}
                 />
                 <Route
                   path="/transaction-summary"
-                  element={<TransactionSummary />}
+                  element={<ProtectedRoute module="transaction-summary" action="view"><TransactionSummary /></ProtectedRoute>}
                 />
                 <Route
                   path="/transaction-summary/view"
-                  element={<TransactionSummaryView />}
+                  element={<ProtectedRoute module="transaction-summary" action="view"><TransactionSummaryView /></ProtectedRoute>}
                 />
                 <Route
                   path="/cash-ledger"
@@ -1229,19 +1229,19 @@ export default function App() {
                 />
                 <Route
                   path="/transaction-account-wise"
-                  element={<TransactionAccountWise />}
+                  element={<ProtectedRoute module="transaction-account-wise" action="view"><TransactionAccountWise /></ProtectedRoute>}
                 />
                 <Route
                   path="/transaction-account-wise/view"
-                  element={<TransactionAccountWiseView />}
+                  element={<ProtectedRoute module="transaction-account-wise" action="view"><TransactionAccountWiseView /></ProtectedRoute>}
                 />
                 <Route
                   path="/account-transaction-summary"
-                  element={<AccountTransactionSummary />}
+                  element={<ProtectedRoute module="account-transaction-summary" action="view"><AccountTransactionSummary /></ProtectedRoute>}
                 />
                 <Route
                   path="/account-transaction-summary/view"
-                  element={<AccountTransactionSummaryView />}
+                  element={<ProtectedRoute module="account-transaction-summary" action="view"><AccountTransactionSummaryView /></ProtectedRoute>}
                 />
                 <Route
                   path="/account-balance"
@@ -1253,7 +1253,7 @@ export default function App() {
                 />
                 <Route
                   path="/account-balance/view"
-                  element={<AccountBalanceView />}
+                  element={<ProtectedRoute module="account-balance" action="view"><AccountBalanceView /></ProtectedRoute>}
                 />
                 <Route
                   path="/fund-handover"
@@ -1265,13 +1265,13 @@ export default function App() {
                 />
                 <Route
                   path="/fund-handover/view"
-                  element={<FundHandOverView />}
+                  element={<ProtectedRoute module="fund-handover" action="view"><FundHandOverView /></ProtectedRoute>}
                 />
 
                 <Route
                   path="/employee-list-report"
                   element={
-                    <ProtectedRoute module="employee" action="view">
+                    <ProtectedRoute module="employee-list-report" action="view">
                       <EmployeeListReport />
                     </ProtectedRoute>
                   }
@@ -1279,7 +1279,7 @@ export default function App() {
                 <Route
                   path="/employee-payment-report"
                   element={
-                    <ProtectedRoute module="employee" action="view">
+                    <ProtectedRoute module="employee-payment-report" action="view">
                       <EmployeePaymentReport />
                     </ProtectedRoute>
                   }
