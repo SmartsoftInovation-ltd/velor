@@ -194,7 +194,7 @@ const AddUser = () => {
         hideTitle
         actions={
           <Link to="/userlist">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
               User List
             </Button>
           </Link>
@@ -321,7 +321,7 @@ const AddUser = () => {
                     type="button"
                     onClick={() => { setShowRoleModal(true); setNewRoleName(""); setNewRoleError(""); }}
                     title="Create new role"
-                    className="size-[42px] shrink-0 flex items-center justify-center rounded-xl bg-brand-500 hover:bg-brand-600 text-white shadow-sm shadow-brand-500/30 transition-all active:scale-95"
+                    className="size-[42px] shrink-0 flex items-center justify-center rounded-xl bg-accent-500 hover:bg-accent-600 text-white shadow-sm shadow-accent-500/30 transition-all active:scale-95"
                   >
                     <FaPlus className="size-4" />
                   </button>
@@ -389,7 +389,7 @@ const AddUser = () => {
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                      className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-md transition-colors"
+                      className="absolute -top-2 -right-2 size-6 flex items-center justify-center rounded-full bg-error-500 hover:bg-error-600 text-white shadow-md transition-colors"
                   >
                     <FaTimes className="size-3" />
                   </button>
@@ -402,8 +402,8 @@ const AddUser = () => {
                   {...getRootProps()}
                   className={`mt-2 flex flex-col items-center justify-center w-full h-36 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
                     isDragActive
-                      ? "border-brand-500 bg-brand-50 dark:bg-brand-500/10"
-                      : "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-brand-400 hover:bg-brand-50/50 dark:hover:bg-brand-500/5"
+                      ? "border-accent-500 bg-accent-50 dark:bg-accent-500/10"
+                      : "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-accent-400 hover:bg-accent-50/50 dark:hover:bg-accent-500/5"
                   }`}
                 >
                   <input {...getInputProps()} />
@@ -423,7 +423,7 @@ const AddUser = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                  className="px-8 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="px-8 py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -491,7 +491,7 @@ const AddUser = () => {
               <Button
                 onClick={handleCreateRole}
                 disabled={isCreatingRole}
-                  className="px-5 py-2 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold border-none disabled:opacity-50 transition-colors"
+                  className="px-5 py-2 rounded-xl !bg-accent-500 hover:!bg-accent-600 !text-white text-sm font-semibold border-none disabled:opacity-50 transition-colors"
               >
                 {isCreatingRole ? (
                   <div className="flex items-center gap-2">

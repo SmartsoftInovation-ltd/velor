@@ -122,13 +122,13 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="flex-1 max-w-md relative group">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-accent-500" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search roles..."
-            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#0A6B43] dark:border-gray-700 dark:text-gray-200"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-gray-700 dark:text-gray-200"
           />
           {searchTerm && (
             <button
@@ -171,8 +171,8 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/5">
                     <div className="flex items-center gap-2.5">
-                      <div className="size-8 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0">
-                        <FaShieldAlt className="size-3.5 text-brand-500" />
+                      <div className="size-8 rounded-xl bg-accent-50 dark:bg-accent-500/10 flex items-center justify-center shrink-0">
+                        <FaShieldAlt className="size-3.5 text-accent-500" />
                       </div>
                       <span className="text-sm font-bold text-gray-800 dark:text-white">{role.name}</span>
                     </div>
@@ -191,19 +191,23 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/5">
                     <button
+                      type="button"
                       onClick={() => {
                         setSelectedRole(role);
                         setEditName(role.name);
                         setEditError("");
                         setShowEditModal(true);
                       }}
-                      className="size-11 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:hover:border-brand-500 dark:bg-brand-500/5"
+                      className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                      aria-label="Edit role"
                     >
                       <FaEdit className="size-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => { setSelectedRole(role); setShowDeleteModal(true); }}
-                      className="size-11 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none"
+                      className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                      aria-label="Delete role"
                     >
                       <MdDelete className="size-5" />
                     </button>
@@ -223,7 +227,7 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
                 {searchTerm ? `No results for "${searchTerm}"` : "No roles created yet"}
               </p>
               {searchTerm && (
-                <button onClick={() => setSearchTerm("")} className="mt-2 text-xs text-brand-500 hover:underline font-medium">
+                <button onClick={() => setSearchTerm("")} className="mt-2 text-xs text-accent-500 hover:underline font-medium">
                   Clear search
                 </button>
               )}
@@ -246,8 +250,8 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
 
                     {/* Name */}
                     <div className="px-4 flex items-center gap-2.5">
-                      <div className="size-8 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0">
-                        <FaShieldAlt className="size-3.5 text-brand-500" />
+                      <div className="size-8 rounded-xl bg-accent-50 dark:bg-accent-500/10 flex items-center justify-center shrink-0">
+                        <FaShieldAlt className="size-3.5 text-accent-500" />
                       </div>
                       <span className="text-sm font-semibold text-gray-800 dark:text-white truncate">
                         {role.name}
@@ -270,13 +274,15 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
                     <div className="px-4 flex items-center justify-center gap-2">
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedRole(role);
                             setEditName(role.name);
                             setEditError("");
                             setShowEditModal(true);
                           }}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:hover:border-brand-500 dark:bg-brand-500/5 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit role"
                         >
                           <FaEdit className="size-4" />
                         </button>
@@ -284,8 +290,10 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
 
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => { setSelectedRole(role); setShowDeleteModal(true); }}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete role"
                         >
                           <MdDelete className="size-5" />
                         </button>
@@ -303,8 +311,8 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
       {/* Edit Modal */}
       <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setSelectedRole(null); }}>
         <div className="p-8">
-          <div className="flex items-center justify-center size-16 bg-brand-50 dark:bg-brand-500/10 rounded-full mb-5 mx-auto">
-            <FaEdit className="size-7 text-brand-500" />
+          <div className="flex items-center justify-center size-16 bg-accent-50 dark:bg-accent-500/10 rounded-full mb-5 mx-auto">
+            <FaEdit className="size-7 text-accent-500" />
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white text-center mb-5">Edit Role</h2>
           <div>
@@ -318,7 +326,7 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
               onKeyDown={(e) => e.key === "Enter" && handleEdit()}
               autoFocus
               placeholder="Enter role name"
-              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition ${editError ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500 transition ${editError ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
             />
             {editError && <p className="text-red-500 text-xs mt-1">{editError}</p>}
           </div>
@@ -333,7 +341,7 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
             <Button
               onClick={handleEdit}
               disabled={isSaving}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
+                className="flex-1 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all"
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </Button>
@@ -363,7 +371,7 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete"}
             </Button>

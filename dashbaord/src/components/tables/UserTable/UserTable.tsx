@@ -165,7 +165,7 @@ export default function UserTable({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="h-10 w-full rounded-lg pl-9 pr-9 transition-colors"
           />
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-accent-500" />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
@@ -211,28 +211,36 @@ export default function UserTable({
               </MobileCardRow>
               <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2 dark:border-white/[0.05]">
                 <button
+                  type="button"
                   onClick={() => navigate(`/user-view/${user._id}`)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="View user"
                 >
                   <FaEye className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleToggleModal(user)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  className={`shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 ${user.isActive ? "bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25" : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10"}`}
+                  aria-label={user.isActive ? "Deactivate user" : "Activate user"}
                 >
                   {user.isActive ? <FaToggleOn className="size-4" /> : <FaToggleOff className="size-4" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => navigate(`/user-edit/${user._id}`)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                  aria-label="Edit user"
                 >
                   <FaEdit className="size-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleDeleteModal(user)}
-                  className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-red-500 text-white"
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                  aria-label="Delete user"
                 >
-                  <MdDelete className="size-4" />
+                  <MdDelete className="size-5" />
                 </button>
               </div>
             </div>
@@ -270,7 +278,7 @@ export default function UserTable({
               {searchTerm ? (
                 <>
                   <p className="text-sm text-gray-400 mb-5">
-                    No results for <span className="font-semibold text-brand-500">"{searchTerm}"</span>
+                    No results for <span className="font-semibold text-accent-500">"{searchTerm}"</span>
                   </p>
                   <Button onClick={() => setSearchTerm("")} variant="outline" className="rounded-xl px-6 text-sm">
                     Clear Search
@@ -309,8 +317,8 @@ export default function UserTable({
                           className="size-9 rounded-xl object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0"
                         />
                       ) : (
-                        <div className="size-9 rounded-xl bg-brand-100 dark:bg-brand-500/20 flex items-center justify-center flex-shrink-0">
-                          <span className="text-sm font-bold text-brand-600 dark:text-brand-400">
+                        <div className="size-9 rounded-xl bg-accent-100 dark:bg-accent-500/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-bold text-accent-600 dark:text-accent-400">
                             {user.name?.charAt(0)?.toUpperCase()}
                           </span>
                         </div>
@@ -366,8 +374,10 @@ export default function UserTable({
                     <div className="px-4 flex items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
+                          type="button"
                           onClick={() => navigate(`/user-view/${user._id}`)}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-blue-400 hover:text-blue-500 hover:border-blue-400 dark:hover:border-blue-500 dark:bg-blue-500/5 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="View user"
                         >
                           <FaEye className="size-4" />
                         </button>
@@ -375,12 +385,10 @@ export default function UserTable({
 
                       <Tooltip text={user.isActive ? "Deactivate" : "Activate"}>
                         <button
+                          type="button"
                           onClick={() => handleToggleModal(user)}
-                          className={`size-10 p-0 flex items-center justify-center rounded-2xl border-none transition-all active:scale-90 ${
-                            user.isActive
-                              ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/15"
-                              : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15"
-                          }`}
+                          className={`shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 ${user.isActive ? "bg-accent-50 text-accent-600 hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25" : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 dark:bg-white/5 dark:text-gray-500 dark:hover:bg-white/10"}`}
+                          aria-label={user.isActive ? "Deactivate user" : "Activate user"}
                         >
                           {user.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
                         </button>
@@ -388,8 +396,10 @@ export default function UserTable({
 
                       <Tooltip text="Edit">
                         <button
+                          type="button"
                           onClick={() => navigate(`/user-edit/${user._id}`)}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:hover:border-brand-500 dark:bg-brand-500/5 transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                          aria-label="Edit user"
                         >
                           <FaEdit className="size-4" />
                         </button>
@@ -397,8 +407,10 @@ export default function UserTable({
 
                       <Tooltip text="Delete">
                         <button
+                          type="button"
                           onClick={() => handleDeleteModal(user)}
-                          className="size-10 p-0 flex items-center justify-center rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                          aria-label="Delete user"
                         >
                           <MdDelete className="size-5" />
                         </button>
@@ -435,11 +447,11 @@ export default function UserTable({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
+                className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -487,15 +499,11 @@ export default function UserTable({
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
-                pendingToggle?.currentStatus
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
-              }`}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

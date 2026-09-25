@@ -50,7 +50,7 @@ const CreateRoleForm = ({ onCreated }: { onCreated: () => void }) => {
       <Button
         onClick={handleSubmit}
         disabled={isCreating}
-          className="w-full py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold border-none transition-all active:scale-95 disabled:opacity-60"
+          className="w-full py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl font-semibold border-none transition-all active:scale-95 disabled:opacity-60"
       >
         {isCreating ? (
           <div className="flex items-center justify-center gap-2">

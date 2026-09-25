@@ -249,12 +249,12 @@ const RoleDropdown = ({ roles, value, onChange }: RoleDropdownProps) => {
         type="button"
         onClick={() => { setOpen((v) => !v); setSearch(""); }}
         className={`w-full h-12 flex items-center justify-between gap-3 px-4 rounded-xl border text-sm transition-all
-          ${open ? "border-brand-500 ring-2 ring-brand-500/20" : "border-gray-200 dark:border-gray-700"}
+          ${open ? "border-accent-500 ring-2 ring-accent-500/20" : "border-gray-200 dark:border-gray-700"}
           bg-white dark:bg-gray-900 shadow-theme-xs`}
       >
         <div className="flex items-center gap-3 min-w-0">
           <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 ${
-            selected ? "bg-gradient-to-br from-brand-400 to-brand-600 shadow-sm shadow-brand-500/30" : "bg-gray-100 dark:bg-gray-800"
+            selected ? "bg-gradient-to-br from-accent-400 to-accent-600 shadow-sm shadow-accent-500/30" : "bg-gray-100 dark:bg-gray-800"
           }`}>
             {selected
               ? <FaShield className="size-3.5 text-white" />
@@ -280,7 +280,7 @@ const RoleDropdown = ({ roles, value, onChange }: RoleDropdownProps) => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search roles..."
-                className="w-full h-9 pl-9 pr-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-brand-400 transition"
+                className="w-full h-9 pl-9 pr-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-accent-400 transition"
               />
             </div>
           </div>
@@ -293,16 +293,16 @@ const RoleDropdown = ({ roles, value, onChange }: RoleDropdownProps) => {
                   type="button"
                   onClick={() => { onChange(r.slug); setOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 transition-colors
-                    ${r.slug === value ? "bg-brand-50 dark:bg-brand-500/10" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+                    ${r.slug === value ? "bg-accent-50 dark:bg-accent-500/10" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
                 >
                   <div className={`size-9 rounded-xl flex items-center justify-center shrink-0
-                    ${r.slug === value ? "bg-gradient-to-br from-brand-400 to-brand-600 shadow-sm shadow-brand-500/30" : "bg-gray-100 dark:bg-gray-800"}`}>
+                    ${r.slug === value ? "bg-gradient-to-br from-accent-400 to-accent-600 shadow-sm shadow-accent-500/30" : "bg-gray-100 dark:bg-gray-800"}`}>
                     <FaShield className={`size-3.5 ${r.slug === value ? "text-white" : "text-gray-500 dark:text-gray-400"}`} />
                   </div>
-                  <p className={`text-sm font-semibold truncate ${r.slug === value ? "text-brand-600 dark:text-brand-400" : "text-gray-800 dark:text-gray-200"}`}>
+                  <p className={`text-sm font-semibold truncate ${r.slug === value ? "text-accent-600 dark:text-accent-400" : "text-gray-800 dark:text-gray-200"}`}>
                     {r.name}
                   </p>
-                  {r.slug === value && <FaCheckSquare className="size-4 text-brand-500 shrink-0 ml-auto" />}
+                  {r.slug === value && <FaCheckSquare className="size-4 text-accent-500 shrink-0 ml-auto" />}
                 </button>
               ))}
           </div>
@@ -327,7 +327,7 @@ const ModuleCard = ({ name, permissions, onToggle, onToggleAll }: ModuleCardProp
 
   return (
     <div className="group relative rounded-2xl border transition-all duration-200 overflow-hidden h-full flex flex-col border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] hover:border-gray-300 dark:hover:border-white/[0.12] hover:shadow-sm">
-      {someOn && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-brand-400 to-brand-600 rounded-l-2xl" />}
+      {someOn && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-accent-400 to-accent-600 rounded-l-2xl" />}
       <div className="p-3 flex flex-col flex-1">
         <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2.5 truncate">{name}</p>
         <div className={`grid gap-1.5 mb-2 flex-1 ${moduleActions.length <= 2 ? "grid-cols-1" : "grid-cols-2"}`}>
@@ -345,10 +345,10 @@ const ModuleCard = ({ name, permissions, onToggle, onToggleAll }: ModuleCardProp
           onClick={onToggleAll}
           className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-black transition-all duration-150 border active:scale-95
             ${allOn
- ?"bg-[#D5F0E3] text-[#0A6B43] border-transparent shadow-sm"
+ ?"bg-accent-500 text-white border-transparent shadow-sm"
               : someOn
- ?"bg-blue-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] dark:text-[#0A6B43] /30"
-                : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300"}`}
+ ?"bg-accent-50 dark:bg-accent-500/15 text-accent-700 dark:text-accent-400 border-accent-200 dark:border-accent-500/30"
+                : "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-accent-300"}`}
         >
           {/* One icon slot and one label slot, always in the same positions.
               Swapping whole fragments here made React reuse the wrong DOM node
@@ -384,10 +384,10 @@ const GroupHeader = ({ group, allChecked, someChecked, onToggleAll }: GroupHeade
         onClick={onToggleAll}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 border active:scale-95
           ${allChecked
- ?"bg-[#D5F0E3] text-[#0A6B43] border-transparent shadow-md"
+ ?"bg-accent-500 text-white border-transparent shadow-md"
             : someChecked
- ?"bg-blue-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] dark:text-[#0A6B43] /30"
-              : "bg-white dark:bg-gray-800/80 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-sm"}`}
+ ?"bg-accent-50 dark:bg-accent-500/15 text-accent-700 dark:text-accent-400 border-accent-200 dark:border-accent-500/30"
+              : "bg-white dark:bg-gray-800/80 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-accent-300 hover:shadow-sm"}`}
       >
         {allChecked ? (
           <span className="flex items-center gap-2"><FaCheckSquare className="size-3.5" /><span className="text-[11px] font-black uppercase tracking-wider">Deselect All</span></span>
@@ -615,8 +615,8 @@ const AssignRolePermission = () => {
             </label>
             <RoleDropdown roles={roles} value={selectedRole} onChange={handleRoleChange} />
             {isLoadingPerms && (
-              <p className="text-xs text-brand-500 flex items-center gap-1.5 mt-1">
-                <span className="size-3 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin inline-block" />
+              <p className="text-xs text-accent-500 flex items-center gap-1.5 mt-1">
+                <span className="size-3 border-2 border-accent-500/30 border-t-accent-500 rounded-full animate-spin inline-block" />
                 Loading role permissions...
               </p>
             )}
@@ -628,7 +628,7 @@ const AssignRolePermission = () => {
           {/* Panel header */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/50 dark:bg-white/[0.01]">
             <div className="flex items-center gap-2.5 flex-1">
-              <div className="size-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shadow-sm shadow-brand-500/30">
+              <div className="size-9 rounded-xl bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shadow-sm shadow-accent-500/30">
                 <FaShieldAlt className="size-4 text-white" />
               </div>
               <div>
@@ -643,10 +643,10 @@ const AssignRolePermission = () => {
                 onClick={toggleAllModules}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 border active:scale-95
                   ${allModulesOn
- ?"bg-[#D5F0E3] text-[#0A6B43] border-transparent shadow-md"
+ ?"bg-accent-500 text-white border-transparent shadow-md"
                     : someModulesOn
- ?"bg-blue-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] dark:text-[#0A6B43] /30"
-                      : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-sm"}`}
+ ?"bg-accent-50 dark:bg-accent-500/15 text-accent-700 dark:text-accent-400 border-accent-200 dark:border-accent-500/30"
+                      : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-accent-300 hover:shadow-sm"}`}
               >
                 {allModulesOn ? (
                   <span className="flex items-center gap-2"><FaCheckSquare className="size-3.5" /><span className="text-[11px] font-black uppercase tracking-wider">Deselect All</span></span>
@@ -671,7 +671,7 @@ const AssignRolePermission = () => {
                   value={moduleSearch}
                   onChange={(e) => setModuleSearch(e.target.value)}
                   placeholder="Search modules..."
-                  className="w-full h-9 pl-9 pr-8 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 transition"
+                  className="w-full h-9 pl-9 pr-8 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-500/10 transition"
                 />
                 {moduleSearch && (
                   <button onClick={() => setModuleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors">
@@ -777,8 +777,8 @@ const AssignRolePermission = () => {
                 onClick={() => setOptions((prev) => prev.includes(opt) ? prev.filter((x) => x !== opt) : [...prev, opt])}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150 active:scale-95
                   ${options.includes(opt)
-                    ? "bg-brand-500 text-white border-transparent shadow-sm shadow-brand-500/30"
-                    : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-400"}`}
+                    ? "bg-accent-500 text-white border-transparent shadow-sm shadow-accent-500/30"
+                    : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-accent-400"}`}
               >
                 {options.includes(opt) && <FaCheckSquare className="size-3.5" />}
                 {opt}
@@ -800,14 +800,14 @@ const AssignRolePermission = () => {
             <Button
               onClick={handleDestroyDraft}
               disabled={!hasDraft || isSubmitting}
-                className="px-6 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
+                className="px-6 py-2.5 !bg-error-50 hover:!bg-error-100 !text-error-600 dark:!bg-error-500/15 dark:!text-error-400 font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
             >
               Destroy Draft
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || !selectedRole}
-                className="px-10 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
+                className="px-10 py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white font-bold rounded-xl border-none shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-sm"
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">

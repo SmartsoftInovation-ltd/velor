@@ -18,6 +18,9 @@ import {
   FaExchangeAlt,
   FaCoins,
   FaUndoAlt,
+  FaChevronDown,
+  FaHistory,
+  FaTimes,
 } from "react-icons/fa";
 import PickerSelect from "../sales/PickerSelect";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -114,7 +117,7 @@ const ACTION_META: Record<string, { icon: IconType; tone: string }> = {
   CREATE: { icon: FaPlus, tone: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" },
   UPDATE: { icon: FaPen, tone: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" },
   DELETE: { icon: FaTrash, tone: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" },
-  LOGIN: { icon: FaSignInAlt, tone: "bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-300" },
+  LOGIN: { icon: FaSignInAlt, tone: "bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400" },
   LOGIN_FAILED: { icon: FaTimesCircle, tone: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" },
   LOGOUT: { icon: FaSignOutAlt, tone: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300" },
   STATUS_CHANGE: { icon: FaExchangeAlt, tone: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" },
@@ -124,7 +127,7 @@ const ACTION_META: Record<string, { icon: IconType; tone: string }> = {
 };
 
 const inputClass =
-  "h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200";
+  "h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200";
 
 function formatValue(value: unknown): string {
   if (value === undefined) return "—";
@@ -138,7 +141,7 @@ function DiffView({ log }: { log: AuditLogEntry }) {
     return (
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-left text-gray-400 dark:text-gray-500">
+          <tr className="text-left text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
             <th className="py-1.5 pr-4 font-medium w-1/4">Field</th>
             <th className="py-1.5 pr-4 font-medium">Before</th>
             <th className="py-1.5 font-medium">After</th>
@@ -153,11 +156,15 @@ function DiffView({ log }: { log: AuditLogEntry }) {
               <td className="py-1.5 pr-4 font-mono text-gray-600 dark:text-gray-300">
                 {change.field}
               </td>
-              <td className="py-1.5 pr-4 text-red-600 dark:text-red-400 break-all">
-                {formatValue(change.before)}
+              <td className="py-1.5 pr-4 break-all">
+                <span className="rounded-md bg-error-50 px-1.5 py-0.5 text-error-700 dark:bg-error-500/15 dark:text-error-400">
+                  {formatValue(change.before)}
+                </span>
               </td>
-              <td className="py-1.5 text-green-600 dark:text-green-400 break-all">
-                {formatValue(change.after)}
+              <td className="py-1.5 break-all">
+                <span className="rounded-md bg-accent-50 px-1.5 py-0.5 text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                  {formatValue(change.after)}
+                </span>
               </td>
             </tr>
           ))}
@@ -221,7 +228,7 @@ const AuditLogTable = () => {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/[0.03] p-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
             Entity
@@ -283,15 +290,17 @@ const AuditLogTable = () => {
         </div>
         {(entityType || action || from || to) && (
           <button
+            type="button"
             onClick={() => {
               setEntityType("");
               setAction("");
               setFrom("");
               setTo("");
             }}
-            className="h-10 rounded-lg px-4 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="shine flex items-center gap-1.5 h-10 px-3 rounded-xl bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 text-xs font-medium transition-colors"
           >
-            Clear
+            <FaTimes className="size-3" />
+            Clear filters
           </button>
         )}
       </div>
@@ -312,26 +321,36 @@ const AuditLogTable = () => {
             Error fetching audit logs!
           </p>
           <button
+            type="button"
             onClick={() => refetch()}
-            className="rounded-xl bg-brand-500 px-6 py-2 font-bold text-white shadow-lg"
+            className="shine rounded-xl bg-accent-500 hover:bg-accent-600 px-6 py-2 font-bold text-white shadow-lg transition-colors"
           >
             Try Again
           </button>
         </div>
       ) : logs.length === 0 ? (
-        <p className="py-20 text-center text-gray-400 dark:text-gray-500">
-          No audit logs found for the selected filters.
-        </p>
+        <div className="flex flex-col items-center justify-center text-center py-20 px-6 rounded-2xl border border-gray-200 dark:border-white/[0.05]">
+          <div className="relative mb-5">
+            <div className="absolute inset-0 rounded-full bg-accent-500/10 blur-2xl" />
+            <div className="relative size-20 rounded-full bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/50 flex items-center justify-center ring-8 ring-gray-50 dark:ring-gray-800/40">
+              <FaHistory className="size-8 text-gray-300 dark:text-gray-600" />
+            </div>
+          </div>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-1">No Activity Found</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+            No audit logs match the selected filters.
+          </p>
+        </div>
       ) : (
-        <div className="no-scrollbar overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+        <div className="no-scrollbar overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] shadow-theme-sm">
           <table className="w-full min-w-175 text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
-                <th className="px-4 py-3 font-medium">Time</th>
-                <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">Action</th>
-                <th className="px-4 py-3 font-medium">Entity</th>
-                <th className="px-4 py-3 font-medium">Details</th>
+              <tr className="border-b border-gray-200 bg-gray-50/95 text-left text-[11px] uppercase text-gray-500 dark:border-white/[0.05] dark:bg-gray-800/95 dark:text-gray-400">
+                <th className="px-4 py-4 font-bold">Time</th>
+                <th className="px-4 py-4 font-bold">User</th>
+                <th className="px-4 py-4 font-bold">Action</th>
+                <th className="px-4 py-4 font-bold">Entity</th>
+                <th className="px-4 py-4 font-bold">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -341,7 +360,19 @@ const AuditLogTable = () => {
                     onClick={() =>
                       setExpandedId(expandedId === log._id ? null : log._id)
                     }
-                    className="cursor-pointer border-b border-gray-100 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/40"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpandedId(expandedId === log._id ? null : log._id);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-expanded={expandedId === log._id}
+                    className={`cursor-pointer border-b border-gray-100 transition-colors focus-visible:outline-none focus-visible:bg-accent-50/60 dark:border-white/[0.05] ${
+                      expandedId === log._id
+                        ? "bg-accent-50/40 dark:bg-accent-500/5"
+                        : "hover:bg-gray-50 dark:hover:bg-white/[0.02]"
+                    }`}
                   >
                     <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
                       <div>{moment(log.createdAt).format("DD MMM YYYY")}</div>
@@ -350,18 +381,25 @@ const AuditLogTable = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-700 dark:text-gray-200">
-                        {log.user?.name || log.user?.email || "System / Guest"}
-                      </div>
-                      {log.user?.roles && log.user.roles.length > 0 && (
-                        <div className="text-xs text-gray-400 dark:text-gray-500">
-                          {log.user.roles.join(", ")}
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-8 shrink-0 rounded-full bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400 flex items-center justify-center text-xs font-bold uppercase">
+                          {(log.user?.name || log.user?.email || "S").charAt(0)}
                         </div>
-                      )}
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-700 dark:text-gray-200 truncate">
+                            {log.user?.name || log.user?.email || "System / Guest"}
+                          </div>
+                          {log.user?.roles && log.user.roles.length > 0 && (
+                            <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                              {log.user.roles.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-current/15 ${
                           ACTION_BADGE[log.action] ||
                           "bg-gray-100 text-gray-700 dark:bg-gray-500/10 dark:text-gray-400"
                         }`}
@@ -385,9 +423,12 @@ const AuditLogTable = () => {
                         : log.after || log.before
                           ? "Snapshot"
                           : "—"}
-                      <span className="ml-2 text-brand-500">
-                        {expandedId === log._id ? "▲" : "▼"}
-                      </span>
+                      <FaChevronDown
+                        aria-hidden
+                        className={`ml-2 inline size-3 text-accent-500 transition-transform ${
+                          expandedId === log._id ? "rotate-180" : ""
+                        }`}
+                      />
                     </td>
                   </tr>
                   {expandedId === log._id && (
@@ -397,7 +438,7 @@ const AuditLogTable = () => {
                     >
                       <td
                         colSpan={5}
-                        className="bg-gray-50/60 px-6 py-4 dark:bg-gray-800/30"
+                        className="bg-gray-50/60 px-6 py-4 dark:bg-white/[0.02] border-l-2 border-accent-500"
                       >
                         <DiffView log={log} />
                         {log.meta?.ip && (
@@ -423,9 +464,17 @@ const AuditLogTable = () => {
           <button
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
-            className="rounded-xl border border-gray-200 px-6 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            type="button"
+            className="shine flex items-center gap-2 rounded-xl border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 px-6 py-2 text-sm font-semibold disabled:opacity-50 transition-colors"
           >
-            {isFetchingNextPage ? "Loading..." : "Load More"}
+            {isFetchingNextPage ? (
+              <>
+                <span className="size-4 animate-spin rounded-full border-2 border-accent-500/20 border-t-accent-500" />
+                Loading...
+              </>
+            ) : (
+              "Load More"
+            )}
           </button>
         </div>
       )}
