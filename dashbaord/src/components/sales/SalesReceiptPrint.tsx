@@ -27,6 +27,7 @@ interface StoreInformation {
   adress: string;
   phone: string;
   email?: string;
+  websiteLink?: string;
   footer?: string;
   image?: { url?: string };
 }
@@ -485,6 +486,13 @@ const SalesReceiptPrint = () => {
             )}
             {storeInfo?.phone && (
               <p className="text-[9px]">Tel: {storeInfo.phone}</p>
+            )}
+            {/* Shown only when the store has set them. */}
+            {storeInfo?.email && (
+              <p className="text-[9px]">Email: {storeInfo.email}</p>
+            )}
+            {storeInfo?.websiteLink && (
+              <p className="text-[9px]">Web: {storeInfo.websiteLink}</p>
             )}
           </div>
 
