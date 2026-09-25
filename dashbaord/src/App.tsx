@@ -173,6 +173,8 @@ const VariantView = lazy(() => import("./pages/Variant/VariantView"));
 
 // Components - Accounts
 const AccountList = lazy(() => import("./pages/Accounts/AccountList"));
+const AddAccount = lazy(() => import("./pages/Accounts/AddAccount"));
+const AddTransactionCategory = lazy(() => import("./pages/Accounts/AddTransactionCategory"));
 const AccountTransactionHistory = lazy(
   () => import("./pages/Accounts/AccountTransactionHistory"),
 );
@@ -850,6 +852,8 @@ export default function App() {
 
                 {/* Accounts  */}
                 <Route path="/account-list" element={<ProtectedRoute module="add-account" action="view"><AccountList /></ProtectedRoute>} />
+                <Route path="/add-account" element={<ProtectedRoute module="add-account" action="add"><AddAccount /></ProtectedRoute>} />
+                <Route path="/add-transaction-category" element={<ProtectedRoute module="transaction-category" action="add"><AddTransactionCategory /></ProtectedRoute>} />
                 <Route path="/account-history/:accountId" element={<ProtectedRoute module="add-account" action="view"><AccountTransactionHistory /></ProtectedRoute>} />
                 <Route path="/add-transaction" element={<ProtectedRoute module="add-transaction" action="add"><AddTransaction /></ProtectedRoute>} />
                 <Route

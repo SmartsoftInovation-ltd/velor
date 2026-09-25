@@ -205,20 +205,20 @@ const MoneyTransferTable = () => {
   };
 
   const showSkeleton = isLoading;
-  const headers = ["Serial", "From Account", "To Account", "Amount", "Voucher No.", "Description", "Actions"];
+  const headers = ["Serial ID", "From Account", "To Account", "Amount", "Voucher No.", "Description", "Actions"];
 
   return (
     <div className="w-full space-y-6">
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="relative w-full md:w-80 group">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-accent-500" />
           <input
             type="text"
             placeholder="Search by serial, account, voucher..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#0A6B43] dark:border-gray-700 dark:text-gray-200"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-gray-700 dark:text-gray-200"
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 transition-colors hover:text-red-500">
@@ -243,7 +243,7 @@ const MoneyTransferTable = () => {
             </p>
             <Button 
               onClick={fetchTransfers} 
-                className="px-8 py-2.5 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-xl font-semibold shadow-lg transition-all active:scale-95"
+                className="px-8 py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl font-semibold shadow-lg transition-all active:scale-95"
             >
               Try Again
             </Button>
@@ -275,11 +275,11 @@ const MoneyTransferTable = () => {
               items={filtered}
               getKey={(t) => t._id}
               emptyMessage="No money transfer records yet"
-              renderCard={(t) => (
+              renderCard={(t, index) => (
                 <div className="space-y-1">
                   <div className="pb-2 mb-2 border-b border-gray-100 dark:border-white/5">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400 text-[10px] font-mono font-bold uppercase tracking-wider">
-                      {t.transferSerialId || "—"}
+                    <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                      {t.transferSerialId || `#${index + 1}`}
                     </span>
                   </div>
                   <MobileCardRow label="From">{t.fromAccount?.name || "—"}</MobileCardRow>
@@ -296,14 +296,16 @@ const MoneyTransferTable = () => {
                       onClick={() => openEditModal(t)}
                       size="sm"
                       variant="outline"
-                      className="size-11 p-0 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:bg-brand-500/5 flex items-center justify-center"
+                      className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                      aria-label="Edit transfer"
                     >
                       <FaEdit className="size-4" />
                     </Button>
                     <Button
                       onClick={() => openDeleteModal(t)}
                       size="sm"
-                      className="size-11 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none"
+                      className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                      aria-label="Delete transfer"
                     >
                       <MdDelete className="size-5" />
                     </Button>
@@ -314,7 +316,7 @@ const MoneyTransferTable = () => {
             <div ref={sentinelRef} style={{ height: 1 }} />
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
-                <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -360,7 +362,7 @@ const MoneyTransferTable = () => {
                         style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)`, gridTemplateColumns }}
                       >
                         <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400 text-[10px] font-mono font-bold uppercase tracking-wider">{t.transferSerialId || "—"}</span>
+                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{t.transferSerialId || `#${virtualRow.index + 1}`}</span>
                         </TableCell>
                         <TableCell className="px-4 py-3 flex items-center justify-center">
                           <span className="text-sm font-semibold text-gray-800 dark:text-white">{t.fromAccount?.name || "—"}</span>
@@ -383,7 +385,8 @@ const MoneyTransferTable = () => {
                               onClick={() => openEditModal(t)}
                               size="sm"
                               variant="outline"
-                              className="size-10 p-0 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:bg-brand-500/5 transition-all active:scale-90 flex items-center justify-center"
+                              className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                              aria-label="Edit transfer"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -392,7 +395,8 @@ const MoneyTransferTable = () => {
                             <Button
                               onClick={() => openDeleteModal(t)}
                               size="sm"
-                              className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                              className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                              aria-label="Delete transfer"
                             >
                               <MdDelete className="size-5" />
                             </Button>
@@ -408,7 +412,7 @@ const MoneyTransferTable = () => {
             <div ref={sentinelRef} style={{ height: 1 }} />
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
-                <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -427,10 +431,10 @@ const MoneyTransferTable = () => {
           </p>
           <div className="flex gap-3 mt-7">
             <Button onClick={() => setShowDeleteModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all disabled:active:scale-100">
+            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100">
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -481,10 +485,10 @@ const MoneyTransferTable = () => {
           <p className="text-xs text-gray-400 dark:text-gray-500">From/To account cannot be changed after creation.</p>
           <div className="flex gap-3 pt-2">
             <Button onClick={() => setShowEditModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
+            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
               {isUpdating ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

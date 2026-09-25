@@ -1,12 +1,13 @@
 import { useRef, useEffect, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FaEdit, FaSearch, FaTimes, FaChevronDown, FaArrowDown, FaArrowUp, FaCheck } from "react-icons/fa";
+import { FaEdit, FaSearch, FaTimes } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import toast from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import useIsMobile from "../../../hooks/useIsMobile";
 import Button from "../../ui/button/Button";
+import SearchableSelect from "../../form/SearchableSelect";
 import { Modal } from "../../ui/modal";
 import InputField from "../../form/input/InputField";
 import Label from "../../form/Label";
@@ -28,69 +29,6 @@ const TYPE_OPTIONS: { value: AllowedType; label: string }[] = [
   { value: "cash payment", label: "Cash Payment" },
 ];
 
-// ---------- Styled transaction-type dropdown ----------
-const TypeDropdown = ({ value, onChange }: { value: AllowedType; onChange: (val: AllowedType) => void }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const selected = TYPE_OPTIONS.find((o) => o.value === value);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((p) => !p)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 border rounded-lg bg-white dark:bg-gray-800 dark:text-white text-sm text-left transition-colors border-gray-300 dark:border-gray-700 ${
-          open ? "ring-2 ring-brand-500/20 border-brand-500" : ""
-        }`}
-      >
-        <span className="flex items-center gap-2 text-gray-900 dark:text-white">
-          {selected?.value === "cash recived" ? (
-            <FaArrowDown className="size-3 text-green-500" />
-          ) : (
-            <FaArrowUp className="size-3 text-red-500" />
-          )}
-          {selected?.label}
-        </span>
-        <FaChevronDown className={`size-3 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
-          {TYPE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left transition-colors ${
-                value === opt.value
-                  ? "bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 font-semibold"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                {opt.value === "cash recived" ? (
-                  <FaArrowDown className="size-3 text-green-500" />
-                ) : (
-                  <FaArrowUp className="size-3 text-red-500" />
-                )}
-                {opt.label}
-              </span>
-              {value === opt.value && <FaCheck className="size-3 text-brand-500" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface TransactionCategory {
   _id: string;
@@ -239,13 +177,13 @@ const TransactionCategoryTable = () => {
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="relative w-full md:w-80 group">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-accent-500" />
           <input
             type="text"
             placeholder="Search categories..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#0A6B43] dark:border-gray-700 dark:text-gray-200"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-gray-700 dark:text-gray-200"
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 transition-colors hover:text-red-500">
@@ -260,14 +198,14 @@ const TransactionCategoryTable = () => {
         {isError && (
           <div className="flex flex-col items-center justify-center py-20 text-center min-h-[300px]">
             <p className="text-red-500 font-bold text-lg mb-4">Failed to load categories!</p>
-            <Button onClick={fetchCategories} className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold">Try Again</Button>
+            <Button onClick={fetchCategories} className="px-6 py-2 bg-accent-500 text-white rounded-xl font-bold">Try Again</Button>
           </div>
         )}
 
         {showSkeleton && !isError && (
           <div>
             <div className="grid border-b border-gray-200 dark:border-white/5 bg-gray-50/95 dark:bg-gray-800/95" style={{ gridTemplateColumns }}>
-              {["Sr No.", "Category Name", "Type", "Actions"].map((h) => (
+              {["Serial ID", "Category Name", "Type", "Actions"].map((h) => (
                 <div key={h} className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 text-center">{h}</div>
               ))}
             </div>
@@ -293,7 +231,7 @@ const TransactionCategoryTable = () => {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/5">
                     <span className="text-sm font-bold text-gray-800 dark:text-white">{category.name}</span>
-                    <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">#{index + 1}</span>
+                    <span className="text-xs font-semibold text-accent-600 dark:text-accent-400">#{index + 1}</span>
                   </div>
                   <MobileCardRow label="Type">
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -309,14 +247,16 @@ const TransactionCategoryTable = () => {
                       onClick={() => { setSelectedCategory(category); setEditedName(category.name); setEditedType(category.allowedType); setShowEditModal(true); }}
                       size="sm"
                       variant="outline"
-                      className="size-11 p-0 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:bg-brand-500/5 flex items-center justify-center"
+                      className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                      aria-label="Edit category"
                     >
                       <FaEdit className="size-4" />
                     </Button>
                     <Button
                       onClick={() => { setSelectedCategory(category); setShowDeleteModal(true); }}
                       size="sm"
-                      className="size-11 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none"
+                      className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                      aria-label="Delete category"
                     >
                       <MdDelete className="size-5" />
                     </Button>
@@ -327,7 +267,7 @@ const TransactionCategoryTable = () => {
             <div ref={sentinelRef} style={{ height: 1 }} />
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
-                <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -355,7 +295,7 @@ const TransactionCategoryTable = () => {
               <Table className="w-full">
                 <TableHeader className="sticky top-0 z-30 bg-gray-50/95 dark:bg-gray-800/95 border-b border-gray-200 dark:border-white/5 backdrop-blur-md">
                   <TableRow className="grid" style={{ gridTemplateColumns }}>
-                    {["Sr No.", "Category Name", "Type", "Actions"].map((h) => (
+                    {["Serial ID", "Category Name", "Type", "Actions"].map((h) => (
                       <TableCell key={h} isHeader className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
                         {h}
                       </TableCell>
@@ -373,7 +313,7 @@ const TransactionCategoryTable = () => {
                         style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)`, gridTemplateColumns }}
                       >
                         <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">#{virtualRow.index + 1}</span>
+                          <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                         </TableCell>
                         <TableCell className="px-4 py-3 flex items-center justify-center">
                           <span className="text-sm font-semibold text-gray-800 dark:text-white">{category.name}</span>
@@ -393,7 +333,8 @@ const TransactionCategoryTable = () => {
                               onClick={() => { setSelectedCategory(category); setEditedName(category.name); setEditedType(category.allowedType); setShowEditModal(true); }}
                               size="sm"
                               variant="outline"
-                              className="size-10 p-0 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:bg-brand-500/5 transition-all active:scale-90 flex items-center justify-center"
+                              className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                              aria-label="Edit category"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -402,7 +343,8 @@ const TransactionCategoryTable = () => {
                             <Button
                               onClick={() => { setSelectedCategory(category); setShowDeleteModal(true); }}
                               size="sm"
-                              className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                              className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                              aria-label="Delete category"
                             >
                               <MdDelete className="size-5" />
                             </Button>
@@ -418,7 +360,7 @@ const TransactionCategoryTable = () => {
             <div ref={sentinelRef} style={{ height: 1 }} />
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
-                <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -437,10 +379,10 @@ const TransactionCategoryTable = () => {
           </p>
           <div className="flex gap-3 mt-7">
             <Button onClick={() => setShowDeleteModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all disabled:active:scale-100">
+            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:active:scale-100">
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -461,14 +403,20 @@ const TransactionCategoryTable = () => {
           </div>
           <div className="space-y-2">
             <Label>Transaction Type</Label>
-            <TypeDropdown value={editedType} onChange={setEditedType} />
+            <SearchableSelect
+              options={TYPE_OPTIONS}
+              value={editedType}
+              onChange={(v) => setEditedType(v as AllowedType)}
+              placeholder="Select type"
+              searchPlaceholder="Search types..."
+            />
           </div>
           <div className="flex gap-3 pt-2">
             <Button onClick={() => setShowEditModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
+            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
               {isUpdating ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

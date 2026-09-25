@@ -3,7 +3,10 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import ComponentCard from "../../components/common/ComponentCard";
+import SectionCard from "../../components/common/SectionCard";
+import MobileActionBar from "../../components/common/MobileActionBar";
+import Label from "../../components/form/Label";
+import { FaUniversity, FaPlus, FaTrash } from "react-icons/fa";
 import { Link } from "react-router";
 import Button from "../../components/ui/button/Button";
 import Input from "../../components/form/input/InputField";
@@ -12,6 +15,17 @@ import { showApiError } from "../../utils/apiError";
 const AddAccount = () => {
   const [accounts, setAccounts] = useState<string[]>([""]);
   const [errors, setErrors] = useState<string[]>([""]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleAddField = () => {
+    setAccounts((prev) => [...prev, ""]);
+    setErrors((prev) => [...prev, ""]);
+  };
+
+  const handleRemoveField = (index: number) => {
+    setAccounts((prev) => prev.filter((_, i) => i !== index));
+    setErrors((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleAccountChange = (index: number, value: string) => {
     const updatedAccounts = [...accounts];
@@ -26,6 +40,7 @@ const AddAccount = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     // Validation check
     const newErrors = accounts.map((acc) =>
@@ -39,6 +54,7 @@ const AddAccount = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const res = await axiosSecure.post(`/account/create-account`, {
         accounts,
@@ -51,6 +67,8 @@ const AddAccount = () => {
     } catch (error) {
       console.error(error);
       showApiError(error, "Failed to create account(s)");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -68,42 +86,81 @@ const AddAccount = () => {
         hideTitle
         actions={
           <Link to="/account-list">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
               Account List
             </Button>
           </Link>
         }
       />
-      <div className="space-y-6">
-        <ComponentCard>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <SectionCard
+          icon={<FaUniversity />}
+          title="Accounts"
+          action={
+            <button
+              type="button"
+              onClick={handleAddField}
+              className="shine inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 text-xs font-semibold transition-colors"
+            >
+              <FaPlus className="size-3" />
+              Add Another
+            </button>
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {accounts.map((account, index) => (
               <div key={index} className="flex flex-col gap-1">
-                <Input
-                  type="text"
-                  value={account}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleAccountChange(index, e.target.value)
-                  }
-                  placeholder={`Account ${index + 1}`}
-                  className={`w-full md:!w-[300px] px-3 py-2 rounded border ${
-                    errors[index]
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 dark:border-gray-700"
-                  } bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2`}
-                />
+                <Label htmlFor={`account-${index}`}>Account Name {accounts.length > 1 ? index + 1 : ""}</Label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Input
+                      id={`account-${index}`}
+                      type="text"
+                      value={account}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        handleAccountChange(index, e.target.value)
+                      }
+                      placeholder="e.g. Cash in Hand, bKash, City Bank"
+                      className={errors[index] ? "border-red-500" : ""}
+                    />
+                  </div>
+                  {accounts.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveField(index)}
+                      aria-label={`Remove account ${index + 1}`}
+                      className="shine flex size-10 shrink-0 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                    >
+                      <FaTrash className="size-4" />
+                    </button>
+                  )}
+                </div>
                 {errors[index] && (
-                  <p className="text-red-500 text-sm">{errors[index]}</p>
+                  <p className="text-red-500 text-xs mt-0.5">{errors[index]}</p>
                 )}
               </div>
             ))}
+          </div>
+        </SectionCard>
 
-            <div className="flex gap-4 mt-4">
-              <Button className="text-white px-4 py-2 rounded">Submit</Button>
-            </div>
-          </form>
-        </ComponentCard>
-      </div>
+        <MobileActionBar>
+          <div className="flex justify-end pt-2">
+            <Button
+              disabled={isSubmitting}
+              className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-8 py-2.5 !rounded-xl disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Creating...
+                </span>
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+          </div>
+        </MobileActionBar>
+      </form>
     </div>
   );
 };

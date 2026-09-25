@@ -8,6 +8,7 @@ import moment from "moment";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import useIsMobile from "../../../hooks/useIsMobile";
 import Button from "../../ui/button/Button";
+import SearchableSelect from "../../form/SearchableSelect";
 import { Modal } from "../../ui/modal";
 import InputField from "../../form/input/InputField";
 import Label from "../../form/Label";
@@ -222,20 +223,20 @@ const TransactionListTable = () => {
   };
 
   const showSkeleton = isLoading;
-  const headers = ["Serial", "Date", "Category", "Account", "Type", "Amount", "Description", "Actions"];
+  const headers = ["Serial ID", "Date", "Category", "Account", "Type", "Amount", "Description", "Actions"];
 
   return (
     <div className="w-full space-y-6">
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="relative w-full md:w-80 group">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-[#0A6B43]" />
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 transition-colors group-focus-within:text-accent-500" />
           <input
             type="text"
             placeholder="Search by serial, category, account, type..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-[#0A6B43] dark:border-gray-700 dark:text-gray-200"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-transparent pl-9 pr-9 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-gray-700 dark:text-gray-200"
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 transition-colors hover:text-red-500">
@@ -250,7 +251,7 @@ const TransactionListTable = () => {
         {isError && (
           <div className="flex flex-col items-center justify-center py-20 text-center min-h-[300px]">
             <p className="text-red-500 font-bold text-lg mb-4">Failed to load transactions!</p>
-            <Button onClick={fetchTransactions} className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold">Try Again</Button>
+            <Button onClick={fetchTransactions} className="px-6 py-2 bg-accent-500 text-white rounded-xl font-bold">Try Again</Button>
           </div>
         )}
 
@@ -279,13 +280,13 @@ const TransactionListTable = () => {
               items={filtered}
               getKey={(tx) => tx._id}
               emptyMessage="No transactions found"
-              renderCard={(tx) => {
+              renderCard={(tx, index) => {
                 const isIncome = tx.transactionType === "cash recived";
                 return (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-3 pb-2 mb-2 border-b border-gray-100 dark:border-white/5">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400 text-[10px] font-mono font-bold uppercase tracking-wider">
-                        {tx.transactionSerialId || "—"}
+                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                        {tx.transactionSerialId || `#${index + 1}`}
                       </span>
                       <span className={`text-xs font-bold px-2 py-1 rounded-lg ${isIncome ? "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"}`}>
                         {isIncome ? "In" : "Out"}
@@ -307,14 +308,16 @@ const TransactionListTable = () => {
                         onClick={() => openEditModal(tx)}
                         size="sm"
                         variant="outline"
-                        className="size-11 p-0 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:bg-brand-500/5 flex items-center justify-center"
+                        className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                        aria-label="Edit transaction"
                       >
                         <FaEdit className="size-4" />
                       </Button>
                       <Button
                         onClick={() => openDeleteModal(tx)}
                         size="sm"
-                        className="size-11 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none"
+                        className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                        aria-label="Delete transaction"
                       >
                         <MdDelete className="size-5" />
                       </Button>
@@ -326,7 +329,7 @@ const TransactionListTable = () => {
             <div ref={sentinelRef} style={{ height: 1 }} />
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
-                <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -373,7 +376,7 @@ const TransactionListTable = () => {
                         style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)`, gridTemplateColumns }}
                       >
                         <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400 text-[10px] font-mono font-bold uppercase tracking-wider">{tx.transactionSerialId || "—"}</span>
+                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{tx.transactionSerialId || `#${virtualRow.index + 1}`}</span>
                         </TableCell>
                         <TableCell className="px-4 py-3 flex items-center justify-center">
                           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">{moment(tx.date).format("DD MMM YYYY")}</span>
@@ -403,7 +406,8 @@ const TransactionListTable = () => {
                               onClick={() => openEditModal(tx)}
                               size="sm"
                               variant="outline"
-                              className="size-10 p-0 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-brand-400 hover:text-brand-500 hover:border-brand-400 dark:bg-brand-500/5 transition-all active:scale-90 flex items-center justify-center"
+                              className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                              aria-label="Edit transaction"
                             >
                               <FaEdit className="size-4" />
                             </Button>
@@ -412,7 +416,8 @@ const TransactionListTable = () => {
                             <Button
                               onClick={() => openDeleteModal(tx)}
                               size="sm"
-                              className="size-10 p-0 rounded-2xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 border-none transition-all active:scale-90"
+                              className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                              aria-label="Delete transaction"
                             >
                               <MdDelete className="size-5" />
                             </Button>
@@ -428,7 +433,7 @@ const TransactionListTable = () => {
             <div ref={sentinelRef} style={{ height: 1 }} />
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
-                <div className="size-6 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                <div className="size-6 border-2 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -461,11 +466,11 @@ const TransactionListTable = () => {
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg shadow-red-500/25 transition-all disabled:opacity-60 disabled:active:scale-100"
+              className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 shadow-lg transition-all disabled:opacity-60 disabled:active:scale-100"
             >
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -492,14 +497,16 @@ const TransactionListTable = () => {
             </div>
             <div>
               <Label>Transaction Type</Label>
-              <select
+              <SearchableSelect
+                options={[
+                  { value: "cash recived", label: "Cash Received" },
+                  { value: "cash payment", label: "Cash Payment" },
+                ]}
                 value={editState.transactionType}
-                onChange={(e) => setEditState((p) => ({ ...p, transactionType: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white text-sm"
-              >
-                <option value="cash recived">Cash Received</option>
-                <option value="cash payment">Cash Payment</option>
-              </select>
+                onChange={(v) => setEditState((p) => ({ ...p, transactionType: v }))}
+                placeholder="Select type"
+                searchPlaceholder="Search types..."
+              />
             </div>
             <div>
               <Label>Amount</Label>
@@ -520,10 +527,10 @@ const TransactionListTable = () => {
           <p className="text-xs text-gray-400 dark:text-gray-500">Category and account cannot be changed after creation.</p>
           <div className="flex gap-3 pt-2">
             <Button onClick={() => setShowEditModal(false)} variant="outline" className="flex-1 rounded-xl py-2.5 text-sm">Cancel</Button>
-            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
+            <Button onClick={handleUpdate} disabled={isUpdating} className="flex-1 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all disabled:active:scale-100">
               {isUpdating ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

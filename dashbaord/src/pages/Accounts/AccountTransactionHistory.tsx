@@ -90,8 +90,9 @@ const AccountTransactionHistory = () => {
               onClick={() => navigate("/account-list")}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Go Back"
+              aria-label="Go Back"
             >
               <BackIcon />
             </Button>
@@ -99,8 +100,9 @@ const AccountTransactionHistory = () => {
               onClick={fetchHistory}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Refresh"
+              aria-label="Refresh"
             >
               <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
@@ -114,7 +116,7 @@ const AccountTransactionHistory = () => {
           ) : isError ? (
             <div className="text-center py-20">
               <p className="text-red-500 font-bold mb-4">Error fetching transaction history!</p>
-              <button onClick={() => refetch()} className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold">
+              <button onClick={() => refetch()} className="px-6 py-2 bg-accent-500 text-white rounded-xl font-bold">
                 Try Again
               </button>
             </div>

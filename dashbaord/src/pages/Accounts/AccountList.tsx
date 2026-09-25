@@ -1,6 +1,7 @@
 import { FaSync } from "react-icons/fa";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { usePermission } from "../../hooks/usePermission";
 import ComponentCard from "../../components/common/ComponentCard";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
@@ -16,6 +17,7 @@ const BackIcon = () => (
 const AccountList = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const canAdd = usePermission("add-account", "add");
   return (
     <>
       <PageMeta title="Account List - Baig Ecommerce" description="Manage accounts" />
@@ -31,8 +33,9 @@ const AccountList = () => {
               onClick={() => navigate(-1)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Go Back"
+              aria-label="Go Back"
             >
               <BackIcon />
             </Button>
@@ -42,11 +45,19 @@ const AccountList = () => {
               }
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Refresh"
+              aria-label="Refresh"
             >
               <FaSync className="size-3.5" />
             </Button>
+            {canAdd && (
+              <Link to="/add-account">
+                <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
+                  Create Account
+                </Button>
+              </Link>
+            )}
           </div>
         }
       />

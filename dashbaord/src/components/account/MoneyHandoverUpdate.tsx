@@ -4,13 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import DatePicker from "../form/date-picker";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
-import Select from "../form/Select";
+import SearchableSelect from "../form/SearchableSelect";
 import Button from "../ui/button/Button";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
-import ComponentCard from "../common/ComponentCard";
+import SectionCard from "../common/SectionCard";
+import { FaHandHoldingUsd } from "react-icons/fa";
 import MobileActionBar from "../common/MobileActionBar";
 import { showApiError } from "../../utils/apiError";
 
@@ -54,7 +55,7 @@ const MoneyHandoverUpdate = () => {
         if (data) {
           setFormData({
             date: data.date
-              ? new Date(data.date).toISOString().split("T")[0]
+              ? new Date(data.date).toLocaleDateString("en-CA")
               : "",
             fundPaymentMode: data.fundPaymentMode?._id || data.fundPaymentMode || "",
             name: data.name || "",
@@ -130,26 +131,26 @@ const MoneyHandoverUpdate = () => {
         hideTitle
         actions={
           <Link to="/money-handover-list">
-            <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
               Handover List
             </Button>
           </Link>
         }
       />
       <div className="space-y-6">
-        <ComponentCard>
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <SectionCard icon={<FaHandHoldingUsd />} title="Handover Details">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Date */}
               <div>
+                {/* Keyed on the loaded date so flatpickr re-initialises once the
+                    record arrives (defaultDate is only read on mount). */}
                 <DatePicker
+                  key={formData.date ? "loaded" : "empty"}
                   id="date-picker-from"
                   label="Date"
                   placeholder="Select a date"
-                  //@ts-ignore
-                  value={formData.date}
-                  //@ts-ignore
-                  onChange={(value) => handleChange("date", value)}
+                  defaultDate={formData.date || undefined}
+                  onChange={(_d: Date[], dateStr: string) => handleChange("date", dateStr)}
                 />
                 {errors.date && (
                   <p className="text-red-500 text-sm mt-1">{errors.date}</p>
@@ -159,11 +160,13 @@ const MoneyHandoverUpdate = () => {
               {/* Fund Payment Mode */}
               <div className="flex flex-col">
                 <Label>Fund Payment Mode</Label>
-                <Select
+                <SearchableSelect
                   options={fundPaymentModeOptions}
-                  placeholder="Select Fund Payment Mode"
+                  placeholder="Select fund payment mode"
+                  searchPlaceholder="Search accounts..."
                   value={formData.fundPaymentMode}
                   onChange={(value) => handleChange("fundPaymentMode", value)}
+                  hasError={!!errors.fundPaymentMode}
                 />
                 {errors.fundPaymentMode && (
                   <p className="text-red-500 text-sm mt-1">
@@ -222,7 +225,7 @@ const MoneyHandoverUpdate = () => {
               </div>
 
               {/* Transaction Description */}
-              <div className="flex flex-col">
+              <div className="flex flex-col md:col-span-2">
                 <Label htmlFor="desc">Transaction Description</Label>
                 <Input
                   type="text"
@@ -241,26 +244,26 @@ const MoneyHandoverUpdate = () => {
               </div>
             </div>
 
+        </SectionCard>
+
             <MobileActionBar>
+              <div className="flex justify-end pt-2">
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className={`${
-   loading ?"bg-gray-400" :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
-   } text-[#0A6B43] px-4 py-2 rounded`}
+                className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-8 py-2.5 !rounded-xl disabled:opacity-60"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                    <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                     Updating...
                   </span>
                 ) : (
                   "Update Money Handover"
                 )}
               </Button>
+              </div>
             </MobileActionBar>
-          </div>
-        </ComponentCard>
       </div>
     </>
   );
