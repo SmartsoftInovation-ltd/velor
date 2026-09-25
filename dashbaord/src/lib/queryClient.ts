@@ -18,6 +18,15 @@ export const tenantQueryKeyHash = (queryKey: QueryKey): string =>
 export const createQueryClient = () =>
   new QueryClient({
     defaultOptions: {
-      queries: { queryKeyHashFn: tenantQueryKeyHash },
+      queries: {
+        queryKeyHashFn: tenantQueryKeyHash,
+        // A 4xx (404 empty list, 403 no permission) won't change on retry;
+        // retrying only held the skeleton for seconds. Network/5xx still retry.
+        retry: (failureCount, error) => {
+          const status = (error as { response?: { status?: number } })?.response?.status;
+          if (status && status >= 400 && status < 500) return false;
+          return failureCount < 2;
+        },
+      },
     },
   });

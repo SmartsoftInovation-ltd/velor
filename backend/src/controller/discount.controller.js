@@ -49,6 +49,14 @@ exports.createDiscount = asynchandeler(async (req, res) => {
 });
 
 // @desc get all discounts
+// Lists only show each reference's name, so skip the full product/variant docs.
+const LIST_POPULATE = [
+  { path: "category", select: "name slug" },
+  { path: "subCategory", select: "name slug" },
+  { path: "product", select: "name slug" },
+  { path: "variant", select: "variantName slug" },
+];
+
 exports.getAllDiscounts = asynchandeler(async (req, res) => {
   const cacheKey = await buildCacheKey(NS, "all");
   const cached = await getCache(cacheKey);
@@ -62,14 +70,12 @@ exports.getAllDiscounts = asynchandeler(async (req, res) => {
   }
 
   const discounts = await Discount.find()
-    .populate("category subCategory product variant")
+    .populate(LIST_POPULATE)
     .sort({ createdAt: -1 })
     .lean();
 
-  if (!discounts || discounts.length === 0) {
-    throw new customError("Discount not found", statusCodes.NOT_FOUND);
-  }
-
+  // An empty list is a normal state, not an error: a 404 here made the
+  // dashboard retry and hold the skeleton for seconds.
   await setCache(cacheKey, discounts, CACHE_TTL_LIST);
 
   return apiResponse.sendSuccess(
@@ -203,15 +209,11 @@ exports.getDiscountPagination = asynchandeler(async (req, res) => {
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 })
-    .populate("category subCategory product variant")
+    .populate(LIST_POPULATE)
     .lean();
 
   const total = await Discount.countDocuments();
   const totalPages = Math.ceil(total / limit);
-
-  if (!discounts || discounts.length === 0) {
-    throw new customError("Discounts not found", statusCodes.NOT_FOUND);
-  }
 
   const result = {
     discounts,
