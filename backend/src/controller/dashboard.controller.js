@@ -246,7 +246,6 @@ exports.getOverview = asynchandeler(async (req, res) => {
     salesByType,
     paymentSplit,
     dailySeries,
-    topProducts,
     recentSales,
     catalogCounts,
     stockValueAgg,
@@ -345,21 +344,6 @@ exports.getOverview = asynchandeler(async (req, res) => {
         },
       },
       { $sort: { _id: 1 } },
-    ]),
-
-    // 5. Top selling products by quantity within range
-    salesModel.aggregate([
-      { $match: dateMatch },
-      { $unwind: "$searchItem" },
-      {
-        $group: {
-          _id: "$searchItem.productDescription",
-          quantity: { $sum: "$searchItem.quantity" },
-          revenue: { $sum: "$searchItem.subtotal" },
-        },
-      },
-      { $sort: { quantity: -1 } },
-      { $limit: 7 },
     ]),
 
     // 6. Recent sales feed
@@ -740,11 +724,6 @@ exports.getOverview = asynchandeler(async (req, res) => {
       date: d._id,
       revenue: Math.round(d.revenue || 0),
       orders: d.orders || 0,
-    })),
-    topProducts: topProducts.map((p) => ({
-      name: p._id || "Unnamed",
-      quantity: p.quantity || 0,
-      revenue: Math.round(p.revenue || 0),
     })),
     recentSales: recentSales.map((r) => ({
       invoiceNumber: r.invoiceNumber,
@@ -2585,6 +2564,102 @@ exports.getCustomerDuePaymentSummary = asynchandeler(async (req, res) => {
   await setCache(cacheKey, payload, CACHE_TTL);
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Customer due payment summary fetched", {
+    ...payload,
+    fromCache: false,
+  });
+});
+
+// Windows the Top Selling Products box offers, in months of 30 days each.
+const TOP_SELLING_MONTHS = [1, 2, 3];
+
+// @desc  Top Selling Products box — best sellers by quantity over the last
+// 1, 2 or 3 months (?months=, rolling 30-day months, default 1). It has its own
+// window and ignores the dashboard's range. Each variant is its own row; a
+// single-variant product is one row.
+exports.getTopSellingProducts = asynchandeler(async (req, res) => {
+  const requested = Number(req.query.months);
+  const months = TOP_SELLING_MONTHS.includes(requested) ? requested : 1;
+
+  const cacheKey = await buildCacheKey(NS, `top-selling-products:${months}m`);
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(res, statusCodes.OK, "Top selling products fetched", {
+      ...cached,
+      fromCache: true,
+    });
+  }
+
+  const end = new Date();
+  const start = new Date(end.getTime() - months * 30 * 24 * 60 * 60 * 1000);
+
+  const rows = await salesModel.aggregate([
+    { $match: { createdAt: { $gte: start, $lte: end } } },
+    { $unwind: "$searchItem" },
+    {
+      $group: {
+        // A line without a product reference falls back to its own description.
+        _id: {
+          $ifNull: [
+            "$searchItem.variantId",
+            { $ifNull: ["$searchItem.productId", "$searchItem.productDescription"] },
+          ],
+        },
+        productId: { $first: "$searchItem.productId" },
+        variantId: { $first: "$searchItem.variantId" },
+        description: { $first: "$searchItem.productDescription" },
+        size: { $first: "$searchItem.size" },
+        color: { $first: "$searchItem.color" },
+        quantity: { $sum: "$searchItem.quantity" },
+        revenue: { $sum: "$searchItem.subtotal" },
+      },
+    },
+    { $sort: { quantity: -1 } },
+    { $limit: 7 },
+    {
+      $lookup: {
+        from: "products",
+        localField: "productId",
+        foreignField: "_id",
+        as: "product",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "variantId",
+        foreignField: "_id",
+        as: "variant",
+        pipeline: [{ $project: { variantName: 1, size: 1, color: 1 } }],
+      },
+    },
+  ]);
+
+  // "N/A" is the schema placeholder for an unset size/color.
+  const attr = (v) => (v && v !== "N/A" ? String(v) : "");
+  const rowName = (r) => {
+    const productName = r.product?.[0]?.name;
+    if (!productName) return r.description || "Unnamed";
+    if (!r.variantId) return productName;
+    const v = r.variant?.[0] || {};
+    const label =
+      attr(v.variantName) ||
+      [attr(v.size) || attr(r.size), attr(v.color) || attr(r.color)].filter(Boolean).join(" · ");
+    return label ? `${productName} · ${label}` : productName;
+  };
+
+  const payload = {
+    months,
+    topProducts: rows.map((r) => ({
+      name: rowName(r),
+      quantity: r.quantity || 0,
+      revenue: Math.round(r.revenue || 0),
+    })),
+  };
+
+  await setCache(cacheKey, payload, CACHE_TTL);
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Top selling products fetched", {
     ...payload,
     fromCache: false,
   });

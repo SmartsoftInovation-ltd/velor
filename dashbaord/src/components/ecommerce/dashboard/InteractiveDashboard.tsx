@@ -32,6 +32,8 @@ import {
   useCustomerDuePaymentSummary,
   useInflowTransactionSummary,
   useOutflowTransactionSummary,
+  useTopSellingProducts,
+  type TopSellingMonths,
   useDayCashSummary,
   useAccountsBalanceSummary,
   DashboardRange,
@@ -104,6 +106,9 @@ const Card = ({
 export default function InteractiveDashboard() {
   const { can, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
   const [range, setRange] = useState<DashboardRange>("today");
+  const [topMonths, setTopMonths] = useState<TopSellingMonths>(1);
+  const { data: topSelling, isLoading: isTopSellingLoading } =
+    useTopSellingProducts(topMonths);
 
   const { data, isLoading, isFetching, isError, refetch } = useDashboard(range);
   const {
@@ -781,11 +786,31 @@ export default function InteractiveDashboard() {
             )}
 
             {showBox(PERMISSIONS.DASHBOARD_TOP_SELLING_PRODUCTS) && (
-              <Card title="Top Selling Products">
-                {isLoading ? (
+              <Card
+                title="Top Selling Products"
+                action={
+                  <div className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-white/[0.03]">
+                    {([1, 2, 3] as TopSellingMonths[]).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setTopMonths(m)}
+                        title={`Last ${m * 30} days`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          topMonths === m
+                            ? "bg-brand-500 text-white shadow-sm"
+                            : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        {m} {m === 1 ? "Month" : "Months"}
+                      </button>
+                    ))}
+                  </div>
+                }
+              >
+                {isTopSellingLoading ? (
                   <div className="h-[300px] animate-pulse rounded-xl bg-gray-50 dark:bg-white/[0.02]" />
                 ) : (
-                  <TopProductsChart data={data?.topProducts ?? []} />
+                  <TopProductsChart data={topSelling?.topProducts ?? []} />
                 )}
               </Card>
             )}

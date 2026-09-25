@@ -54,6 +54,11 @@ export default function TopProductsChart({ data }: { data: TopProduct[] }) {
     },
     tooltip: {
       theme: dark ? "dark" : "light",
+      // Labels are cut to fit; the tooltip names the full product · variant.
+      x: {
+        formatter: (_val: number, opts) =>
+          data[opts?.dataPointIndex ?? 0]?.name ?? "",
+      },
       y: {
         formatter: (val: number, opts) => {
           const rev = data[opts?.dataPointIndex ?? 0]?.revenue ?? 0;

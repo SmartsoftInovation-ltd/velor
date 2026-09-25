@@ -15,6 +15,13 @@ _.route("/overview").get(
   dashboardController.getOverview,
 );
 
+_.route("/top-selling-products").get(
+  authGuard,
+  reportLimiter,
+  authorize("dashboard-top-selling-products", "view"),
+  dashboardController.getTopSellingProducts,
+);
+
 _.route("/invoices").get(
   authGuard,
   reportLimiter,

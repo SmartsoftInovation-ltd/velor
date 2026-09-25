@@ -136,7 +136,6 @@ export interface DashboardData {
   salesByType: SalesByType[];
   paymentSplit: PaymentSplit[];
   dailySeries: DailyPoint[];
-  topProducts: TopProduct[];
   recentSales: RecentSale[];
   lowStock: LowStockItem[];
   invoices: DashboardInvoices;
@@ -189,6 +188,29 @@ export const useDashboard = (range: DashboardRange) =>
         `/dashboard/overview?range=${range}`,
       );
       return data.data as DashboardData;
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: noRetryOnDenied,
+  });
+
+export type TopSellingMonths = 1 | 2 | 3;
+
+export interface TopSellingProductsData {
+  months: TopSellingMonths;
+  topProducts: TopProduct[];
+}
+
+// Top Selling Products box — its own 1/2/3 month window, independent of the
+// dashboard range.
+export const useTopSellingProducts = (months: TopSellingMonths) =>
+  useQuery<TopSellingProductsData>({
+    queryKey: ["dashboard-top-selling-products", months],
+    queryFn: async () => {
+      const { data } = await axiosSecure.get(
+        `/dashboard/top-selling-products?months=${months}`,
+      );
+      return data.data as TopSellingProductsData;
     },
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
