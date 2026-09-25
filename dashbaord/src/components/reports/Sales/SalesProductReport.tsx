@@ -330,8 +330,34 @@ const SalesProductReport = () => {
 
   const header = data?.header;
   const totals = data?.totals;
-  const pagination = data?.pagination;
   const rows = data?.rows ?? [];
+
+
+  const renderTotalsRow = (
+    label: string,
+    t: { totalQty: number; totalBuyPrice: number; totalWsPrice: number; totalRsPrice: number; totalDiscount: number; totalAmount: number },
+    rowClass: string,
+  ) => {
+    const cell = "px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100";
+    return (
+      <tr className={`${rowClass} font-semibold`}>
+        <td
+          colSpan={1 + COLUMN_DEFS.filter((c) => visibleColumns[c.key] && TEXT_COLUMNS.includes(c.key)).length}
+          className="px-3 py-3 text-right text-xs text-gray-700 dark:text-gray-200"
+        >
+          {label}
+        </td>
+        {visibleColumns.qty && <td className={cell}>{t.totalQty}</td>}
+        {visibleColumns.buyPrice && <td className={cell}>{money(t.totalBuyPrice)}</td>}
+        {visibleColumns.wsPrice && <td className={cell}>{money(t.totalWsPrice)}</td>}
+        {visibleColumns.rsPrice && <td className={cell}>{money(t.totalRsPrice)}</td>}
+        {visibleColumns.disc && <td className={cell}>{money(t.totalDiscount)}</td>}
+        {visibleColumns.total && <td className={cell}>{money(t.totalAmount)}</td>}
+      </tr>
+    );
+  };
+  const pagination = data?.pagination;
+  const isLastPage = !pagination || pagination.page >= pagination.totalPages;
 
   const filterChips: string[] = [];
   if (productId) {
@@ -739,52 +765,18 @@ const SalesProductReport = () => {
                       ))
                     )}
                   </tbody>
-                  {totals && rows.length > 0 && (
-                    <tfoot>
-                      <tr className="total-row bg-gray-100 font-semibold dark:bg-gray-800">
-                        <td
-                          colSpan={
-                            1 +
-                            COLUMN_DEFS.filter(
-                              (c) => visibleColumns[c.key] && TEXT_COLUMNS.includes(c.key),
-                            ).length
-                          }
-                          className="px-3 py-3 text-right text-xs text-gray-700 dark:text-gray-200"
-                        >
-                          Total
-                        </td>
-                        {visibleColumns.qty && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
-                            {totals.totalQty}
-                          </td>
-                        )}
-                        {visibleColumns.buyPrice && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
-                            {money(totals.totalBuyPrice)}
-                          </td>
-                        )}
-                        {visibleColumns.wsPrice && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
-                            {money(totals.totalWsPrice)}
-                          </td>
-                        )}
-                        {visibleColumns.rsPrice && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
-                            {money(totals.totalRsPrice)}
-                          </td>
-                        )}
-                        {visibleColumns.disc && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
-                            {money(totals.totalDiscount)}
-                          </td>
-                        )}
-                        {visibleColumns.total && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
-                            {money(totals.totalAmount)}
-                          </td>
-                        )}
-                      </tr>
-                    </tfoot>
+                  {/* The grand total covers the whole date range, so it shows
+                      once, under the last page of rows — not on every page. */}
+                  {totals && rows.length > 0 && isLastPage && (
+                    // A plain tbody, not <tfoot>: the print stylesheet repeats a
+                    // tfoot at the bottom of every printed sheet.
+                    <tbody>
+                      {renderTotalsRow(
+                        `Grand Total (all ${totals.count} records)`,
+                        totals,
+                        "total-row bg-gray-100 dark:bg-gray-800",
+                      )}
+                    </tbody>
                   )}
                 </table>
               </div>
