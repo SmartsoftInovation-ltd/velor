@@ -2,6 +2,7 @@ import { useState } from "react";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
+import { showApiError } from "../../utils/apiError";
 import DatePicker from "../form/date-picker";
 import Select from "../form/Select";
 import toast from "react-hot-toast";
@@ -86,8 +87,8 @@ const CreateCouponForm = () => {
       });
       setSelectedType("");
       setErrors({});
-    } catch (error: any) {
-      console.error("Error:", error.response?.data?.message || error.message);
+    } catch (error) {
+      showApiError(error, "Failed to create coupon.");
     } finally {
       setIsLoading(false);
     }
@@ -197,13 +198,22 @@ const CreateCouponForm = () => {
       </div>
 
       <MobileActionBar>
-        <Button
-          onClick={handleSubmit}
-          className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-4 py-2 rounded"
-          disabled={isLoading}
-        >
-          {isLoading ? "Creating..." : "Create Coupon"}
-        </Button>
+        <div className="flex justify-end pt-2">
+          <Button
+            onClick={handleSubmit}
+            className="w-full sm:w-auto !bg-accent-500 hover:!bg-accent-600 !text-white px-8 py-3 rounded-xl font-semibold text-sm shadow-theme-md transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Creating...</span>
+              </div>
+            ) : (
+              "Create Coupon"
+            )}
+          </Button>
+        </div>
       </MobileActionBar>
     </div>
   );

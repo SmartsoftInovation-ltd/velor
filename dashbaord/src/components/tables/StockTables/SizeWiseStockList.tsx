@@ -153,7 +153,7 @@ const FilterDropdown = ({
       <button
         type="button"
         onClick={handleOpen}
-        className="flex items-center justify-between w-full h-10 px-3 rounded-xl border border-gray-200 dark:border-white/8 bg-white dark:bg-white/3 text-sm text-gray-700 dark:text-gray-300 hover:border-brand-400 transition-colors focus:outline-none focus:ring-1 focus:ring-brand-500"
+        className="flex items-center justify-between w-full h-10 px-3 rounded-xl border border-gray-200 dark:border-white/8 bg-white dark:bg-white/3 text-sm text-gray-700 dark:text-gray-300 hover:border-accent-400 transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500/20"
       >
         <span className="truncate text-xs">{selected?.name ?? allLabel}</span>
         <FaChevronDown size={10} className={`ml-1 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -167,13 +167,13 @@ const FilterDropdown = ({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search…"
-              className="w-full h-8 rounded-lg border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-white/5 px-2.5 text-xs text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="w-full h-8 rounded-lg border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-white/5 px-2.5 text-xs text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div className="max-h-48 overflow-y-auto">
             <button
               onClick={() => { onChange(""); setOpen(false); setQ(""); }}
-              className={`flex items-center w-full px-3 py-2.5 text-sm text-left hover:bg-brand-50 dark:hover:bg-white/5 transition-colors ${!value ? "font-semibold text-brand-600 bg-brand-50/60 dark:bg-white/4" : "text-gray-700 dark:text-gray-300"}`}
+              className={`flex items-center w-full px-3 py-2.5 text-sm text-left hover:bg-accent-50 dark:hover:bg-white/5 transition-colors ${!value ? "font-semibold text-accent-600 bg-accent-50/60 dark:bg-white/4" : "text-gray-700 dark:text-gray-300"}`}
             >
               {allLabel}
             </button>
@@ -184,7 +184,7 @@ const FilterDropdown = ({
                 <button
                   key={c.id}
                   onClick={() => { onChange(c.id); setOpen(false); setQ(""); }}
-                  className={`flex items-center w-full px-3 py-2.5 text-sm text-left hover:bg-brand-50 dark:hover:bg-white/5 transition-colors ${value === c.id ? "font-semibold text-brand-600 bg-brand-50/60 dark:bg-white/4" : "text-gray-700 dark:text-gray-300"}`}
+                  className={`flex items-center w-full px-3 py-2.5 text-sm text-left hover:bg-accent-50 dark:hover:bg-white/5 transition-colors ${value === c.id ? "font-semibold text-accent-600 bg-accent-50/60 dark:bg-white/4" : "text-gray-700 dark:text-gray-300"}`}
                 >
                   {c.name}
                 </button>
@@ -384,12 +384,13 @@ const SizeWiseStockList = () => {
 
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 flex-wrap rounded-2xl border border-gray-100 dark:border-white/6 bg-white dark:bg-white/2 px-4 py-3">
-        <div className="relative flex-1 min-w-40">
+        <div className="relative group flex-1 min-w-40">
           <button
             type="button"
             onClick={focusSearchInput}
             title="Click to resume scanning"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 transition-colors"
+            aria-label="Resume scanning"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-500 group-focus-within:text-accent-500 transition-colors"
           >
             <MdOutlineQrCodeScanner size={14} />
           </button>
@@ -409,10 +410,10 @@ const SizeWiseStockList = () => {
               }
             }}
             autoComplete="off"
-            className="h-10 w-full rounded-xl border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-white/3 pl-9 pr-8 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-brand-500 focus:bg-white dark:focus:bg-white/5 focus:outline-none focus:ring-1 focus:ring-brand-500 transition-colors"
+            className="h-10 w-full rounded-xl border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-white/3 pl-9 pr-8 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-accent-500 focus:bg-white dark:focus:bg-white/5 focus:outline-none focus:ring-2 focus:ring-accent-500/20 transition-colors"
           />
           {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-error-500">
               <FaTimes size={10} />
             </button>
           )}
@@ -429,7 +430,7 @@ const SizeWiseStockList = () => {
         {hasFilter && (
           <button
             onClick={clearAll}
-              className="flex items-center gap-1.5 h-10 px-3 rounded-xl /20 bg-red-50 dark:bg-[#D5F0E3]/10 text-[#0A6B43] text-xs font-medium hover:bg-[#B8E4CF] transition-colors shrink-0"
+              className="shine flex items-center gap-1.5 h-10 px-3 rounded-xl bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25 text-xs font-medium transition-colors"
           >
             <FaTimes size={10} /> Clear
           </button>
@@ -438,7 +439,8 @@ const SizeWiseStockList = () => {
         <button
           onClick={handleRefresh}
           disabled={isLoading}
-          className="size-10 flex items-center justify-center rounded-xl border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-white/3 text-gray-500 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-500 transition-colors disabled:opacity-40 shrink-0"
+          aria-label="Refresh"
+          className="shine size-10 flex items-center justify-center rounded-md border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-all active:scale-90 disabled:opacity-50"
           title="Refresh"
         >
           <FaSync size={11} className={isLoading ? "animate-spin" : ""} />
@@ -449,12 +451,12 @@ const SizeWiseStockList = () => {
       <div className="rounded-xl border border-gray-200 dark:border-white/[0.07] bg-white dark:bg-white/3 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center" style={{ height: 300 }}>
-            <div className="size-8 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+            <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 text-sm text-gray-400 dark:text-gray-500" style={{ height: 200 }}>
             <span>No stock data found.</span>
-            {hasFilter && <button onClick={clearAll} className="text-brand-500 text-xs hover:underline">Clear filters</button>}
+            {hasFilter && <button onClick={clearAll} className="text-accent-500 text-xs hover:underline">Clear filters</button>}
           </div>
         ) : (
           <div ref={scrollRef} className="no-scrollbar overflow-auto" style={{ maxHeight: 580 }}>
@@ -497,7 +499,7 @@ const SizeWiseStockList = () => {
                   return (
                     <tr
                       key={row.key}
-                      className={`${rowBg} hover:bg-blue-50/40 dark:hover:bg-white/3 transition-colors`}
+                      className={`${rowBg} hover:bg-gray-50 dark:hover:bg-white/3 transition-colors`}
                       style={{ height: ROW_H }}
                     >
                       <td className={`${cellBorder} px-1.5 text-center text-[12px] text-gray-600 dark:text-gray-400`}>
@@ -558,7 +560,7 @@ const SizeWiseStockList = () => {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/8 bg-white dark:bg-white/3 text-gray-500 hover:bg-brand-50 hover:text-brand-500 disabled:opacity-40 transition-colors"
+              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/8 bg-white dark:bg-white/3 text-gray-500 hover:bg-accent-50 hover:text-accent-500 disabled:opacity-40 transition-colors"
             >
               <FaChevronLeft size={10} />
             </button>
@@ -566,7 +568,7 @@ const SizeWiseStockList = () => {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/8 bg-white dark:bg-white/3 text-gray-500 hover:bg-brand-50 hover:text-brand-500 disabled:opacity-40 transition-colors"
+              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-white/8 bg-white dark:bg-white/3 text-gray-500 hover:bg-accent-50 hover:text-accent-500 disabled:opacity-40 transition-colors"
             >
               <FaChevronRight size={10} />
             </button>

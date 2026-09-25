@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "../../ui/table";
 import Badge from "../../ui/badge/Badge";
+import StatusPill from "../../common/StatusPill";
 import Button from "../../ui/button/Button";
 import { Modal } from "../../ui/modal";
 import toast from "react-hot-toast";
@@ -57,7 +58,7 @@ const Tooltip = ({ text, children }: { text: string; children: ReactNode }) => {
 };
 
 interface Discount {
-  serial: number;
+  discountSerialId?: string;
   discountValidFrom: string;
   discountValidTo: string;
   discountName: string;
@@ -185,13 +186,14 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search discounts by name..."
-            className="w-full shadow-theme-xs h-12 pr-12 pl-11 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-gray-400"
+            className="w-full shadow-theme-xs h-12 pr-12 pl-11 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition-all placeholder:text-gray-400"
           />
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 group-focus-within:text-brand-500 transition-colors" />
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 size-4 group-focus-within:text-accent-500 transition-colors" />
           
           {searchTerm && (
             <button 
               onClick={() => setSearchTerm("")}
+              aria-label="Clear search"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1"
               title="Clear search"
             >
@@ -211,11 +213,9 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-white/[0.05]">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-800 dark:text-white/90 truncate">{discount.discountName}</p>
-                  <p className="text-xs text-gray-400">#{discount?.serial || index + 1}</p>
+                  <p className="text-xs font-semibold text-accent-600 dark:text-accent-400">{discount.discountSerialId || `#${index + 1}`}</p>
                 </div>
-                <Badge size="sm" color={discount.isActive ? "success" : "error"} className="shrink-0">
-                  {discount.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <StatusPill isActive={discount.isActive} />
               </div>
               <MobileCardRow label="Plan">
                 {discount.discountPlan.charAt(0).toUpperCase() + discount.discountPlan.slice(1)}
@@ -239,7 +239,9 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
               </MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
                 <Link to={`/discount-view/${discount.slug}`}>
-                  <Button size="sm" variant="outline" className="max-md:size-11 size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-blue-500 hover:border-blue-400 transition-all active:scale-90">
+                  <Button size="sm" variant="outline" className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View discount"
+                  >
                     <FaEye className="size-4" />
                   </Button>
                 </Link>
@@ -248,24 +250,29 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                     onClick={() => handleToggleModal(discount.slug, discount.isActive)}
                     size="sm"
                     variant="outline"
-                    className={`max-md:size-11 size-9 p-0 rounded-xl transition-all active:scale-90 border-none ${
+                    className={`max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 ${
                       discount.isActive
-                        ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                        : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                     }`}
+                    aria-label={discount.isActive ? "Deactivate discount" : "Activate discount"}
                   >
                     {discount.isActive ? <FaToggleOn className="size-6" /> : <FaToggleOff className="size-6" />}
                   </Button>
                 )}
                 {canEdit && (
                   <Link to={`/update-discount/${discount.slug}`}>
-                    <Button size="sm" variant="outline" className="max-md:size-11 size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90">
+                    <Button size="sm" variant="outline" className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit discount"
+                  >
                       <FaEdit className="size-4" />
                     </Button>
                   </Link>
                 )}
                 {canDelete && (
-                  <Button onClick={() => handleDeleteModal(discount.slug)} size="sm" className="max-md:size-11 size-9 p-0 rounded-xl bg-red-500 text-white hover:bg-red-600 shadow-md transition-all active:scale-90">
+                  <Button onClick={() => handleDeleteModal(discount.slug)} size="sm" className="max-md:size-11 size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete discount"
+                  >
                     <MdDelete className="size-4" />
                   </Button>
                 )}
@@ -282,17 +289,17 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow className="uppercase">
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Sr No.</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Dis Name</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Plan</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Applicable</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Type</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">From</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">To</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Value (Tk)</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Value (%)</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Status</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">Actions</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-start text-[11px] dark:text-gray-400">Serial ID</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-start text-[11px] dark:text-gray-400">Dis Name</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Plan</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Applicable</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Type</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">From</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">To</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Value (Tk)</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Value (%)</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Status</TableCell>
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Actions</TableCell>
               </TableRow>
             </TableHeader>
 
@@ -313,7 +320,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[380px] leading-relaxed">
                         {searchTerm ? (
                           <>
-                            We couldn't find any discounts matching <span className="font-bold text-brand-500">"{searchTerm}"</span>.
+                            We couldn't find any discounts matching <span className="font-bold text-accent-500">"{searchTerm}"</span>.
                           </>
                         ) : (
                           "You haven't added any discounts yet. Create one to get started!"
@@ -331,7 +338,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                         )}
                         {canAdd && (
                         <Link to="/create-discount">
-                          <Button className="bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-6 py-2.5 shadow-lg shadow-brand-500/20 active:scale-95 transition-all font-semibold text-sm border-none flex items-center gap-2">
+                          <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl px-6 py-2.5 shadow-lg shadow-accent-500/20 active:scale-95 transition-all font-semibold text-sm border-none flex items-center gap-2">
                             Create Discount
                           </Button>
                         </Link>
@@ -352,7 +359,11 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                     return (
                       <TableRow key={discount._id} className="dark:text-gray-400">
                         <TableCell className="px-4 py-3 text-theme-sm text-start">
-                          {discount?.serial || virtualRow.index + 1}
+                          {discount.discountSerialId ? (
+                            <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{discount.discountSerialId}</span>
+                          ) : (
+                            <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
+                          )}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm font-medium text-gray-800 dark:text-gray-200 text-start">
                           {discount.discountName}
@@ -409,12 +420,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                         </TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm text-center">
                           <div className="flex justify-center">
-                            <Badge
-                              size="sm"
-                              color={discount.isActive ? "success" : "error"}
-                            >
-                              {discount.isActive ? "Active" : "Inactive"}
-                            </Badge>
+                            <StatusPill isActive={discount.isActive} />
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3 text-theme-sm">
@@ -422,7 +428,9 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                             {/* View Action */}
                             <Tooltip text="View Discount">
                               <Link to={`/discount-view/${discount.slug}`}>
-                                <Button size="sm" variant="outline" className="size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-blue-500 hover:border-blue-400 transition-all active:scale-90">
+                                <Button size="sm" variant="outline" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                    aria-label="View discount"
+                  >
                                   <FaEye className="size-4" />
                                 </Button>
                               </Link>
@@ -435,12 +443,13 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                                 onClick={() => handleToggleModal(discount.slug, discount.isActive)}
                                 size="sm"
                                 variant="outline"
-                                className={`size-9 p-0 rounded-xl transition-all active:scale-90 border-none ${
-                                  discount.isActive
-                                    ? "text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10"
-                                    : "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
-                                }`}
-                              >
+                                className={`size-10 p-0 !rounded border-none transition-all active:scale-90 ${
+                      discount.isActive
+                        ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
+                        : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
+                    }`}
+                    aria-label={discount.isActive ? "Deactivate discount" : "Activate discount"}
+                  >
                                 {discount.isActive ? <FaToggleOn className="size-6" /> : <FaToggleOff className="size-6" />}
                               </Button>
                             </Tooltip>
@@ -449,7 +458,9 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                             {canEdit && (
                             <Tooltip text="Edit Discount">
                               <Link to={`/update-discount/${discount.slug}`}>
-                                <Button size="sm" variant="outline" className="size-9 p-0 rounded-xl border-gray-200 dark:border-gray-700 text-gray-500 hover:text-brand-500 hover:border-brand-400 transition-all active:scale-90">
+                                <Button size="sm" variant="outline" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                    aria-label="Edit discount"
+                  >
                                   <FaEdit className="size-4" />
                                 </Button>
                               </Link>
@@ -458,7 +469,9 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
 
                             {canDelete && (
                             <Tooltip text="Delete Discount">
-                              <Button onClick={() => handleDeleteModal(discount.slug)} size="sm" className="size-9 p-0 rounded-xl bg-red-500 text-white hover:bg-red-600 shadow-md transition-all active:scale-90">
+                              <Button onClick={() => handleDeleteModal(discount.slug)} size="sm" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                    aria-label="Delete discount"
+                  >
                                 <MdDelete className="size-4" />
                               </Button>
                             </Tooltip>
@@ -493,10 +506,10 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
           </p>
           <div className="flex items-center gap-3 mt-8">
             <Button onClick={closeModal} variant="outline" className="flex-1 rounded-xl py-2.5">Cancel</Button>
-            <Button onClick={handleDelete} disabled={isDeleting} className="bg-red-500 text-white hover:bg-red-600 flex-1 rounded-xl py-2.5 shadow-lg shadow-red-500/20 disabled:active:scale-100">
+            <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 !bg-error-500 hover:!bg-error-600 !text-white rounded-xl py-2.5 font-semibold border-none shadow-lg transition-all active:scale-95 disabled:active:scale-100">
               {isDeleting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Deleting...
                 </span>
               ) : (
@@ -543,15 +556,11 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-                className={`flex-1 rounded-xl py-2.5 font-semibold text-[#0A6B43] transition-all shadow-lg ${
-                pendingToggle?.currentStatus
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF]"
-              }`}
+                className="flex-1 rounded-xl py-2.5 font-semibold transition-all shadow-lg border-none !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

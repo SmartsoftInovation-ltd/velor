@@ -5,6 +5,7 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import DatePicker from "../form/date-picker";
 import Button from "../ui/button/Button";
+import MobileActionBar from "../common/MobileActionBar";
 import Select from "../form/Select";
 import SearchableSelect from "../form/SearchableSelect";
 import PageMeta from "../common/PageMeta";
@@ -425,7 +426,7 @@ const DiscountUpdate = () => {
                   onChange={handleCheckboxChange}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-500"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent-500/20 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-accent-500"></div>
                 <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                   {formData.isActive ? "Status: Active" : "Status: Inactive"}
                 </span>
@@ -433,9 +434,11 @@ const DiscountUpdate = () => {
             </div>
 
             <div className="pt-6 border-t border-gray-100 dark:border-gray-800/50">
-              <Button onClick={handleSubmit} disabled={loading} className="w-full md:w-auto px-8 h-12 text-sm font-medium transition-all active:scale-95">
-                {loading ? "Updating..." : "Update Discount"}
-              </Button>
+              <MobileActionBar>
+                <Button onClick={handleSubmit} disabled={loading} className="w-full md:w-auto px-8 h-12 text-sm font-semibold rounded-xl !bg-accent-500 hover:!bg-accent-600 !text-white transition-all active:scale-95 disabled:opacity-50">
+                  {loading ? <span className="flex items-center justify-center gap-2"><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Updating...</span> : "Update Discount"}
+                </Button>
+              </MobileActionBar>
             </div>
           </div>
         </ComponentCard>

@@ -36,7 +36,7 @@ const CouponList = () => {
   const canAdd = usePermission("coupon", "add");
   const navigate = useNavigate();
 
-  const { data: coupons = [], isLoading, isError, refetch } = useQuery({
+  const { data: coupons = [], isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["coupons"],
     queryFn: async () => {
       try {
@@ -66,8 +66,9 @@ const CouponList = () => {
               onClick={() => navigate(-1)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Go Back"
+              aria-label="Go back"
             >
               <FaArrowLeft className="size-3.5" />
             </Button>
@@ -75,14 +76,15 @@ const CouponList = () => {
               onClick={() => refetch()}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Refresh Coupons"
+              aria-label="Refresh coupons"
             >
-              <FaSync className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
             {canAdd && (
               <Link to="/create-coupon">
-                <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+                <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                   Create Coupon
                 </Button>
               </Link>
@@ -97,7 +99,7 @@ const CouponList = () => {
           ) : isError ? (
             <div className="text-center py-20 min-h-100">
               <p className="text-red-500 font-bold mb-4">Error fetching coupons!</p>
-              <button onClick={() => refetch()} className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold shadow-lg">
+              <button onClick={() => refetch()} className="shine px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold shadow-lg">
                 Try Again
               </button>
             </div>

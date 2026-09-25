@@ -127,13 +127,13 @@ const SearchDropdown = ({ onSelect, selectedLabel, onClear, hasError }: SearchDr
       {/* Search input */}
       <div className={`flex items-center h-11 px-3 gap-2 rounded-xl border bg-white dark:bg-gray-900 transition-all ${
         isOpen
-          ? "border-brand-500 ring-2 ring-brand-500/20"
+          ? "border-accent-500 ring-2 ring-accent-500/20"
           : hasError
           ? "border-red-500"
-          : "border-gray-300 dark:border-gray-700 hover:border-brand-400"
+          : "border-gray-300 dark:border-gray-700 hover:border-accent-400"
       }`}>
         {isSearching
-          ? <FaSpinner className="size-3 text-brand-500 animate-spin shrink-0" />
+          ? <FaSpinner className="size-3 text-accent-500 animate-spin shrink-0" />
           : <FaSearch className="size-3 text-gray-400 shrink-0" />
         }
         <input
@@ -410,14 +410,23 @@ const CreateStockAdjustForm = () => {
       </div>
 
       <MobileActionBar>
-        <Button
-          //@ts-ignore
-          type="submit"
-            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-4 py-2 rounded disabled:opacity-50"
-          disabled={isLoading}
-        >
-          {isLoading ? "Creating..." : "Stock Adjustment"}
-        </Button>
+        <div className="flex items-center justify-end gap-3 pt-1">
+          <Button
+            //@ts-ignore
+            type="submit"
+            className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold px-6 py-2.5 !rounded-xl text-sm disabled:opacity-60 min-w-36"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Creating…
+              </span>
+            ) : (
+              "Create Adjustment"
+            )}
+          </Button>
+        </div>
       </MobileActionBar>
     </form>
   );

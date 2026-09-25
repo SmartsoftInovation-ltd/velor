@@ -99,7 +99,7 @@ const Tooltip = ({
 // ---------- Columns ----------
 
 const COLS = [
-  { label: "Adj. ID", width: 110 },
+  { label: "Serial ID", width: 110 },
   { label: "Barcode", width: 145 },
   { label: "Date", width: 95 },
   { label: "Product", width: 145 },
@@ -110,7 +110,7 @@ const COLS = [
   { label: "Adj. (+)", width: 75 },
   { label: "Adj. (-)", width: 75 },
   { label: "Reason", width: 165 },
-  { label: "Actions", width: 130 },
+  { label: "Actions", width: 150 },
 ];
 
 const PAGE_LIMIT = 30;
@@ -231,12 +231,13 @@ const StockAdjustmentList = () => {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative group flex-1 max-w-sm">
           <button
             type="button"
             onClick={focusSearchInput}
             title="Click to resume scanning"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-500 transition-colors"
+            aria-label="Resume scanning"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-accent-500 group-focus-within:text-accent-500 transition-colors"
           >
             <MdOutlineQrCodeScanner size={13} />
           </button>
@@ -257,7 +258,7 @@ const StockAdjustmentList = () => {
               }
             }}
             autoComplete="off"
-            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-300"
+            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-300"
           />
         </div>
         <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto shrink-0">
@@ -266,7 +267,8 @@ const StockAdjustmentList = () => {
         <button
           onClick={() => fetchPage(page, debSearch)}
           disabled={isLoading}
-          className="size-9 flex items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-brand-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
+          aria-label="Refresh"
+          className="shine size-10 flex items-center justify-center rounded-md border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-all active:scale-90 disabled:opacity-50"
         >
           <FaSync size={11} className={isLoading ? "animate-spin" : ""} />
         </button>
@@ -276,7 +278,7 @@ const StockAdjustmentList = () => {
       {isMobile ? (
         isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="size-8 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+            <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         ) : (
           <MobileCardList
@@ -308,9 +310,7 @@ const StockAdjustmentList = () => {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
-                      <span className="text-xs text-gray-400">
-                        SADJ-{String(index + 1).padStart(6, "0")}
-                      </span>
+                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">#{index + 1}</span>
                       <h3 className="font-bold text-sm text-gray-800 dark:text-white/90">
                         {product}
                       </h3>
@@ -354,21 +354,27 @@ const StockAdjustmentList = () => {
                   <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
                     <button
                       onClick={() => navigate(`/stock-adjustment-view/${item._id}`)}
-                      className="min-h-11 min-w-11 rounded-xl flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 transition-colors dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:bg-brand-500/10 dark:hover:text-brand-400"
+                      type="button"
+                              aria-label="View adjustment"
+                              className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 max-md:size-11 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
                     >
-                      <FaEye size={14} />
+                      <FaEye className="size-4" />
                     </button>
                     <button
                       onClick={() => navigate(`/stock-adjustment-edit/${item._id}`)}
-                      className="min-h-11 min-w-11 rounded-xl flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:border-amber-400 hover:text-amber-500 hover:bg-amber-50 transition-colors dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:bg-amber-500/10 dark:hover:text-amber-400"
+                      type="button"
+                              aria-label="Edit adjustment"
+                              className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 max-md:size-11 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
                     >
-                      <FaEdit size={14} />
+                      <FaEdit className="size-4" />
                     </button>
                     <button
                       onClick={() => setDeleteId(item._id)}
-                      className="min-h-11 min-w-11 rounded-xl flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-colors"
+                      type="button"
+                      aria-label="Delete adjustment"
+                      className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 max-md:size-11 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
                     >
-                      <MdDelete size={16} />
+                      <MdDelete className="size-5" />
                     </button>
                   </div>
                 </div>
@@ -389,7 +395,7 @@ const StockAdjustmentList = () => {
                 <col key={c.label} style={{ width: c.width }} />
               ))}
             </colgroup>
-            <thead className="bg-white dark:bg-gray-900">
+            <thead className="bg-gray-50/95 dark:bg-gray-800/95">
               <tr>
                 {COLS.map((c) => (
                   <th
@@ -415,7 +421,7 @@ const StockAdjustmentList = () => {
               className="flex items-center justify-center"
               style={{ height: 300 }}
             >
-              <div className="size-8 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+              <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
             </div>
           ) : list.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
@@ -499,7 +505,7 @@ const StockAdjustmentList = () => {
                       style={{ height: ROW_H }}
                     >
                       <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 first:border-l-0">
-                        SADJ-{String(index + 1).padStart(6, "0")}
+                        <span className="font-medium text-gray-500 dark:text-gray-400">#{index + 1}</span>
                       </td>
                       <td className="px-3 text-center text-[12px] font-mono text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
                         {barcode}
@@ -578,9 +584,11 @@ const StockAdjustmentList = () => {
                               onClick={() =>
                                 navigate(`/stock-adjustment-view/${item._id}`)
                               }
-                              className="size-8 rounded-xl flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 transition-colors dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:bg-brand-500/10 dark:hover:text-brand-400"
+                              type="button"
+                              aria-label="View adjustment"
+                              className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
                             >
-                              <FaEye size={13} />
+                              <FaEye className="size-4" />
                             </button>
                           </Tooltip>
                           {/* Edit */}
@@ -589,18 +597,22 @@ const StockAdjustmentList = () => {
                               onClick={() =>
                                 navigate(`/stock-adjustment-edit/${item._id}`)
                               }
-                              className="size-8 rounded-xl flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:border-amber-400 hover:text-amber-500 hover:bg-amber-50 transition-colors dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:bg-amber-500/10 dark:hover:text-amber-400"
+                              type="button"
+                              aria-label="Edit adjustment"
+                              className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
                             >
-                              <FaEdit size={13} />
+                              <FaEdit className="size-4" />
                             </button>
                           </Tooltip>
                           {/* Delete */}
                           <Tooltip text="Delete">
                             <button
                               onClick={() => setDeleteId(item._id)}
-                              className="size-8 rounded-xl flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-colors"
+                              type="button"
+                              aria-label="Delete adjustment"
+                              className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
                             >
-                              <MdDelete size={15} />
+                              <MdDelete className="size-5" />
                             </button>
                           </Tooltip>
                         </div>
@@ -634,7 +646,7 @@ const StockAdjustmentList = () => {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-brand-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
+              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-accent-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
             >
               <FaChevronLeft size={11} />
             </button>
@@ -648,7 +660,7 @@ const StockAdjustmentList = () => {
                   disabled={isLoading}
                   className={`size-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors disabled:opacity-40 ${
                     p === page
-                      ? "bg-brand-500 text-white"
+                      ? "bg-accent-500 text-white"
                       : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-400"
                   }`}
                 >
@@ -659,7 +671,7 @@ const StockAdjustmentList = () => {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-brand-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
+              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-accent-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
             >
               <FaChevronRight size={11} />
             </button>
@@ -686,11 +698,18 @@ const StockAdjustmentList = () => {
               Cancel
             </Button>
             <Button
-              className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43]"
+              className="!bg-error-500 hover:!bg-error-600 !text-white font-semibold border-none"
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting…" : "Delete"}
+              {isDeleting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Deleting…
+                </span>
+              ) : (
+                "Yes, Delete"
+              )}
             </Button>
           </div>
         </div>

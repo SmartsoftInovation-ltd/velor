@@ -8,6 +8,7 @@ import SearchableSelect from "../form/SearchableSelect";
 import Select from "../form/Select";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
+import MobileActionBar from "../common/MobileActionBar";
 import { TrashBinIcon } from "../../icons";
 import { showApiError } from "../../utils/apiError";
 import { scopedStorageKey } from "../../lib/session";
@@ -437,15 +438,15 @@ const CreateDiscountForm = () => {
         <div
           {...getRootProps()}
           className={`relative flex flex-col items-center justify-center w-full min-h-[200px] border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300
-            ${isDragActive ? "border-brand-500 bg-brand-50 dark:bg-brand-500/5" : "border-gray-300 dark:border-gray-700 hover:border-brand-400"}
+            ${isDragActive ? "border-accent-500 bg-accent-50 dark:bg-accent-500/5" : "border-gray-300 dark:border-gray-700 hover:border-accent-400"}
             ${preview ? "border-none p-0" : "p-6"}`}
         >
           <input {...getInputProps()} />
           {!preview ? (
             <div className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/10 mb-4">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50 dark:bg-accent-500/10 mb-4">
                 <svg
-                  className="h-6 w-6 text-brand-500"
+                  className="h-6 w-6 text-accent-500"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -477,8 +478,11 @@ const CreateDiscountForm = () => {
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <button
+                    type="button"
                     onClick={handleRemoveImage}
-                      className="bg-[#D5F0E3] text-[#0A6B43] p-3 rounded-full hover:bg-[#B8E4CF] transform hover:scale-110 transition-all shadow-xl"
+                    aria-label="Remove image"
+                    title="Remove image"
+                    className="shine bg-accent-500 text-white p-3 rounded-full hover:bg-accent-600 transform hover:scale-110 transition-all shadow-xl"
                   >
                     <TrashBinIcon className="size-5" />
                   </button>
@@ -494,11 +498,12 @@ const CreateDiscountForm = () => {
       </div>
 
       {/* ── Submit ─────────────────────────────────────────── */}
+      <MobileActionBar>
       <div className="flex justify-end pt-2">
         <Button
           onClick={handleSubmit}
           disabled={isLoading}
-            className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] px-8 py-3 rounded-xl font-bold text-sm active:scale-95 disabled:opacity-50 shadow-theme-md"
+          className="w-full sm:w-auto !bg-accent-500 hover:!bg-accent-600 !text-white px-8 py-3 rounded-xl font-semibold text-sm shadow-theme-md transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
         >
           {isLoading ? (
             <div className="flex items-center gap-2">
@@ -510,6 +515,7 @@ const CreateDiscountForm = () => {
           )}
         </Button>
       </div>
+      </MobileActionBar>
     </div>
   );
 };

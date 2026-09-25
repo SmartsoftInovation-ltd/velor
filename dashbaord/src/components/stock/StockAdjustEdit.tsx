@@ -146,7 +146,7 @@ const StockAdjustEdit = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="size-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+        <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -187,7 +187,7 @@ const StockAdjustEdit = () => {
     null;
 
   const inp =
-    "h-10 w-full rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3 text-sm text-gray-700 dark:text-gray-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-40 disabled:cursor-not-allowed";
+    "h-10 w-full rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3 text-sm text-gray-700 dark:text-gray-300 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <>
@@ -202,7 +202,7 @@ const StockAdjustEdit = () => {
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate("/stock-adjustment-list")}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-brand-500 transition-colors font-medium"
+            className="shine flex items-center gap-2 h-10 px-4 rounded-xl border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 text-sm font-semibold transition-all active:scale-95"
           >
             <FaArrowLeft size={12} />
             Back to List
@@ -210,7 +210,7 @@ const StockAdjustEdit = () => {
 
           <button
             onClick={() => navigate(`/stock-adjustment-view/${id}`)}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-400 hover:text-brand-500 hover:border-brand-400 text-sm font-medium transition-colors"
+            className="shine flex items-center gap-2 h-10 px-4 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 text-sm font-semibold transition-colors"
           >
             <FaEye size={12} />
             View Detail
@@ -362,7 +362,7 @@ const StockAdjustEdit = () => {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Enter adjustment reason…"
-                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 resize-none"
+                className="w-full rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 resize-none"
               />
             </div>
 
@@ -372,7 +372,7 @@ const StockAdjustEdit = () => {
                 <button
                   type="button"
                   onClick={() => navigate("/stock-adjustment-list")}
-                  className="h-10 px-5 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition-colors font-medium"
+                  className="shine h-10 px-5 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition-colors font-medium"
                 >
                   Cancel
                 </button>
@@ -380,9 +380,16 @@ const StockAdjustEdit = () => {
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                    className="h-10 px-6 rounded-xl bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="shine h-10 px-6 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 min-w-36"
                 >
-                  {isSaving ? "Saving…" : "Save Changes"}
+                  {isSaving ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Saving…
+                    </span>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </MobileActionBar>

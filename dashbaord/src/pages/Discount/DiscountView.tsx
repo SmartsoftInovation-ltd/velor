@@ -137,7 +137,7 @@ const DiscountView = () => {
                       <Link to={`/update-discount/${discount.slug}`}>
                         <Button
                           size="sm"
-                            className="flex items-center gap-2 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded-lg px-4 shadow-md"
+                            className="flex items-center gap-2 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-lg px-4 shadow-md font-semibold"
                         >
                           <FaEdit className="size-3.5" />
                           Edit
@@ -151,7 +151,7 @@ const DiscountView = () => {
                         <Button
                           onClick={() => setShowConfirmModal(true)}
                           size="sm"
-                          className="flex items-center gap-2 rounded-lg px-4 shadow-md border-none bg-red-500 hover:bg-red-600 text-white shadow-red-500/20"
+                          className="flex items-center gap-2 rounded-lg px-4 shadow-md border-none !bg-error-500 hover:!bg-error-600 !text-white shadow-error-500/20"
                         >
                           <FaToggleOn className="size-4" />
                           Deactivate
@@ -162,7 +162,7 @@ const DiscountView = () => {
                         <Button
                           onClick={() => setShowConfirmModal(true)}
                           size="sm"
-                          className="flex items-center gap-2 rounded-lg px-4 shadow-md border-none bg-green-500 hover:bg-green-600 text-white shadow-green-500/20"
+                          className="flex items-center gap-2 rounded-lg px-4 shadow-md border-none !bg-accent-500 hover:!bg-accent-600 !text-white shadow-accent-500/20"
                         >
                           <FaToggleOff className="size-4" />
                           Activate
@@ -196,7 +196,7 @@ const DiscountView = () => {
                   <p className="text-[11px] uppercase tracking-wider text-gray-400 mb-1.5">
                     Discount Name
                   </p>
-                  <p className="text-xl font-black text-brand-600 dark:text-brand-400 tracking-wider">
+                  <p className="text-xl font-black text-accent-600 dark:text-accent-400 tracking-wider">
                     {discount.discountName}
                   </p>
                 </div>
@@ -204,7 +204,7 @@ const DiscountView = () => {
                 {/* Slug */}
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <FaLink className="text-brand-500 size-3" />
+                    <FaLink className="text-accent-500 size-3" />
                     <p className="text-[11px] uppercase tracking-wider text-gray-400">
                       Slug
                     </p>
@@ -217,7 +217,7 @@ const DiscountView = () => {
                 {/* ID */}
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <FaIdCard className="text-blue-500 size-3" />
+                    <FaIdCard className="text-accent-500 size-3" />
                     <p className="text-[11px] uppercase tracking-wider text-gray-400">
                       Discount ID
                     </p>
@@ -296,7 +296,7 @@ const DiscountView = () => {
                 {/* Dates Section */}
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-100 dark:border-gray-700 md:col-span-2 lg:col-span-3">
                   <div className="flex items-center gap-2 mb-4">
-                    <FaCalendarAlt className="text-brand-500 size-4" />
+                    <FaCalendarAlt className="text-accent-500 size-4" />
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Schedule & Dates
                     </h3>
@@ -387,15 +387,11 @@ const DiscountView = () => {
             <Button
               onClick={handleToggleStatus}
               disabled={isToggling}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all ${
-                discount?.isActive
- ?"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
- :"bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] shadow-lg"
-              }`}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border-none active:scale-95 transition-all border-none !bg-accent-500 hover:!bg-accent-600 !text-white shadow-lg"
             >
               {isToggling ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-[#0A6B43]/30 border-t-[#0A6B43]" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Updating...
                 </span>
               ) : (

@@ -35,7 +35,7 @@ const DiscountSkeleton = () => (
 const DiscountList = () => {
   const canAdd = usePermission("discount", "add");
   const navigate = useNavigate();
-  const { data: discounts = [], isLoading, isError, refetch } = useQuery({
+  const { data: discounts = [], isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["discounts"],
     queryFn: async () => {
       const { data } = await axiosSecure.get(`/discount`);
@@ -60,8 +60,9 @@ const DiscountList = () => {
               onClick={() => navigate(-1)}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Go Back"
+              aria-label="Go back"
             >
               <FaArrowLeft className="size-3.5" />
             </Button>
@@ -69,14 +70,15 @@ const DiscountList = () => {
               onClick={() => refetch()}
               size="sm"
               variant="outline"
-              className="size-9 p-0 rounded-md !bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] transition-all active:scale-90"
+              className="size-9 p-0 rounded-md !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 transition-all active:scale-90"
               title="Refresh Discounts"
+              aria-label="Refresh discounts"
             >
-              <FaSync className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              <FaSync className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
             {canAdd && (
               <Link to="/create-discount">
-                <Button className="!bg-[#D5F0E3] hover:!bg-[#B8E4CF] !text-[#0A6B43] font-normal text-sm px-4 py-2 rounded">
+                <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
                   Create Discount
                 </Button>
               </Link>
@@ -101,7 +103,7 @@ const DiscountList = () => {
               </p>
               <Button
                 onClick={() => refetch()}
-                className="px-8 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-semibold shadow-lg shadow-brand-500/25 transition-all active:scale-95"
+                className="px-8 py-2.5 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-xl font-semibold shadow-lg shadow-accent-500/25 transition-all active:scale-95"
               >
                 Try Again
               </Button>
