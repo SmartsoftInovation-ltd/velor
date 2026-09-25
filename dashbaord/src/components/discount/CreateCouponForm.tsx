@@ -4,10 +4,12 @@ import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import { showApiError } from "../../utils/apiError";
 import DatePicker from "../form/date-picker";
-import Select from "../form/Select";
+import SearchableSelect from "../form/SearchableSelect";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import MobileActionBar from "../common/MobileActionBar";
+import SectionCard from "../common/SectionCard";
+import { FaTicketAlt, FaCalendarAlt } from "react-icons/fa";
 
 const CreateCouponForm = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -96,105 +98,109 @@ const CreateCouponForm = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <DatePicker
-            id="date-picker-start"
-            label="Coupon Start Date"
-            placeholder="Select a date"
-            onChange={(_, currentDateString) => {
-              handleDateChange("couponStartAt", currentDateString);
-            }}
-          />
-          {errors.couponStartAt && (
-            <p className="text-red-500 text-sm mt-1">{errors.couponStartAt}</p>
-          )}
-        </div>
-        <div>
-          <DatePicker
-            id="date-picker-to"
-            label="Coupon Expire Date"
-            placeholder="Select a date"
-            onChange={(_, currentDateString) => {
-              handleDateChange("expireAt", currentDateString);
-            }}
-          />
-          {errors.expireAt && (
-            <p className="text-red-500 text-sm mt-1">{errors.expireAt}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col">
-          <Label htmlFor="name">Coupon Code Name:</Label>
-          <Input
-            type="text"
-            id="code"
-            placeholder="Enter Coupon Code name"
-            value={formData.code}
-            onChange={(e) => handleInputChange("code", e.target.value)}
-            className={errors.code ? "border-red-500" : ""}
-          />
-          {errors.code && (
-            <p className="text-red-500 text-sm mt-1">{errors.code}</p>
-          )}
-        </div>
-        <div className="flex flex-col">
-          <Label htmlFor="usageLimit">Coupon Usage Limit:</Label>
-          <Input
-            type="text"
-            id="usageLimit"
-            placeholder="Enter Coupon Usage Limit"
-            value={formData.usageLimit}
-            onChange={(e) => handleInputChange("usageLimit", e.target.value)}
-            className={errors.usageLimit ? "border-red-500" : ""}
-          />
-          {errors.usageLimit && (
-            <p className="text-red-500 text-sm mt-1">{errors.usageLimit}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="flex flex-col">
-          <Label>Select Discount Type</Label>
-          <Select
-            options={typeOptions}
-            placeholder="Select Option"
-            onChange={handleTypeChange}
-            className={errors.discountType ? "border-red-500" : ""}
-          />
-          {errors.discountType && (
-            <p className="text-red-500 text-sm mt-1">{errors.discountType}</p>
-          )}
-        </div>
-
-        {selectedType && (
-          <div className="flex flex-col">
-            <Label>
-              Discount Value ({selectedType === "fixed" ? "Tk" : "%"})
-            </Label>
-            <Input
-              type="number"
-              placeholder={
-                selectedType === "fixed"
-                  ? "Enter Discount Amount (Tk)"
-                  : "Enter Discount Percentage"
-              }
-              value={formData.discountValue}
-              onChange={(e) =>
-                handleInputChange("discountValue", e.target.value)
-              }
-              className={errors.discountValue ? "border-red-500" : ""}
-            />
-            {errors.discountValue && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.discountValue}
-              </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <SectionCard icon={<FaTicketAlt />} title="Coupon Details" className="lg:col-span-2 self-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col">
+              <Label htmlFor="code">Coupon Code <span className="text-red-500">*</span></Label>
+              <Input
+                type="text"
+                id="code"
+                placeholder="Enter Coupon Code name"
+                value={formData.code}
+                onChange={(e) => handleInputChange("code", e.target.value)}
+                className={errors.code ? "border-red-500" : ""}
+              />
+              {errors.code && (
+                <p className="text-red-500 text-xs mt-1 font-medium">{errors.code}</p>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <Label htmlFor="usageLimit">Usage Limit</Label>
+              <Input
+                type="number"
+                id="usageLimit"
+                placeholder="Enter Coupon Usage Limit"
+                value={formData.usageLimit}
+                onChange={(e) => handleInputChange("usageLimit", e.target.value)}
+                className={errors.usageLimit ? "border-red-500" : ""}
+              />
+              {errors.usageLimit && (
+                <p className="text-red-500 text-xs mt-1 font-medium">{errors.usageLimit}</p>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <Label>Discount Type <span className="text-red-500">*</span></Label>
+              <SearchableSelect
+                options={typeOptions}
+                placeholder="Select type"
+                searchPlaceholder="Search types..."
+                value={selectedType}
+                onChange={handleTypeChange}
+                hasError={!!errors.discountType}
+              />
+              {errors.discountType && (
+                <p className="text-red-500 text-xs mt-1 font-medium">{errors.discountType}</p>
+              )}
+            </div>
+            {selectedType && (
+              <div className="flex flex-col">
+                <Label>
+                  Discount Value ({selectedType === "fixed" ? "Tk" : "%"})
+                </Label>
+                <Input
+                  type="number"
+                  placeholder={
+                    selectedType === "fixed"
+                      ? "Enter Discount Amount (Tk)"
+                      : "Enter Discount Percentage"
+                  }
+                  value={formData.discountValue}
+                  onChange={(e) =>
+                    handleInputChange("discountValue", e.target.value)
+                  }
+                  className={errors.discountValue ? "border-red-500" : ""}
+                />
+                {errors.discountValue && (
+                  <p className="text-red-500 text-xs mt-1 font-medium">
+                    {errors.discountValue}
+                  </p>
+                )}
+              </div>
             )}
           </div>
-        )}
+        </SectionCard>
+
+        <SectionCard icon={<FaCalendarAlt />} title="Validity Period" className="self-start">
+          <div className="grid grid-cols-1 gap-5">
+            <div>
+              <DatePicker
+                id="date-picker-start"
+                label="Coupon Start Date"
+                placeholder="Select a date"
+                onChange={(_, currentDateString) => {
+                  handleDateChange("couponStartAt", currentDateString);
+                }}
+              />
+              {errors.couponStartAt && (
+                <p className="text-red-500 text-xs mt-1 font-medium">{errors.couponStartAt}</p>
+              )}
+            </div>
+            <div>
+              <DatePicker
+                id="date-picker-to"
+                label="Coupon Expire Date"
+                placeholder="Select a date"
+                onChange={(_, currentDateString) => {
+                  handleDateChange("expireAt", currentDateString);
+                }}
+              />
+              {errors.expireAt && (
+                <p className="text-red-500 text-xs mt-1 font-medium">{errors.expireAt}</p>
+              )}
+            </div>
+          </div>
+        </SectionCard>
       </div>
 
       <MobileActionBar>

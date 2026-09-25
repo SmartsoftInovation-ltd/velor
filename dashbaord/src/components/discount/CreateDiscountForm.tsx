@@ -5,21 +5,16 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import DatePicker from "../form/date-picker";
 import Label from "../form/Label";
 import SearchableSelect from "../form/SearchableSelect";
-import Select from "../form/Select";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
 import MobileActionBar from "../common/MobileActionBar";
+import SectionCard from "../common/SectionCard";
+import { FaTags, FaCalendarAlt, FaImage } from "react-icons/fa";
 import { TrashBinIcon } from "../../icons";
 import { showApiError } from "../../utils/apiError";
 import { scopedStorageKey } from "../../lib/session";
 
 const Req = () => <span className="text-red-500 ml-0.5">*</span>;
-
-const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-3">
-    {children}
-  </p>
-);
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-red-500 text-xs mt-1 font-medium">{msg}</p> : null;
@@ -288,213 +283,209 @@ const CreateDiscountForm = () => {
           : "Select Variant Product";
 
   return (
-    <div className="space-y-8">
-      {/* ── Basic Info ─────────────────────────────────────── */}
-      <div>
-        <SectionTitle>Basic Information</SectionTitle>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <Label>
-              Discount Name <Req />
-            </Label>
-            <Input
-              type="text"
-              placeholder="Enter discount name"
-              value={formData.discountName}
-              onChange={(e) =>
-                handleInputChange("discountName", e.target.value)
-              }
-              className={errors.discountName ? "border-red-500" : ""}
-            />
-            <FieldError msg={errors.discountName} />
-          </div>
-
-          <div>
-            <Label>
-              Discount Plan <Req />
-            </Label>
-            <Select
-              options={planOptions}
-              placeholder="Select plan"
-              value={formData.discountPlan}
-              onChange={handlePlanChange}
-              className={errors.discountPlan ? "border-red-500" : ""}
-            />
-            <FieldError msg={errors.discountPlan} />
-          </div>
-
-          <div>
-            <Label>
-              Discount Type <Req />
-            </Label>
-            <Select
-              options={typeOptions}
-              placeholder="Select type"
-              value={selectedType}
-              onChange={handleTypeChange}
-              className={errors.discountType ? "border-red-500" : ""}
-            />
-            <FieldError msg={errors.discountType} />
-          </div>
-
-          {formData.discountPlan && formData.discountPlan !== "flat" && (
-            <div className="md:col-span-2 lg:col-span-1">
-              <Label>
-                {itemLabel} <Req />
-              </Label>
-              <SearchableSelect
-                options={itemOptions}
-                value={selectedItemId}
-                onChange={(value) => {
-                  setSelectedItemId(value);
-                  if (value)
-                    setErrors((prev) => ({ ...prev, selectedItemId: "" }));
-                }}
-                placeholder={`Choose ${formData.discountPlan}`}
-                searchPlaceholder={`Search ${formData.discountPlan}s...`}
-                hasError={!!errors.selectedItemId}
-              />
-              <FieldError msg={errors.selectedItemId} />
-            </div>
-          )}
-
-          {selectedType === "tk" && (
-            <div>
-              <Label>
-                Discount Amount (Tk) <Req />
-              </Label>
-              <Input
-                type="number"
-                placeholder="Enter amount"
-                value={formData.discountValueByAmount}
-                onChange={(e) =>
-                  handleInputChange("discountValueByAmount", e.target.value)
-                }
-                className={errors.discountValueByAmount ? "border-red-500" : ""}
-              />
-              <FieldError msg={errors.discountValueByAmount} />
-            </div>
-          )}
-
-          {selectedType === "percentance" && (
-            <div>
-              <Label>
-                Discount Percentage (%) <Req />
-              </Label>
-              <Input
-                type="number"
-                placeholder="Enter percentage"
-                value={formData.discountValueByPercentance}
-                onChange={(e) =>
-                  handleInputChange(
-                    "discountValueByPercentance",
-                    e.target.value,
-                  )
-                }
-                className={
-                  errors.discountValueByPercentance ? "border-red-500" : ""
-                }
-              />
-              <FieldError msg={errors.discountValueByPercentance} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Validity Dates ─────────────────────────────────── */}
-      <div>
-        <SectionTitle>Validity Period</SectionTitle>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <DatePicker
-              id="date-picker-from"
-              label="Valid From"
-              placeholder="Select start date"
-              defaultDate={formData.discountValidFrom || undefined}
-              onChange={(_, dateStr) =>
-                handleDateChange("discountValidFrom", dateStr)
-              }
-            />
-            <FieldError msg={errors.discountValidFrom} />
-          </div>
-          <div>
-            <DatePicker
-              id="date-picker-to"
-              label="Valid To"
-              placeholder="Select end date"
-              defaultDate={formData.discountValidTo || undefined}
-              onChange={(_, dateStr) =>
-                handleDateChange("discountValidTo", dateStr)
-              }
-            />
-            <FieldError msg={errors.discountValidTo} />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Banner Image ───────────────────────────────────── */}
-      <div>
-        <SectionTitle>Discount Banner Image (optional)</SectionTitle>
-        <div
-          {...getRootProps()}
-          className={`relative flex flex-col items-center justify-center w-full min-h-[200px] border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300
-            ${isDragActive ? "border-accent-500 bg-accent-50 dark:bg-accent-500/5" : "border-gray-300 dark:border-gray-700 hover:border-accent-400"}
-            ${preview ? "border-none p-0" : "p-6"}`}
-        >
-          <input {...getInputProps()} />
-          {!preview ? (
-            <div className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50 dark:bg-accent-500/10 mb-4">
-                <svg
-                  className="h-6 w-6 text-accent-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                {isDragActive
-                  ? "Drop image here"
-                  : "Click to upload or drag and drop"}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                SVG, PNG, JPG or WEBP (Max: 5MB)
-              </p>
-            </div>
-          ) : (
-            <div className="relative w-full flex justify-center py-4">
-              <div className="relative w-full max-w-[500px] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-theme-md group">
-                <img
-                  src={preview}
-                  alt="Discount banner preview"
-                  className="w-full h-48 object-cover bg-gray-50 dark:bg-gray-800 transition-transform duration-500 group-hover:scale-105"
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <SectionCard icon={<FaTags />} title="Discount Details">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="md:col-span-2">
+                <Label>
+                  Discount Name <Req />
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="Enter discount name"
+                  value={formData.discountName}
+                  onChange={(e) =>
+                    handleInputChange("discountName", e.target.value)
+                  }
+                  className={errors.discountName ? "border-red-500" : ""}
                 />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    aria-label="Remove image"
-                    title="Remove image"
-                    className="shine bg-accent-500 text-white p-3 rounded-full hover:bg-accent-600 transform hover:scale-110 transition-all shadow-xl"
-                  >
-                    <TrashBinIcon className="size-5" />
-                  </button>
+                <FieldError msg={errors.discountName} />
+              </div>
+              <div>
+                <Label>
+                  Discount Plan <Req />
+                </Label>
+                <SearchableSelect
+                  options={planOptions}
+                  placeholder="Select plan"
+                  searchPlaceholder="Search plans..."
+                  value={formData.discountPlan}
+                  onChange={handlePlanChange}
+                  hasError={!!errors.discountPlan}
+                />
+                <FieldError msg={errors.discountPlan} />
+              </div>
+              <div>
+                <Label>
+                  Discount Type <Req />
+                </Label>
+                <SearchableSelect
+                  options={typeOptions}
+                  placeholder="Select type"
+                  searchPlaceholder="Search types..."
+                  value={selectedType}
+                  onChange={handleTypeChange}
+                  hasError={!!errors.discountType}
+                />
+                <FieldError msg={errors.discountType} />
+              </div>
+              {formData.discountPlan && formData.discountPlan !== "flat" && (
+                <div className="md:col-span-2">
+                  <Label>
+                    {itemLabel} <Req />
+                  </Label>
+                  <SearchableSelect
+                    options={itemOptions}
+                    value={selectedItemId}
+                    onChange={(value) => {
+                      setSelectedItemId(value);
+                      if (value)
+                        setErrors((prev) => ({ ...prev, selectedItemId: "" }));
+                    }}
+                    placeholder={`Choose ${formData.discountPlan}`}
+                    searchPlaceholder={`Search ${formData.discountPlan}s...`}
+                    hasError={!!errors.selectedItemId}
+                  />
+                  <FieldError msg={errors.selectedItemId} />
                 </div>
-                <div className="absolute bottom-3 left-3 bg-white/90 dark:bg-black/80 px-3 py-1 rounded-full text-[10px] font-bold text-gray-800 dark:text-white backdrop-blur-sm">
-                  {image?.name} ({((image?.size ?? 0) / 1024 / 1024).toFixed(2)}{" "}
-                  MB)
+              )}
+              {selectedType === "tk" && (
+                <div>
+                  <Label>
+                    Discount Amount (Tk) <Req />
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={formData.discountValueByAmount}
+                    onChange={(e) =>
+                      handleInputChange("discountValueByAmount", e.target.value)
+                    }
+                    className={errors.discountValueByAmount ? "border-red-500" : ""}
+                  />
+                  <FieldError msg={errors.discountValueByAmount} />
                 </div>
+              )}
+              {selectedType === "percentance" && (
+                <div>
+                  <Label>
+                    Discount Percentage (%) <Req />
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter percentage"
+                    value={formData.discountValueByPercentance}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "discountValueByPercentance",
+                        e.target.value,
+                      )
+                    }
+                    className={
+                      errors.discountValueByPercentance ? "border-red-500" : ""
+                    }
+                  />
+                  <FieldError msg={errors.discountValueByPercentance} />
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={<FaCalendarAlt />} title="Validity Period">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <DatePicker
+                  id="date-picker-from"
+                  label="Valid From"
+                  placeholder="Select start date"
+                  defaultDate={formData.discountValidFrom || undefined}
+                  onChange={(_, dateStr) =>
+                    handleDateChange("discountValidFrom", dateStr)
+                  }
+                />
+                <FieldError msg={errors.discountValidFrom} />
+              </div>
+              <div>
+                <DatePicker
+                  id="date-picker-to"
+                  label="Valid To"
+                  placeholder="Select end date"
+                  defaultDate={formData.discountValidTo || undefined}
+                  onChange={(_, dateStr) =>
+                    handleDateChange("discountValidTo", dateStr)
+                  }
+                />
+                <FieldError msg={errors.discountValidTo} />
               </div>
             </div>
-          )}
+          </SectionCard>
         </div>
+
+        <SectionCard icon={<FaImage />} title="Banner Image" className="self-start">
+          <div
+            {...getRootProps()}
+            className={`relative flex flex-col items-center justify-center w-full min-h-[220px] border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300
+              ${isDragActive ? "border-accent-500 bg-accent-50 dark:bg-accent-500/5" : "border-gray-300 dark:border-gray-700 hover:border-accent-400"}
+              ${preview ? "border-none p-0" : "p-6"}`}
+          >
+            <input {...getInputProps()} />
+            {!preview ? (
+              <div className="text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-50 dark:bg-accent-500/10 mb-4">
+                  <svg
+                    className="h-6 w-6 text-accent-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                  {isDragActive
+                    ? "Drop image here"
+                    : "Click to upload or drag and drop"}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  SVG, PNG, JPG or WEBP (Max: 5MB)
+                </p>
+              </div>
+            ) : (
+              <div className="relative w-full flex justify-center py-4">
+                <div className="relative w-full max-w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-theme-md group">
+                  <img
+                    src={preview}
+                    alt="Discount banner preview"
+                    className="w-full h-48 object-cover bg-gray-50 dark:bg-gray-800 transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      aria-label="Remove image"
+                      title="Remove image"
+                      className="shine bg-accent-500 text-white p-3 rounded-full hover:bg-accent-600 transform hover:scale-110 transition-all shadow-xl"
+                    >
+                      <TrashBinIcon className="size-5" />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-3 left-3 bg-white/90 dark:bg-black/80 px-3 py-1 rounded-full text-[10px] font-bold text-gray-800 dark:text-white backdrop-blur-sm">
+                    {image?.name} ({((image?.size ?? 0) / 1024 / 1024).toFixed(2)}{" "}
+                    MB)
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">Optional — shown with the discount on the storefront.</p>
+        </SectionCard>
       </div>
 
       {/* ── Submit ─────────────────────────────────────────── */}

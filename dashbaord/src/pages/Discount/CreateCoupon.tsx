@@ -1,5 +1,4 @@
 import { Link } from "react-router";
-import ComponentCard from "../../components/common/ComponentCard";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
@@ -26,11 +25,7 @@ const CreateCoupon = () => {
           </Link>
         }
       />
-      <div className="space-y-6">
-        <ComponentCard>
-          <CreateCouponForm />
-        </ComponentCard>
-      </div>
+      <CreateCouponForm />
     </>
   );
 };
