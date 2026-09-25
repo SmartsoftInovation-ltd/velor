@@ -994,7 +994,7 @@ const platformConsoleItems: NavItem[] = [
 
 // ---------- COMPONENT ----------
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleSidebar } =
+  const { isExpanded, isMobileOpen, isHovered } =
     useSidebar();
   const { can, isSuperAdmin, isOwner, isLoading } = useAuth();
   const { operator } = usePlatformAuth();
@@ -1429,8 +1429,6 @@ const AppSidebar: React.FC = () => {
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
-      onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {/* ---------- LOGO ---------- */}
       <div
@@ -1450,14 +1448,6 @@ const AppSidebar: React.FC = () => {
             </span>
           )}
         </Link>
-        {(isExpanded || isHovered || isMobileOpen) && (
-          <button
-            onClick={toggleSidebar}
-            className="hidden lg:flex items-center justify-center size-7 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/5 dark:hover:text-gray-300"
-          >
-            <ChevronDownIcon className="size-4 rotate-90" />
-          </button>
-        )}
       </div>
 
       {/* ---------- SIDEBAR NAV ---------- */}
