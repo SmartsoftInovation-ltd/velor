@@ -8,17 +8,30 @@ import toast from "react-hot-toast";
 import { FaTruck, FaUserTie, FaWallet } from "react-icons/fa";
 import SectionCard from "../common/SectionCard";
 import MobileActionBar from "../common/MobileActionBar";
+import { useFormDraft, loadDraft, clearDraft } from "../../hooks/useFormDraft";
+
+const EMPTY_FORM = {
+  supplierName: "",
+  contactPersonName: "",
+  contactPersonDesignation: "",
+  mobile: "",
+  supplierAddress: "",
+  openingDues: "",
+};
+
+type SupplierDraft = typeof EMPTY_FORM;
+
+// Keeps a half-filled supplier alive across a reload or a trip to another page
+// in the same tab; cleared once the supplier is saved.
+const DRAFT_KEY = "create-supplier";
 
 const CreateSupplierForm = () => {
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    supplierName: "",
-    contactPersonName: "",
-    contactPersonDesignation: "",
-    mobile: "",
-    supplierAddress: "",
-    openingDues: "",
-  });
+  const [formData, setFormData] = useState<SupplierDraft>(() => ({
+    ...EMPTY_FORM,
+    ...loadDraft<SupplierDraft>(DRAFT_KEY),
+  }));
+  useFormDraft<SupplierDraft>(DRAFT_KEY, formData);
   const [errors, setErrors] = useState<{
     supplierName?: string;
     mobile?: string;
@@ -61,14 +74,8 @@ const CreateSupplierForm = () => {
           typeof query.queryKey[0] === "string" &&
           query.queryKey[0].startsWith("dashboard-"),
       });
-      setFormData({
-        supplierName: "",
-        contactPersonName: "",
-        contactPersonDesignation: "",
-        mobile: "",
-        supplierAddress: "",
-        openingDues: "",
-      });
+      setFormData(EMPTY_FORM);
+      clearDraft(DRAFT_KEY);
       setErrors({});
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to create supplier");

@@ -1175,7 +1175,11 @@ const AppSidebar: React.FC = () => {
     [location.pathname],
   );
 
+  // Opens the submenu holding the current page. Re-runs once auth has loaded:
+  // until then every item is hidden, so on a reload the first pass finds
+  // nothing and would otherwise leave the menu collapsed.
   useEffect(() => {
+    if (isLoading) return;
     let submenuMatched = false;
 
     sidebarSections.forEach(({ type, items }) => {
@@ -1203,7 +1207,10 @@ const AppSidebar: React.FC = () => {
       setOpenSubmenu(null);
       setOpenSubSubMenu(null);
     }
-  }, [location, isActive]);
+    // sidebarSections is rebuilt every render, so it cannot be a dependency;
+    // isLoading/isSuperAdmin cover the moment the visible items settle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, isActive, isLoading, isSuperAdmin]);
 
   const handleSubmenuToggle = (
     index: number,

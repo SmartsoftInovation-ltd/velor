@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { FaPlus, FaTimes, FaSearch, FaTrash, FaChevronDown } from "react-icons/fa";
@@ -11,6 +11,7 @@ import MobileActionBar from "../common/MobileActionBar";
 import { FaUser, FaMapMarkerAlt, FaWallet, FaImage } from "react-icons/fa";
 import { Modal } from "../ui/modal";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, loadDraft, clearDraft } from "../../hooks/useFormDraft";
 
 interface CustomerType {
   _id: string;
@@ -18,13 +19,40 @@ interface CustomerType {
   slug: string;
 }
 
+const EMPTY_FORM = {
+  fullName: "",
+  mobileNumber: "",
+  occupation: "",
+  nidNumber: "",
+  openingDues: "",
+  regularDiscountPercent: "",
+  emailAddress: "",
+  presentAddress: "",
+  permanentAddress: "",
+  remarks: "",
+  dueLimit: "",
+};
+
+// Keeps a half-filled customer alive across a reload or a trip to another page
+// in the same tab; cleared once the customer is saved. The photo is a File and
+// cannot be stored, so it has to be picked again after a reload.
+const DRAFT_KEY = "create-customer";
+
+type CustomerDraft = {
+  form: typeof EMPTY_FORM;
+  selectedType: CustomerType | null;
+};
+
 const CreateCustomerForm = () => {
+  const draft = useMemo(() => loadDraft<CustomerDraft>(DRAFT_KEY), []);
   const queryClient = useQueryClient();
 
   const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
   const [typeSearch, setTypeSearch] = useState("");
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<CustomerType | null>(null);
+  const [selectedType, setSelectedType] = useState<CustomerType | null>(
+    draft?.selectedType ?? null,
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
@@ -34,19 +62,9 @@ const CreateCustomerForm = () => {
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
-    fullName: "",
-    mobileNumber: "",
-    occupation: "",
-    nidNumber: "",
-    openingDues: "",
-    regularDiscountPercent: "",
-    emailAddress: "",
-    presentAddress: "",
-    permanentAddress: "",
-    remarks: "",
-    dueLimit: "",
-  });
+  const [form, setForm] = useState({ ...EMPTY_FORM, ...draft?.form });
+  const draftValues = useMemo(() => ({ form, selectedType }), [form, selectedType]);
+  useFormDraft<CustomerDraft>(DRAFT_KEY, draftValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -190,20 +208,9 @@ const CreateCustomerForm = () => {
           query.queryKey[0].startsWith("dashboard-"),
       });
 
-      setForm({
-        fullName: "",
-        mobileNumber: "",
-        occupation: "",
-        nidNumber: "",
-        openingDues: "",
-        regularDiscountPercent: "",
-        emailAddress: "",
-        presentAddress: "",
-        permanentAddress: "",
-        remarks: "",
-        dueLimit: "",
-      });
+      setForm(EMPTY_FORM);
       setSelectedType(null);
+      clearDraft(DRAFT_KEY);
       setImage(null);
       if (preview) URL.revokeObjectURL(preview);
       setPreview(null);

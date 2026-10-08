@@ -10,6 +10,7 @@ import SearchableSelect from "../form/SearchableSelect";
 import DatePicker from "../form/date-picker";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { useFormDraft, loadDraft, clearDraft } from "../../hooks/useFormDraft";
 
 interface SupplierOption {
   label: string;
@@ -34,11 +35,19 @@ const emptyForm = {
   remarks: "",
 };
 
+type PaymentDraft = typeof emptyForm;
+
+// Keeps a half-filled payment alive across a reload or a trip to another page
+// in the same tab; cleared once the payment is saved.
+const DRAFT_KEY = "create-supplier-payment";
+
 const CreateSupplierPaymentForm = () => {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState(emptyForm);
-  const [selectedSupplier, setSelectedSupplier] =
-    useState<SupplierOption | null>(null);
+  const [form, setForm] = useState<PaymentDraft>(() => ({
+    ...emptyForm,
+    ...loadDraft<PaymentDraft>(DRAFT_KEY),
+  }));
+  useFormDraft<PaymentDraft>(DRAFT_KEY, form);
   const [errors, setErrors] = useState<
     Partial<Record<keyof typeof emptyForm, string>>
   >({});
@@ -83,6 +92,9 @@ const CreateSupplierPaymentForm = () => {
   });
 
   const suppliers = supplierRaw ?? [];
+  // Derived from the id rather than stored, so a supplier restored from a
+  // draft shows its current due once the list has loaded.
+  const selectedSupplier = suppliers.find((s) => s.value === form.supplierId) ?? null;
   const accounts = accountRaw ?? [];
 
   const set = (field: keyof typeof emptyForm, value: string) => {
@@ -92,8 +104,6 @@ const CreateSupplierPaymentForm = () => {
 
   const handleSupplierChange = (value: string) => {
     set("supplierId", value);
-    const found = suppliers.find((s) => s.value === value) ?? null;
-    setSelectedSupplier(found);
   };
 
   const validate = () => {
@@ -138,7 +148,7 @@ const CreateSupplierPaymentForm = () => {
           query.queryKey[0].startsWith("dashboard-"),
       });
       setForm(emptyForm);
-      setSelectedSupplier(null);
+      clearDraft(DRAFT_KEY);
       setErrors({});
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to create payment");
