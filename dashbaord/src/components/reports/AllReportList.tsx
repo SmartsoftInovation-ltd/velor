@@ -193,6 +193,11 @@ const categories: ReportCategory[] = [
         description: "Opening balance + total purchase - paid = balance, per supplier",
         path: "/supplier-balance-summary",
       },
+      {
+        name: "Supplier Dues",
+        description: "Suppliers still owed, with purchase count & last purchase date",
+        path: "/supplier-dues",
+      },
     ],
   },
   {

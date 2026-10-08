@@ -164,13 +164,20 @@ _.route("/supplier-balance-summary").post(
   authorize("supplier-balance-summary-report", "view"),
   reportController.getSupplierBalanceSummaryReport,
 );
-// The supplier dropdown is shared by the ledger and the balance summary.
+_.route("/supplier-dues").post(
+  authGuard,
+  reportLimiter,
+  authorize("supplier-dues-report", "view"),
+  reportController.getSupplierDuesReport,
+);
+// The supplier dropdown is shared by the ledger, balance summary and dues.
 _.route("/supplier-ledger/suppliers").get(
   authGuard,
   reportLimiter,
   authorizeAny(
     ["supplier-ledger-report", "view"],
     ["supplier-balance-summary-report", "view"],
+    ["supplier-dues-report", "view"],
   ),
   reportController.getSupplierLedgerSuppliers,
 );

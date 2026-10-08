@@ -5886,6 +5886,88 @@ exports.getSupplierBalanceSummaryReport = asynchandeler(async (req, res) => {
   });
 });
 
+// @desc Supplier dues — suppliers the shop still owes, one row each:
+//
+//   LAST PURCHASE DATE = latest purchase date
+//   TTL PURCHASE INV   = number of purchases
+//   TOTAL DUE          = supplier.openingDues — the current due, kept up to
+//                        date by every purchase, return and payment
+//
+// Only suppliers with a due above zero are listed. With a date range, the
+// purchase count and last purchase date cover that range; TOTAL DUE is always
+// today's due. Not cached: supplier writes do not bump any cache namespace.
+exports.getSupplierDuesReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, supplierId } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const supplierFilter = { deletedAt: null, openingDues: { $gt: 0 } };
+  castObjectIdFilter(supplierFilter, "_id", supplierId);
+  const suppliers = await Supplier.find(supplierFilter)
+    .select("_id supplierSerialId supplierId supplierName mobile contactPersonName openingDues")
+    .sort({ openingDues: -1, supplierName: 1 })
+    .lean();
+
+  const purchaseMatch = { supplierId: { $in: suppliers.map((s) => s._id) } };
+  if (startDate && endDate) {
+    const rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+    purchaseMatch.date = { $gte: rangeStart, $lte: rangeEnd };
+  }
+
+  const stats = await Purchase.aggregate([
+    { $match: purchaseMatch },
+    {
+      $group: {
+        _id: "$supplierId",
+        purchaseCount: { $sum: 1 },
+        lastPurchaseDate: { $max: "$date" },
+      },
+    },
+  ]);
+  const statBySupplier = new Map(stats.map((s) => [String(s._id), s]));
+
+  const allRows = suppliers.map((s) => {
+    const stat = statBySupplier.get(String(s._id)) || {};
+    return {
+      _id: s._id,
+      supplierCode: s.supplierSerialId || s.supplierId || "",
+      supplierName: s.supplierName,
+      mobile: s.mobile || "",
+      contactPerson: s.contactPersonName || "",
+      lastPurchaseDate: stat.lastPurchaseDate || null,
+      purchaseCount: stat.purchaseCount || 0,
+      totalDue: s.openingDues || 0,
+    };
+  });
+
+  const totals = allRows.reduce(
+    (t, r) => ({
+      count: t.count + 1,
+      totalPurchaseCount: t.totalPurchaseCount + r.purchaseCount,
+      totalDue: t.totalDue + r.totalDue,
+    }),
+    { count: 0, totalPurchaseCount: 0, totalDue: 0 },
+  );
+
+  const header = await getStoreHeader();
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Supplier dues fetched successfully", {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      supplierId: supplierId || null,
+    },
+    rows: allRows.slice(skip, skip + limit),
+    totals,
+    pagination: paginationMeta(allRows.length, page, limit, skip),
+    generatedAt: new Date(),
+    fromCache: false,
+  });
+});
+
 // @desc Every supplier — for the supplier ledger's dropdown. Not limited to
 // suppliers with purchases: one with only an opening balance has a ledger too.
 exports.getSupplierLedgerSuppliers = asynchandeler(async (req, res) => {

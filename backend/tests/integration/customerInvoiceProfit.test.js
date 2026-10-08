@@ -301,3 +301,39 @@ describe("supplier balance summary report", () => {
     expect(rows[0]).toMatchObject({ openingBalance: 80000, totalPurchase: 20000, totalPaid: 5000, balance: 92000 });
   });
 });
+
+describe("supplier dues report", () => {
+  const tenantId = new mongoose.Types.ObjectId();
+  const aId = new mongoose.Types.ObjectId();
+  const { SupplierModel } = require("../../src/models/supplier.model");
+  const Purchase = require("../../src/models/purchase.model");
+  const { getSupplierDuesReport } = require("../../src/controller/report.controller");
+
+  beforeAll(connectTestDb);
+  afterEach(clearTestDb);
+  afterAll(disconnectTestDb);
+
+  const insert = (model, doc) =>
+    runForTenant(tenantId, () =>
+      model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
+    );
+
+  it("lists suppliers with a due, their purchase count and last purchase date", async () => {
+    await insert(SupplierModel, { _id: aId, supplierSerialId: "SUPL-1", supplierName: "Color Mens", openingDues: 5000, deletedAt: null });
+    await insert(SupplierModel, { supplierName: "Settled", openingDues: 0, deletedAt: null });
+    await insert(Purchase, { supplierId: aId, date: new Date("2026-04-01"), invoiceNumber: "A" });
+    await insert(Purchase, { supplierId: aId, date: new Date("2026-04-10"), invoiceNumber: "B" });
+
+    const data = await runForTenant(tenantId, async () => {
+      let out;
+      const res = { status: () => res, json: (b) => (out = b) };
+      await getSupplierDuesReport({ body: {}, query: {} }, res, (err) => { throw err; });
+      return out.data;
+    });
+
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0]).toMatchObject({ supplierName: "Color Mens", purchaseCount: 2, totalDue: 5000 });
+    expect(new Date(data.rows[0].lastPurchaseDate).toISOString()).toBe("2026-04-10T00:00:00.000Z");
+    expect(data.totals).toMatchObject({ count: 1, totalPurchaseCount: 2, totalDue: 5000 });
+  });
+});
