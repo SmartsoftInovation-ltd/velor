@@ -121,6 +121,16 @@ const categories: ReportCategory[] = [
         path: "/customer-sales-invoice",
       },
       {
+        name: "Customer Invoice Profit",
+        description: "Invoice-wise buy price, sales total, discount & profit",
+        path: "/customer-invoice-profit",
+      },
+      {
+        name: "Top Customer",
+        description: "Listed customers ranked by sales total, with profit & last sale",
+        path: "/top-customer",
+      },
+      {
         name: "Customer Sales Product",
         description: "Item-wise customer sales with WS/RS price and sub. total",
         path: "/customer-sales-product",

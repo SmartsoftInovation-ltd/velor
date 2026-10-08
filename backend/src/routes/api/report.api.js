@@ -122,6 +122,18 @@ _.route("/customer-sales-invoice").post(
   authorize("customer-sales-invoice-report", "view"),
   reportController.getCustomerSalesInvoiceReport,
 );
+_.route("/customer-invoice-profit").post(
+  authGuard,
+  reportLimiter,
+  authorize("customer-invoice-profit-report", "view"),
+  reportController.getCustomerInvoiceProfitReport,
+);
+_.route("/top-customer").post(
+  authGuard,
+  reportLimiter,
+  authorize("top-customer-report", "view"),
+  reportController.getTopCustomerReport,
+);
 _.route("/customer-sales-product").post(
   authGuard,
   reportLimiter,

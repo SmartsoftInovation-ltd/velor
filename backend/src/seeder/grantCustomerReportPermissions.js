@@ -3,8 +3,10 @@ require("module-alias/register");
 const mongoose = require("mongoose");
 const Role = require("../models/role.model");
 const Permission = require("../models/permisson.model");
+const Tenant = require("../models/platform/tenant.model");
+const { runForTenant } = require("../tenancy/context");
 
-// Grants the four customer report permissions added in this change set.
+// Grants the customer report permissions added after the base seed.
 //
 // Deliberately additive, unlike rolePermissionSeeder.js which does
 // `role.permissions = assignments` — a full replace. Several roles in the
@@ -17,6 +19,8 @@ const PERMISSION_NAMES = [
   "Customer Balance Summary Report",
   "Customer Ledger Report",
   "Customer Due List Report",
+  "Customer Invoice Profit Report",
+  "Top Customer Report",
 ];
 
 const TARGET_ROLE_SLUGS = ["admin", "manager", "salesman"];
@@ -44,7 +48,22 @@ async function grantCustomerReportPermissions({ dryRun = false } = {}) {
     console.log("\n  (dry run: role grants below assume the above were created)");
   }
 
-  // 2) Add the grant to each target role, leaving every other entry alone.
+  // 2) Add the grant to each target role in every store. Permissions are a
+  // shared catalogue, but roles belong to a tenant, so role lookups must run
+  // inside that tenant's context (strict mode throws without one).
+  let rolesTouched = 0;
+  const tenants = await Tenant.find().select("_id slug").lean();
+  for (const tenant of tenants) {
+    console.log(`\n  [${tenant.slug}]`);
+    rolesTouched += await runForTenant(tenant._id, () =>
+      grantToRoles(permissions, { dryRun }),
+    );
+  }
+
+  return { permissions: permissions.length, tenants: tenants.length, rolesTouched };
+}
+
+async function grantToRoles(permissions, { dryRun }) {
   let rolesTouched = 0;
   for (const slug of TARGET_ROLE_SLUGS) {
     const role = await Role.findOne({ slug });
@@ -87,7 +106,7 @@ async function grantCustomerReportPermissions({ dryRun = false } = {}) {
     rolesTouched++;
   }
 
-  return { permissions: permissions.length, rolesTouched };
+  return rolesTouched;
 }
 
 module.exports = { grantCustomerReportPermissions };
@@ -100,14 +119,14 @@ if (require.main === module) {
       await mongoose.connect(process.env.DATABASE_URL);
       console.log(`Connected.${dryRun ? " DRY RUN — no writes." : ""}\n`);
 
-      const { permissions, rolesTouched } = await grantCustomerReportPermissions({
+      const { permissions, tenants, rolesTouched } = await grantCustomerReportPermissions({
         dryRun,
       });
 
       console.log(
         dryRun
           ? `\nDry run complete. Re-run without --dry to apply.`
-          : `\nDone. permissions=${permissions} rolesUpdated=${rolesTouched}`,
+          : `\nDone. permissions=${permissions} tenants=${tenants} rolesUpdated=${rolesTouched}`,
       );
     } catch (err) {
       console.error("Grant failed:", err.message);

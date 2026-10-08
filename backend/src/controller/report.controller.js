@@ -4153,6 +4153,500 @@ exports.getCustomerSalesInvoiceReport = asynchandeler(async (req, res) => {
   );
 });
 
+// Per-sale stages adding `buyPrice`, `discountAmount`, `itemsQty` and `profit`
+// — shared by the customer invoice profit and top customer reports so both
+// use one formula (see getCustomerInvoiceProfitReport for what each means).
+const saleProfitStages = () => [
+  // Every product and variant on the invoice in one lookup each; the cost of
+  // each line is then picked out of these arrays below.
+  {
+    $lookup: {
+      from: "variants",
+      localField: "searchItem.variantId",
+      foreignField: "_id",
+      as: "variantDocs",
+      pipeline: [{ $project: { purchasePrice: 1 } }],
+    },
+  },
+  {
+    $lookup: {
+      from: "products",
+      localField: "searchItem.productId",
+      foreignField: "_id",
+      as: "productDocs",
+      pipeline: [{ $project: { purchasePrice: 1 } }],
+    },
+  },
+  {
+    $addFields: {
+      buyPrice: {
+        $reduce: {
+          input: { $ifNull: ["$searchItem", []] },
+          initialValue: 0,
+          in: {
+            $add: [
+              "$$value",
+              {
+                // Only sold lines carry a cost; returns and exchanges are not sales.
+                $cond: [
+                  { $eq: [{ $ifNull: ["$$this.salesStatus", "sale"] }, "sale"] },
+                  {
+                    $multiply: [
+                      { $ifNull: ["$$this.quantity", 0] },
+                      {
+                        $ifNull: [
+                          {
+                            $first: {
+                              $map: {
+                                input: {
+                                  $filter: {
+                                    input: "$variantDocs",
+                                    as: "v",
+                                    cond: { $eq: ["$$v._id", "$$this.variantId"] },
+                                  },
+                                },
+                                as: "v",
+                                in: "$$v.purchasePrice",
+                              },
+                            },
+                          },
+                          {
+                            $ifNull: [
+                              {
+                                $first: {
+                                  $map: {
+                                    input: {
+                                      $filter: {
+                                        input: "$productDocs",
+                                        as: "p",
+                                        cond: { $eq: ["$$p._id", "$$this.productId"] },
+                                      },
+                                    },
+                                    as: "p",
+                                    in: "$$p.purchasePrice",
+                                  },
+                                },
+                              },
+                              0,
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      itemsQty: {
+        $reduce: {
+          input: { $ifNull: ["$searchItem", []] },
+          initialValue: 0,
+          in: {
+            $add: [
+              "$$value",
+              {
+                $cond: [
+                  { $eq: [{ $ifNull: ["$$this.salesStatus", "sale"] }, "sale"] },
+                  { $ifNull: ["$$this.quantity", 0] },
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      discountAmount: {
+        $add: [
+          {
+            $divide: [
+              { $multiply: [{ $ifNull: ["$total", 0] }, { $ifNull: ["$discountPercent", 0] }] },
+              100,
+            ],
+          },
+          { $ifNull: ["$lessTaka", 0] },
+        ],
+      },
+    },
+  },
+  {
+    $addFields: {
+      profit: {
+        $subtract: [
+          { $subtract: [{ $ifNull: ["$total", 0] }, "$discountAmount"] },
+          "$buyPrice",
+        ],
+      },
+    },
+  },
+];
+
+// @desc Customer invoice profit report — one row per sale invoice with what
+// the goods cost, what was charged and the margin left over.
+//
+//   SALES TOTAL = sale.total — the sum of the line subtotals, already net of
+//                 each line's own (product/variant) discount
+//   DISCOUNT    = sale.total × discountPercent / 100 + lessTaka — the
+//                 invoice-level cuts the seller added on top
+//   BUY PRICE   = Σ purchasePrice × quantity over the "sale" lines, reading the
+//                 variant's purchasePrice and falling back to the product's
+//   PROFIT      = SALES TOTAL − DISCOUNT − BUY PRICE
+//
+// This is the dashboard Total Sale box's profit (buildProfitPipeline in
+// dashboard.controller.js) read per invoice: VAT, delivery and labour stay out
+// because they are not margin. The one difference is that SALES TOTAL is taken
+// from the stored `total` here, where the box recomputes it from
+// salesRate/discount/quantity.
+//
+// BUY PRICE uses the catalogue's current purchasePrice — the sale line does not
+// store the cost it was bought at — so editing a product's purchase price
+// re-prices this report's history.
+exports.getCustomerInvoiceProfitReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerId, customerName, salesType } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+  castObjectIdFilter(match, "customerType.customerId", customerId);
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:customer-invoice-profit:${startDate}:${endDate}:${customerId || "all"}:${nameQuery || "all"}:${salesType || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Customer invoice profit report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1, customSerialId: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCustomerName: {
+          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+        },
+        resolvedCustomerPhone: {
+          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+        },
+      },
+    },
+  ];
+
+  // Runs after the lookup: a listed customer's name lives on the joined document.
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: { $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }] },
+    });
+  }
+
+  pipeline.push(
+    ...saleProfitStages(),
+    {
+      $facet: {
+        rows: [
+          { $sort: { date: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              date: 1,
+              invoiceNumber: 1,
+              salesType: 1,
+              customerCode: "$customerInfo.customSerialId",
+              customerName: "$resolvedCustomerName",
+              customerPhone: "$resolvedCustomerPhone",
+              buyPrice: 1,
+              salesTotal: { $ifNull: ["$total", 0] },
+              discount: "$discountAmount",
+              profit: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalBuyPrice: { $sum: "$buyPrice" },
+              totalSales: { $sum: { $ifNull: ["$total", 0] } },
+              totalDiscount: { $sum: "$discountAmount" },
+              totalProfit: { $sum: "$profit" },
+            },
+          },
+        ],
+      },
+    },
+  );
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const totals = result?.totals?.[0] || {
+    count: 0,
+    totalBuyPrice: 0,
+    totalSales: 0,
+    totalDiscount: 0,
+    totalProfit: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      salesType: salesType || "ALL",
+    },
+    rows,
+    totals: {
+      count: totals.count,
+      totalBuyPrice: totals.totalBuyPrice,
+      totalSales: totals.totalSales,
+      totalDiscount: totals.totalDiscount,
+      totalProfit: totals.totalProfit,
+    },
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Customer invoice profit report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Top customer report — one row per LISTED customer (walking sales have
+// no customer account to rank), ordered by sales total, highest first.
+//
+//   SALES INVOICES = number of sales in the period
+//   ITEMS QTY      = Σ quantity of the "sale" lines
+//   SALES TOTAL    = Σ sale.total
+//   DISCOUNT       = Σ (total × discountPercent / 100 + lessTaka)
+//   PAYABLE / PAID / DUE = Σ payable / paid / presentDue
+//   PROFIT         = Σ per-invoice profit, the customer invoice profit
+//                    report's formula (saleProfitStages)
+//   LAST SALE DATE = latest sale date in the period
+//
+// `top` (e.g. 10) keeps only that many customers, and the totals row covers
+// just them; 0 or absent ranks every customer.
+exports.getTopCustomerReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerId, customerName, salesType, top } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const topN = Math.max(0, parseInt(top, 10) || 0);
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = {
+    date: { $gte: rangeStart, $lte: rangeEnd },
+    "customerType.type": "listed",
+    "customerType.customerId": { $ne: null },
+  };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+  castObjectIdFilter(match, "customerType.customerId", customerId);
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:top-customer:${startDate}:${endDate}:${customerId || "all"}:${nameQuery || "all"}:${salesType || "all"}:t${topN}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Top customer report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    ...saleProfitStages(),
+    {
+      $group: {
+        _id: "$customerType.customerId",
+        invoices: { $sum: 1 },
+        itemsQty: { $sum: "$itemsQty" },
+        salesTotal: { $sum: { $ifNull: ["$total", 0] } },
+        discount: { $sum: "$discountAmount" },
+        payable: { $sum: { $ifNull: ["$payable", 0] } },
+        paid: { $sum: { $ifNull: ["$paid", 0] } },
+        due: { $sum: { $ifNull: ["$presentDue", 0] } },
+        profit: { $sum: "$profit" },
+        lastSaleDate: { $max: "$date" },
+      },
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "_id",
+        foreignField: "_id",
+        as: "customer",
+        pipeline: [
+          { $project: { fullName: 1, mobileNumber: 1, customSerialId: 1, customerType: 1 } },
+        ],
+      },
+    },
+    { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "customertypes",
+        localField: "customer.customerType",
+        foreignField: "_id",
+        as: "customerTypeDoc",
+        pipeline: [{ $project: { customerType: 1 } }],
+      },
+    },
+  ];
+
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: { $or: [{ "customer.fullName": rx }, { "customer.mobileNumber": rx }] },
+    });
+  }
+
+  // _id breaks ties so equal totals keep a stable order across pages.
+  pipeline.push({ $sort: { salesTotal: -1, _id: 1 } });
+  if (topN > 0) pipeline.push({ $limit: topN });
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            customerCode: "$customer.customSerialId",
+            customerName: "$customer.fullName",
+            customerPhone: "$customer.mobileNumber",
+            customerType: { $first: "$customerTypeDoc.customerType" },
+            invoices: 1,
+            itemsQty: 1,
+            salesTotal: 1,
+            discount: 1,
+            payable: 1,
+            paid: 1,
+            due: 1,
+            profit: 1,
+            lastSaleDate: 1,
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalInvoices: { $sum: "$invoices" },
+            totalItemsQty: { $sum: "$itemsQty" },
+            totalSales: { $sum: "$salesTotal" },
+            totalDiscount: { $sum: "$discount" },
+            totalPayable: { $sum: "$payable" },
+            totalPaid: { $sum: "$paid" },
+            totalDue: { $sum: "$due" },
+            totalProfit: { $sum: "$profit" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalInvoices: 0,
+    totalItemsQty: 0,
+    totalSales: 0,
+    totalDiscount: 0,
+    totalPayable: 0,
+    totalPaid: 0,
+    totalDue: 0,
+    totalProfit: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      customerId: customerId || null,
+      customerName: nameQuery || null,
+      salesType: salesType || "ALL",
+      top: topN,
+    },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Top customer report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
 // @desc Customers that have at least one sale — for the customer report's
 // customer dropdown. Walking customers have no Customer document, so they
 // cannot appear here; the report's name search covers them instead.

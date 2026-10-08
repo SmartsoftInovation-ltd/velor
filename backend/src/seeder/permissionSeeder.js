@@ -85,6 +85,8 @@ const permissionList = [
   { permissionName: "Customer Balance Summary Report" },
   { permissionName: "Customer Ledger Report" },
   { permissionName: "Customer Due List Report" },
+  { permissionName: "Customer Invoice Profit Report" },
+  { permissionName: "Top Customer Report" },
   { permissionName: "Supplier Purchase Invoice Report" },
   { permissionName: "Supplier Payment Report" },
   { permissionName: "Stock Report" },
