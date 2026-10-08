@@ -1164,6 +1164,11 @@ span.flatpickr-weekday,
   body.printing-report thead {
     display: table-header-group;
   }
+  /* Plain header: keeps the header fill but drops the rule under it. */
+  body.printing-report .plain-head th {
+    border: none;
+    vertical-align: middle;
+  }
   body.printing-report tfoot {
     display: table-footer-group;
   }
@@ -1276,6 +1281,10 @@ span.flatpickr-weekday,
     font-weight: bold;
     text-transform: uppercase;
     font-size: 10px;
+  }
+.paper-preview-body .plain-head th {
+    border: none;
+    vertical-align: middle;
   }
 .paper-preview-body .total-row td {
     background: #f3f4f6 !important;

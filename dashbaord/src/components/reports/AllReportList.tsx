@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import { REPORT_MODULES } from "../../config/permissions";
@@ -183,6 +183,11 @@ const categories: ReportCategory[] = [
         description: "Due payments with trx id, method, paid & less",
         path: "/supplier-payment-report",
       },
+      {
+        name: "Supplier Ledger",
+        description: "Opening, purchases, returns & payments with received, payment & balance",
+        path: "/supplier-ledger",
+      },
     ],
   },
   {
@@ -293,6 +298,13 @@ const categories: ReportCategory[] = [
     ],
   },
 ];
+
+// Rows per column in the two-column report grid. Reports fill the left column
+// top to bottom first, six to a column, so a category of 9 reads 6 left and
+// 3 right; small categories split evenly and large ones grow both columns.
+const MAX_ROWS = 6;
+const columnRows = (count: number) =>
+  count > MAX_ROWS ? Math.max(MAX_ROWS, Math.ceil(count / 2)) : Math.ceil(count / 2);
 
 const AllReportList = () => {
   const navigate = useNavigate();
@@ -463,15 +475,22 @@ const AllReportList = () => {
               No reports match “{search}”.
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <div
+              className="grid gap-3 p-4 md:grid-flow-col md:grid-cols-2 md:[grid-template-rows:repeat(var(--report-rows),auto)]"
+              style={{ "--report-rows": columnRows(visibleReports.length) } as CSSProperties}
+            >
               {visibleReports.map((report) => (
                 <button
                   key={report.path}
                   onClick={() => navigate(report.path)}
-                  className="group flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+                  className="group flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3.5 text-left shadow-theme-xs transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.02] dark:hover:border-brand-500/30"
                 >
-                  <span className="mt-0.5 size-2 shrink-0 rounded-full bg-emerald-500" />
-                  <span className="flex-1">
+                  <span
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${active.chipBg} ${active.chipText}`}
+                  >
+                    <TbReceipt2 className="size-[18px]" />
+                  </span>
+                  <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-gray-800 dark:text-white/90">
                       {report.name}
                     </span>

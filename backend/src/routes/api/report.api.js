@@ -152,6 +152,18 @@ _.route("/supplier-purchase-invoice").post(
   authorize("supplier-purchase-invoice-report", "view"),
   reportController.getSupplierPurchaseInvoiceReport,
 );
+_.route("/supplier-ledger").post(
+  authGuard,
+  reportLimiter,
+  authorize("supplier-ledger-report", "view"),
+  reportController.getSupplierLedgerReport,
+);
+_.route("/supplier-ledger/suppliers").get(
+  authGuard,
+  reportLimiter,
+  authorize("supplier-ledger-report", "view"),
+  reportController.getSupplierLedgerSuppliers,
+);
 _.route("/supplier-payment").post(
   authGuard,
   reportLimiter,

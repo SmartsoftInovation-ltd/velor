@@ -9,6 +9,13 @@ const productModel = require("../../src/models/product.model");
 const variantModel = require("../../src/models/variant.model");
 const { getCustomerInvoiceProfitReport } = require("../../src/controller/report.controller");
 
+// The report reads startDate/endDate as local days, so "today" must be the
+// local date — toISOString() is UTC and is yesterday just after local midnight.
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 // PROFIT = SALES TOTAL − DISCOUNT − BUY PRICE, where SALES TOTAL is the stored
 // sale.total, DISCOUNT is the invoice-level discountPercent + lessTaka and BUY
 // PRICE is purchasePrice × quantity of the sold lines (variant first).
@@ -42,7 +49,7 @@ describe("customer invoice profit report", () => {
 
   const runReport = () =>
     runForTenant(tenantId, async () => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = localToday();
       let body;
       let error;
       const req = { body: { startDate: today, endDate: today }, query: {} };
@@ -129,7 +136,7 @@ describe("top customer report", () => {
 
   const runReport = (extra = {}) =>
     runForTenant(tenantId, async () => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = localToday();
       let body;
       let error;
       const req = { body: { startDate: today, endDate: today, ...extra }, query: {} };
@@ -181,5 +188,62 @@ describe("top customer report", () => {
     const { rows, totals } = await runReport({ top: 1 });
     expect(rows.map((r) => r.customerName)).toEqual(["Big"]);
     expect(totals).toMatchObject({ count: 1, totalSales: 1000 });
+  });
+});
+
+describe("supplier ledger report", () => {
+  const tenantId = new mongoose.Types.ObjectId();
+  const supplierObjId = new mongoose.Types.ObjectId();
+  const { SupplierModel, SupplierDuePayment } = require("../../src/models/supplier.model");
+  const Purchase = require("../../src/models/purchase.model");
+  const PurchaseReturn = require("../../src/models/purchaseReturn.model");
+  const { getSupplierLedgerReport } = require("../../src/controller/report.controller");
+
+  beforeAll(connectTestDb);
+  afterEach(clearTestDb);
+  afterAll(disconnectTestDb);
+
+  const insert = (model, doc) =>
+    runForTenant(tenantId, () =>
+      model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
+    );
+
+  const runReport = (body = {}) =>
+    runForTenant(tenantId, async () => {
+      let out;
+      let error;
+      const req = { body: { supplierId: String(supplierObjId), ...body }, query: {} };
+      const res = { status: () => res, json: (b) => (out = b) };
+      await getSupplierLedgerReport(req, res, (err) => (error = err));
+      if (error) throw error;
+      return out.data;
+    });
+
+  beforeEach(async () => {
+    await insert(SupplierModel, { _id: supplierObjId, supplierId: "01711111111", supplierName: "Acme", initialDue: 5000, deletedAt: null });
+    await insert(Purchase, { serial: "PUR-SI-00002", invoiceNumber: "P-2", date: new Date("2026-04-10"), supplierId: supplierObjId, payable: 50000, paid: 20000 });
+    await insert(PurchaseReturn, { serial: "PUR-RTN-SI-00003", returnDate: new Date("2026-04-11"), supplier: supplierObjId, totalReturnAmount: 5000 });
+    await insert(SupplierDuePayment, { supplierPaymentSerialId: "SP-SI-00004", date: new Date("2026-04-12"), supplierId: "01711111111", paidAmount: 10000, isActive: true, deletedAt: null });
+    // a deleted payment never counts
+    await insert(SupplierDuePayment, { date: new Date("2026-04-12"), supplierId: "01711111111", paidAmount: 999, isActive: false, deletedAt: new Date() });
+  });
+
+  it("lists opening, purchase, return and payment and nets them to the balance", async () => {
+    const { rows, totals } = await runReport();
+    expect(rows.map((r) => [r.category, r.received, r.payment])).toEqual([
+      ["Add Supplier", 5000, 0],
+      ["Add Purchase", 50000, 20000],
+      ["Purchase Return", 0, 5000],
+      ["Add Supplier Payment", 0, 10000],
+    ]);
+    expect(totals).toMatchObject({ totalReceived: 55000, totalPayment: 35000, balance: 20000 });
+  });
+
+  it("folds entries before the range into the opening balance", async () => {
+    const { rows, totals } = await runReport({ startDate: "2026-04-11", endDate: "2026-04-30" });
+    // 5000 opening + (50000 − 20000) purchase before the range
+    expect(rows[0]).toMatchObject({ category: "Add Supplier", description: "Opening Balance (brought forward)", received: 35000 });
+    expect(rows).toHaveLength(3);
+    expect(totals.balance).toBe(20000);
   });
 });

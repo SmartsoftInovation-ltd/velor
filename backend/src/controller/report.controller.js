@@ -5618,6 +5618,175 @@ exports.getSupplierPurchaseInvoiceReport = asynchandeler(async (req, res) => {
   );
 });
 
+// @desc Supplier ledger — every money movement with a supplier, date-ordered,
+// split into what the shop owes them (RECEIVED) and what it settled (PAYMENT):
+//
+//   Opening Balance  received = supplier.initialDue (the opening balance
+//                    entered on the supplier form)
+//   Purchase         received = purchase.payable, payment = purchase.paid
+//   Purchase Return  payment  = purchaseReturn.totalReturnAmount
+//   Supplier Payment payment  = supplierDuePayment.paidAmount
+//
+//   BALANCE = Σ received − Σ payment — what is still owed to the supplier(s).
+//
+// supplierId (a Supplier _id) narrows it to one supplier; without it the
+// ledger covers every supplier. The date range is optional too: with one,
+// everything before startDate is folded into the opening balance row, so the
+// balance always reflects the full history.
+//
+// Not cached: supplier payments and opening-balance edits do not bump any
+// cache namespace, so a cached ledger could hide a payment just made.
+// TRANSACTION CATEGORY is the dashboard sidebar name of the page each entry is
+// entered from, so a reader can tell where to go to find or fix it.
+const LEDGER_CATEGORY = {
+  opening: "Add Supplier",
+  purchase: "Add Purchase",
+  purchaseReturn: "Purchase Return",
+  supplierPayment: "Add Supplier Payment",
+};
+
+exports.getSupplierLedgerReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, supplierId } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  let rangeStart = null;
+  let rangeEnd = null;
+  if (startDate && endDate) {
+    rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+  }
+
+  const supplierFilter = { deletedAt: null };
+  castObjectIdFilter(supplierFilter, "_id", supplierId);
+  const suppliers = await Supplier.find(supplierFilter)
+    .select("_id supplierId supplierName initialDue")
+    .lean();
+  if (supplierId && suppliers.length === 0) {
+    throw new customError("Supplier not found", statusCodes.NOT_FOUND);
+  }
+
+  const supplierObjectIds = suppliers.map((s) => s._id);
+  // Supplier payments reference the supplier by its string business id.
+  const supplierBusinessIds = suppliers.map((s) => s.supplierId).filter(Boolean);
+  const nameById = new Map(suppliers.map((s) => [String(s._id), s.supplierName]));
+  const nameByBusinessId = new Map(suppliers.map((s) => [s.supplierId, s.supplierName]));
+
+  // Only the end bound is applied in the queries: entries before startDate are
+  // still needed to bring the opening balance forward.
+  const upTo = (field) => (rangeEnd ? { [field]: { $lte: rangeEnd } } : {});
+
+  const [purchases, returns, payments] = await Promise.all([
+    Purchase.find({ supplierId: { $in: supplierObjectIds }, ...upTo("date") })
+      .select("serial invoiceNumber date supplierId payable paid")
+      .lean(),
+    PurchaseReturn.find({ supplier: { $in: supplierObjectIds }, ...upTo("returnDate") })
+      .select("serial returnDate supplier totalReturnAmount remarks")
+      .lean(),
+    SupplierDuePayment.find({
+      supplierId: { $in: supplierBusinessIds },
+      isActive: { $ne: false },
+      deletedAt: null,
+      ...upTo("date"),
+    })
+      .select("supplierPaymentSerialId transactionId date supplierId paidAmount remarks")
+      .lean(),
+  ]);
+
+  const entries = [
+    ...purchases.map((p) => ({
+      _id: p._id,
+      reference: p.serial || p.invoiceNumber,
+      date: p.date,
+      category: LEDGER_CATEGORY.purchase,
+      description: [p.invoiceNumber, nameById.get(String(p.supplierId))].filter(Boolean).join(" · "),
+      received: p.payable || 0,
+      payment: p.paid || 0,
+    })),
+    ...returns.map((r) => ({
+      _id: r._id,
+      reference: r.serial,
+      date: r.returnDate,
+      category: LEDGER_CATEGORY.purchaseReturn,
+      description: [nameById.get(String(r.supplier)), r.remarks].filter(Boolean).join(" · "),
+      received: 0,
+      payment: r.totalReturnAmount || 0,
+    })),
+    ...payments.map((p) => ({
+      _id: p._id,
+      reference: p.supplierPaymentSerialId || p.transactionId,
+      date: p.date,
+      category: LEDGER_CATEGORY.supplierPayment,
+      description: [nameByBusinessId.get(p.supplierId), p.remarks].filter(Boolean).join(" · "),
+      received: 0,
+      payment: p.paidAmount || 0,
+    })),
+  ];
+
+  // Opening balance: the suppliers' opening dues, plus — with a date range —
+  // the net of everything before it.
+  let opening = suppliers.reduce((sum, s) => sum + (s.initialDue || 0), 0);
+  const inRange = [];
+  for (const e of entries) {
+    if (rangeStart && new Date(e.date) < rangeStart) opening += e.received - e.payment;
+    else inRange.push(e);
+  }
+  inRange.sort((a, b) => new Date(a.date) - new Date(b.date) || String(a._id).localeCompare(String(b._id)));
+
+  const ledger = [
+    {
+      _id: "opening",
+      reference: "",
+      date: rangeStart,
+      category: LEDGER_CATEGORY.opening,
+      description: rangeStart ? "Opening Balance (brought forward)" : "Opening Balance",
+      // A negative opening (supplier owes the shop) reads as a payment.
+      received: Math.max(0, opening),
+      payment: Math.max(0, -opening),
+    },
+    ...inRange,
+  ];
+
+  const totalReceived = ledger.reduce((sum, e) => sum + e.received, 0);
+  const totalPayment = ledger.reduce((sum, e) => sum + e.payment, 0);
+
+  const header = await getStoreHeader();
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Supplier ledger fetched successfully", {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      supplierId: supplierId || null,
+      supplierName: supplierId ? suppliers[0].supplierName : null,
+    },
+    rows: ledger.slice(skip, skip + limit),
+    totals: {
+      count: ledger.length,
+      totalReceived,
+      totalPayment,
+      balance: totalReceived - totalPayment,
+    },
+    pagination: paginationMeta(ledger.length, page, limit, skip),
+    generatedAt: new Date(),
+    fromCache: false,
+  });
+});
+
+// @desc Every supplier — for the supplier ledger's dropdown. Not limited to
+// suppliers with purchases: one with only an opening balance has a ledger too.
+exports.getSupplierLedgerSuppliers = asynchandeler(async (req, res) => {
+  const suppliers = await Supplier.find({ deletedAt: null })
+    .select("_id supplierName mobile supplierSerialId")
+    .sort({ supplierName: 1 })
+    .lean();
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Supplier list fetched successfully", {
+    suppliers,
+  });
+});
+
 // @desc Suppliers that have at least one purchase — for the supplier report's
 // supplier dropdown.
 exports.getSupplierReportSuppliers = asynchandeler(async (req, res) => {

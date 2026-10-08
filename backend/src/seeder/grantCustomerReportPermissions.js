@@ -6,7 +6,8 @@ const Permission = require("../models/permisson.model");
 const Tenant = require("../models/platform/tenant.model");
 const { runForTenant } = require("../tenancy/context");
 
-// Grants the customer report permissions added after the base seed.
+// Grants the report permissions added after the base seed (customer reports,
+// top customer and supplier ledger).
 //
 // Deliberately additive, unlike rolePermissionSeeder.js which does
 // `role.permissions = assignments` — a full replace. Several roles in the
@@ -21,6 +22,7 @@ const PERMISSION_NAMES = [
   "Customer Due List Report",
   "Customer Invoice Profit Report",
   "Top Customer Report",
+  "Supplier Ledger Report",
 ];
 
 const TARGET_ROLE_SLUGS = ["admin", "manager", "salesman"];

@@ -190,6 +190,72 @@ const formatTime = (dateStr?: string): string => {
 const profitTone = (n: number) =>
   n < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400";
 
+// Width share of each column. Normalised over the visible ones, so the table
+// stays evenly laid out on screen, in print and in the preview whichever
+// columns are switched off.
+const COLUMN_WEIGHT: Record<ColumnKey | "sl", number> = {
+  sl: 4,
+  customer: 15,
+  customerType: 9,
+  invoices: 7,
+  itemsQty: 6,
+  salesTotal: 9,
+  discount: 7,
+  payable: 9,
+  paid: 8,
+  due: 8,
+  profit: 8,
+  lastSaleDate: 10,
+};
+
+// Counts read left-aligned like the text columns; money stays right-aligned.
+const LEFT_COLUMNS: ColumnKey[] = [...TEXT_COLUMNS, "invoices", "itemsQty"];
+
+const alignClass = (key: ColumnKey) => (LEFT_COLUMNS.includes(key) ? "text-left" : "text-right");
+
+// Date input with the picker button beside it inside one bordered box. A flex
+// row rather than an absolutely positioned icon, so the button can never drop
+// below the field in the narrow drawer.
+const DateField = ({
+  label,
+  inputRef,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  value: string;
+  min?: string;
+  max?: string;
+  onChange: (value: string) => void;
+}) => (
+  <div className="min-w-0">
+    <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">{label}</label>
+    <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white py-1 pl-2.5 pr-1 focus-within:border-brand-400 dark:border-gray-700 dark:bg-gray-800">
+      <input
+        ref={inputRef}
+        type="date"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => onChange(e.target.value)}
+        className="input-date-icon min-w-0 flex-1 bg-transparent text-xs text-gray-700 outline-none dark:text-gray-200"
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.showPicker?.()}
+        className="flex size-6 shrink-0 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600"
+        tabIndex={-1}
+        aria-label={`Pick ${label.toLowerCase()} date`}
+      >
+        <MdCalendarToday className="size-3.5" />
+      </button>
+    </div>
+  </div>
+);
+
 // ---------- Component ----------
 const TopCustomerReport = () => {
   const navigate = useNavigate();
@@ -324,6 +390,9 @@ const TopCustomerReport = () => {
 
   const visibleCols = COLUMN_DEFS.filter((c) => visibleColumns[c.key]);
 
+  const weightTotal = visibleCols.reduce((sum, c) => sum + COLUMN_WEIGHT[c.key], COLUMN_WEIGHT.sl);
+  const columnWidth = (key: ColumnKey | "sl") => (COLUMN_WEIGHT[key] / weightTotal) * 100;
+
   const setAllColumns = (value: boolean) => {
     setVisibleColumns(Object.fromEntries(COLUMN_DEFS.map((c) => [c.key, value])) as Record<ColumnKey, boolean>);
   };
@@ -342,7 +411,8 @@ const TopCustomerReport = () => {
       .replace(/hidden print:table-cell/g, "table-cell")
       .replace(/print:hidden/g, "hidden")
       .replace(/overflow-x-auto/g, "overflow-visible")
-      .replace(/min-w-\[\d+px\]/g, "min-w-0");
+      .replace(/min-w-\[\d+px\]/g, "min-w-0")
+      .replace(/whitespace-nowrap/g, "whitespace-normal");
     setPreviewHtml(html);
   }, [previewOpen, isThermal, pageFormat, data, visibleColumns]);
 
@@ -587,20 +657,31 @@ const TopCustomerReport = () => {
             {/* Table */}
             <div className="mt-5 overflow-x-auto rounded-xl print:overflow-visible">
               <div className="overflow-x-auto print:overflow-visible">
-                <table className="w-full min-w-[820px] print:min-w-0">
+                <table className="plain-head w-full min-w-[1080px] table-fixed print:min-w-0">
+                  <colgroup>
+                    <col style={{ width: `${columnWidth("sl")}%` }} />
+                    {visibleCols.map((c) => (
+                      <col key={c.key} style={{ width: `${columnWidth(c.key)}%` }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr className="bg-brand-50 dark:bg-brand-500/10">
-                      <th className="whitespace-nowrap border-b border-gray-200 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-300">
+                      <th className="px-3 py-3 align-middle text-left text-xs font-bold uppercase leading-tight text-gray-700 dark:text-gray-300">
                         SL
                       </th>
                       {visibleCols.map((c) => (
                         <th
                           key={c.key}
-                          className={`whitespace-nowrap border-b border-gray-200 px-3 py-3 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-300 ${
-                            TEXT_COLUMNS.includes(c.key) ? "text-left" : "text-right"
-                          }`}
+                          className={`px-3 py-3 align-middle text-xs font-bold uppercase leading-tight text-gray-700 dark:text-gray-300 ${alignClass(
+                            c.key,
+                          )}`}
                         >
-                          {c.label}
+                          {/* Left-aligned columns keep every line of a wrapped label
+                              left. On the others, inline-block keeps a one-line label
+                              right-aligned while a wrapped one centres its lines. */}
+                          <span className={`inline-block ${LEFT_COLUMNS.includes(c.key) ? "text-left" : "text-center"}`}>
+                            {c.label}
+                          </span>
                         </th>
                       ))}
                     </tr>
@@ -634,7 +715,7 @@ const TopCustomerReport = () => {
                             {(pagination ? (pagination.page - 1) * pagination.limit : 0) + idx + 1}
                           </td>
                           {visibleColumns.customer && (
-                            <td className="px-3 py-2.5 text-left text-xs text-gray-700 dark:text-gray-300">
+                            <td className="break-words px-3 py-2.5 text-left text-xs text-gray-700 dark:text-gray-300">
                               {row.customerCode && <div className="text-gray-400 dark:text-gray-500">{row.customerCode}</div>}
                               <div>{row.customerName || "—"}</div>
                               {row.customerPhone && <div className="text-gray-400 dark:text-gray-500">{row.customerPhone}</div>}
@@ -646,12 +727,12 @@ const TopCustomerReport = () => {
                             </td>
                           )}
                           {visibleColumns.invoices && (
-                            <td className="px-3 py-2.5 text-right text-xs text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-2.5 text-left text-xs text-gray-700 dark:text-gray-300">
                               {row.invoices}
                             </td>
                           )}
                           {visibleColumns.itemsQty && (
-                            <td className="px-3 py-2.5 text-right text-xs text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-2.5 text-left text-xs text-gray-700 dark:text-gray-300">
                               {money(row.itemsQty)}
                             </td>
                           )}
@@ -709,12 +790,12 @@ const TopCustomerReport = () => {
                           Total
                         </td>
                         {visibleColumns.invoices && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
+                          <td className="px-3 py-3 text-left text-xs text-gray-800 dark:text-gray-100">
                             {totals.totalInvoices}
                           </td>
                         )}
                         {visibleColumns.itemsQty && (
-                          <td className="px-3 py-3 text-right text-xs text-gray-800 dark:text-gray-100">
+                          <td className="px-3 py-3 text-left text-xs text-gray-800 dark:text-gray-100">
                             {money(totals.totalItemsQty)}
                           </td>
                         )}
@@ -995,56 +1076,28 @@ const TopCustomerReport = () => {
               Date Range
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">From</label>
-                <div className="relative">
-                  <input
-                    ref={startDateRef}
-                    type="date"
-                    value={startDate}
-                    max={endDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      setDatePreset("custom");
-                      setPage(1);
-                    }}
-                    className="input-date-icon w-full rounded-lg border border-gray-200 px-2.5 py-1.5 pr-8 text-xs text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => startDateRef.current?.showPicker?.()}
-                    className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600"
-                    tabIndex={-1}
-                  >
-                    <MdCalendarToday className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">To</label>
-                <div className="relative">
-                  <input
-                    ref={endDateRef}
-                    type="date"
-                    value={endDate}
-                    min={startDate}
-                    onChange={(e) => {
-                      setEndDate(e.target.value);
-                      setDatePreset("custom");
-                      setPage(1);
-                    }}
-                    className="input-date-icon w-full rounded-lg border border-gray-200 px-2.5 py-1.5 pr-8 text-xs text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => endDateRef.current?.showPicker?.()}
-                    className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600"
-                    tabIndex={-1}
-                  >
-                    <MdCalendarToday className="size-3.5" />
-                  </button>
-                </div>
-              </div>
+              <DateField
+                label="From"
+                inputRef={startDateRef}
+                value={startDate}
+                max={endDate}
+                onChange={(v) => {
+                  setStartDate(v);
+                  setDatePreset("custom");
+                  setPage(1);
+                }}
+              />
+              <DateField
+                label="To"
+                inputRef={endDateRef}
+                value={endDate}
+                min={startDate}
+                onChange={(v) => {
+                  setEndDate(v);
+                  setDatePreset("custom");
+                  setPage(1);
+                }}
+              />
             </div>
             <div className="mt-2">
               <NiceSelect
