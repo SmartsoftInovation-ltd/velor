@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import { REPORT_MODULES } from "../../config/permissions";
 import {
@@ -319,7 +319,13 @@ const columnRows = (count: number) =>
 const AllReportList = () => {
   const navigate = useNavigate();
   const { can, isSuperAdmin, isLoading } = useAuth();
-  const [activeCategory, setActiveCategory] = useState(categories[0].key);
+  // The open tab lives in the URL (?category=supplier) rather than in state, so
+  // Back from a report returns to the tab it was opened from instead of
+  // resetting to the first one.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeCategory = searchParams.get("category") ?? categories[0].key;
+  const setActiveCategory = (key: string) =>
+    setSearchParams({ category: key }, { replace: true });
   const [search, setSearch] = useState("");
 
   // Keep only reports the user may view, then drop categories left empty.
@@ -415,7 +421,7 @@ const AllReportList = () => {
             </p>
             <div className="flex flex-col gap-1.5">
               {allowedCategories.map((c) => {
-                const isActive = c.key === activeCategory;
+                const isActive = c.key === active.key;
                 return (
                   <button
                     key={c.key}
