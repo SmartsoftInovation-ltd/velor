@@ -344,6 +344,8 @@ const UpdatePurchase: React.FC = () => {
     if (!validateRequiredFields()) return;
     if (tableProducts.length === 0)
       return toast.error("Add at least one product!");
+    if (formData.paid > formData.payable)
+      return toast.error("Paid amount cannot be more than the payable amount!");
 
     const allproduct = tableProducts.map((product) => {
       const base = {
@@ -784,9 +786,15 @@ const UpdatePurchase: React.FC = () => {
                   type="number"
                   placeholder="Paid"
                   value={formData.paid}
+                  min="0"
+                  max={String(formData.payable)}
                   onFocus={(e) => e.target.select()}
+                  // Paid can never exceed payable: anything above it is capped.
                   onChange={(e) =>
-                    handleFormChange("paid", parseFloat(e.target.value) || 0)
+                    handleFormChange(
+                      "paid",
+                      Math.min(Math.max(parseFloat(e.target.value) || 0, 0), formData.payable),
+                    )
                   }
                 />
               </div>

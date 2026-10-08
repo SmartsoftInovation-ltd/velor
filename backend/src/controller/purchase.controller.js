@@ -54,6 +54,22 @@ const getPurchasePaymentCategory = async (session) => {
   return category;
 };
 
+// The form caps paid at payable, but a client can be bypassed: paying a
+// supplier more than the purchase is worth would push a negative due into the
+// supplier's balance and the ledger.
+const assertPaidWithinPayable = (paid, payable) => {
+  const paidAmount = Number(paid) || 0;
+  if (paidAmount < 0) {
+    throw new customError("Paid amount cannot be negative", statusCodes.BAD_REQUEST);
+  }
+  if (paidAmount > (Number(payable) || 0)) {
+    throw new customError(
+      "Paid amount cannot be more than the payable amount",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+};
+
 // Subtract the paid amount from the chosen (cashType) account and record a
 // matching "cash payment" transaction (tagged with purchaseReference).
 const applyPurchasePayment = async (session, purchase) => {
@@ -120,6 +136,8 @@ exports.createPurchase = asynchandeler(async (req, res) => {
     payable,
     date,
   } = req.body;
+
+  assertPaidWithinPayable(paid, payable);
 
   if (!allproduct || !Array.isArray(allproduct) || allproduct.length === 0) {
     throw new customError(
@@ -359,6 +377,8 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     payable,
     date,
   } = req.body;
+
+  if (payable !== undefined) assertPaidWithinPayable(paid, payable);
 
   const session = await mongoose.startSession();
   session.startTransaction();

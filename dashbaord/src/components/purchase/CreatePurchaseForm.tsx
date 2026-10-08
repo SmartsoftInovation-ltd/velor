@@ -388,6 +388,13 @@ const CreatePurchaseForm = () => {
       return;
     }
 
+    // Payable can drop below an already-entered paid amount when a product or
+    // its price is removed afterwards.
+    if (formData.paid > formData.payable) {
+      toast.error("Paid amount cannot be more than the payable amount!");
+      return;
+    }
+
     for (const product of tableProducts) {
       if (!product.purchasePrice || product.purchasePrice === "") {
         toast.error("All products must have a purchase price!");
@@ -965,9 +972,16 @@ const CreatePurchaseForm = () => {
                 <input
                   type="number"
                   value={formData.paid}
+                  min={0}
+                  max={formData.payable}
                   onFocus={(e) => e.target.select()}
+                  // Paid can never exceed payable: anything above it is capped
+                  // to the payable amount as it is typed.
                   onChange={(e) =>
-                    handleFormChange("paid", parseFloat(e.target.value) || 0)
+                    handleFormChange(
+                      "paid",
+                      Math.min(Math.max(parseFloat(e.target.value) || 0, 0), formData.payable),
+                    )
                   }
                   onWheel={blurOnWheel}
                   className="w-full pl-4 pr-0 py-0 text-base font-bold bg-transparent text-gray-800 dark:text-white outline-none tabular-nums border-0 border-b border-gray-200 dark:border-gray-700 rounded-none focus:border-accent-500 transition-colors"

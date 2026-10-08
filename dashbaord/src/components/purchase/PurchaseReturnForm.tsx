@@ -89,9 +89,13 @@ const PurchaseReturnForm = () => {
   // return value here, so it is required.
   const [cashType, setCashType] = useState("");
 
-  const [returnDate, setReturnDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
+  // Today as a LOCAL calendar day. toISOString() is UTC, which until 6 AM in
+  // Dhaka is still yesterday, so returns made after midnight were dated a day
+  // early and listed before the purchase they returned.
+  const [returnDate, setReturnDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
   const [remarks, setRemarks] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
