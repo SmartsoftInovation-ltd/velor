@@ -304,6 +304,9 @@ const CustomerLedgerReport = lazy(
 const CustomerDueListReport = lazy(
   () => import("./components/reports/Customer/CustomerDueListReport"),
 );
+const SupplierBalanceSummaryReport = lazy(
+  () => import("./components/reports/Supplier/SupplierBalanceSummaryReport"),
+);
 const SupplierLedgerReport = lazy(
   () => import("./components/reports/Supplier/SupplierLedgerReport"),
 );
@@ -1220,6 +1223,14 @@ export default function App() {
                   element={
                     <ProtectedRoute module="supplier-ledger-report" action="view">
                       <SupplierLedgerReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/supplier-balance-summary"
+                  element={
+                    <ProtectedRoute module="supplier-balance-summary-report" action="view">
+                      <SupplierBalanceSummaryReport />
                     </ProtectedRoute>
                   }
                 />

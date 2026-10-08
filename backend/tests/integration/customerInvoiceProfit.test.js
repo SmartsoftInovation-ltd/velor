@@ -247,3 +247,57 @@ describe("supplier ledger report", () => {
     expect(totals.balance).toBe(20000);
   });
 });
+
+describe("supplier balance summary report", () => {
+  const tenantId = new mongoose.Types.ObjectId();
+  const aId = new mongoose.Types.ObjectId();
+  const bId = new mongoose.Types.ObjectId();
+  const { SupplierModel } = require("../../src/models/supplier.model");
+  const Purchase = require("../../src/models/purchase.model");
+  const { getSupplierBalanceSummaryReport } = require("../../src/controller/report.controller");
+
+  beforeAll(connectTestDb);
+  afterEach(clearTestDb);
+  afterAll(disconnectTestDb);
+
+  const insert = (model, doc) =>
+    runForTenant(tenantId, () =>
+      model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
+    );
+
+  const runReport = (body = {}) =>
+    runForTenant(tenantId, async () => {
+      let out;
+      let error;
+      const res = { status: () => res, json: (b) => (out = b) };
+      await getSupplierBalanceSummaryReport({ body, query: {} }, res, (err) => (error = err));
+      if (error) throw error;
+      return out.data;
+    });
+
+  const purchase = (supplierId, date, payable, paid) =>
+    insert(Purchase, { supplierId, date: new Date(date), payable, paid, dueamount: payable - paid, invoiceNumber: String(Math.random()) });
+
+  beforeEach(async () => {
+    await insert(SupplierModel, { _id: aId, supplierSerialId: "SUPL-1", supplierName: "Color Mens", mobile: "01999878862", contactPersonName: "Tarek", initialDue: 30000, openingDues: 92000, deletedAt: null });
+    await insert(SupplierModel, { _id: bId, supplierSerialId: "SUPL-2", supplierName: "Black Mens", mobile: "01999878863", contactPersonName: "Karim", initialDue: 20000, openingDues: 20000, deletedAt: null });
+    await purchase(aId, "2026-04-01", 50000, 0);
+    await purchase(aId, "2026-04-10", 20000, 5000);
+  });
+
+  it("sums purchases per supplier and takes the balance from the supplier's current due", async () => {
+    const { rows, totals } = await runReport();
+    const a = rows.find((r) => r.supplierName === "Color Mens");
+    expect(a).toMatchObject({ supplierCode: "SUPL-1", contactPerson: "Tarek", openingBalance: 30000, totalPurchase: 70000, totalPaid: 5000, balance: 92000 });
+    // a supplier without purchases still shows with its opening balance
+    expect(rows.find((r) => r.supplierName === "Black Mens")).toMatchObject({ totalPurchase: 0, balance: 20000 });
+    expect(totals).toMatchObject({ count: 2, totalOpening: 50000, totalPurchase: 70000, totalPaid: 5000, totalBalance: 112000 });
+  });
+
+  it("moves the due of purchases before the range into the opening balance", async () => {
+    const { rows } = await runReport({ startDate: "2026-04-05", endDate: "2026-04-30", supplierId: String(aId) });
+    expect(rows).toHaveLength(1);
+    // 30000 + 50000 due from 1 Apr; only the 10 Apr purchase is in range
+    expect(rows[0]).toMatchObject({ openingBalance: 80000, totalPurchase: 20000, totalPaid: 5000, balance: 92000 });
+  });
+});

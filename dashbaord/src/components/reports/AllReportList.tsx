@@ -188,6 +188,11 @@ const categories: ReportCategory[] = [
         description: "Opening, purchases, returns & payments with received, payment & balance",
         path: "/supplier-ledger",
       },
+      {
+        name: "Supplier Balance Summary",
+        description: "Opening balance + total purchase - paid = balance, per supplier",
+        path: "/supplier-balance-summary",
+      },
     ],
   },
   {

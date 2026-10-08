@@ -2,7 +2,7 @@ const express = require("express");
 const _ = express.Router();
 const reportController = require("../../controller/report.controller");
 const { authGuard } = require("../../middleware/authMiddleware");
-const { authorize } = require("../../middleware/checkPermission.middleware");
+const { authorize, authorizeAny } = require("../../middleware/checkPermission.middleware");
 const { reportLimiter } = require("../../middleware/rateLimit.middleware");
 
 // Every route below is an aggregation batch over the whole store, so they share
@@ -158,10 +158,20 @@ _.route("/supplier-ledger").post(
   authorize("supplier-ledger-report", "view"),
   reportController.getSupplierLedgerReport,
 );
+_.route("/supplier-balance-summary").post(
+  authGuard,
+  reportLimiter,
+  authorize("supplier-balance-summary-report", "view"),
+  reportController.getSupplierBalanceSummaryReport,
+);
+// The supplier dropdown is shared by the ledger and the balance summary.
 _.route("/supplier-ledger/suppliers").get(
   authGuard,
   reportLimiter,
-  authorize("supplier-ledger-report", "view"),
+  authorizeAny(
+    ["supplier-ledger-report", "view"],
+    ["supplier-balance-summary-report", "view"],
+  ),
   reportController.getSupplierLedgerSuppliers,
 );
 _.route("/supplier-payment").post(

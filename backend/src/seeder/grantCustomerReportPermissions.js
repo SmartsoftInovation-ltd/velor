@@ -23,6 +23,7 @@ const PERMISSION_NAMES = [
   "Customer Invoice Profit Report",
   "Top Customer Report",
   "Supplier Ledger Report",
+  "Supplier Balance Summary Report",
 ];
 
 const TARGET_ROLE_SLUGS = ["admin", "manager", "salesman"];
