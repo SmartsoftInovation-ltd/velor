@@ -286,6 +286,11 @@ const categories: ReportCategory[] = [
         description: "Balance of every account as of a chosen date",
         path: "/account-balance",
       },
+      {
+        name: "Fund Handover",
+        description: "Money handovers with giver/receiver, voucher & payment mode",
+        path: "/fund-handover",
+      },
     ],
   },
   {

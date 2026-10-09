@@ -225,6 +225,9 @@ const AccountTransactionSummary = lazy(
 const AccountBalance = lazy(
   () => import("./components/reports/Account/AccountBalance"),
 );
+const FundHandoverReport = lazy(
+  () => import("./components/reports/Account/FundHandoverReport"),
+);
 const OrderInvoice = lazy(
   () => import("./components/reports/Order/OrderInvoice"),
 );
@@ -1257,6 +1260,10 @@ export default function App() {
                 <Route
                   path="/account-balance"
                   element={<ProtectedRoute module="account-balance" action="view"><AccountBalance /></ProtectedRoute>}
+                />
+                <Route
+                  path="/fund-handover"
+                  element={<ProtectedRoute module="fund-handover" action="view"><FundHandoverReport /></ProtectedRoute>}
                 />
 
                 <Route

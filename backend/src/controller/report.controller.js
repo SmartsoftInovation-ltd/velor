@@ -25,6 +25,7 @@ const CrateTransaction = require("../models/crateTransaction.model");
 const Account = require("../models/account.model");
 const TransactionCategory = require("../models/transitionCategory.model");
 const { MANUAL_ENTRY_ONLY } = require("./createTransition.controller");
+const FundHandoverDescription = require("../models/fundHandoverDescription.model");
 const Product = require("../models/product.model");
 const { buildLowStockStages } = require("../utils/lowStock.util");
 const {
@@ -6460,6 +6461,59 @@ exports.getAccountBalanceReport = asynchandeler(async (req, res) => {
     rows: rows.slice(skip, skip + limit),
     totals: { count: rows.length, balance: rows.reduce((t, r) => t + r.balance, 0) },
     pagination: paginationMeta(rows.length, page, limit, skip),
+    generatedAt: new Date(),
+  });
+});
+
+// @desc Fund handover report — the money handovers recorded on
+// /money-handover-description, one row each, oldest first, with the giver /
+// receiver's name and the account the money moved through.
+exports.getFundHandoverReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, accountId } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = {};
+  if (startDate && endDate) {
+    const rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+    match.date = { $gte: rangeStart, $lte: rangeEnd };
+  }
+  castObjectIdFilter(match, "fundPaymentMode", accountId);
+
+  const [handovers, totalCount, sums, header] = await Promise.all([
+    FundHandoverDescription.find(match)
+      .populate("fundPaymentMode", "name")
+      .sort({ date: 1, createdAt: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    FundHandoverDescription.countDocuments(match),
+    FundHandoverDescription.aggregate([
+      { $match: match },
+      { $group: { _id: null, amount: { $sum: "$amount" } } },
+    ]),
+    getStoreHeader(),
+  ]);
+
+  const rows = handovers.map((h) => ({
+    _id: h._id,
+    date: h.date,
+    handoverId: h.handoverSerialId || "",
+    description: h.transactionDescription || "",
+    voucherNumber: h.voucherNumber || "",
+    name: h.name || "",
+    paymentMode: h.fundPaymentMode?.name || "",
+    amount: h.amount || 0,
+  }));
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Fund handover report fetched successfully", {
+    header,
+    filters: { startDate: startDate || null, endDate: endDate || null, accountId: accountId || null },
+    rows,
+    totals: { count: totalCount, amount: sums[0]?.amount || 0 },
+    pagination: paginationMeta(totalCount, page, limit, skip),
     generatedAt: new Date(),
   });
 });

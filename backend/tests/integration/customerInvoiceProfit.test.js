@@ -351,6 +351,7 @@ describe("transaction report", () => {
     getAccountDayTransactionReport,
     getAccountTransactionSummaryReport,
     getAccountBalanceReport,
+    getFundHandoverReport,
   } = require("../../src/controller/report.controller");
   const { MANUAL_ENTRY_ONLY } = require("../../src/controller/createTransition.controller");
 
@@ -575,5 +576,27 @@ describe("transaction report", () => {
       ["Bikash", 30000],
     ]);
     expect(data.totals).toMatchObject({ balance: 50000 });
+  });
+
+  it("fund handover report lists each handover with giver/receiver and payment mode", async () => {
+    const FundHandoverDescription = require("../../src/models/fundHandoverDescription.model");
+    const cash = new mongoose.Types.ObjectId();
+    await insert(Account, { _id: cash, name: "Cash" });
+    await insert(FundHandoverDescription, {
+      date: new Date("2026-08-02"), handoverSerialId: "MH-SI-02", transactionDescription: "zksidjeid",
+      name: "Sujon/Akram", voucherNumber: "585", fundPaymentMode: cash, amount: 20000,
+    });
+    await insert(FundHandoverDescription, {
+      date: new Date("2026-08-01"), handoverSerialId: "MH-SI-01", transactionDescription: "ckdjweidjed",
+      name: "Sujon/Akram", voucherNumber: "546", fundPaymentMode: cash, amount: 50000,
+    });
+
+    const data = await runReport({}, getFundHandoverReport);
+
+    expect(data.rows.map((r) => [r.handoverId, r.description, r.voucherNumber, r.name, r.paymentMode, r.amount])).toEqual([
+      ["MH-SI-01", "ckdjweidjed", "546", "Sujon/Akram", "Cash", 50000],
+      ["MH-SI-02", "zksidjeid", "585", "Sujon/Akram", "Cash", 20000],
+    ]);
+    expect(data.totals).toMatchObject({ count: 2, amount: 70000 });
   });
 });

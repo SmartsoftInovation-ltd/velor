@@ -223,6 +223,12 @@ _.route("/account-balance").post(
   authorize("account-balance", "view"),
   reportController.getAccountBalanceReport,
 );
+_.route("/fund-handover").post(
+  authGuard,
+  reportLimiter,
+  authorize("fund-handover", "view"),
+  reportController.getFundHandoverReport,
+);
 // The account / category dropdowns are shared by the transaction reports.
 _.route("/transaction-report/options").get(
   authGuard,
@@ -233,6 +239,7 @@ _.route("/transaction-report/options").get(
     ["all-transaction-summary", "view"],
     ["accounts-ledger", "view"],
     ["account-day-transaction", "view"],
+    ["fund-handover", "view"],
   ),
   reportController.getTransactionReportOptions,
 );

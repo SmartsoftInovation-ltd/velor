@@ -32,13 +32,14 @@ interface SearchableDropdownProps {
   error?: string;
   onPlusClick?: () => void;
   plusLabel?: string;
+  required?: boolean;
 }
 
 const SearchableDropdown = ({
-  label, placeholder, options, value, onChange, error, onPlusClick, plusLabel,
+  label, placeholder, options, value, onChange, error, onPlusClick, plusLabel, required,
 }: SearchableDropdownProps) => (
   <div className="flex flex-col gap-1">
-    <Label>{label}</Label>
+    <Label>{label}{required && <span className="text-red-500"> *</span>}</Label>
     <div className="flex items-center gap-2">
       <div className="flex-1 min-w-0">
         <SearchableSelect
@@ -88,7 +89,7 @@ const QuickAddModal = ({ onClose, onSave }: { onClose: () => void; onSave: (name
           <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"><FaTimes className="size-4" /></button>
         </div>
         <div className="space-y-1">
-          <Label>Account Name</Label>
+          <Label>Account Name <span className="text-red-500">*</span></Label>
           <input autoFocus type="text" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder="e.g. Cash in Hand" className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition-colors" />
           {error && <p className="text-red-500 text-xs mt-0.5">{error}</p>}
         </div>
@@ -192,14 +193,15 @@ const MoneyHandoverForm = () => {
           <SectionCard icon={<FaHandHoldingUsd />} title="Handover Details" className="lg:col-span-3 self-start">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="flex flex-col gap-1">
-                <DatePicker id="date-picker-handover" label="Date" placeholder="Select a date"
+                <Label>Date <span className="text-red-500">*</span></Label>
+                <DatePicker id="date-picker-handover" placeholder="Select a date"
                   defaultDate={formData.date}
                   onChange={(_selectedDates: Date[], dateStr: string) => set("date", dateStr)}
                 />
                 {errors.date && <p className="text-red-500 text-xs mt-0.5">{errors.date}</p>}
               </div>
               <div className="flex flex-col gap-1">
-                <Label>Voucher Number</Label>
+                <Label>Voucher Number <span className="text-red-500">*</span></Label>
                 <Input type="text" placeholder="Enter Voucher Number" value={formData.voucherNumber}
                   onChange={(e) => set("voucherNumber", e.target.value)}
                   className={errors.voucherNumber ? "border-red-500" : ""}
@@ -207,7 +209,7 @@ const MoneyHandoverForm = () => {
                 {errors.voucherNumber && <p className="text-red-500 text-xs mt-0.5">{errors.voucherNumber}</p>}
               </div>
               <div className="flex flex-col gap-1">
-                <Label>Name</Label>
+                <Label>Name <span className="text-red-500">*</span></Label>
                 <Input type="text" placeholder="Enter Name" value={formData.name}
                   onChange={(e) => set("name", e.target.value)}
                   className={errors.name ? "border-red-500" : ""}
@@ -219,9 +221,10 @@ const MoneyHandoverForm = () => {
                 onChange={(val) => set("fundPaymentMode", val)}
                 error={errors.fundPaymentMode}
                 onPlusClick={() => setShowAccountModal(true)}
+                required
               />
               <div className="flex flex-col gap-1">
-                <Label>Amount</Label>
+                <Label>Amount <span className="text-red-500">*</span></Label>
                 <Input type="number" placeholder="Enter Amount" value={formData.amount}
                   onChange={(e) => set("amount", e.target.value)}
                   className={errors.amount ? "border-red-500" : ""}
@@ -229,7 +232,7 @@ const MoneyHandoverForm = () => {
                 {errors.amount && <p className="text-red-500 text-xs mt-0.5">{errors.amount}</p>}
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
-                <Label>Transaction Description</Label>
+                <Label>Transaction Description <span className="text-red-500">*</span></Label>
                 <Input type="text" placeholder="Enter Description" value={formData.transactionDescription}
                   onChange={(e) => set("transactionDescription", e.target.value)}
                   className={errors.transactionDescription ? "border-red-500" : ""}
