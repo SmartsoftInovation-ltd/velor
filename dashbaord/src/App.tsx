@@ -219,6 +219,9 @@ const AccountsLedger = lazy(
 const AccountDayTransaction = lazy(
   () => import("./components/reports/Account/AccountDayTransaction"),
 );
+const AccountTransactionSummary = lazy(
+  () => import("./components/reports/Account/AccountTransactionSummary"),
+);
 const OrderInvoice = lazy(
   () => import("./components/reports/Order/OrderInvoice"),
 );
@@ -1243,6 +1246,10 @@ export default function App() {
                 <Route
                   path="/account-day-transaction"
                   element={<ProtectedRoute module="account-day-transaction" action="view"><AccountDayTransaction /></ProtectedRoute>}
+                />
+                <Route
+                  path="/account-transaction-summary"
+                  element={<ProtectedRoute module="account-transaction-summary" action="view"><AccountTransactionSummary /></ProtectedRoute>}
                 />
 
                 <Route

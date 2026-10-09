@@ -276,6 +276,11 @@ const categories: ReportCategory[] = [
         description: "Day-wise received, paid & balance per account",
         path: "/account-day-transaction",
       },
+      {
+        name: "Account Transaction Summary",
+        description: "Account-wise total received, paid & balance",
+        path: "/account-transaction-summary",
+      },
     ],
   },
   {

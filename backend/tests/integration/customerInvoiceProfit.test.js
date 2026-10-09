@@ -349,6 +349,7 @@ describe("transaction report", () => {
     getAllTransactionSummaryReport,
     getAccountsLedgerReport,
     getAccountDayTransactionReport,
+    getAccountTransactionSummaryReport,
   } = require("../../src/controller/report.controller");
   const { MANUAL_ENTRY_ONLY } = require("../../src/controller/createTransition.controller");
 
@@ -526,5 +527,30 @@ describe("transaction report", () => {
       ["2026-08-02", "Cash", 0, 1000, -1000],
     ]);
     expect(data.totals).toMatchObject({ receive: 83000, payment: 51000, balance: 32000 });
+  });
+
+  it("account transaction summary totals each account, listing idle ones at zero", async () => {
+    const cash = new mongoose.Types.ObjectId();
+    const bkash = new mongoose.Types.ObjectId();
+    const rocket = new mongoose.Types.ObjectId();
+    await insert(Account, { _id: cash, name: "Cash", createdAt: new Date("2026-01-01") });
+    await insert(Account, { _id: bkash, name: "Bikash", createdAt: new Date("2026-01-02") });
+    await insert(Account, { _id: rocket, name: "Rocket", createdAt: new Date("2026-01-03") });
+    const row = (account, transactionType, amount, extra = {}) =>
+      insert(CrateTransaction, { date: new Date("2026-08-01"), account, transactionType, amount, ...extra });
+
+    await row(cash, "cash recived", 80000, { saleReference: new mongoose.Types.ObjectId() });
+    await row(cash, "cash payment", 50000);
+    await row(bkash, "cash recived", 50000);
+    await row(bkash, "cash payment", 20000, { supplierPaymentReference: new mongoose.Types.ObjectId() });
+
+    const data = await runReport({}, getAccountTransactionSummaryReport);
+
+    expect(data.rows.map((r) => [r.account, r.receive, r.payment, r.balance])).toEqual([
+      ["Cash", 80000, 50000, 30000],
+      ["Bikash", 50000, 20000, 30000],
+      ["Rocket", 0, 0, 0],
+    ]);
+    expect(data.totals).toMatchObject({ receive: 130000, payment: 70000, balance: 60000 });
   });
 });
