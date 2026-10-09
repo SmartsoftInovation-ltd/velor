@@ -6296,6 +6296,82 @@ exports.getAccountsLedgerReport = asynchandeler(async (req, res) => {
   });
 });
 
+// @desc Account day transaction — every transaction (hand-typed or written by
+// a module) totalled per calendar day and account: what each account took in
+// and paid out that day, and the day's net. Days are cut in the server's own
+// time zone, the same one the date-range filter uses.
+exports.getAccountDayTransactionReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, accountId } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = transactionReportMatch({ startDate, endDate, accountId });
+  for (const { field } of AUTO_TRANSACTION_SOURCES) delete match[field];
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const [groups, header] = await Promise.all([
+    CrateTransaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            day: { $dateToString: { format: "%Y-%m-%d", date: "$date", timezone } },
+            account: "$account",
+          },
+          receive: RECEIVE_SUM,
+          payment: PAYMENT_SUM,
+        },
+      },
+      {
+        $lookup: {
+          from: Account.collection.name,
+          localField: "_id.account",
+          foreignField: "_id",
+          as: "account",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          day: "$_id.day",
+          accountId: "$_id.account",
+          account: { $ifNull: [{ $arrayElemAt: ["$account.name", 0] }, ""] },
+          receive: 1,
+          payment: 1,
+        },
+      },
+      { $sort: { day: 1, account: 1 } },
+    ]),
+    getStoreHeader(),
+  ]);
+
+  const rows = groups.map((g) => ({
+    key: `${g.day}:${g.accountId}`,
+    date: g.day,
+    account: g.account,
+    receive: g.receive,
+    payment: g.payment,
+    balance: g.receive - g.payment,
+  }));
+
+  const totals = rows.reduce(
+    (t, r) => ({ receive: t.receive + r.receive, payment: t.payment + r.payment }),
+    { receive: 0, payment: 0 },
+  );
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Account day transaction fetched successfully", {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      accountId: accountId || null,
+    },
+    rows: rows.slice(skip, skip + limit),
+    totals: { count: rows.length, ...totals, balance: totals.receive - totals.payment },
+    pagination: paginationMeta(rows.length, page, limit, skip),
+    generatedAt: new Date(),
+  });
+});
+
 // @desc Account and category dropdowns for the transaction report and
 // summary. Served here so a user with only a report permission can still fill
 // the filters.

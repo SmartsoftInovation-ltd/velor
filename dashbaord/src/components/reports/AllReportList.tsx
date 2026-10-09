@@ -271,6 +271,11 @@ const categories: ReportCategory[] = [
         description: "Every transaction row-wise, incl. sales, purchases & payments",
         path: "/accounts-ledger",
       },
+      {
+        name: "Account Day Transaction",
+        description: "Day-wise received, paid & balance per account",
+        path: "/account-day-transaction",
+      },
     ],
   },
   {

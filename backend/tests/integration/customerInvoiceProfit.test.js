@@ -348,6 +348,7 @@ describe("transaction report", () => {
     getTransactionSummaryReport,
     getAllTransactionSummaryReport,
     getAccountsLedgerReport,
+    getAccountDayTransactionReport,
   } = require("../../src/controller/report.controller");
   const { MANUAL_ENTRY_ONLY } = require("../../src/controller/createTransition.controller");
 
@@ -502,5 +503,28 @@ describe("transaction report", () => {
       ["SUPLP-SI-09", "Supplier Dues Payment", "", 50000],
     ]);
     expect(data.totals).toMatchObject({ count: 2, receive: 0, payment: 70000, balance: -70000 });
+  });
+
+  it("account day transaction totals each day per account", async () => {
+    const cash = new mongoose.Types.ObjectId();
+    const bkash = new mongoose.Types.ObjectId();
+    await insert(Account, { _id: cash, name: "Cash" });
+    await insert(Account, { _id: bkash, name: "Bikash" });
+    const row = (date, account, transactionType, amount, extra = {}) =>
+      insert(CrateTransaction, { date: new Date(date), account, transactionType, amount, ...extra });
+
+    await row("2026-08-01T10:00:00", cash, "cash recived", 80000);
+    await row("2026-08-01T15:00:00", cash, "cash payment", 50000, { purchaseReference: new mongoose.Types.ObjectId() });
+    await row("2026-08-01T16:00:00", bkash, "cash recived", 3000);
+    await row("2026-08-02T11:00:00", cash, "cash payment", 1000);
+
+    const data = await runReport({}, getAccountDayTransactionReport);
+
+    expect(data.rows.map((r) => [r.date, r.account, r.receive, r.payment, r.balance])).toEqual([
+      ["2026-08-01", "Bikash", 3000, 0, 3000],
+      ["2026-08-01", "Cash", 80000, 50000, 30000],
+      ["2026-08-02", "Cash", 0, 1000, -1000],
+    ]);
+    expect(data.totals).toMatchObject({ receive: 83000, payment: 51000, balance: 32000 });
   });
 });

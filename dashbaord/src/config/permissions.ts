@@ -95,6 +95,7 @@ export const PERMISSIONS = {
   TRANSACTION_SUMMARY: "transaction-summary",
   ALL_TRANSACTION_SUMMARY: "all-transaction-summary",
   ACCOUNTS_LEDGER: "accounts-ledger",
+  ACCOUNT_DAY_TRANSACTION: "account-day-transaction",
   CASH_LEDGER: "cash-ledger",
   TRANSACTION_ACCOUNT_WISE: "transaction-account-wise",
   ACCOUNT_TRANSACTION_SUMMARY: "account-transaction-summary",
@@ -209,6 +210,7 @@ export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/transaction-summary": PERMISSIONS.TRANSACTION_SUMMARY,
   "/all-transaction-summary": PERMISSIONS.ALL_TRANSACTION_SUMMARY,
   "/accounts-ledger": PERMISSIONS.ACCOUNTS_LEDGER,
+  "/account-day-transaction": PERMISSIONS.ACCOUNT_DAY_TRANSACTION,
   "/employee-list-report": PERMISSIONS.EMPLOYEE_LIST_REPORT,
   "/employee-payment-report": PERMISSIONS.EMPLOYEE_PAYMENT_REPORT,
 };

@@ -205,6 +205,12 @@ _.route("/accounts-ledger").post(
   authorize("accounts-ledger", "view"),
   reportController.getAccountsLedgerReport,
 );
+_.route("/account-day-transaction").post(
+  authGuard,
+  reportLimiter,
+  authorize("account-day-transaction", "view"),
+  reportController.getAccountDayTransactionReport,
+);
 // The account / category dropdowns are shared by the transaction reports.
 _.route("/transaction-report/options").get(
   authGuard,
@@ -214,6 +220,7 @@ _.route("/transaction-report/options").get(
     ["transaction-summary", "view"],
     ["all-transaction-summary", "view"],
     ["accounts-ledger", "view"],
+    ["account-day-transaction", "view"],
   ),
   reportController.getTransactionReportOptions,
 );
