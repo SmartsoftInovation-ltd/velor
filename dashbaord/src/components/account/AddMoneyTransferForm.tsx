@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FaPlus, FaTimes, FaExchangeAlt, FaWallet } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -11,6 +11,11 @@ import MobileActionBar from "../common/MobileActionBar";
 import SearchableSelect from "../form/SearchableSelect";
 import SectionCard from "../common/SectionCard";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "add-money-transfer";
 
 interface AccountType { _id: string; name: string; }
 
@@ -108,12 +113,16 @@ const QuickAddModal = ({ onClose, onSave }: { onClose: () => void; onSave: (name
 // ---------- Main form ----------
 const AddMoneyTransferForm = () => {
   const queryClient = useQueryClient();
-  const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
-  const [fromAccount, setFromAccount] = useState("");
-  const [toAccount, setToAccount] = useState("");
-  const [transactionDesction, setTransactionDesction] = useState("");
-  const [amount, setAmount] = useState("");
-  const [voucherNumber, setVoucherNumber] = useState("");
+  const [date, setDate] = useState(() => draftValue(DRAFT_KEY, "date", (() => new Date().toLocaleDateString("en-CA"))()));
+  const [fromAccount, setFromAccount] = useState(() => draftValue(DRAFT_KEY, "fromAccount", ""));
+  const [toAccount, setToAccount] = useState(() => draftValue(DRAFT_KEY, "toAccount", ""));
+  const [transactionDesction, setTransactionDesction] = useState(() => draftValue(DRAFT_KEY, "transactionDesction", ""));
+  const [amount, setAmount] = useState(() => draftValue(DRAFT_KEY, "amount", ""));
+  const [voucherNumber, setVoucherNumber] = useState(() => draftValue(DRAFT_KEY, "voucherNumber", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ date, fromAccount, toAccount, transactionDesction, amount, voucherNumber }), [date, fromAccount, toAccount, transactionDesction, amount, voucherNumber]),
+  );
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -161,6 +170,7 @@ const AddMoneyTransferForm = () => {
         voucherNumber,
       });
       toast.success("Money transfer added successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["money-transfers"] });
       setDate(new Date().toLocaleDateString("en-CA")); setFromAccount(""); setToAccount(""); setTransactionDesction(""); setAmount(""); setVoucherNumber(""); setErrors({});
     } catch (err: any) {

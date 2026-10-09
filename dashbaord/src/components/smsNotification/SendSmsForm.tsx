@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "send-sms";
 
 const SendSmsForm = () => {
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [message, setMessage] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(() => draftValue(DRAFT_KEY, "phoneNumber", ""));
+  const [message, setMessage] = useState(() => draftValue(DRAFT_KEY, "message", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ phoneNumber, message }), [phoneNumber, message]),
+  );
   const [errors, setErrors] = useState<{
     phoneNumber?: string;
     message?: string;
@@ -37,6 +46,7 @@ const SendSmsForm = () => {
         message,
       });
       setPhoneNumber("");
+      clearDraft(DRAFT_KEY);
       setMessage("");
       setErrors({});
     } catch (error) {

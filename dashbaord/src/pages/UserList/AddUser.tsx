@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
@@ -15,6 +15,11 @@ import axios from "axios";
 import { FaUpload, FaTimes, FaEye, FaEyeSlash, FaPlus } from "react-icons/fa";
 import { showApiError } from "../../utils/apiError";
 import { assignableRoles } from "../../lib/roles";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "add-user";
 
 interface Role {
   _id: string;
@@ -36,12 +41,12 @@ const RequiredMark = () => (
 
 const AddUser = () => {
   const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(() => draftValue(DRAFT_KEY, "name", ""));
+  const [email, setEmail] = useState(() => draftValue(DRAFT_KEY, "email", ""));
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [role, setRole] = useState("");
-  const [isActive, setIsActive] = useState("true");
+  const [phone, setPhone] = useState(() => draftValue(DRAFT_KEY, "phone", ""));
+  const [role, setRole] = useState(() => draftValue(DRAFT_KEY, "role", ""));
+  const [isActive, setIsActive] = useState(() => draftValue(DRAFT_KEY, "isActive", "true"));
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -50,7 +55,11 @@ const AddUser = () => {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleError, setNewRoleError] = useState("");
   const [isCreatingRole, setIsCreatingRole] = useState(false);
-  const [discountLimit, setDiscountLimit] = useState("");
+  const [discountLimit, setDiscountLimit] = useState(() => draftValue(DRAFT_KEY, "discountLimit", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ name, email, phone, role, isActive, discountLimit }), [name, email, phone, role, isActive, discountLimit]),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
@@ -130,6 +139,7 @@ const AddUser = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success("User added successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setName("");
       setEmail("");

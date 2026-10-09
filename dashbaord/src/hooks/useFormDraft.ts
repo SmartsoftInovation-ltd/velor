@@ -23,6 +23,24 @@ export const loadDraft = <T,>(key: string): Partial<T> | null => {
   }
 };
 
+/**
+ * One field of a stored draft, or `fallback` when there is none. Plain-object
+ * values are merged over the fallback, so a field added to the form after the
+ * draft was saved still gets its default.
+ *
+ *   const [form, setForm] = useState(() => draftValue(KEY, "form", EMPTY_FORM));
+ */
+export const draftValue = <T,>(key: string, field: string, fallback: T): T => {
+  const draft = loadDraft<Record<string, unknown>>(key);
+  if (!draft || !(field in draft)) return fallback;
+  const saved = draft[field];
+  const isPlainObject = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+  if (isPlainObject(fallback) && isPlainObject(saved)) {
+    return { ...(fallback as object), ...(saved as object) } as T;
+  }
+  return saved as T;
+};
+
 export const clearDraft = (key: string) => {
   try {
     sessionStorage.removeItem(scopedStorageKey(PREFIX + key));

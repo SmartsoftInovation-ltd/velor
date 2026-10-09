@@ -7,6 +7,11 @@ import { FaUsers, FaShoppingCart, FaStore, FaWalking, FaPaperPlane, FaHistory, F
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "send-bulk-sms";
 
 // ---------- Types ----------
 type RecipientType = "logged" | "order" | "sales_walking" | "sales_listed";
@@ -64,8 +69,12 @@ const formatCount = (n?: number) =>
   typeof n === "number" ? n.toLocaleString() : "…";
 
 const SendBulkSmsForm = () => {
-  const [selectedType, setSelectedType] = useState<RecipientType | "">("");
-  const [message, setMessage] = useState("");
+  const [selectedType, setSelectedType] = useState<RecipientType | "">(() => draftValue<RecipientType | "">(DRAFT_KEY, "selectedType", ""));
+  const [message, setMessage] = useState(() => draftValue(DRAFT_KEY, "message", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedType, message }), [selectedType, message]),
+  );
   const [errors, setErrors] = useState<{ type?: string; message?: string }>({});
   const [sending, setSending] = useState(false);
 
@@ -127,6 +136,7 @@ const SendBulkSmsForm = () => {
       );
 
       setSelectedType("");
+      clearDraft(DRAFT_KEY);
       setMessage("");
       setErrors({});
     } catch (error) {

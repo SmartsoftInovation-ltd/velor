@@ -1,5 +1,5 @@
 import axiosSecure from "../../hooks/useAxiosSecure";
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState, useMemo } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -11,9 +11,18 @@ import { Link } from "react-router";
 import Button from "../../components/ui/button/Button";
 import Input from "../../components/form/input/InputField";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "add-account";
 
 const AddAccount = () => {
-  const [accounts, setAccounts] = useState<string[]>([""]);
+  const [accounts, setAccounts] = useState<string[]>(() => draftValue<string[]>(DRAFT_KEY, "accounts", [""]));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ accounts }), [accounts]),
+  );
   const [errors, setErrors] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,6 +70,7 @@ const AddAccount = () => {
       });
       if (res.status === 200) {
         toast.success("Account(s) created successfully!");
+        clearDraft(DRAFT_KEY);
         setAccounts([""]);
         setErrors([""]);
       }

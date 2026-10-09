@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import DatePicker from "../form/date-picker";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
@@ -7,6 +7,11 @@ import Select from "../form/Select";
 import Button from "../ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "employee-advance-payment";
 
 const CreateEmployeeAdvancePaymentForm = () => {
   const [employees, setEmployees] = useState<
@@ -14,14 +19,18 @@ const CreateEmployeeAdvancePaymentForm = () => {
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => draftValue(DRAFT_KEY, "formData", {
     date: "",
     month: "",
     employeeId: "",
     amount: "",
     paymentMode: "",
     remarks: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ formData }), [formData]),
+  );
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -72,6 +81,7 @@ const CreateEmployeeAdvancePaymentForm = () => {
       );
 
       toast.success("Advance payment created successfully");
+      clearDraft(DRAFT_KEY);
     } catch (error) {
        toast.success("Failed to create advance payment");
     } finally {

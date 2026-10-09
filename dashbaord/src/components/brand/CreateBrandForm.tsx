@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useDropzone } from "react-dropzone";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
@@ -9,10 +9,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TrashBinIcon } from "../../icons";
 import MobileActionBar from "../common/MobileActionBar";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-brand";
 
 const CreateBrandForm = () => {
   const queryClient = useQueryClient();
-  const [name, setName] = useState<string>("");
+  const [name, setName] = useState<string>(() => draftValue<string>(DRAFT_KEY, "name", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ name }), [name]),
+  );
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -91,6 +100,7 @@ const CreateBrandForm = () => {
       });
 
       toast.success("Brand created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["brands"] });
       setName("");
       setImage(null);

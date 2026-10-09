@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { FaTags, FaPlus, FaTrash } from "react-icons/fa";
@@ -9,6 +9,11 @@ import Button from "../ui/button/Button";
 import MobileActionBar from "../common/MobileActionBar";
 import SectionCard from "../common/SectionCard";
 import SearchableSelect from "../form/SearchableSelect";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "add-transaction-category";
 
 type AllowedType = "cash recived" | "cash payment" | "";
 
@@ -29,7 +34,11 @@ const TYPE_OPTIONS: { value: Exclude<AllowedType, "">; label: string }[] = [
 
 // ---------- Styled transaction-type dropdown ----------
 const AddTransactionCategoryForm = () => {
-  const [categories, setCategories] = useState<CategoryRow[]>([{ name: "", allowedType: "" }]);
+  const [categories, setCategories] = useState<CategoryRow[]>(() => draftValue<CategoryRow[]>(DRAFT_KEY, "categories", [{ name: "", allowedType: "" }]));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ categories }), [categories]),
+  );
   const [errors, setErrors] = useState<RowErrors[]>([{}]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -85,6 +94,7 @@ const AddTransactionCategoryForm = () => {
       );
 
       toast.success("Categories created successfully!");
+      clearDraft(DRAFT_KEY);
       setCategories([{ name: "", allowedType: "" }]);
       setErrors([{}]);
     } catch (error: unknown) {

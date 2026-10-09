@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -24,6 +24,11 @@ import Label from "../form/Label";
 import InfiniteSearchList from "../product/barcodePrint/InfiniteSearchList";
 import PickerSelect from "./PickerSelect";
 import AccountSelect from "./AccountSelect";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "sales-return";
 
 // ---------- Types ----------
 interface SalesListItem {
@@ -124,18 +129,22 @@ const CreateSalesReturnForm = () => {
   const queryClient = useQueryClient();
 
   const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
-  const [selectedSale, setSelectedSale] = useState<SalesListItem | null>(null);
+  const [selectedSale, setSelectedSale] = useState<SalesListItem | null>(() => draftValue<SalesListItem | null>(DRAFT_KEY, "selectedSale", null));
 
-  const [selectedAccount, setSelectedAccount] = useState<AccountItem | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<AccountItem | null>(() => draftValue<AccountItem | null>(DRAFT_KEY, "selectedAccount", null));
 
-  const [returnReasonOption, setReturnReasonOption] = useState("");
-  const [returnReasonText, setReturnReasonText] = useState("");
-  const [remarks, setRemarks] = useState("");
-  const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
+  const [returnReasonOption, setReturnReasonOption] = useState(() => draftValue(DRAFT_KEY, "returnReasonOption", ""));
+  const [returnReasonText, setReturnReasonText] = useState(() => draftValue(DRAFT_KEY, "returnReasonText", ""));
+  const [remarks, setRemarks] = useState(() => draftValue(DRAFT_KEY, "remarks", ""));
+  const [returnItems, setReturnItems] = useState<ReturnItem[]>(() => draftValue<ReturnItem[]>(DRAFT_KEY, "returnItems", []));
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loadedForSaleId, setLoadedForSaleId] = useState<string | null>(null);
+  const [loadedForSaleId, setLoadedForSaleId] = useState<string | null>(() => draftValue<string | null>(DRAFT_KEY, "loadedForSaleId", null));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedSale, selectedAccount, returnReasonOption, returnReasonText, remarks, returnItems, loadedForSaleId }), [selectedSale, selectedAccount, returnReasonOption, returnReasonText, remarks, returnItems, loadedForSaleId]),
+  );
 
   // ── Load full sale detail once an invoice is picked ────────────────────────
   const { data: saleDetail, isFetching: loadingDetail } = useQuery<SaleDetail | null>({
@@ -329,6 +338,7 @@ const CreateSalesReturnForm = () => {
     try {
       await axiosSecure.post("/sales-return/createsalesreturn", payload);
       toast.success("Sales return created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["sales-returns"] });
       // Every dashboard widget: a sale moves Total Invoices, Total Sale
       // and the cash boxes, and each is keyed by range, so a prefix

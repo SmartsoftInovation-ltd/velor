@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -12,6 +12,11 @@ import MobileActionBar from "../common/MobileActionBar";
 import SearchableSelect from "../form/SearchableSelect";
 import SectionCard from "../common/SectionCard";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "add-transaction";
 
 interface Account { _id: string; name: string; }
 interface TransactionCategory { _id: string; name: string; allowedType: "cash recived" | "cash payment"; }
@@ -169,14 +174,18 @@ const AddTransactionForm = () => {
 
   const todayStr = new Date().toLocaleDateString("en-CA");
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => draftValue(DRAFT_KEY, "formData", {
     date: todayStr,
     transactionCategory: "",
     account: "",
     transactionDescription: "",
     transactionType: "",
     amount: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ formData }), [formData]),
+  );
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<TransactionCategory[]>([]);
@@ -253,6 +262,7 @@ const AddTransactionForm = () => {
         amount: Number(formData.amount),
       });
       toast.success("Transaction created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });

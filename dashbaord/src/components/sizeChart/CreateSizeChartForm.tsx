@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
@@ -16,6 +16,11 @@ import {
   FaCheck,
   FaTable,
 } from "react-icons/fa";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-sizechart";
 
 // ---------- Types ----------
 type UnitType = "inch" | "cm" | "mm" | "kg" | "lbs" | "ml" | "l" | "unitless";
@@ -171,19 +176,23 @@ const MultiSelect = ({
 const CreateSizeChartForm = () => {
   const queryClient = useQueryClient();
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [applicableLevel, setApplicableLevel] = useState<ApplicableLevel>("category");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [name, setName] = useState(() => draftValue(DRAFT_KEY, "name", ""));
+  const [description, setDescription] = useState(() => draftValue(DRAFT_KEY, "description", ""));
+  const [applicableLevel, setApplicableLevel] = useState<ApplicableLevel>(() => draftValue<ApplicableLevel>(DRAFT_KEY, "applicableLevel", "category"));
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => draftValue<string[]>(DRAFT_KEY, "selectedIds", []));
   const [applicableOptions, setApplicableOptions] = useState<IdOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [columns, setColumns] = useState<Column[]>([
+  const [columns, setColumns] = useState<Column[]>(() => draftValue<Column[]>(DRAFT_KEY, "columns", [
     { key: "size", label: "Size", unit: "unitless", order: 0 },
-  ]);
-  const [rows, setRows] = useState<Row[]>([
+  ]));
+  const [rows, setRows] = useState<Row[]>(() => draftValue<Row[]>(DRAFT_KEY, "rows", [
     { label: "S", values: ["S"], order: 0 },
-  ]);
-  const [videoUrl, setVideoUrl] = useState("");
+  ]));
+  const [videoUrl, setVideoUrl] = useState(() => draftValue(DRAFT_KEY, "videoUrl", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ name, description, applicableLevel, selectedIds, columns, rows, videoUrl }), [name, description, applicableLevel, selectedIds, columns, rows, videoUrl]),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -290,6 +299,7 @@ const CreateSizeChartForm = () => {
     try {
       await axiosSecure.post("/sizechart/create-sizechart", payload);
       toast.success("Size chart created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["sizeCharts"] });
       setName(""); setDescription(""); setApplicableLevel("category");
       setSelectedIds([]);

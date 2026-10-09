@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
@@ -6,10 +6,19 @@ import Button from "../ui/button/Button";
 import MobileActionBar from "../common/MobileActionBar";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-department";
 
 const CreateDepartmentForm = () => {
   const queryClient = useQueryClient();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => draftValue(DRAFT_KEY, "name", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ name }), [name]),
+  );
   const [nameError, setNameError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
@@ -19,6 +28,7 @@ const CreateDepartmentForm = () => {
     try {
       await axiosSecure.post("/employee/create-employee-department", { name: name.trim() });
       toast.success("Department created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       setName("");
       setNameError("");

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Button from "../ui/button/Button";
 import Label from "../form/Label";
 import axiosSecure from "../../hooks/useAxiosSecure";
@@ -6,6 +6,11 @@ import toast from "react-hot-toast";
 import MobileActionBar from "../common/MobileActionBar";
 import { showApiError } from "../../utils/apiError";
 import { scopedStorageKey } from "../../lib/session";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "courier";
 
 const couriers = ["Pathao", "SteadFast", "RedX", "PaperFly", "eCourier"];
 
@@ -18,14 +23,18 @@ interface CourierFormData {
 }
 
 const CourierForm = () => {
-  const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
-  const [formData, setFormData] = useState<CourierFormData>({
+  const [selectedCourier, setSelectedCourier] = useState<string | null>(() => draftValue<string | null>(DRAFT_KEY, "selectedCourier", null));
+  const [formData, setFormData] = useState<CourierFormData>(() => draftValue<CourierFormData>(DRAFT_KEY, "formData", {
     merchantID: "",
     merchantSecret: "",
     store_id: "",
     webhookSecret: "",
     baseURL: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedCourier, formData: { ...formData, merchantSecret: "", webhookSecret: "" } }), [selectedCourier, formData]),
+  );
 
   // The webhook secret is typed in by the admin — secrets must never be baked
   // into the dashboard bundle.
@@ -67,8 +76,10 @@ const CourierForm = () => {
           merchant._id
         );
         toast.success(`${selectedCourier} merchant created and saved locally!`);
+        clearDraft(DRAFT_KEY);
       } else {
         toast.success("Merchant created successfully!");
+        clearDraft(DRAFT_KEY);
       }
     } catch (error: any) {
       showApiError(error, "Something went wrong!");

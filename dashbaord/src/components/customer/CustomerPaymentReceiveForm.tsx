@@ -7,10 +7,15 @@ import MobileActionBar from "../common/MobileActionBar";
 import { FaUser, FaMoneyBillWave } from "react-icons/fa";
 import SearchableSelect from "../form/SearchableSelect";
 import Select from "../form/Select";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "customer-payment-receive";
 
 interface CustomerOption {
   label: string;
@@ -30,16 +35,16 @@ const CustomerPaymentReceiveForm = () => {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
 
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
-  const [selectedInvoice, setSelectedInvoice] = useState<string>("");
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>("");
+  const [selectedCustomer, setSelectedCustomer] = useState<string>(() => draftValue<string>(DRAFT_KEY, "selectedCustomer", ""));
+  const [selectedInvoice, setSelectedInvoice] = useState<string>(() => draftValue<string>(DRAFT_KEY, "selectedInvoice", ""));
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>(() => draftValue<string>(DRAFT_KEY, "selectedPaymentMode", ""));
 
   const [errors, setErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const today = new Date().toLocaleDateString("en-CA");
 
-  const [form, setForm] = useState<any>({
+  const [form, setForm] = useState<any>(() => draftValue(DRAFT_KEY, "form", {
     customer: "",
     dueBalance: "",
     referenceInvoice: "",
@@ -49,7 +54,11 @@ const CustomerPaymentReceiveForm = () => {
     date: today,
     paymentMode: "",
     remarks: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedCustomer, selectedInvoice, selectedPaymentMode, form }), [selectedCustomer, selectedInvoice, selectedPaymentMode, form]),
+  );
 
   const handleDateChange = useCallback((dates: Date[]) => {
     const val = dates?.[0] ? dates[0].toLocaleDateString("en-CA") : "";
@@ -141,6 +150,7 @@ const CustomerPaymentReceiveForm = () => {
       });
       await fetchCustomers();
       toast.success("Payment received successfully");
+      clearDraft(DRAFT_KEY);
 
       setForm({
         customer: "",

@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect, useRef } from "react";
+import { useState, FormEvent, useEffect, useRef, useMemo } from "react";
 import Button from "../ui/button/Button";
 import MobileActionBar from "../common/MobileActionBar";
 import DatePicker from "../form/date-picker";
@@ -8,6 +8,11 @@ import TextArea from "../form/input/TextArea";
 import { FaSearch, FaSpinner, FaTimes } from "react-icons/fa";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "stock-adjustment";
 
 // ---------- Types ----------
 
@@ -222,17 +227,21 @@ const SearchDropdown = ({ onSelect, selectedLabel, onClear, hasError }: SearchDr
 // ---------- Main form ----------
 
 const CreateStockAdjustForm = () => {
-  const [selectedItem, setSelectedItem] = useState<SearchResult | null>(null);
-  const [selectedLabel, setSelectedLabel] = useState("");
+  const [selectedItem, setSelectedItem] = useState<SearchResult | null>(() => draftValue<SearchResult | null>(DRAFT_KEY, "selectedItem", null));
+  const [selectedLabel, setSelectedLabel] = useState(() => draftValue(DRAFT_KEY, "selectedLabel", ""));
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<StockAdjustFormData>({
+  const [formData, setFormData] = useState<StockAdjustFormData>(() => draftValue<StockAdjustFormData>(DRAFT_KEY, "formData", {
     productId: "",
     variantId: "",
     increaseQuantity: null,
     decreaseQuantity: null,
     date: null,
     adjustReason: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedItem, selectedLabel, formData }), [selectedItem, selectedLabel, formData]),
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof StockAdjustFormData, string>>>({});
 
   const handleItemSelect = (item: SearchResult) => {
@@ -299,6 +308,7 @@ const CreateStockAdjustForm = () => {
 
       await axiosSecure.post("/stock/stock-adjust", payload);
       toast.success("Stock adjustment created successfully!");
+      clearDraft(DRAFT_KEY);
 
       // reset
       setSelectedItem(null);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
@@ -15,6 +15,11 @@ import QuickCreateModal from "./QuickCreateModal";
 import SectionCard from "../common/SectionCard";
 import MobileActionBar from "../common/MobileActionBar";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-employee";
 
 // ---------- Types ----------
 interface Certification {
@@ -212,14 +217,18 @@ const CreateEmployeeForm = () => {
   const [quickCreate, setQuickCreate] = useState<"designation" | "department" | "section" | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [certifications, setCertifications] = useState<Certification[]>(() => draftValue<Certification[]>(DRAFT_KEY, "certifications", []));
   const [isLoading, setIsLoading] = useState(false);
   const [tab1Errors, setTab1Errors] = useState<Tab1Errors>({});
   const [tab2Errors, setTab2Errors] = useState<Tab2Errors>({});
-  const [form, setForm] = useState<EmployeeForm>({
+  const [form, setForm] = useState<EmployeeForm>(() => draftValue<EmployeeForm>(DRAFT_KEY, "form", {
     ...INITIAL_FORM,
     joiningDate: new Date().toISOString().split("T")[0],
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ form, certifications: certifications.map((c) => ({ ...c, imageFile: null, imagePreview: null })) }), [form, certifications]),
+  );
 
   useEffect(() => {
     axiosSecure
@@ -401,6 +410,7 @@ const CreateEmployeeForm = () => {
       });
 
       toast.success("Employee created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["employees"] });
 
       setForm({

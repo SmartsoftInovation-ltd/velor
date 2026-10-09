@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, ChangeEvent, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useCallback, ChangeEvent, KeyboardEvent, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DatePicker from "../form/date-picker";
 import Input from "../form/input/InputField";
@@ -11,6 +11,11 @@ import toast from "react-hot-toast";
 import Label from "../form/Label";
 import SearchableSelect from "../form/SearchableSelect";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "add-purchase";
 
 // Matches the backend's isLikelyCode check (sales.controller.js) — a scanned
 // barcode/SKU/QR value is a plain alphanumeric code, not a free-text name search.
@@ -85,7 +90,7 @@ const CreatePurchaseForm = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
-  const [tableProducts, setTableProducts] = useState<TableProduct[]>([]);
+  const [tableProducts, setTableProducts] = useState<TableProduct[]>(() => draftValue<TableProduct[]>(DRAFT_KEY, "tableProducts", []));
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const [submitLoading, setSubmitLoading] = useState<boolean>(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -102,7 +107,7 @@ const CreatePurchaseForm = () => {
     return `${y}-${m}-${d}`;
   };
 
-  const [formData, setFormData] = useState<PurchaseFormData>({
+  const [formData, setFormData] = useState<PurchaseFormData>(() => draftValue<PurchaseFormData>(DRAFT_KEY, "formData", {
     invoiceNumber: "",
     supplierId: "",
     date: getTodayDate(),
@@ -112,7 +117,11 @@ const CreatePurchaseForm = () => {
     payable: 0,
     dueamount: 0,
     paid: 0,
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ tableProducts, formData }), [tableProducts, formData]),
+  );
 
   // ---------- Data Fetching ----------
   const { data: suppliers = [] } = useQuery<Supplier[]>({
@@ -447,6 +456,7 @@ const CreatePurchaseForm = () => {
 
       await axiosSecure.post("/purchase/add-purchase", payload);
       toast.success("Purchase created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });

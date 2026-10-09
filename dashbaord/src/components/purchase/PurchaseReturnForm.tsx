@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { FaSearch, FaTimes, FaBoxOpen, FaSpinner } from "react-icons/fa";
@@ -10,6 +10,11 @@ import MobileActionBar from "../common/MobileActionBar";
 import DatePicker from "../form/date-picker";
 import SearchableSelect from "../form/SearchableSelect";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "purchase-return";
 
 // Matches the backend's isLikelyCode check (sales.controller.js) — a scanned
 // barcode/SKU/QR value is a plain alphanumeric code, not a free-text name search.
@@ -63,13 +68,11 @@ const PurchaseReturnForm = () => {
   const queryClient = useQueryClient();
 
   // ── Supplier state ──────────────────────────────────────────────────────────
-  const [supplierQuery, setSupplierQuery] = useState("");
+  const [supplierQuery, setSupplierQuery] = useState(() => draftValue(DRAFT_KEY, "supplierQuery", ""));
   const [allSuppliers, setAllSuppliers] = useState<Supplier[]>([]);
   const [supplierResults, setSupplierResults] = useState<Supplier[]>([]);
   const [showSupplierDrop, setShowSupplierDrop] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
-    null,
-  );
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(() => draftValue<Supplier | null>(DRAFT_KEY, "selectedSupplier", null));
   const supplierRef = useRef<HTMLDivElement>(null);
 
   // ── Product search state ────────────────────────────────────────────────────
@@ -82,21 +85,25 @@ const PurchaseReturnForm = () => {
   const [isScanning, setIsScanning] = useState(false);
 
   // ── Return items ────────────────────────────────────────────────────────────
-  const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
+  const [returnItems, setReturnItems] = useState<ReturnItem[]>(() => draftValue<ReturnItem[]>(DRAFT_KEY, "returnItems", []));
 
   // ── Form fields ─────────────────────────────────────────────────────────────
   // Account the supplier's refund is paid into — the backend credits the full
   // return value here, so it is required.
-  const [cashType, setCashType] = useState("");
+  const [cashType, setCashType] = useState(() => draftValue(DRAFT_KEY, "cashType", ""));
 
   // Today as a LOCAL calendar day. toISOString() is UTC, which until 6 AM in
   // Dhaka is still yesterday, so returns made after midnight were dated a day
   // early and listed before the purchase they returned.
-  const [returnDate, setReturnDate] = useState(() => {
+  const [returnDate, setReturnDate] = useState(() => draftValue(DRAFT_KEY, "returnDate", (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  });
-  const [remarks, setRemarks] = useState("");
+  })()));
+  const [remarks, setRemarks] = useState(() => draftValue(DRAFT_KEY, "remarks", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ supplierQuery, selectedSupplier, returnItems, cashType, returnDate, remarks }), [supplierQuery, selectedSupplier, returnItems, cashType, returnDate, remarks]),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -395,6 +402,7 @@ const PurchaseReturnForm = () => {
     try {
       await axiosSecure.post("/purchase-return", payload);
       toast.success("Purchase return created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["purchase-returns-v2"] });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["supplier"] });

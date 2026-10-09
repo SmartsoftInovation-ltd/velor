@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FaPlus, FaTimes, FaHandHoldingUsd } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -11,6 +11,11 @@ import MobileActionBar from "../common/MobileActionBar";
 import SearchableSelect from "../form/SearchableSelect";
 import SectionCard from "../common/SectionCard";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "money-handover";
 
 interface Account { _id: string; name: string; }
 
@@ -109,9 +114,13 @@ const QuickAddModal = ({ onClose, onSave }: { onClose: () => void; onSave: (name
 const MoneyHandoverForm = () => {
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => draftValue(DRAFT_KEY, "formData", {
     date: new Date().toLocaleDateString("en-CA"), fundPaymentMode: "", name: "", amount: "", voucherNumber: "", transactionDescription: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ formData }), [formData]),
+  );
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -165,6 +174,7 @@ const MoneyHandoverForm = () => {
         amount: Number(formData.amount),
       });
       toast.success("Money handover added successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["fund-handovers"] });
       setFormData({ date: new Date().toLocaleDateString("en-CA"), fundPaymentMode: "", name: "", amount: "", voucherNumber: "", transactionDescription: "" });
       setErrors({});

@@ -6,10 +6,15 @@ import SectionCard from "../common/SectionCard";
 import MobileActionBar from "../common/MobileActionBar";
 import { FaUser, FaMoneyBillWave } from "react-icons/fa";
 import SearchableSelect from "../form/SearchableSelect";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "customer-advance-payment";
 
 interface CustomerOption {
   label: string;
@@ -28,8 +33,8 @@ const CustomerAdvancePaymentForm = () => {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
 
-  const [selectedCustomer, setSelectedCustomer] = useState("");
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState(() => draftValue(DRAFT_KEY, "selectedCustomer", ""));
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState(() => draftValue(DRAFT_KEY, "selectedPaymentMode", ""));
 
   const [balance, setBalance] = useState(0);
   const [errors, setErrors] = useState<any>({});
@@ -37,14 +42,18 @@ const CustomerAdvancePaymentForm = () => {
 
   const today = new Date().toLocaleDateString("en-CA");
 
-  const [form, setForm] = useState<any>({
+  const [form, setForm] = useState<any>(() => draftValue(DRAFT_KEY, "form", {
     customer: "",
     paidAmount: "",
     advanceCashBack: "",
     paymentMode: "",
     date: today,
     remarks: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedCustomer, selectedPaymentMode, form }), [selectedCustomer, selectedPaymentMode, form]),
+  );
 
   const handleDateChange = useCallback((dates: Date[]) => {
     const val = dates?.[0] ? dates[0].toLocaleDateString("en-CA") : "";
@@ -98,6 +107,12 @@ const CustomerAdvancePaymentForm = () => {
     }
   };
 
+  // A customer restored from a draft still needs its advance balance loaded.
+  useEffect(() => {
+    if (selectedCustomer) handleCustomerChange(selectedCustomer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSubmit = async () => {
     // A second click while the first request is in flight would record the
     // payment twice.
@@ -139,6 +154,7 @@ const CustomerAdvancePaymentForm = () => {
           query.queryKey[0].startsWith("dashboard-"),
       });
       toast.success("Advance payment received successfully");
+      clearDraft(DRAFT_KEY);
 
       setForm({
         customer: "",

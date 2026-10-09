@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-role";
 
 const CreateRoleForm = ({ onCreated }: { onCreated: () => void }) => {
   const queryClient = useQueryClient();
-  const [roleName, setRoleName] = useState("");
+  const [roleName, setRoleName] = useState(() => draftValue(DRAFT_KEY, "roleName", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ roleName }), [roleName]),
+  );
   const [nameError, setNameError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
@@ -18,6 +27,7 @@ const CreateRoleForm = ({ onCreated }: { onCreated: () => void }) => {
     try {
       await axiosSecure.post("/create-role", { name: roleName.trim() });
       toast.success("Role created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["roles"] });
       onCreated();
       setRoleName("");

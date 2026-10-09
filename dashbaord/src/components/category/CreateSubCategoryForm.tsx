@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
@@ -8,6 +8,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SearchableSelect from "../form/SearchableSelect";
 import { showApiError } from "../../utils/apiError";
 import MobileActionBar from "../common/MobileActionBar";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-subcategory";
 
 
 interface Category {
@@ -18,8 +23,12 @@ interface Category {
 
 const CreateSubCategoryForm = () => {
   const queryClient = useQueryClient();
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [subCategoryName, setSubCategoryName] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => draftValue<string>(DRAFT_KEY, "selectedCategory", ""));
+  const [subCategoryName, setSubCategoryName] = useState<string>(() => draftValue<string>(DRAFT_KEY, "subCategoryName", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedCategory, subCategoryName }), [selectedCategory, subCategoryName]),
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errors, setErrors] = useState<{
     category?: string;
@@ -72,6 +81,7 @@ const CreateSubCategoryForm = () => {
       });
 
       toast.success("Subcategory created successfully!");
+      clearDraft(DRAFT_KEY);
       queryClient.invalidateQueries({ queryKey: ["subcategories"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] }); // Categories might include subcategories
       setSubCategoryName("");

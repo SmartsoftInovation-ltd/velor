@@ -1,4 +1,4 @@
-import { useState, ChangeEvent } from "react";
+import { useState, ChangeEvent, useMemo } from "react";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
@@ -6,6 +6,11 @@ import MobileActionBar from "../common/MobileActionBar";
 import axiosInstance from "../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
 import { showApiError } from "../../utils/apiError";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-delivery-charge";
 
 interface FormData {
   name: string;
@@ -18,10 +23,14 @@ interface FormErrors {
 }
 
 const CreateDeliveryChargeForm = () => {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<FormData>(() => draftValue<FormData>(DRAFT_KEY, "formData", {
     name: "",
     deliveryCharge: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ formData }), [formData]),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -60,6 +69,7 @@ const CreateDeliveryChargeForm = () => {
         formData
       );
       toast.success("Delivery Charge Created Successfully");
+      clearDraft(DRAFT_KEY);
       setFormData({ name: "", deliveryCharge: "" });
     } catch (error) {
       console.log(error);

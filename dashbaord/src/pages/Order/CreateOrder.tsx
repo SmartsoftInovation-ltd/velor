@@ -26,6 +26,11 @@ import {
   Select,
 } from "../PlatformConsole/ui";
 import MobileActionBar from "../../components/common/MobileActionBar";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-order";
 
 /**
  * Taking an order at the counter — over the phone, or for someone standing
@@ -141,13 +146,17 @@ const CreateOrder = () => {
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const [lines, setLines] = useState<CartLine[]>([]);
-  const [customer, setCustomer] = useState(emptyCustomer);
-  const [couponCode, setCouponCode] = useState("");
-  const [deliveryChargeId, setDeliveryChargeId] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cod" | "sslcommerz">("cod");
+  const [lines, setLines] = useState<CartLine[]>(() => draftValue<CartLine[]>(DRAFT_KEY, "lines", []));
+  const [customer, setCustomer] = useState(() => draftValue(DRAFT_KEY, "customer", emptyCustomer));
+  const [couponCode, setCouponCode] = useState(() => draftValue(DRAFT_KEY, "couponCode", ""));
+  const [deliveryChargeId, setDeliveryChargeId] = useState(() => draftValue(DRAFT_KEY, "deliveryChargeId", ""));
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "sslcommerz">(() => draftValue<"cod" | "sslcommerz">(DRAFT_KEY, "paymentMethod", "cod"));
 
-  const [orderFrom, setOrderFrom] = useState("");
+  const [orderFrom, setOrderFrom] = useState(() => draftValue(DRAFT_KEY, "orderFrom", ""));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ lines, customer, couponCode, deliveryChargeId, paymentMethod, orderFrom }), [lines, customer, couponCode, deliveryChargeId, paymentMethod, orderFrom]),
+  );
   const [sources, setSources] = useState<OrderSource[]>([]);
   const [addingSource, setAddingSource] = useState(false);
   const [newSource, setNewSource] = useState("");
@@ -298,6 +307,7 @@ const CreateOrder = () => {
       });
       const order = res.data?.data?.order;
       toast.success(`Order ${order?.invoiceId ?? ""} placed — ${money(order?.finalAmount ?? 0)}`);
+      clearDraft(DRAFT_KEY);
 
       setLines([]);
       setCustomer(emptyCustomer);

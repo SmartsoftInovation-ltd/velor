@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useRef, useState, useMemo } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
 import SectionCard from "../../../components/common/SectionCard";
@@ -11,6 +11,11 @@ import Input from "../../../components/form/input/InputField";
 import Button from "../../../components/ui/button/Button";
 import SearchableSelect from "../../../components/form/SearchableSelect";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { useFormDraft, draftValue, clearDraft } from "../../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "add-outlet";
 
 interface OutletFormData {
   locationName: string;
@@ -39,7 +44,11 @@ const WEEK_DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thur
 const AddOutletInfo = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [formData, setFormData] = useState<OutletFormData>(initialForm);
+  const [formData, setFormData] = useState<OutletFormData>(() => draftValue<OutletFormData>(DRAFT_KEY, "formData", initialForm));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ formData }), [formData]),
+  );
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -97,6 +106,7 @@ const AddOutletInfo = () => {
       });
       if ([200, 201].includes(res.status)) {
         toast.success("Outlet information created successfully!");
+        clearDraft(DRAFT_KEY);
         navigate("/outlet-list");
       }
     } catch (err: any) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
@@ -10,19 +10,28 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import MobileActionBar from "../common/MobileActionBar";
 import SectionCard from "../common/SectionCard";
 import { FaTicketAlt, FaCalendarAlt } from "react-icons/fa";
+import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+
+// Unsaved input survives a reload or a trip to another page in this tab
+// (sessionStorage, per store); cleared once the form is submitted.
+const DRAFT_KEY = "create-coupon";
 
 const CreateCouponForm = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [selectedType, setSelectedType] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>(() => draftValue<string>(DRAFT_KEY, "selectedType", ""));
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => draftValue(DRAFT_KEY, "formData", {
     code: "",
     usageLimit: "",
     discountType: "",
     couponStartAt: "",
     expireAt: "",
     discountValue: "",
-  });
+  }));
+  useFormDraft(
+    DRAFT_KEY,
+    useMemo(() => ({ selectedType, formData }), [selectedType, formData]),
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -77,6 +86,7 @@ const CreateCouponForm = () => {
       await axiosSecure.post(`/coupon/create`, payload);
 
       toast.success("Coupon Created Successfully!");
+      clearDraft(DRAFT_KEY);
 
       // Reset
       setFormData({
