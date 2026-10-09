@@ -253,38 +253,8 @@ const categories: ReportCategory[] = [
     reports: [
       {
         name: "Transaction Report",
-        description: "Full transaction ledger for a date range",
+        description: "Manual transactions with receive, payment & balance",
         path: "/transaction-report",
-      },
-      {
-        name: "Transaction Summary",
-        description: "Inflow vs outflow summary by date",
-        path: "/transaction-summary",
-      },
-      {
-        name: "Cash Ledger",
-        description: "Cash account movement, opening to closing balance",
-        path: "/cash-ledger",
-      },
-      {
-        name: "Transaction Account Wise",
-        description: "Transactions grouped per account",
-        path: "/transaction-account-wise",
-      },
-      {
-        name: "Account Transaction Summary",
-        description: "Per-account running summary",
-        path: "/account-transaction-summary",
-      },
-      {
-        name: "Account Balance",
-        description: "Live balance across all accounts",
-        path: "/account-balance",
-      },
-      {
-        name: "Fund Handover",
-        description: "Cash handover records between shifts",
-        path: "/fund-handover",
       },
     ],
   },

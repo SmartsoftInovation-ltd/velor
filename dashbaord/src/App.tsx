@@ -204,26 +204,8 @@ const SmsHistory = lazy(() => import("./pages/SmsNotification/SmsHistory"));
 const SmsStatus = lazy(() => import("./pages/SmsNotification/SmsStatus"));
 
 // Components - Reports
-const AccountBalance = lazy(
-  () => import("./components/reports/Account/AccountBalance"),
-);
-const AccountTransactionSummary = lazy(
-  () => import("./components/reports/Account/AccountTransactionSummary"),
-);
-const CashLedger = lazy(
-  () => import("./components/reports/Account/CashLedger"),
-);
-const FundHandOver = lazy(
-  () => import("./components/reports/Account/FundHandOver"),
-);
-const TransactionAccountWise = lazy(
-  () => import("./components/reports/Account/TransactionAccountWise"),
-);
 const TransactionReport = lazy(
   () => import("./components/reports/Account/TransactionReport"),
-);
-const TransactionSummary = lazy(
-  () => import("./components/reports/Account/TransactionSummary"),
 );
 const OrderInvoice = lazy(
   () => import("./components/reports/Order/OrderInvoice"),
@@ -323,30 +305,6 @@ const EmployeePaymentReport = lazy(
   () => import("./components/reports/Employee/EmployeePaymentReport"),
 );
 const CreateReports = lazy(() => import("./pages/Reports/CreateReports"));
-const AccountBalanceView = lazy(
-  () => import("./components/tables/ReportTable/Account/AccountBalanceView"),
-);
-const AccountTransactionSummaryView = lazy(
-  () =>
-    import("./components/tables/ReportTable/Account/AccountTransactionSummaryView"),
-);
-const CashLedgerView = lazy(
-  () => import("./components/tables/ReportTable/Account/CashLedgerView"),
-);
-const FundHandOverView = lazy(
-  () => import("./components/tables/ReportTable/Account/FundHandOverView"),
-);
-const TransactionAccountWiseView = lazy(
-  () =>
-    import("./components/tables/ReportTable/Account/TransactionAccountWiseView"),
-);
-const TransactionReportView = lazy(
-  () => import("./components/tables/ReportTable/Account/TransactionReportView"),
-);
-const TransactionSummaryView = lazy(
-  () =>
-    import("./components/tables/ReportTable/Account/TransactionSummaryView"),
-);
 const OrderInvoiceView = lazy(
   () => import("./components/tables/ReportTable/Order/OrderInvoiceView"),
 );
@@ -1257,74 +1215,6 @@ export default function App() {
                 <Route
                   path="/transaction-report"
                   element={<ProtectedRoute module="transaction-report" action="view"><TransactionReport /></ProtectedRoute>}
-                />
-                <Route
-                  path="/transaction-report/view"
-                  element={<ProtectedRoute module="transaction-report" action="view"><TransactionReportView /></ProtectedRoute>}
-                />
-                <Route
-                  path="/transaction-summary"
-                  element={<ProtectedRoute module="transaction-summary" action="view"><TransactionSummary /></ProtectedRoute>}
-                />
-                <Route
-                  path="/transaction-summary/view"
-                  element={<ProtectedRoute module="transaction-summary" action="view"><TransactionSummaryView /></ProtectedRoute>}
-                />
-                <Route
-                  path="/cash-ledger"
-                  element={
-                    <ProtectedRoute module="cash-ledger" action="view">
-                      <CashLedger />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/cash-ledger/view"
-                  element={
-                    <ProtectedRoute module="cash-ledger" action="view">
-                      <CashLedgerView />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/transaction-account-wise"
-                  element={<ProtectedRoute module="transaction-account-wise" action="view"><TransactionAccountWise /></ProtectedRoute>}
-                />
-                <Route
-                  path="/transaction-account-wise/view"
-                  element={<ProtectedRoute module="transaction-account-wise" action="view"><TransactionAccountWiseView /></ProtectedRoute>}
-                />
-                <Route
-                  path="/account-transaction-summary"
-                  element={<ProtectedRoute module="account-transaction-summary" action="view"><AccountTransactionSummary /></ProtectedRoute>}
-                />
-                <Route
-                  path="/account-transaction-summary/view"
-                  element={<ProtectedRoute module="account-transaction-summary" action="view"><AccountTransactionSummaryView /></ProtectedRoute>}
-                />
-                <Route
-                  path="/account-balance"
-                  element={
-                    <ProtectedRoute module="account-balance" action="view">
-                      <AccountBalance />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/account-balance/view"
-                  element={<ProtectedRoute module="account-balance" action="view"><AccountBalanceView /></ProtectedRoute>}
-                />
-                <Route
-                  path="/fund-handover"
-                  element={
-                    <ProtectedRoute module="fund-handover" action="view">
-                      <FundHandOver />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/fund-handover/view"
-                  element={<ProtectedRoute module="fund-handover" action="view"><FundHandOverView /></ProtectedRoute>}
                 />
 
                 <Route

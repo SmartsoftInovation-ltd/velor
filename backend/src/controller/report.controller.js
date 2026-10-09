@@ -21,6 +21,10 @@ const { employeeAdvancePayment: EmployeeAdvancePayment } = require("../models/ad
 const Supplier = require("../models/supplier.model").SupplierModel;
 const SupplierDuePayment = require("../models/supplier.model").SupplierDuePayment;
 const StoreInformation = require("../models/storeInformation.model");
+const CrateTransaction = require("../models/crateTransaction.model");
+const Account = require("../models/account.model");
+const TransactionCategory = require("../models/transitionCategory.model");
+const { MANUAL_ENTRY_ONLY } = require("./createTransition.controller");
 const Product = require("../models/product.model");
 const { buildLowStockStages } = require("../utils/lowStock.util");
 const {
@@ -5965,6 +5969,104 @@ exports.getSupplierDuesReport = asynchandeler(async (req, res) => {
     pagination: paginationMeta(allRows.length, page, limit, skip),
     generatedAt: new Date(),
     fromCache: false,
+  });
+});
+
+// @desc Transaction report — the entries typed by hand on /add-transaction,
+// one row each, oldest first. Rows that sales, purchases, returns and payments
+// write into the same collection are left out (MANUAL_ENTRY_ONLY): those belong
+// to their own module's reports. "cash recived" fills the Receive column and
+// "cash payment" the Payment column; balance = receive - payment.
+exports.getTransactionReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, accountId, categoryId, transactionType } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = { ...MANUAL_ENTRY_ONLY };
+  if (startDate && endDate) {
+    const rangeStart = new Date(startDate);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(endDate);
+    rangeEnd.setHours(23, 59, 59, 999);
+    match.date = { $gte: rangeStart, $lte: rangeEnd };
+  }
+  castObjectIdFilter(match, "account", accountId);
+  castObjectIdFilter(match, "transactionCategory", categoryId);
+  if (transactionType) {
+    if (!["cash recived", "cash payment"].includes(transactionType)) {
+      throw new customError("Invalid transactionType", statusCodes.BAD_REQUEST);
+    }
+    match.transactionType = transactionType;
+  }
+
+  const [transactions, totalCount, sums, header] = await Promise.all([
+    CrateTransaction.find(match)
+      .populate("account", "name")
+      .populate("transactionCategory", "name")
+      .select("date transactionSerialId transactionCategory account transactionDescription voucherNumber transactionType amount")
+      .sort({ date: 1, createdAt: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    CrateTransaction.countDocuments(match),
+    CrateTransaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          receive: {
+            $sum: { $cond: [{ $eq: ["$transactionType", "cash recived"] }, "$amount", 0] },
+          },
+          payment: {
+            $sum: { $cond: [{ $eq: ["$transactionType", "cash payment"] }, "$amount", 0] },
+          },
+        },
+      },
+    ]),
+    getStoreHeader(),
+  ]);
+
+  const rows = transactions.map((t) => ({
+    _id: t._id,
+    date: t.date,
+    transactionId: t.transactionSerialId || "",
+    category: t.transactionCategory?.name || "",
+    description: t.transactionDescription || "",
+    referenceId: t.voucherNumber || "",
+    account: t.account?.name || "",
+    receive: t.transactionType === "cash recived" ? t.amount || 0 : 0,
+    payment: t.transactionType === "cash payment" ? t.amount || 0 : 0,
+  }));
+
+  const receive = sums[0]?.receive || 0;
+  const payment = sums[0]?.payment || 0;
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Transaction report fetched successfully", {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      accountId: accountId || null,
+      categoryId: categoryId || null,
+      transactionType: transactionType || null,
+    },
+    rows,
+    totals: { count: totalCount, receive, payment, balance: receive - payment },
+    pagination: paginationMeta(totalCount, page, limit, skip),
+    generatedAt: new Date(),
+  });
+});
+
+// @desc Account and category dropdowns for the transaction report. Served
+// here so a user with only the report permission can still fill the filters.
+exports.getTransactionReportOptions = asynchandeler(async (req, res) => {
+  const [accounts, categories] = await Promise.all([
+    Account.find().select("_id name").sort({ name: 1 }).lean(),
+    TransactionCategory.find().select("_id name allowedType").sort({ name: 1 }).lean(),
+  ]);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Transaction report options fetched successfully", {
+    accounts,
+    categories,
   });
 });
 

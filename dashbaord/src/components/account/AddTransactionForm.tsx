@@ -179,6 +179,7 @@ const AddTransactionForm = () => {
     transactionCategory: "",
     account: "",
     transactionDescription: "",
+    voucherNumber: "",
     transactionType: "",
     amount: "",
   }));
@@ -259,6 +260,7 @@ const AddTransactionForm = () => {
     try {
       await axiosSecure.post("/transaction/create-transaction", {
         ...formData,
+        voucherNumber: formData.voucherNumber.trim(),
         amount: Number(formData.amount),
       });
       toast.success("Transaction created successfully!");
@@ -274,7 +276,7 @@ const AddTransactionForm = () => {
           typeof query.queryKey[0] === "string" &&
           query.queryKey[0].startsWith("dashboard-"),
       });
-      setFormData({ date: new Date().toLocaleDateString("en-CA"), transactionCategory: "", account: "", transactionDescription: "", transactionType: "", amount: "" });
+      setFormData({ date: new Date().toLocaleDateString("en-CA"), transactionCategory: "", account: "", transactionDescription: "", voucherNumber: "", transactionType: "", amount: "" });
       setErrors({});
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
@@ -358,6 +360,17 @@ const AddTransactionForm = () => {
                 onChange={(val) => setField("transactionType", val)}
                 error={errors.transactionType}
               />
+              {/* Voucher Number */}
+              <div className="flex flex-col gap-1">
+                <Label>Voucher Number</Label>
+                <Input
+                  type="text"
+                  name="voucherNumber"
+                  value={formData.voucherNumber}
+                  onChange={(e) => setField("voucherNumber", e.target.value)}
+                  placeholder="e.g. VCH-0001 (optional)"
+                />
+              </div>
               {/* Description */}
               <div className="flex flex-col gap-1 md:col-span-2">
                 <Label>Description</Label>

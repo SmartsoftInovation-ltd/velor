@@ -204,12 +204,6 @@ export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/stock-adjustment-report": PERMISSIONS.STOCK_ADJUSTMENT_REPORT,
   "/low-stock-report": PERMISSIONS.LOW_STOCK_REPORT,
   "/transaction-report": PERMISSIONS.TRANSACTION_REPORT,
-  "/transaction-summary": PERMISSIONS.TRANSACTION_SUMMARY,
-  "/cash-ledger": PERMISSIONS.CASH_LEDGER,
-  "/transaction-account-wise": PERMISSIONS.TRANSACTION_ACCOUNT_WISE,
-  "/account-transaction-summary": PERMISSIONS.ACCOUNT_TRANSACTION_SUMMARY,
-  "/account-balance": PERMISSIONS.ACCOUNT_BALANCE,
-  "/fund-handover": PERMISSIONS.FUND_HANDOVER,
   "/employee-list-report": PERMISSIONS.EMPLOYEE_LIST_REPORT,
   "/employee-payment-report": PERMISSIONS.EMPLOYEE_PAYMENT_REPORT,
 };

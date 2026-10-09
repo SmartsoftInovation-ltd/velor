@@ -181,6 +181,18 @@ _.route("/supplier-ledger/suppliers").get(
   ),
   reportController.getSupplierLedgerSuppliers,
 );
+_.route("/transaction-report").post(
+  authGuard,
+  reportLimiter,
+  authorize("transaction-report", "view"),
+  reportController.getTransactionReport,
+);
+_.route("/transaction-report/options").get(
+  authGuard,
+  reportLimiter,
+  authorize("transaction-report", "view"),
+  reportController.getTransactionReportOptions,
+);
 _.route("/supplier-payment").post(
   authGuard,
   reportLimiter,
