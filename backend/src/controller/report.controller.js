@@ -4460,6 +4460,195 @@ exports.getCustomerInvoiceProfitReport = asynchandeler(async (req, res) => {
   );
 });
 
+// @desc Invoice profit report — one row per sale invoice with the full bill
+// (total, discount, delivery, payable, paid, due) next to its profit.
+//
+//   TOTAL    = sale.total — the line subtotals, already net of line discounts
+//   DISC     = total × discountPercent / 100 + lessTaka
+//   DELIVERY = sale.deliveryCost
+//   PAYABLE  = sale.payable (includes VAT, delivery and labour)
+//   PAID     = cash the shop kept (netPaid; paid − changes on older sales)
+//   DUE      = sale.presentDue
+//   PROFIT   = TOTAL − DISC − BUY PRICE, the dashboard formula per invoice
+//              (saleProfitStages). Delivery, VAT and labour are pass-through
+//              charges, not margin, so they stay out of it.
+//
+// `paymentStatus` narrows to paid / partial / due invoices.
+exports.getInvoiceProfitReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, customerName, salesType, paymentStatus } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day ("2026-08-31"), which parses to midnight and
+  // would drop every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+  if (["paid", "partial", "due"].includes(paymentStatus)) match.paymentStatus = paymentStatus;
+
+  const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:invoice-profit:${startDate}:${endDate}:${nameQuery || "all"}:${salesType || "all"}:${paymentStatus || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Invoice profit report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1, customSerialId: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCustomerName: {
+          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+        },
+        resolvedCustomerPhone: {
+          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+        },
+      },
+    },
+  ];
+
+  if (nameQuery) {
+    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
+    pipeline.push({
+      $match: {
+        $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }, { invoiceNumber: rx }],
+      },
+    });
+  }
+
+  pipeline.push(
+    ...saleProfitStages(),
+    {
+      $addFields: {
+        // Sales written before netPaid existed have no such field.
+        netPaidResolved: {
+          $ifNull: [
+            "$netPaid",
+            {
+              $max: [
+                0,
+                { $subtract: [{ $ifNull: ["$paid", 0] }, { $ifNull: ["$changes", 0] }] },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $facet: {
+        rows: [
+          { $sort: { date: -1, _id: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              date: 1,
+              invoiceNumber: 1,
+              salesType: 1,
+              paymentStatus: 1,
+              customerCode: "$customerInfo.customSerialId",
+              customerName: "$resolvedCustomerName",
+              customerPhone: "$resolvedCustomerPhone",
+              total: { $ifNull: ["$total", 0] },
+              discount: "$discountAmount",
+              delivery: { $ifNull: ["$deliveryCost", 0] },
+              payable: { $ifNull: ["$payable", 0] },
+              paid: "$netPaidResolved",
+              due: { $ifNull: ["$presentDue", 0] },
+              buyPrice: 1,
+              profit: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalSales: { $sum: { $ifNull: ["$total", 0] } },
+              totalDiscount: { $sum: "$discountAmount" },
+              totalDelivery: { $sum: { $ifNull: ["$deliveryCost", 0] } },
+              totalPayable: { $sum: { $ifNull: ["$payable", 0] } },
+              totalPaid: { $sum: "$netPaidResolved" },
+              totalDue: { $sum: { $ifNull: ["$presentDue", 0] } },
+              totalBuyPrice: { $sum: "$buyPrice" },
+              totalProfit: { $sum: "$profit" },
+            },
+          },
+        ],
+      },
+    },
+  );
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalSales: 0,
+    totalDiscount: 0,
+    totalDelivery: 0,
+    totalPayable: 0,
+    totalPaid: 0,
+    totalDue: 0,
+    totalBuyPrice: 0,
+    totalProfit: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      customerName: nameQuery || null,
+      salesType: salesType || "ALL",
+      paymentStatus: paymentStatus || "ALL",
+    },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Invoice profit report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
 // @desc Top customer report — one row per LISTED customer (walking sales have
 // no customer account to rank), ordered by sales total, highest first.
 //

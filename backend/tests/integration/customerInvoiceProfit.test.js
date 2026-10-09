@@ -105,6 +105,80 @@ describe("customer invoice profit report", () => {
   });
 });
 
+describe("invoice profit report", () => {
+  const tenantId = new mongoose.Types.ObjectId();
+  const productId = new mongoose.Types.ObjectId();
+  const { getInvoiceProfitReport } = require("../../src/controller/report.controller");
+
+  beforeAll(connectTestDb);
+  afterEach(async () => {
+    await clearTestDb();
+    require("../mocks/redisCache").__reset();
+  });
+  afterAll(disconnectTestDb);
+
+  const insert = (model, doc) =>
+    runForTenant(tenantId, () =>
+      model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
+    );
+
+  const runReport = (extra = {}) =>
+    runForTenant(tenantId, async () => {
+      const today = localToday();
+      let body;
+      let error;
+      const req = { body: { startDate: today, endDate: today, ...extra }, query: {} };
+      const res = { status: () => res, json: (b) => (body = b) };
+      await getInvoiceProfitReport(req, res, (err) => (error = err));
+      if (error) throw error;
+      return body.data;
+    });
+
+  beforeEach(() => insert(productModel, { _id: productId, name: "Shirt", purchasePrice: 400 }));
+
+  it("shows the bill next to a profit that leaves delivery out", async () => {
+    // 5650 total, less 650 → disc 650; cost 10 × 400 = 4000; profit 5650 − 650 − 4000
+    await insert(salesModel, {
+      date: new Date(),
+      invoiceNumber: "INV-1",
+      customerType: { type: "walking", walking: { customerName: "Sujon", mobileNumber: "01999878862" } },
+      total: 5650,
+      discountPercent: 0,
+      lessTaka: 650,
+      deliveryCost: 120,
+      payable: 5120,
+      paid: 200,
+      changes: 80, // no netPaid stored: falls back to paid − changes
+      presentDue: 5000,
+      paymentStatus: "partial",
+      searchItem: [{ productId, quantity: 10, salesStatus: "sale" }],
+    });
+
+    const { rows, totals } = await runReport();
+    expect(rows[0]).toMatchObject({
+      invoiceNumber: "INV-1",
+      customerName: "Sujon",
+      total: 5650,
+      discount: 650,
+      delivery: 120,
+      payable: 5120,
+      paid: 120,
+      due: 5000,
+      profit: 1000,
+    });
+    expect(totals).toMatchObject({ count: 1, totalDelivery: 120, totalPaid: 120, totalProfit: 1000 });
+  });
+
+  it("filters by payment status", async () => {
+    const base = { date: new Date(), customerType: { type: "walking", walking: {} }, searchItem: [] };
+    await insert(salesModel, { ...base, invoiceNumber: "P", total: 100, paymentStatus: "paid" });
+    await insert(salesModel, { ...base, invoiceNumber: "D", total: 200, paymentStatus: "due" });
+
+    const { rows } = await runReport({ paymentStatus: "due" });
+    expect(rows.map((r) => r.invoiceNumber)).toEqual(["D"]);
+  });
+});
+
 describe("top customer report", () => {
   const tenantId = new mongoose.Types.ObjectId();
   const productId = new mongoose.Types.ObjectId();

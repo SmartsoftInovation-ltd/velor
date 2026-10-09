@@ -13,6 +13,7 @@ import {
   TbBox,
   TbChevronRight,
   TbSearch,
+  TbChartLine,
 } from "react-icons/tb";
 
 interface ReportItem {
@@ -105,6 +106,20 @@ const categories: ReportCategory[] = [
         name: "Sales Summary",
         description: "Product-wise totals with weighted average buy price",
         path: "/sales-summary",
+      },
+    ],
+  },
+  {
+    key: "profit",
+    label: "Profit",
+    icon: <TbChartLine className="size-[18px]" />,
+    chipBg: "bg-lime-50 dark:bg-lime-500/10",
+    chipText: "text-lime-600",
+    reports: [
+      {
+        name: "Invoice Profit",
+        description: "Invoice-wise total, discount, delivery, payable, paid, due & profit",
+        path: "/invoice-profit",
       },
     ],
   },

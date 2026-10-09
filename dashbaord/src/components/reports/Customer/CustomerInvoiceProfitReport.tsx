@@ -11,9 +11,10 @@ import SearchableSelect from "../../form/SearchableSelect";
 import NiceSelect from "../../form/NiceSelect";
 
 import { IoIosPrint } from "react-icons/io";
-import { MdCalendarToday, MdChevronLeft, MdChevronRight, MdClose, MdOutlineFilterAlt } from "react-icons/md";
+import { MdChevronLeft, MdChevronRight, MdClose, MdOutlineFilterAlt } from "react-icons/md";
 import { TbReceipt2 } from "react-icons/tb";
 import { LuFileDown } from "react-icons/lu";
+import ReportDateField from "../../form/ReportDateField";
 
 // ---------- Types ----------
 interface ProfitRow {
@@ -175,8 +176,6 @@ const CustomerInvoiceProfitReport = () => {
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
   const thermalRef = useRef<HTMLDivElement>(null);
-  const startDateRef = useRef<HTMLInputElement>(null);
-  const endDateRef = useRef<HTMLInputElement>(null);
 
   const initialRange = rangeForPreset("today");
   const [datePreset, setDatePreset] = useState<DatePreset>("today");
@@ -908,56 +907,26 @@ const CustomerInvoiceProfitReport = () => {
               Date Range
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">From</label>
-                <div className="relative">
-                  <input
-                    ref={startDateRef}
-                    type="date"
-                    value={startDate}
-                    max={endDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      setDatePreset("custom");
-                      setPage(1);
-                    }}
-                    className="input-date-icon w-full rounded-lg border border-gray-200 px-2.5 py-1.5 pr-8 text-xs text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => startDateRef.current?.showPicker?.()}
-                    className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600"
-                    tabIndex={-1}
-                  >
-                    <MdCalendarToday className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">To</label>
-                <div className="relative">
-                  <input
-                    ref={endDateRef}
-                    type="date"
-                    value={endDate}
-                    min={startDate}
-                    onChange={(e) => {
-                      setEndDate(e.target.value);
-                      setDatePreset("custom");
-                      setPage(1);
-                    }}
-                    className="input-date-icon w-full rounded-lg border border-gray-200 px-2.5 py-1.5 pr-8 text-xs text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => endDateRef.current?.showPicker?.()}
-                    className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600"
-                    tabIndex={-1}
-                  >
-                    <MdCalendarToday className="size-3.5" />
-                  </button>
-                </div>
-              </div>
+              <ReportDateField
+                label="From"
+                value={startDate}
+                max={endDate}
+                onChange={(v) => {
+                  setStartDate(v);
+                  setDatePreset("custom");
+                  setPage(1);
+                }}
+              />
+              <ReportDateField
+                label="To"
+                value={endDate}
+                min={startDate}
+                onChange={(v) => {
+                  setEndDate(v);
+                  setDatePreset("custom");
+                  setPage(1);
+                }}
+              />
             </div>
             <div className="mt-2">
               <NiceSelect

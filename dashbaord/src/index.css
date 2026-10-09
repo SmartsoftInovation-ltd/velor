@@ -543,6 +543,12 @@ layer(base);
 .flatpickr-day.prevMonthDay {
   @apply text-gray-400!;
 }
+/* Days outside minDate/maxDate: the .flatpickr-day rule above forces dark
+   text, which made them look pickable. */
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.flatpickr-disabled:hover {
+  @apply cursor-not-allowed! text-gray-300! bg-transparent! dark:text-white/20!;
+}
 
 .flatpickr-months > .flatpickr-month {
   background: none !important;
@@ -1172,6 +1178,16 @@ span.flatpickr-weekday,
   body.printing-report tfoot {
     display: table-footer-group;
   }
+  /* Letterhead row inside <thead> (repeats on every printed page): a plain
+     cell, not a styled column heading. */
+  body.printing-report th.sheet-head-cell {
+    background: #fff !important;
+    border: none;
+    padding: 0 0 4px;
+    font-weight: normal;
+    text-transform: none;
+    text-align: left;
+  }
 }
 
 /* On-screen A4/A5 preview — the modal shows a copy of the print sheet,
@@ -1434,4 +1450,14 @@ body.printing-report.sheet-a5 th,
   .animate-modal-in {
     animation: none;
   }
+}
+
+/* Preview copy of the in-<thead> letterhead — mirrors the print rule above. */
+.paper-preview-body th.sheet-head-cell {
+  background: #fff !important;
+  border: none;
+  padding: 0 0 4px;
+  font-weight: normal;
+  text-transform: none;
+  text-align: left;
 }

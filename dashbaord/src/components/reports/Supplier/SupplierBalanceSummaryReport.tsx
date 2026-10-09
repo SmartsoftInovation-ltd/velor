@@ -11,9 +11,10 @@ import SearchableSelect from "../../form/SearchableSelect";
 import NiceSelect from "../../form/NiceSelect";
 
 import { IoIosPrint } from "react-icons/io";
-import { MdCalendarToday, MdChevronLeft, MdChevronRight, MdClose, MdOutlineFilterAlt } from "react-icons/md";
+import { MdChevronLeft, MdChevronRight, MdClose, MdOutlineFilterAlt } from "react-icons/md";
 import { TbReceipt2 } from "react-icons/tb";
 import { LuFileDown } from "react-icons/lu";
+import ReportDateField from "../../form/ReportDateField";
 
 // ---------- Types ----------
 interface BalanceRow {
@@ -164,56 +165,11 @@ const LEFT_COLUMNS: ColumnKey[] = TEXT_COLUMNS;
 
 const alignClass = (key: ColumnKey) => (LEFT_COLUMNS.includes(key) ? "text-left" : "text-right");
 
-// Date input with the picker button beside it inside one bordered box. A flex
-// row rather than an absolutely positioned icon, so the button can never drop
-// below the field in the narrow drawer.
-const DateField = ({
-  label,
-  inputRef,
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  label: string;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  value: string;
-  min?: string;
-  max?: string;
-  onChange: (value: string) => void;
-}) => (
-  <div className="min-w-0">
-    <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">{label}</label>
-    <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white py-1 pl-2.5 pr-1 focus-within:border-brand-400 dark:border-gray-700 dark:bg-gray-800">
-      <input
-        ref={inputRef}
-        type="date"
-        value={value}
-        min={min}
-        max={max}
-        onChange={(e) => onChange(e.target.value)}
-        className="input-date-icon min-w-0 flex-1 bg-transparent text-xs text-gray-700 outline-none dark:text-gray-200"
-      />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.showPicker?.()}
-        className="flex size-6 shrink-0 items-center justify-center rounded-md bg-brand-500 text-white hover:bg-brand-600"
-        tabIndex={-1}
-        aria-label={`Pick ${label.toLowerCase()} date`}
-      >
-        <MdCalendarToday className="size-3.5" />
-      </button>
-    </div>
-  </div>
-);
-
 // ---------- Component ----------
 const SupplierBalanceSummaryReport = () => {
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
   const thermalRef = useRef<HTMLDivElement>(null);
-  const startDateRef = useRef<HTMLInputElement>(null);
-  const endDateRef = useRef<HTMLInputElement>(null);
 
   // The ledger defaults to the supplier's whole history.
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
@@ -940,9 +896,8 @@ const SupplierBalanceSummaryReport = () => {
               Date Range
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <DateField
+              <ReportDateField
                 label="From"
-                inputRef={startDateRef}
                 value={startDate}
                 max={endDate}
                 onChange={(v) => {
@@ -954,9 +909,8 @@ const SupplierBalanceSummaryReport = () => {
                   setPage(1);
                 }}
               />
-              <DateField
+              <ReportDateField
                 label="To"
-                inputRef={endDateRef}
                 value={endDate}
                 min={startDate}
                 onChange={(v) => {
