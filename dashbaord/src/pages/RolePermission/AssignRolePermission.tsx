@@ -87,7 +87,7 @@ const REPORT_GROUPS: { label: string; modules: string[] }[] = [
   {
     label: "Accounts Report",
     modules: [
-      "Transaction Report", "Transaction Summary", "Cash Ledger", "Transaction Account Wise",
+      "Transaction Report", "Transaction Summary", "All Transaction Summary", "Cash Ledger", "Transaction Account Wise",
       "Account Transaction Summary", "Account Balance", "Fund Handover",
     ],
   },

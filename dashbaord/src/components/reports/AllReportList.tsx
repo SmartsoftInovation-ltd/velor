@@ -261,6 +261,11 @@ const categories: ReportCategory[] = [
         description: "Category-wise receive & payment totals with entry count",
         path: "/transaction-summary",
       },
+      {
+        name: "All Transaction Summary",
+        description: "Every transaction incl. sales, purchases & payments, per line",
+        path: "/all-transaction-summary",
+      },
     ],
   },
   {

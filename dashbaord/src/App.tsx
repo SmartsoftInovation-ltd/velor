@@ -210,6 +210,9 @@ const TransactionReport = lazy(
 const TransactionSummary = lazy(
   () => import("./components/reports/Account/TransactionSummary"),
 );
+const AllTransactionSummary = lazy(
+  () => import("./components/reports/Account/AllTransactionSummary"),
+);
 const OrderInvoice = lazy(
   () => import("./components/reports/Order/OrderInvoice"),
 );
@@ -1222,6 +1225,10 @@ export default function App() {
                 <Route
                   path="/transaction-summary"
                   element={<ProtectedRoute module="transaction-summary" action="view"><TransactionSummary /></ProtectedRoute>}
+                />
+                <Route
+                  path="/all-transaction-summary"
+                  element={<ProtectedRoute module="all-transaction-summary" action="view"><AllTransactionSummary /></ProtectedRoute>}
                 />
 
                 <Route

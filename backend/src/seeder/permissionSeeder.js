@@ -101,6 +101,7 @@ const permissionList = [
   { permissionName: "Low Stock Report" },
   { permissionName: "Transaction Report" },
   { permissionName: "Transaction Summary" },
+  { permissionName: "All Transaction Summary" },
   { permissionName: "Cash Ledger" },
   { permissionName: "Transaction Account Wise" },
   { permissionName: "Account Transaction Summary" },

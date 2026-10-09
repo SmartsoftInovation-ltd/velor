@@ -93,6 +93,7 @@ export const PERMISSIONS = {
   EMPLOYEE_PAYMENT_REPORT: "employee-payment-report",
   TRANSACTION_REPORT: "transaction-report",
   TRANSACTION_SUMMARY: "transaction-summary",
+  ALL_TRANSACTION_SUMMARY: "all-transaction-summary",
   CASH_LEDGER: "cash-ledger",
   TRANSACTION_ACCOUNT_WISE: "transaction-account-wise",
   ACCOUNT_TRANSACTION_SUMMARY: "account-transaction-summary",
@@ -205,6 +206,7 @@ export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/low-stock-report": PERMISSIONS.LOW_STOCK_REPORT,
   "/transaction-report": PERMISSIONS.TRANSACTION_REPORT,
   "/transaction-summary": PERMISSIONS.TRANSACTION_SUMMARY,
+  "/all-transaction-summary": PERMISSIONS.ALL_TRANSACTION_SUMMARY,
   "/employee-list-report": PERMISSIONS.EMPLOYEE_LIST_REPORT,
   "/employee-payment-report": PERMISSIONS.EMPLOYEE_PAYMENT_REPORT,
 };

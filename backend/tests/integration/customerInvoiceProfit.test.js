@@ -343,7 +343,12 @@ describe("transaction report", () => {
   const CrateTransaction = require("../../src/models/crateTransaction.model");
   const Account = require("../../src/models/account.model");
   const TransactionCategory = require("../../src/models/transitionCategory.model");
-  const { getTransactionReport, getTransactionSummaryReport } = require("../../src/controller/report.controller");
+  const {
+    getTransactionReport,
+    getTransactionSummaryReport,
+    getAllTransactionSummaryReport,
+  } = require("../../src/controller/report.controller");
+  const { MANUAL_ENTRY_ONLY } = require("../../src/controller/createTransition.controller");
 
   beforeAll(connectTestDb);
   afterEach(clearTestDb);
@@ -426,5 +431,48 @@ describe("transaction report", () => {
     expect(data.rows[0]).toMatchObject({ category: "Owner Credit", count: 1, receive: 4000, payment: 0 });
     expect(data.rows[1]).toMatchObject({ category: "Wifi Bill", count: 3, receive: 0, payment: 3000 });
     expect(data.totals).toMatchObject({ count: 4, categories: 2, receive: 4000, payment: 3000, balance: 1000 });
+  });
+
+  it("all-transaction summary puts module rows under one line each, ahead of manual categories", async () => {
+    const cash = new mongoose.Types.ObjectId();
+    const wifi = new mongoose.Types.ObjectId();
+    const salesCategory = new mongoose.Types.ObjectId();
+    await insert(Account, { _id: cash, name: "Cash" });
+    await insert(TransactionCategory, { _id: wifi, name: "Wifi Bill", allowedType: "cash payment" });
+    await insert(TransactionCategory, { _id: salesCategory, name: "Sales Payment", allowedType: "cash recived" });
+    const row = (extra) => insert(CrateTransaction, { date: new Date("2026-08-05"), account: cash, ...extra });
+
+    await row({ transactionCategory: salesCategory, transactionType: "cash recived", amount: 150000, saleReference: new mongoose.Types.ObjectId() });
+    await row({ transactionCategory: salesCategory, transactionType: "cash recived", amount: 50000, saleReference: new mongoose.Types.ObjectId() });
+    await row({ transactionType: "cash payment", amount: 20000, supplierPaymentReference: new mongoose.Types.ObjectId() });
+    await row({ transactionType: "cash payment", amount: 10000, purchaseReference: new mongoose.Types.ObjectId() });
+    await row({ transactionCategory: wifi, transactionType: "cash payment", amount: 1000 });
+
+    const data = await runReport({}, getAllTransactionSummaryReport);
+
+    expect(data.rows.map((r) => [r.category, r.count, r.receive, r.payment])).toEqual([
+      ["Product Sales", 2, 200000, 0],
+      ["Supplier Purchase Payment", 1, 0, 10000],
+      ["Supplier Dues Payment", 1, 0, 20000],
+      ["Wifi Bill", 1, 0, 1000],
+    ]);
+    expect(data.totals).toMatchObject({ count: 5, receive: 200000, payment: 31000, balance: 169000 });
+  });
+
+  // A module added to MANUAL_ENTRY_ONLY but not to the summary's source list
+  // would have its rows land under its category name instead of its own line.
+  it("all-transaction summary knows every module reference", async () => {
+    const cash = new mongoose.Types.ObjectId();
+    for (const field of Object.keys(MANUAL_ENTRY_ONLY)) {
+      await insert(CrateTransaction, {
+        date: new Date(), account: cash, transactionType: "cash payment", amount: 1,
+        [field]: new mongoose.Types.ObjectId(),
+      });
+    }
+
+    const data = await runReport({}, getAllTransactionSummaryReport);
+
+    expect(data.rows).toHaveLength(Object.keys(MANUAL_ENTRY_ONLY).length);
+    expect(data.rows.every((r) => r.isAuto)).toBe(true);
   });
 });

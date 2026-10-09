@@ -193,11 +193,21 @@ _.route("/transaction-summary").post(
   authorize("transaction-summary", "view"),
   reportController.getTransactionSummaryReport,
 );
-// The account / category dropdowns are shared by the report and the summary.
+_.route("/all-transaction-summary").post(
+  authGuard,
+  reportLimiter,
+  authorize("all-transaction-summary", "view"),
+  reportController.getAllTransactionSummaryReport,
+);
+// The account / category dropdowns are shared by the transaction reports.
 _.route("/transaction-report/options").get(
   authGuard,
   reportLimiter,
-  authorizeAny(["transaction-report", "view"], ["transaction-summary", "view"]),
+  authorizeAny(
+    ["transaction-report", "view"],
+    ["transaction-summary", "view"],
+    ["all-transaction-summary", "view"],
+  ),
   reportController.getTransactionReportOptions,
 );
 _.route("/supplier-payment").post(

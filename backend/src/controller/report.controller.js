@@ -6120,6 +6120,114 @@ exports.getTransactionSummaryReport = asynchandeler(async (req, res) => {
   });
 });
 
+// Each module that writes into the transaction collection tags its rows with
+// one reference field. The all-transaction summary shows each module as one
+// line under these labels, in this order, ahead of the hand-typed categories.
+const AUTO_TRANSACTION_SOURCES = [
+  { field: "saleReference", label: "Product Sales" },
+  { field: "customerPaymentReference", label: "Customer Payment Received" },
+  { field: "customerAdvancePaymentReference", label: "Customer Advance Payment" },
+  { field: "purchaseReference", label: "Supplier Purchase Payment" },
+  { field: "supplierPaymentReference", label: "Supplier Dues Payment" },
+  { field: "salesReturnReference", label: "Sales Return Refund" },
+  { field: "purchaseReturnReference", label: "Purchase Return Refund" },
+];
+
+// @desc All transaction summary — every transaction, hand-typed or written by
+// a sale, purchase, payment or return, totalled per line: one line per module
+// (AUTO_TRANSACTION_SOURCES) and one per hand-typed transaction category.
+exports.getAllTransactionSummaryReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, accountId, transactionType } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  // Same date / account / type filters as the transaction report, minus the
+  // manual-only restriction.
+  const match = transactionReportMatch({ startDate, endDate, accountId, transactionType });
+  for (const { field } of AUTO_TRANSACTION_SOURCES) delete match[field];
+
+  const sourceBranches = AUTO_TRANSACTION_SOURCES.map(({ field }, order) => ({
+    case: { $ne: [{ $ifNull: [`$${field}`, null] }, null] },
+    then: order,
+  }));
+
+  const [groups, header] = await Promise.all([
+    CrateTransaction.aggregate([
+      { $match: match },
+      { $addFields: { source: { $switch: { branches: sourceBranches, default: null } } } },
+      {
+        $group: {
+          // Module rows group by module; hand-typed rows by their category.
+          _id: {
+            source: "$source",
+            category: { $cond: [{ $eq: ["$source", null] }, "$transactionCategory", null] },
+          },
+          count: { $sum: 1 },
+          receive: RECEIVE_SUM,
+          payment: PAYMENT_SUM,
+        },
+      },
+      {
+        $lookup: {
+          from: TransactionCategory.collection.name,
+          localField: "_id.category",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          source: "$_id.source",
+          categoryId: "$_id.category",
+          categoryName: { $arrayElemAt: ["$category.name", 0] },
+          count: 1,
+          receive: 1,
+          payment: 1,
+        },
+      },
+    ]),
+    getStoreHeader(),
+  ]);
+
+  const sorted = groups
+    .map((g) => ({
+      key: g.source !== null ? `source:${g.source}` : `category:${g.categoryId || "none"}`,
+      category:
+        g.source !== null
+          ? AUTO_TRANSACTION_SOURCES[g.source].label
+          : g.categoryName || "Uncategorized",
+      isAuto: g.source !== null,
+      order: g.source !== null ? g.source : AUTO_TRANSACTION_SOURCES.length,
+      count: g.count,
+      receive: g.receive,
+      payment: g.payment,
+    }))
+    .sort((a, b) => a.order - b.order || a.category.localeCompare(b.category));
+
+  const totals = sorted.reduce(
+    (t, g) => ({
+      count: t.count + g.count,
+      receive: t.receive + g.receive,
+      payment: t.payment + g.payment,
+    }),
+    { count: 0, receive: 0, payment: 0 },
+  );
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "All transaction summary fetched successfully", {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      accountId: accountId || null,
+      transactionType: transactionType || null,
+    },
+    rows: sorted.slice(skip, skip + limit).map(({ order, ...row }) => row),
+    totals: { ...totals, categories: sorted.length, balance: totals.receive - totals.payment },
+    pagination: paginationMeta(sorted.length, page, limit, skip),
+    generatedAt: new Date(),
+  });
+});
+
 // @desc Account and category dropdowns for the transaction report and
 // summary. Served here so a user with only a report permission can still fill
 // the filters.
