@@ -207,6 +207,9 @@ const SmsStatus = lazy(() => import("./pages/SmsNotification/SmsStatus"));
 const TransactionReport = lazy(
   () => import("./components/reports/Account/TransactionReport"),
 );
+const TransactionSummary = lazy(
+  () => import("./components/reports/Account/TransactionSummary"),
+);
 const OrderInvoice = lazy(
   () => import("./components/reports/Order/OrderInvoice"),
 );
@@ -1215,6 +1218,10 @@ export default function App() {
                 <Route
                   path="/transaction-report"
                   element={<ProtectedRoute module="transaction-report" action="view"><TransactionReport /></ProtectedRoute>}
+                />
+                <Route
+                  path="/transaction-summary"
+                  element={<ProtectedRoute module="transaction-summary" action="view"><TransactionSummary /></ProtectedRoute>}
                 />
 
                 <Route

@@ -187,10 +187,17 @@ _.route("/transaction-report").post(
   authorize("transaction-report", "view"),
   reportController.getTransactionReport,
 );
+_.route("/transaction-summary").post(
+  authGuard,
+  reportLimiter,
+  authorize("transaction-summary", "view"),
+  reportController.getTransactionSummaryReport,
+);
+// The account / category dropdowns are shared by the report and the summary.
 _.route("/transaction-report/options").get(
   authGuard,
   reportLimiter,
-  authorize("transaction-report", "view"),
+  authorizeAny(["transaction-report", "view"], ["transaction-summary", "view"]),
   reportController.getTransactionReportOptions,
 );
 _.route("/supplier-payment").post(

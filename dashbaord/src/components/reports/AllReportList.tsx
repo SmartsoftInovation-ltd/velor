@@ -256,6 +256,11 @@ const categories: ReportCategory[] = [
         description: "Manual transactions with receive, payment & balance",
         path: "/transaction-report",
       },
+      {
+        name: "Transaction Summary",
+        description: "Category-wise receive & payment totals with entry count",
+        path: "/transaction-summary",
+      },
     ],
   },
   {

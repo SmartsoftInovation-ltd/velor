@@ -204,6 +204,7 @@ export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/stock-adjustment-report": PERMISSIONS.STOCK_ADJUSTMENT_REPORT,
   "/low-stock-report": PERMISSIONS.LOW_STOCK_REPORT,
   "/transaction-report": PERMISSIONS.TRANSACTION_REPORT,
+  "/transaction-summary": PERMISSIONS.TRANSACTION_SUMMARY,
   "/employee-list-report": PERMISSIONS.EMPLOYEE_LIST_REPORT,
   "/employee-payment-report": PERMISSIONS.EMPLOYEE_PAYMENT_REPORT,
 };

@@ -343,7 +343,7 @@ describe("transaction report", () => {
   const CrateTransaction = require("../../src/models/crateTransaction.model");
   const Account = require("../../src/models/account.model");
   const TransactionCategory = require("../../src/models/transitionCategory.model");
-  const { getTransactionReport } = require("../../src/controller/report.controller");
+  const { getTransactionReport, getTransactionSummaryReport } = require("../../src/controller/report.controller");
 
   beforeAll(connectTestDb);
   afterEach(clearTestDb);
@@ -354,11 +354,11 @@ describe("transaction report", () => {
       model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
     );
 
-  const runReport = (body = {}) =>
+  const runReport = (body = {}, handler = getTransactionReport) =>
     runForTenant(tenantId, async () => {
       let out;
       const res = { status: () => res, json: (b) => (out = b) };
-      await getTransactionReport({ body, query: {} }, res, (err) => { throw err; });
+      await handler({ body, query: {} }, res, (err) => { throw err; });
       return out.data;
     });
 
@@ -396,5 +396,35 @@ describe("transaction report", () => {
     const received = await runReport({ transactionType: "cash recived" });
     expect(received.rows.map((r) => r.transactionId)).toEqual(["TRXID-2"]);
     expect(received.totals).toMatchObject({ receive: 3000, payment: 0, balance: 3000 });
+  });
+
+  it("summary totals each category's entries — count, receive and payment", async () => {
+    const cash = new mongoose.Types.ObjectId();
+    const wifi = new mongoose.Types.ObjectId();
+    const credit = new mongoose.Types.ObjectId();
+    await insert(Account, { _id: cash, name: "Cash" });
+    await insert(TransactionCategory, { _id: wifi, name: "Wifi Bill", allowedType: "cash payment" });
+    await insert(TransactionCategory, { _id: credit, name: "Owner Credit", allowedType: "cash recived" });
+    for (const month of ["01", "02", "03"]) {
+      await insert(CrateTransaction, {
+        date: new Date(`2026-${month}-05`), account: cash, transactionCategory: wifi,
+        transactionType: "cash payment", amount: 1000,
+      });
+    }
+    await insert(CrateTransaction, {
+      date: new Date("2026-02-10"), account: cash, transactionCategory: credit,
+      transactionType: "cash recived", amount: 4000,
+    });
+    await insert(CrateTransaction, {
+      date: new Date("2026-02-11"), account: cash, transactionCategory: wifi,
+      transactionType: "cash payment", amount: 700, purchaseReference: new mongoose.Types.ObjectId(),
+    });
+
+    const data = await runReport({}, getTransactionSummaryReport);
+
+    expect(data.rows).toHaveLength(2);
+    expect(data.rows[0]).toMatchObject({ category: "Owner Credit", count: 1, receive: 4000, payment: 0 });
+    expect(data.rows[1]).toMatchObject({ category: "Wifi Bill", count: 3, receive: 0, payment: 3000 });
+    expect(data.totals).toMatchObject({ count: 4, categories: 2, receive: 4000, payment: 3000, balance: 1000 });
   });
 });

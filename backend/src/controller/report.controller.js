@@ -5972,15 +5972,7 @@ exports.getSupplierDuesReport = asynchandeler(async (req, res) => {
   });
 });
 
-// @desc Transaction report — the entries typed by hand on /add-transaction,
-// one row each, oldest first. Rows that sales, purchases, returns and payments
-// write into the same collection are left out (MANUAL_ENTRY_ONLY): those belong
-// to their own module's reports. "cash recived" fills the Receive column and
-// "cash payment" the Payment column; balance = receive - payment.
-exports.getTransactionReport = asynchandeler(async (req, res) => {
-  const { startDate, endDate, accountId, categoryId, transactionType } = req.body || {};
-  const { page, limit, skip } = parsePagination(req);
-
+function transactionReportMatch({ startDate, endDate, accountId, categoryId, transactionType }) {
   const match = { ...MANUAL_ENTRY_ONLY };
   if (startDate && endDate) {
     const rangeStart = new Date(startDate);
@@ -5997,6 +5989,21 @@ exports.getTransactionReport = asynchandeler(async (req, res) => {
     }
     match.transactionType = transactionType;
   }
+  return match;
+}
+
+const RECEIVE_SUM = { $sum: { $cond: [{ $eq: ["$transactionType", "cash recived"] }, "$amount", 0] } };
+const PAYMENT_SUM = { $sum: { $cond: [{ $eq: ["$transactionType", "cash payment"] }, "$amount", 0] } };
+
+// @desc Transaction report — the entries typed by hand on /add-transaction,
+// one row each, oldest first. Rows that sales, purchases, returns and payments
+// write into the same collection are left out (MANUAL_ENTRY_ONLY): those belong
+// to their own module's reports. "cash recived" fills the Receive column and
+// "cash payment" the Payment column; balance = receive - payment.
+exports.getTransactionReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, accountId, categoryId, transactionType } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+  const match = transactionReportMatch(req.body || {});
 
   const [transactions, totalCount, sums, header] = await Promise.all([
     CrateTransaction.find(match)
@@ -6011,15 +6018,7 @@ exports.getTransactionReport = asynchandeler(async (req, res) => {
     CrateTransaction.aggregate([
       { $match: match },
       {
-        $group: {
-          _id: null,
-          receive: {
-            $sum: { $cond: [{ $eq: ["$transactionType", "cash recived"] }, "$amount", 0] },
-          },
-          payment: {
-            $sum: { $cond: [{ $eq: ["$transactionType", "cash payment"] }, "$amount", 0] },
-          },
-        },
+        $group: { _id: null, receive: RECEIVE_SUM, payment: PAYMENT_SUM },
       },
     ]),
     getStoreHeader(),
@@ -6056,8 +6055,74 @@ exports.getTransactionReport = asynchandeler(async (req, res) => {
   });
 });
 
-// @desc Account and category dropdowns for the transaction report. Served
-// here so a user with only the report permission can still fill the filters.
+// @desc Transaction summary — the same hand-typed entries as the transaction
+// report, rolled up per transaction category: how many entries each category
+// had in the period and what they added up to (e.g. a year of WiFi bills).
+exports.getTransactionSummaryReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, accountId, categoryId, transactionType } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+  const match = transactionReportMatch(req.body || {});
+
+  const [groups, header] = await Promise.all([
+    CrateTransaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$transactionCategory",
+          count: { $sum: 1 },
+          receive: RECEIVE_SUM,
+          payment: PAYMENT_SUM,
+        },
+      },
+      {
+        $lookup: {
+          from: TransactionCategory.collection.name,
+          localField: "_id",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      {
+        $project: {
+          count: 1,
+          receive: 1,
+          payment: 1,
+          category: { $ifNull: [{ $arrayElemAt: ["$category.name", 0] }, "Uncategorized"] },
+        },
+      },
+      { $sort: { category: 1 } },
+    ]),
+    getStoreHeader(),
+  ]);
+
+  const totals = groups.reduce(
+    (t, g) => ({
+      count: t.count + g.count,
+      receive: t.receive + g.receive,
+      payment: t.payment + g.payment,
+    }),
+    { count: 0, receive: 0, payment: 0 },
+  );
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Transaction summary fetched successfully", {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      accountId: accountId || null,
+      categoryId: categoryId || null,
+      transactionType: transactionType || null,
+    },
+    rows: groups.slice(skip, skip + limit),
+    totals: { ...totals, categories: groups.length, balance: totals.receive - totals.payment },
+    pagination: paginationMeta(groups.length, page, limit, skip),
+    generatedAt: new Date(),
+  });
+});
+
+// @desc Account and category dropdowns for the transaction report and
+// summary. Served here so a user with only a report permission can still fill
+// the filters.
 exports.getTransactionReportOptions = asynchandeler(async (req, res) => {
   const [accounts, categories] = await Promise.all([
     Account.find().select("_id name").sort({ name: 1 }).lean(),

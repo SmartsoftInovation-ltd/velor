@@ -34,13 +34,14 @@ interface SearchableDropdownProps {
   error?: string;
   onPlusClick?: () => void;
   plusLabel?: string;
+  required?: boolean;
 }
 
 const SearchableDropdown = ({
-  label, placeholder, options, value, onChange, error, onPlusClick, plusLabel,
+  label, placeholder, options, value, onChange, error, onPlusClick, plusLabel, required,
 }: SearchableDropdownProps) => (
   <div className="flex flex-col gap-1">
-    <Label>{label}</Label>
+    <Label>{label}{required && <span className="text-red-500"> *</span>}</Label>
     <div className="flex items-center gap-2">
       <div className="flex-1 min-w-0">
         <SearchableSelect
@@ -116,7 +117,7 @@ const QuickAddModal = ({ title, placeholder, onClose, onSave, requireType, onSav
           </button>
         </div>
         <div className="space-y-1">
-          <Label>{title} Name</Label>
+          <Label>{title} Name <span className="text-red-500">*</span></Label>
           <input
             autoFocus
             type="text"
@@ -129,7 +130,7 @@ const QuickAddModal = ({ title, placeholder, onClose, onSave, requireType, onSav
         </div>
         {requireType && (
           <div className="space-y-1">
-            <Label>Transaction Type</Label>
+            <Label>Transaction Type <span className="text-red-500">*</span></Label>
             <SearchableSelect
               options={[
                 { value: "cash recived", label: "Cash Received" },
@@ -307,7 +308,7 @@ const AddTransactionForm = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Date */}
               <div className="flex flex-col gap-1">
-                <Label>Date</Label>
+                <Label>Date <span className="text-red-500">*</span></Label>
                 <DatePicker
                   id="date-picker-transaction"
                   placeholder="Select a date"
@@ -318,7 +319,7 @@ const AddTransactionForm = () => {
               </div>
               {/* Amount */}
               <div className="flex flex-col gap-1">
-                <Label>Amount</Label>
+                <Label>Amount <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   name="amount"
@@ -332,6 +333,7 @@ const AddTransactionForm = () => {
               {/* Transaction Category */}
               <SearchableDropdown
                 label="Transaction Category"
+                required
                 placeholder="Select category..."
                 options={categoryOptions}
                 value={formData.transactionCategory}
@@ -343,6 +345,7 @@ const AddTransactionForm = () => {
               {/* Account */}
               <SearchableDropdown
                 label="Account"
+                required
                 placeholder="Select account..."
                 options={accountOptions}
                 value={formData.account}
@@ -354,6 +357,7 @@ const AddTransactionForm = () => {
               {/* Transaction Type — locked to selected category's allowedType */}
               <SearchableDropdown
                 label="Transaction Type"
+                required
                 placeholder="Select category first..."
                 options={typeOptions}
                 value={formData.transactionType}
@@ -373,7 +377,7 @@ const AddTransactionForm = () => {
               </div>
               {/* Description */}
               <div className="flex flex-col gap-1 md:col-span-2">
-                <Label>Description</Label>
+                <Label>Description <span className="text-red-500">*</span></Label>
                 <textarea
                   name="transactionDescription"
                   value={formData.transactionDescription}
