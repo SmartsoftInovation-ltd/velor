@@ -217,6 +217,12 @@ _.route("/account-transaction-summary").post(
   authorize("account-transaction-summary", "view"),
   reportController.getAccountTransactionSummaryReport,
 );
+_.route("/account-balance").post(
+  authGuard,
+  reportLimiter,
+  authorize("account-balance", "view"),
+  reportController.getAccountBalanceReport,
+);
 // The account / category dropdowns are shared by the transaction reports.
 _.route("/transaction-report/options").get(
   authGuard,

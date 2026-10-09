@@ -212,6 +212,7 @@ export const REPORT_MODULES: Record<string, PermissionModule> = {
   "/accounts-ledger": PERMISSIONS.ACCOUNTS_LEDGER,
   "/account-day-transaction": PERMISSIONS.ACCOUNT_DAY_TRANSACTION,
   "/account-transaction-summary": PERMISSIONS.ACCOUNT_TRANSACTION_SUMMARY,
+  "/account-balance": PERMISSIONS.ACCOUNT_BALANCE,
   "/employee-list-report": PERMISSIONS.EMPLOYEE_LIST_REPORT,
   "/employee-payment-report": PERMISSIONS.EMPLOYEE_PAYMENT_REPORT,
 };

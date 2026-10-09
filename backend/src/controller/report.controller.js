@@ -6416,6 +6416,54 @@ exports.getAccountTransactionSummaryReport = asynchandeler(async (req, res) => {
   });
 });
 
+// @desc Account balance — what each account held at the end of a day: every
+// transaction up to and including it (hand-typed or written by a module),
+// received minus paid. Worked out from the transactions rather than the
+// account's stored balance so a past date can be asked for. Every account is
+// listed, in the order they were created.
+exports.getAccountBalanceReport = asynchandeler(async (req, res) => {
+  const { asOfDate } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = {};
+  if (asOfDate) {
+    const rangeEnd = new Date(asOfDate);
+    if (Number.isNaN(rangeEnd.getTime())) {
+      throw new customError("Invalid asOfDate", statusCodes.BAD_REQUEST);
+    }
+    rangeEnd.setHours(23, 59, 59, 999);
+    match.date = { $lte: rangeEnd };
+  }
+
+  const [accounts, groups, header] = await Promise.all([
+    Account.find().select("_id name").sort({ createdAt: 1 }).lean(),
+    CrateTransaction.aggregate([
+      { $match: match },
+      { $group: { _id: "$account", receive: RECEIVE_SUM, payment: PAYMENT_SUM } },
+    ]),
+    getStoreHeader(),
+  ]);
+
+  const balances = new Map(groups.map((g) => [String(g._id), g.receive - g.payment]));
+  const toRow = (id, name) => {
+    const balance = balances.get(String(id)) || 0;
+    balances.delete(String(id));
+    return { _id: id, account: name, balance };
+  };
+  const rows = accounts.map((a) => toRow(a._id, a.name));
+  // Rows whose account has since been deleted still count toward the total.
+  for (const id of [...balances.keys()]) rows.push(toRow(id === "null" ? null : id, "Unknown account"));
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Account balance fetched successfully", {
+    header,
+    filters: { asOfDate: asOfDate || null },
+    rows: rows.slice(skip, skip + limit),
+    totals: { count: rows.length, balance: rows.reduce((t, r) => t + r.balance, 0) },
+    pagination: paginationMeta(rows.length, page, limit, skip),
+    generatedAt: new Date(),
+  });
+});
+
 // @desc Account and category dropdowns for the transaction report and
 // summary. Served here so a user with only a report permission can still fill
 // the filters.
