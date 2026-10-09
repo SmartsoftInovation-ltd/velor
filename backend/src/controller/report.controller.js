@@ -6123,14 +6123,16 @@ exports.getTransactionSummaryReport = asynchandeler(async (req, res) => {
 // Each module that writes into the transaction collection tags its rows with
 // one reference field. The all-transaction summary shows each module as one
 // line under these labels, in this order, ahead of the hand-typed categories.
+// `serial` is the source document's own number, which the accounts ledger
+// shows as the row's transaction ID.
 const AUTO_TRANSACTION_SOURCES = [
-  { field: "saleReference", label: "Product Sales" },
-  { field: "customerPaymentReference", label: "Customer Payment Received" },
-  { field: "customerAdvancePaymentReference", label: "Customer Advance Payment" },
-  { field: "purchaseReference", label: "Supplier Purchase Payment" },
-  { field: "supplierPaymentReference", label: "Supplier Dues Payment" },
-  { field: "salesReturnReference", label: "Sales Return Refund" },
-  { field: "purchaseReturnReference", label: "Purchase Return Refund" },
+  { field: "saleReference", label: "Product Sales", serial: "invoiceNumber" },
+  { field: "customerPaymentReference", label: "Customer Payment Received", serial: "paymentId" },
+  { field: "customerAdvancePaymentReference", label: "Customer Advance Payment", serial: "paymentId" },
+  { field: "purchaseReference", label: "Supplier Purchase Payment", serial: "serial" },
+  { field: "supplierPaymentReference", label: "Supplier Dues Payment", serial: "supplierPaymentSerialId" },
+  { field: "salesReturnReference", label: "Sales Return Refund", serial: "returnId" },
+  { field: "purchaseReturnReference", label: "Purchase Return Refund", serial: "serial" },
 ];
 
 // @desc All transaction summary — every transaction, hand-typed or written by
@@ -6224,6 +6226,72 @@ exports.getAllTransactionSummaryReport = asynchandeler(async (req, res) => {
     rows: sorted.slice(skip, skip + limit).map(({ order, ...row }) => row),
     totals: { ...totals, categories: sorted.length, balance: totals.receive - totals.payment },
     pagination: paginationMeta(sorted.length, page, limit, skip),
+    generatedAt: new Date(),
+  });
+});
+
+// @desc Accounts ledger — every transaction, hand-typed or written by a sale,
+// purchase, payment or return, one row each, oldest first. A module's row
+// shows the source document's number as its transaction ID and the module's
+// line from the all-transaction summary as its category.
+exports.getAccountsLedgerReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, accountId, transactionType } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  const match = transactionReportMatch({ startDate, endDate, accountId, transactionType });
+  for (const { field } of AUTO_TRANSACTION_SOURCES) delete match[field];
+
+  let query = CrateTransaction.find(match)
+    .populate("account", "name")
+    .populate("transactionCategory", "name")
+    .sort({ date: 1, createdAt: 1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+  for (const { field, serial } of AUTO_TRANSACTION_SOURCES) {
+    query = query.populate(field, serial);
+  }
+
+  const [transactions, totalCount, sums, header] = await Promise.all([
+    query,
+    CrateTransaction.countDocuments(match),
+    CrateTransaction.aggregate([
+      { $match: match },
+      { $group: { _id: null, receive: RECEIVE_SUM, payment: PAYMENT_SUM } },
+    ]),
+    getStoreHeader(),
+  ]);
+
+  const rows = transactions.map((t) => {
+    const source = AUTO_TRANSACTION_SOURCES.find(({ field }) => t[field]);
+    return {
+      _id: t._id,
+      date: t.date,
+      transactionId: (source && t[source.field]?.[source.serial]) || t.transactionSerialId || "",
+      category: source ? source.label : t.transactionCategory?.name || "",
+      isAuto: Boolean(source),
+      description: t.transactionDescription || "",
+      referenceId: t.voucherNumber || "",
+      account: t.account?.name || "",
+      receive: t.transactionType === "cash recived" ? t.amount || 0 : 0,
+      payment: t.transactionType === "cash payment" ? t.amount || 0 : 0,
+    };
+  });
+
+  const receive = sums[0]?.receive || 0;
+  const payment = sums[0]?.payment || 0;
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Accounts ledger fetched successfully", {
+    header,
+    filters: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      accountId: accountId || null,
+      transactionType: transactionType || null,
+    },
+    rows,
+    totals: { count: totalCount, receive, payment, balance: receive - payment },
+    pagination: paginationMeta(totalCount, page, limit, skip),
     generatedAt: new Date(),
   });
 });

@@ -266,6 +266,11 @@ const categories: ReportCategory[] = [
         description: "Every transaction incl. sales, purchases & payments, per line",
         path: "/all-transaction-summary",
       },
+      {
+        name: "Accounts Ledger",
+        description: "Every transaction row-wise, incl. sales, purchases & payments",
+        path: "/accounts-ledger",
+      },
     ],
   },
   {

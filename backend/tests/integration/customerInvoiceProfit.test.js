@@ -347,6 +347,7 @@ describe("transaction report", () => {
     getTransactionReport,
     getTransactionSummaryReport,
     getAllTransactionSummaryReport,
+    getAccountsLedgerReport,
   } = require("../../src/controller/report.controller");
   const { MANUAL_ENTRY_ONLY } = require("../../src/controller/createTransition.controller");
 
@@ -474,5 +475,32 @@ describe("transaction report", () => {
 
     expect(data.rows).toHaveLength(Object.keys(MANUAL_ENTRY_ONLY).length);
     expect(data.rows.every((r) => r.isAuto)).toBe(true);
+  });
+
+  it("accounts ledger lists every row, module rows under their source document's number", async () => {
+    const cash = new mongoose.Types.ObjectId();
+    const rent = new mongoose.Types.ObjectId();
+    const paymentId = new mongoose.Types.ObjectId();
+    const { SupplierDuePayment } = require("../../src/models/supplier.model");
+    await insert(Account, { _id: cash, name: "Cash" });
+    await insert(TransactionCategory, { _id: rent, name: "Shop Rent", allowedType: "cash payment" });
+    await insert(SupplierDuePayment, { _id: paymentId, supplierPaymentSerialId: "SUPLP-SI-09" });
+    await insert(CrateTransaction, {
+      date: new Date("2026-08-01"), transactionSerialId: "TRXID-1", account: cash, transactionCategory: rent,
+      transactionDescription: "Sujon", voucherNumber: "58689", transactionType: "cash payment", amount: 20000,
+    });
+    await insert(CrateTransaction, {
+      date: new Date("2026-08-02"), transactionSerialId: "TRXID-2", account: cash,
+      transactionDescription: "Supplier payment", transactionType: "cash payment", amount: 50000,
+      supplierPaymentReference: paymentId,
+    });
+
+    const data = await runReport({}, getAccountsLedgerReport);
+
+    expect(data.rows.map((r) => [r.transactionId, r.category, r.referenceId, r.payment])).toEqual([
+      ["TRXID-1", "Shop Rent", "58689", 20000],
+      ["SUPLP-SI-09", "Supplier Dues Payment", "", 50000],
+    ]);
+    expect(data.totals).toMatchObject({ count: 2, receive: 0, payment: 70000, balance: -70000 });
   });
 });

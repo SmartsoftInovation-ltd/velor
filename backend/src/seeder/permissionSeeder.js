@@ -102,6 +102,7 @@ const permissionList = [
   { permissionName: "Transaction Report" },
   { permissionName: "Transaction Summary" },
   { permissionName: "All Transaction Summary" },
+  { permissionName: "Accounts Ledger" },
   { permissionName: "Cash Ledger" },
   { permissionName: "Transaction Account Wise" },
   { permissionName: "Account Transaction Summary" },

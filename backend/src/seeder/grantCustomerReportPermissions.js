@@ -26,6 +26,7 @@ const PERMISSION_NAMES = [
   "Supplier Balance Summary Report",
   "Supplier Dues Report",
   "All Transaction Summary",
+  "Accounts Ledger",
 ];
 
 const TARGET_ROLE_SLUGS = ["admin", "manager", "salesman"];
