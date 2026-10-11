@@ -89,6 +89,7 @@ const permissionList = [
   { permissionName: "Invoice Profit Report" },
   { permissionName: "Product Profit Report" },
   { permissionName: "Top Sales Product Report" },
+  { permissionName: "Push Sales Product Report" },
   { permissionName: "Top Customer Report" },
   { permissionName: "Supplier Purchase Invoice Report" },
   { permissionName: "Supplier Payment Report" },

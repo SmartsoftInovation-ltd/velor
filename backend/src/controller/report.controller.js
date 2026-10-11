@@ -9,6 +9,7 @@ const Variant = require("../models/variant.model");
 const StockAdjust = require("../models/stockadjust.model");
 const CourierReturn = require("../models/courierReturn.model");
 const Sales = require("../models/sales.model");
+const Order = require("../models/order.model");
 const SalesReturn = require("../models/salesReturn.model");
 const {
   customerModel: Customer,
@@ -4855,6 +4856,253 @@ exports.getTopSalesProductReport = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "Top sales product report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// Units of each product / variant sold in a period, keyed by its id as a
+// string. Counter sales come from the sale lines, website sales from the
+// orders. The lifetime counters on the catalogue (posSold, totalSales) cannot
+// answer "sold in this period", so both are counted from the documents.
+const soldQuantitiesBetween = async (rangeStart, rangeEnd) => {
+  const sold = new Map();
+  const add = (id, qty) => {
+    if (!id || !(qty > 0)) return;
+    const key = String(id);
+    sold.set(key, (sold.get(key) || 0) + qty);
+  };
+
+  const counter = await Sales.aggregate([
+    { $match: { date: { $gte: rangeStart, $lte: rangeEnd } } },
+    { $unwind: "$searchItem" },
+    { $match: { "searchItem.salesStatus": { $nin: ["return", "exchange"] } } },
+    {
+      $group: {
+        // The variant is the item when the line has one
+        _id: { $ifNull: ["$searchItem.variantId", "$searchItem.productId"] },
+        qty: { $sum: { $ifNull: ["$searchItem.quantity", 0] } },
+      },
+    },
+  ]);
+  for (const row of counter) add(row._id, row.qty);
+
+  // Order items are free-form snapshots: `variant` / `product` hold either the
+  // whole document or just its id, so they are read here rather than in a
+  // pipeline.
+  const orders = await Order.find({
+    createdAt: { $gte: rangeStart, $lte: rangeEnd },
+    orderStatus: { $ne: "Cancelled" },
+  })
+    .select("items")
+    .lean();
+  const idOf = (ref) => ref?._id ?? ref ?? null;
+  for (const order of orders) {
+    for (const item of order.items || []) {
+      add(idOf(item?.variant) ?? idOf(item?.product), Number(item?.quantity) || 0);
+    }
+  }
+
+  return sold;
+};
+
+// @desc Push sales product report — products and variants that have stock on
+// hand but sold nothing (or next to nothing) in the period, so the shop knows
+// what to push.
+//
+//   One row per variant, or per product that has no variants. Only active
+//   items with stock are listed.
+//
+//   SOLD QTY          = units sold in the period, counter and website together
+//   BUY PRICE         = purchasePrice
+//   SALES PRICE       = retailPrice
+//   STOCK QTY         = stock on hand now
+//   BUY STOCK VALUE   = BUY PRICE × STOCK QTY — the money sitting in it
+//   SALES STOCK VALUE = SALES PRICE × STOCK QTY
+//   PROFIT VALUE      = SALES STOCK VALUE − BUY STOCK VALUE
+//
+// `maxSold` is the most units an item may have sold and still be listed
+// (0 = unsold only). Least sold first, then the most money tied up. `top`
+// keeps only that many, and the totals row covers just them.
+exports.getPushSalesProductReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, maxSold, top } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const topN = Math.max(0, parseInt(top, 10) || 0);
+  const soldLimit = Math.max(0, parseInt(maxSold, 10) || 0);
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const cacheKey = await buildCacheKey(
+    PRODUCT_NS,
+    `report:push-sales-product:${startDate}:${endDate}:s${soldLimit}:t${topN}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Push sales product report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const sold = await soldQuantitiesBetween(rangeStart, rangeEnd);
+  const soldIds = [...sold.keys()].map((id) => new mongoose.Types.ObjectId(id));
+  const soldQtys = [...sold.values()];
+
+  const pipeline = [
+    { $match: { isActive: { $ne: false } } },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "_id",
+        foreignField: "product",
+        as: "variants",
+        pipeline: [
+          { $match: { isActive: { $ne: false } } },
+          { $project: { barCode: 1, size: 1, color: 1, purchasePrice: 1, retailPrice: 1, stockVariant: 1 } },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        items: {
+          $cond: [
+            { $gt: [{ $size: "$variants" }, 0] },
+            {
+              $map: {
+                input: "$variants",
+                as: "v",
+                in: {
+                  itemId: "$$v._id",
+                  variantId: "$$v._id",
+                  barcode: "$$v.barCode",
+                  color: "$$v.color",
+                  size: "$$v.size",
+                  buyPrice: { $ifNull: ["$$v.purchasePrice", 0] },
+                  salesPrice: { $ifNull: ["$$v.retailPrice", 0] },
+                  stockQty: { $ifNull: ["$$v.stockVariant", 0] },
+                },
+              },
+            },
+            {
+              $cond: [
+                // A multi-variant product with no variants yet has nothing to sell
+                { $eq: ["$variantType", "multipleVariant"] },
+                [],
+                [
+                  {
+                    itemId: "$_id",
+                    variantId: null,
+                    barcode: "$barCode",
+                    color: "$color",
+                    size: "$size",
+                    buyPrice: { $ifNull: ["$purchasePrice", 0] },
+                    salesPrice: { $ifNull: ["$retailPrice", 0] },
+                    stockQty: { $ifNull: ["$stock", 0] },
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    },
+    { $unwind: "$items" },
+    { $match: { "items.stockQty": { $gt: 0 } } },
+    { $addFields: { soldIndex: { $indexOfArray: [soldIds, "$items.itemId"] } } },
+    {
+      $addFields: {
+        soldQty: {
+          $cond: [{ $gte: ["$soldIndex", 0] }, { $arrayElemAt: [soldQtys, "$soldIndex"] }, 0],
+        },
+        buyStockValue: { $round: [{ $multiply: ["$items.buyPrice", "$items.stockQty"] }, 2] },
+        salesStockValue: { $round: [{ $multiply: ["$items.salesPrice", "$items.stockQty"] }, 2] },
+      },
+    },
+    { $match: { soldQty: { $lte: soldLimit } } },
+    { $sort: { soldQty: 1, buyStockValue: -1, "items.itemId": 1 } },
+    ...(topN > 0 ? [{ $limit: topN }] : []),
+    {
+      $facet: {
+        rows: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 0,
+              productId: "$_id",
+              variantId: "$items.variantId",
+              productName: filled("$name"),
+              barcode: filled("$items.barcode"),
+              color: filled("$items.color"),
+              size: filled("$items.size"),
+              soldQty: 1,
+              buyPrice: "$items.buyPrice",
+              salesPrice: "$items.salesPrice",
+              stockQty: "$items.stockQty",
+              buyStockValue: 1,
+              salesStockValue: 1,
+              profitValue: { $round: [{ $subtract: ["$salesStockValue", "$buyStockValue"] }, 2] },
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalSoldQty: { $sum: "$soldQty" },
+              totalBuyPrice: { $sum: "$items.buyPrice" },
+              totalSalesPrice: { $sum: "$items.salesPrice" },
+              totalStockQty: { $sum: "$items.stockQty" },
+              totalBuyStockValue: { $sum: "$buyStockValue" },
+              totalSalesStockValue: { $sum: "$salesStockValue" },
+            },
+          },
+          { $addFields: { totalProfitValue: { $round: [{ $subtract: ["$totalSalesStockValue", "$totalBuyStockValue"] }, 2] } } },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await Product.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalSoldQty: 0,
+    totalBuyPrice: 0,
+    totalSalesPrice: 0,
+    totalStockQty: 0,
+    totalBuyStockValue: 0,
+    totalSalesStockValue: 0,
+    totalProfitValue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: { startDate, endDate, maxSold: soldLimit, top: topN },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Push sales product report fetched successfully",
     { ...payload, fromCache: false },
   );
 });

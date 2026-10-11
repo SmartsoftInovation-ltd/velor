@@ -112,6 +112,11 @@ const categories: ReportCategory[] = [
         description: "Best-selling products with buy price, sales price, qty, total & profit",
         path: "/top-sales-product",
       },
+      {
+        name: "Push Sales Product",
+        description: "In-stock products that are not selling, with buy, sales & profit stock value",
+        path: "/push-sales-product",
+      },
     ],
   },
   {
