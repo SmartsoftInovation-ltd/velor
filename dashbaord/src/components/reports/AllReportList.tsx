@@ -122,6 +122,11 @@ const categories: ReportCategory[] = [
         description: "Returned products with buy, WS & RS price, discount and refunded total",
         path: "/product-sales-return",
       },
+      {
+        name: "Product Sales Return Summary",
+        description: "Product-wise returned qty, prices, discount and refunded total",
+        path: "/product-sales-return-summary",
+      },
     ],
   },
   {

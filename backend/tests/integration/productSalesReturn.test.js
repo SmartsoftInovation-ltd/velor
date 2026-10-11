@@ -8,7 +8,7 @@ const salesModel = require("../../src/models/sales.model");
 const salesReturnModel = require("../../src/models/salesReturn.model");
 const productModel = require("../../src/models/product.model");
 const variantModel = require("../../src/models/variant.model");
-const { getProductSalesReturnReport } = require("../../src/controller/report.controller");
+const { getProductSalesReturnReport, getProductSalesReturnSummaryReport } = require("../../src/controller/report.controller");
 
 const localToday = () => {
   const d = new Date();
@@ -34,17 +34,19 @@ describe("product sales return report", () => {
       model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
     );
 
-  const runReport = (extra = {}) =>
+  const run = (handler, extra = {}) =>
     runForTenant(tenantId, async () => {
       const today = localToday();
       let body;
       let error;
       const req = { body: { startDate: today, endDate: today, ...extra }, query: {} };
       const res = { status: () => res, json: (b) => (body = b) };
-      await getProductSalesReturnReport(req, res, (err) => (error = err));
+      await handler(req, res, (err) => (error = err));
       if (error) throw error;
       return body.data;
     });
+  const runReport = (extra) => run(getProductSalesReturnReport, extra);
+  const runSummary = (extra) => run(getProductSalesReturnSummaryReport, extra);
 
   const sale = async (invoiceNumber, searchItem) =>
     (await insert(salesModel, { date: new Date(), invoiceNumber, customerType: { type: "walking", walking: {} }, searchItem })).insertedId;
@@ -110,6 +112,49 @@ describe("product sales return report", () => {
     // 2000 − 200 − 50; a variant takes its product's name and its own prices
     expect(rows[1]).toMatchObject({ productName: "Jeans Pant", barcode: "690", buyPrice: 900, wsPrice: 1300, rsPrice: 1750, discount: 250, total: 1750 });
     expect(totals.totalAmount).toBe(2600);
+  });
+
+  it("summary adds a product's returns together and matches the detail totals", async () => {
+    const first = await sale("INV-A", [{ productId: shirtId, quantity: 5, salesRate: 1650, discount: 250, discountType: "amount", purchasePrice: 700 }]);
+    const second = await sale("INV-B", [
+      { productId: shirtId, quantity: 2, salesRate: 1650 },
+      { productId: null, variantId, quantity: 1, salesRate: 1750 },
+    ]);
+    // 2 shirts back at the net 1400 each
+    await insert(salesReturnModel, { returnId: "S-1", date: new Date(), invoiceNumber: first, allproduct: [{ product: shirtId, variant: null, quantity: 2, unitPrice: 1400, subtotal: 2800 }], totalReturnAmount: 2800 });
+    // 1 shirt and 1 jeans back at full price
+    await insert(salesReturnModel, {
+      returnId: "S-2",
+      date: new Date(),
+      invoiceNumber: second,
+      allproduct: [
+        { product: shirtId, variant: null, quantity: 1, unitPrice: 1650, subtotal: 1650 },
+        { product: null, variant: variantId, quantity: 1, unitPrice: 1750, subtotal: 1750 },
+      ],
+      totalReturnAmount: 3400,
+    });
+
+    const { rows, totals } = await runSummary();
+    expect(rows).toHaveLength(2);
+    // 3 shirts: 2 stamped at 700, 1 at the catalogue's 800 → 733.33 a unit;
+    // sold for 3 × 1650 = 4950, refunded 4450
+    expect(rows[0]).toMatchObject({
+      productName: "Casual Full Shirt",
+      barcode: "688",
+      qty: 3,
+      buyPrice: 733.33,
+      wsPrice: 1250,
+      rsPrice: 1650,
+      discount: 500,
+      total: 4450,
+    });
+    expect(rows[1]).toMatchObject({ productName: "Jeans Pant", barcode: "690", color: "Blue", size: "32", qty: 1, buyPrice: 900, discount: 0, total: 1750 });
+    expect(totals).toMatchObject({ count: 2, totalQty: 4, totalDiscount: 500, totalAmount: 6200 });
+
+    require("../mocks/redisCache").__reset();
+    const detail = await runReport();
+    expect(totals.totalAmount).toBe(detail.totals.totalAmount);
+    expect(totals.totalQty).toBe(detail.totals.totalQty);
   });
 
   it("leaves details empty when the product is gone, and filters by search", async () => {

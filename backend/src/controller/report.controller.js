@@ -5119,6 +5119,85 @@ exports.getPushSalesProductReport = asynchandeler(async (req, res) => {
   );
 });
 
+// One document per product on a sales return dated within the range, shared
+// by the product sales return report and its summary. Each carries:
+//
+//   qty        units returned
+//   saleLine   the sale line the item came back from, when it can be found
+//   soldRate   the price one unit was sold at
+//   lineTotal  money refunded for the row, read from the return as it was
+//              saved: its items at their unit price, less the return's
+//              discount percent and its share of the less-taka given back
+const salesReturnLineStages = (rangeStart, rangeEnd) => [
+  { $match: { date: { $gte: rangeStart, $lte: rangeEnd } } },
+  {
+    $lookup: {
+      from: "sales",
+      localField: "invoiceNumber",
+      foreignField: "_id",
+      as: "sale",
+      pipeline: [{ $project: { invoiceNumber: 1, searchItem: 1 } }],
+    },
+  },
+  { $unwind: { path: "$sale", preserveNullAndEmptyArrays: true } },
+  { $addFields: { returnedUnits: { $sum: "$allproduct.quantity" } } },
+  { $unwind: { path: "$allproduct", includeArrayIndex: "lineIndex" } },
+  {
+    $addFields: {
+      qty: { $ifNull: ["$allproduct.quantity", 0] },
+      // The sale line the item came back from — by variant when the return
+      // names one, by product otherwise, as the return itself finds it.
+      saleLine: {
+        $first: {
+          $filter: {
+            input: { $ifNull: ["$sale.searchItem", []] },
+            as: "si",
+            cond: {
+              $cond: [
+                { $ne: [{ $ifNull: ["$allproduct.variant", null] }, null] },
+                { $eq: ["$$si.variantId", "$allproduct.variant"] },
+                { $eq: ["$$si.productId", "$allproduct.product"] },
+              ],
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    $addFields: {
+      lineGross: { $multiply: [{ $ifNull: ["$allproduct.unitPrice", 0] }, "$qty"] },
+    },
+  },
+  {
+    $addFields: {
+      lineTotal: {
+        $max: [
+          0,
+          {
+            $subtract: [
+              "$lineGross",
+              {
+                $add: [
+                  { $divide: [{ $multiply: ["$lineGross", { $ifNull: ["$discountPercent", 0] }] }, 100] },
+                  {
+                    $cond: [
+                      { $gt: ["$returnedUnits", 0] },
+                      { $multiply: [{ $divide: [{ $ifNull: ["$lessTakaShare", 0] }, "$returnedUnits"] }, "$qty"] },
+                      0,
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      soldRate: { $ifNull: ["$saleLine.salesRate", { $ifNull: ["$allproduct.unitPrice", 0] }] },
+    },
+  },
+];
+
 // @desc Product sales return report — one row per product on a sales return.
 //
 //   SALES RETURN ID / DATE = the return's own id and date
@@ -5168,75 +5247,7 @@ exports.getProductSalesReturnReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const pipeline = [
-    { $match: { date: { $gte: rangeStart, $lte: rangeEnd } } },
-    {
-      $lookup: {
-        from: "sales",
-        localField: "invoiceNumber",
-        foreignField: "_id",
-        as: "sale",
-        pipeline: [{ $project: { invoiceNumber: 1, searchItem: 1 } }],
-      },
-    },
-    { $unwind: { path: "$sale", preserveNullAndEmptyArrays: true } },
-    { $addFields: { returnedUnits: { $sum: "$allproduct.quantity" } } },
-    { $unwind: { path: "$allproduct", includeArrayIndex: "lineIndex" } },
-    {
-      $addFields: {
-        qty: { $ifNull: ["$allproduct.quantity", 0] },
-        // The sale line the item came back from — by variant when the return
-        // names one, by product otherwise, as the return itself finds it.
-        saleLine: {
-          $first: {
-            $filter: {
-              input: { $ifNull: ["$sale.searchItem", []] },
-              as: "si",
-              cond: {
-                $cond: [
-                  { $ne: [{ $ifNull: ["$allproduct.variant", null] }, null] },
-                  { $eq: ["$$si.variantId", "$allproduct.variant"] },
-                  { $eq: ["$$si.productId", "$allproduct.product"] },
-                ],
-              },
-            },
-          },
-        },
-      },
-    },
-    {
-      $addFields: {
-        lineGross: { $multiply: [{ $ifNull: ["$allproduct.unitPrice", 0] }, "$qty"] },
-      },
-    },
-    {
-      $addFields: {
-        lineTotal: {
-          $max: [
-            0,
-            {
-              $subtract: [
-                "$lineGross",
-                {
-                  $add: [
-                    { $divide: [{ $multiply: ["$lineGross", { $ifNull: ["$discountPercent", 0] }] }, 100] },
-                    {
-                      $cond: [
-                        { $gt: ["$returnedUnits", 0] },
-                        { $multiply: [{ $divide: [{ $ifNull: ["$lessTakaShare", 0] }, "$returnedUnits"] }, "$qty"] },
-                        0,
-                      ],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-        soldRate: { $ifNull: ["$saleLine.salesRate", { $ifNull: ["$allproduct.unitPrice", 0] }] },
-      },
-    },
-  ];
+  const pipeline = salesReturnLineStages(rangeStart, rangeEnd);
 
   if (searchQuery) {
     const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
@@ -5353,6 +5364,175 @@ exports.getProductSalesReturnReport = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "Product sales return report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Product sales return summary — one row per product or variant that
+// came back in the period, every return of it added together.
+//
+//   PRODUCT NAME = the product's name; for a variant, its product's name
+//   QTY          = units returned
+//   BUY PRICE    = what one unit cost (averaged over the units returned,
+//                  should the sale lines carry different stamped costs)
+//   WS / RS PRICE = the catalogue's wholesale and retail price of one unit
+//   DISC.        = total discount on the returned units: what they were sold
+//                  for at their rate, less what was refunded
+//   TOTAL        = money refunded for them
+//
+// Most returned first. Adds up to the product sales return report's totals.
+exports.getProductSalesReturnSummaryReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const cacheKey = await buildCacheKey(
+    SALES_RETURN_NS,
+    `report:product-sales-return-summary:${startDate}:${endDate}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Product sales return summary fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const hasStampedCost = { $ne: [{ $ifNull: ["$saleLine.purchasePrice", null] }, null] };
+  const cataloguePrice = (field) => ({
+    $ifNull: [`$variantDoc.${field}`, { $ifNull: [`$productDoc.${field}`, 0] }],
+  });
+
+  const pipeline = [
+    ...salesReturnLineStages(rangeStart, rangeEnd),
+    {
+      $group: {
+        // The variant is the item when the return names one
+        _id: {
+          variantId: { $ifNull: ["$allproduct.variant", null] },
+          productId: {
+            $cond: [
+              { $ne: [{ $ifNull: ["$allproduct.variant", null] }, null] },
+              null,
+              { $ifNull: ["$allproduct.product", null] },
+            ],
+          },
+        },
+        qty: { $sum: "$qty" },
+        total: { $sum: "$lineTotal" },
+        soldValue: { $sum: { $multiply: ["$soldRate", "$qty"] } },
+        // Cost is known for the units whose sale line carries a stamp; the
+        // rest fall back to the catalogue below.
+        stampedCost: { $sum: { $cond: [hasStampedCost, { $multiply: ["$saleLine.purchasePrice", "$qty"] }, 0] } },
+        stampedQty: { $sum: { $cond: [hasStampedCost, "$qty", 0] } },
+        soldAs: { $first: "$saleLine" },
+      },
+    },
+    { $sort: { qty: -1, total: -1, "_id.variantId": 1, "_id.productId": 1 } },
+    {
+      $facet: {
+        rows: [{ $skip: skip }, { $limit: limit }],
+        // Per-unit prices need the catalogue, so every row is joined for totals
+        all: [],
+      },
+    },
+  ];
+
+  // The same shaping for the page's rows and for the totals over every row
+  const shape = [
+    ...catalogueLookupStages("_id.productId", "_id.variantId"),
+    {
+      $project: {
+        _id: 0,
+        productId: "$_id.productId",
+        variantId: "$_id.variantId",
+        productName: productNameOf("$_id.variantId", "$soldAs.productDescription"),
+        barcode: firstFilled("$soldAs.barcode", "$variantDoc.barCode", "$productDoc.barCode"),
+        color: firstFilled("$soldAs.color", "$variantDoc.color", "$productDoc.color"),
+        size: firstFilled("$soldAs.size", "$variantDoc.size", "$productDoc.size"),
+        qty: 1,
+        buyPrice: {
+          $cond: [
+            { $gt: ["$qty", 0] },
+            {
+              $round: [
+                {
+                  $divide: [
+                    {
+                      $add: [
+                        "$stampedCost",
+                        { $multiply: [cataloguePrice("purchasePrice"), { $subtract: ["$qty", "$stampedQty"] }] },
+                      ],
+                    },
+                    "$qty",
+                  ],
+                },
+                2,
+              ],
+            },
+            0,
+          ],
+        },
+        wsPrice: cataloguePrice("wholesalePrice"),
+        rsPrice: cataloguePrice("retailPrice"),
+        discount: { $round: [{ $max: [0, { $subtract: ["$soldValue", "$total"] }] }, 2] },
+        total: { $round: ["$total", 2] },
+      },
+    },
+  ];
+  pipeline[pipeline.length - 1].$facet.rows.push(...shape);
+  pipeline[pipeline.length - 1].$facet.all.push(...shape, {
+    $group: {
+      _id: null,
+      count: { $sum: 1 },
+      totalQty: { $sum: "$qty" },
+      totalBuyPrice: { $sum: "$buyPrice" },
+      totalWsPrice: { $sum: "$wsPrice" },
+      totalRsPrice: { $sum: "$rsPrice" },
+      totalDiscount: { $sum: "$discount" },
+      totalAmount: { $sum: "$total" },
+    },
+  });
+
+  const [result] = await SalesReturn.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.all?.[0] || {
+    count: 0,
+    totalQty: 0,
+    totalBuyPrice: 0,
+    totalWsPrice: 0,
+    totalRsPrice: 0,
+    totalDiscount: 0,
+    totalAmount: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: { startDate, endDate },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Product sales return summary fetched successfully",
     { ...payload, fromCache: false },
   );
 });
