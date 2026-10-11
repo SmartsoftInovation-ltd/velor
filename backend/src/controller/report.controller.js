@@ -5543,8 +5543,8 @@ const ownSalesMatch = (userId) => ({
   $or: [{ createdBy: userId }, { createdBy: null, discountGivenBy: userId }],
 });
 
-// @desc User sales product report — every product line on the sales made by
-// the logged-in user, one row per line.
+// One row per product line on the sales matching `match`, with the totals over
+// every line — the body of the user and salesman sales product reports.
 //
 //   PRODUCT NAME = the product's name; for a variant, its product's name
 //   BARCODE / COLOR / SIZE = as sold, falling back to the variant or product
@@ -5556,44 +5556,10 @@ const ownSalesMatch = (userId) => ({
 //               discount is turned into taka off the salesRate)
 //   TOTAL     = searchItem.subtotal — (salesRate − DISC) × QTY
 //
-// Exchange lines are left out. Sales of every invoiceStatus are listed.
-// `search` matches the invoice number, barcode or the name the line was sold
-// under.
-exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
-  const { startDate, endDate, salesType, search } = req.body || {};
-  const { page, limit, skip } = parsePagination(req);
-
-  if (!startDate || !endDate) {
-    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
-  }
-
-  const userId = req.user._id;
-
-  const rangeStart = new Date(startDate);
-  rangeStart.setHours(0, 0, 0, 0);
-  const rangeEnd = new Date(endDate);
-  rangeEnd.setHours(23, 59, 59, 999);
-
-  const match = { date: { $gte: rangeStart, $lte: rangeEnd }, ...ownSalesMatch(userId) };
-  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
-
-  const searchQuery = typeof search === "string" ? search.trim() : "";
-
-  // Keyed by user: every user sees a different sheet for the same filters.
-  const cacheKey = await buildCacheKey(
-    SALES_NS,
-    `report:user-sales-product:${userId}:${startDate}:${endDate}:${salesType || "all"}:${searchQuery || "all"}:p${page}:l${limit}`,
-  );
-  const cached = await getCache(cacheKey);
-  if (cached) {
-    return apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "User sales product report fetched successfully",
-      { ...cached, fromCache: true },
-    );
-  }
-
+// Exchange lines are left out. `searchQuery` matches the invoice number,
+// barcode or the name the line was sold under. `withSalesman` adds each row's
+// salesman name.
+const salesProductLinePipeline = ({ match, searchQuery, skip, limit, withSalesman = false }) => {
   const num = (expr) => ({ $ifNull: [expr, 0] });
   const cataloguePrice = (field) => ({
     $ifNull: [`$variantDoc.${field}`, { $ifNull: [`$productDoc.${field}`, 0] }],
@@ -5648,6 +5614,19 @@ exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
         { $skip: skip },
         { $limit: limit },
         ...catalogueLookupStages("searchItem.productId", "searchItem.variantId"),
+        ...(withSalesman
+          ? [
+              {
+                $lookup: {
+                  from: "employees",
+                  localField: "salesMen",
+                  foreignField: "_id",
+                  as: "salesman",
+                  pipeline: [{ $project: { fullName: 1 } }],
+                },
+              },
+            ]
+          : []),
         {
           $project: {
             _id: 0,
@@ -5656,6 +5635,7 @@ exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
             invoiceNumber: 1,
             date: 1,
             salesType: 1,
+            ...(withSalesman ? { salesmanName: { $first: "$salesman.fullName" } } : {}),
             productName: productNameOf("$searchItem.variantId", "$searchItem.productDescription"),
             barcode: firstFilled("$searchItem.barcode", "$variantDoc.barCode", "$productDoc.barCode"),
             color: firstFilled("$searchItem.color", "$variantDoc.color", "$productDoc.color"),
@@ -5687,6 +5667,49 @@ exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
       ],
     },
   });
+
+  return pipeline;
+};
+
+// @desc User sales product report — every product line on the sales made by
+// the logged-in user, one row per line (see salesProductLinePipeline for the
+// columns). Sales of every invoiceStatus are listed.
+exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const userId = req.user._id;
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd }, ...ownSalesMatch(userId) };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+
+  const searchQuery = typeof search === "string" ? search.trim() : "";
+
+  // Keyed by user: every user sees a different sheet for the same filters.
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:user-sales-product:${userId}:${startDate}:${endDate}:${salesType || "all"}:${searchQuery || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "User sales product report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = salesProductLinePipeline({ match, searchQuery, skip, limit });
 
   const [result] = await Sales.aggregate(pipeline);
   const rows = result?.rows || [];
@@ -5769,6 +5792,86 @@ const invoiceBillStages = () => {
     },
   ];
 };
+
+// @desc Salesman sales product report — every product line on the sales of
+// the salesman chosen on the sale (`salesMen`, an employee), one row per line
+// (see salesProductLinePipeline for the columns).
+//
+// `salesMenId` narrows to one salesman; without it every salesman's lines are
+// listed, each row naming its salesman. Sales of every invoiceStatus are listed.
+exports.getSalesmanSalesProductReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, salesMenId, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+  castObjectIdFilter(match, "salesMen", salesMenId);
+
+  const searchQuery = typeof search === "string" ? search.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:salesman-sales-product:${startDate}:${endDate}:${salesType || "all"}:${salesMenId || "all"}:${searchQuery || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Salesman sales product report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = salesProductLinePipeline({ match, searchQuery, skip, limit, withSalesman: true });
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalQty: 0,
+    totalBuyPrice: 0,
+    totalWsPrice: 0,
+    totalRsPrice: 0,
+    totalDiscount: 0,
+    totalAmount: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      salesType: salesType || "ALL",
+      salesMenId: salesMenId || null,
+      search: searchQuery || null,
+    },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Salesman sales product report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
 
 // @desc Salesman sales invoice report — sale invoices by the salesman chosen
 // on the sale (`salesMen`, an employee), one row each.

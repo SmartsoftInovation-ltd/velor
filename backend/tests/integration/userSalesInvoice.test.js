@@ -11,6 +11,7 @@ const {
   getUserSalesProductReport,
   getTopUserReport,
   getSalesmanSalesInvoiceReport,
+  getSalesmanSalesProductReport,
 } = require("../../src/controller/report.controller");
 const employeeModel = require("../../src/models/employee.model");
 const userModel = require("../../src/models/user.model");
@@ -283,6 +284,34 @@ describe("user sales invoice report", () => {
       const all = await runSalesman();
       expect(all.rows.map((r) => r.salesmanName).sort()).toEqual(["Akram", "Sajib"]);
       expect(all.totals).toMatchObject({ count: 2, totalAmount: 10500 });
+    });
+
+    it("lists the product lines of a salesman's sales", async () => {
+      const shirtId = new mongoose.Types.ObjectId();
+      await insert(productModel, { _id: shirtId, name: "Casual Full Shirt", barCode: "688", color: "Black", size: "S", purchasePrice: 800, wholesalePrice: 1250, retailPrice: 1650 });
+      await sale({ invoiceNumber: "A-1", salesMen: akram, createdBy: other, searchItem: [{ productId: shirtId, quantity: 2, salesRate: 1650, discount: 550, discountType: "amount", subtotal: 2200 }] });
+      await sale({ invoiceNumber: "S-1", salesMen: sajib, createdBy: me, searchItem: [{ productId: shirtId, quantity: 1, salesRate: 1650, subtotal: 1650 }] });
+
+      const one = await run(getSalesmanSalesProductReport, me, { salesMenId: String(akram) });
+      expect(one.rows).toHaveLength(1);
+      expect(one.rows[0]).toMatchObject({
+        invoiceNumber: "A-1",
+        salesmanName: "Akram",
+        productName: "Casual Full Shirt",
+        barcode: "688",
+        qty: 2,
+        buyPrice: 800,
+        wsPrice: 1250,
+        rsPrice: 1650,
+        discount: 550,
+        total: 2200,
+      });
+      expect(one.totals).toMatchObject({ count: 1, totalQty: 2, totalAmount: 2200 });
+
+      require("../mocks/redisCache").__reset();
+      const all = await run(getSalesmanSalesProductReport, me);
+      expect(all.rows.map((r) => r.salesmanName).sort()).toEqual(["Akram", "Sajib"]);
+      expect(all.totals).toMatchObject({ count: 2, totalQty: 3, totalAmount: 3850 });
     });
   });
 

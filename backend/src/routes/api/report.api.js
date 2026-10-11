@@ -113,8 +113,12 @@ _.route("/sales/customers").get(
 _.route("/sales/salesmen").get(
   authGuard,
   reportLimiter,
-  // The salesman sales invoice report fills its picker from the same list
-  authorizeAny(["sales-invoice-report", "view"], ["salesman-sales-invoice-report", "view"]),
+  // The salesman reports fill their picker from the same list
+  authorizeAny(
+    ["sales-invoice-report", "view"],
+    ["salesman-sales-invoice-report", "view"],
+    ["salesman-sales-product-report", "view"],
+  ),
   reportController.getSalesInvoiceSalesmen,
 );
 _.route("/customer-sales-invoice").post(
@@ -140,6 +144,12 @@ _.route("/product-profit").post(
   reportLimiter,
   authorize("product-profit-report", "view"),
   reportController.getProductProfitReport,
+);
+_.route("/salesman-sales-product").post(
+  authGuard,
+  reportLimiter,
+  authorize("salesman-sales-product-report", "view"),
+  reportController.getSalesmanSalesProductReport,
 );
 _.route("/salesman-sales-invoice").post(
   authGuard,

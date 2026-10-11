@@ -31,6 +31,7 @@ const PERMISSION_NAMES = [
   "User Sales Product Report",
   "Top User Report",
   "Salesman Sales Invoice Report",
+  "Salesman Sales Product Report",
   "Top Customer Report",
   "Supplier Ledger Report",
   "Supplier Balance Summary Report",
