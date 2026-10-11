@@ -5537,11 +5537,193 @@ exports.getProductSalesReturnSummaryReport = asynchandeler(async (req, res) => {
   );
 });
 
+// A sale belongs to the user in `createdBy`. Sales saved before that field
+// existed fall back to `discountGivenBy`.
+const ownSalesMatch = (userId) => ({
+  $or: [{ createdBy: userId }, { createdBy: null, discountGivenBy: userId }],
+});
+
+// @desc User sales product report — every product line on the sales made by
+// the logged-in user, one row per line.
+//
+//   PRODUCT NAME = the product's name; for a variant, its product's name
+//   BARCODE / COLOR / SIZE = as sold, falling back to the variant or product
+//   QTY       = searchItem.quantity
+//   BUY PRICE = what one unit cost: the cost stamped on the line, else the
+//               catalogue's purchasePrice
+//   WS / RS PRICE = the catalogue's wholesale and retail price of one unit
+//   DISC      = the line's own discount on one unit, in taka (a percent
+//               discount is turned into taka off the salesRate)
+//   TOTAL     = searchItem.subtotal — (salesRate − DISC) × QTY
+//
+// Exchange lines are left out. Sales of every invoiceStatus are listed.
+// `search` matches the invoice number, barcode or the name the line was sold
+// under.
+exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const userId = req.user._id;
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd }, ...ownSalesMatch(userId) };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+
+  const searchQuery = typeof search === "string" ? search.trim() : "";
+
+  // Keyed by user: every user sees a different sheet for the same filters.
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:user-sales-product:${userId}:${startDate}:${endDate}:${salesType || "all"}:${searchQuery || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "User sales product report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const num = (expr) => ({ $ifNull: [expr, 0] });
+  const cataloguePrice = (field) => ({
+    $ifNull: [`$variantDoc.${field}`, { $ifNull: [`$productDoc.${field}`, 0] }],
+  });
+  const buyPrice = { $ifNull: ["$searchItem.purchasePrice", cataloguePrice("purchasePrice")] };
+
+  const pipeline = [
+    { $match: match },
+    { $unwind: { path: "$searchItem", includeArrayIndex: "lineIndex" } },
+    { $match: { "searchItem.salesStatus": { $ne: "exchange" } } },
+    {
+      $addFields: {
+        qty: num("$searchItem.quantity"),
+        unitDiscount: {
+          $round: [
+            {
+              $cond: [
+                { $eq: ["$searchItem.discountType", "percent"] },
+                { $divide: [{ $multiply: [num("$searchItem.salesRate"), num("$searchItem.discount")] }, 100] },
+                num("$searchItem.discount"),
+              ],
+            },
+            2,
+          ],
+        },
+      },
+    },
+    {
+      $addFields: {
+        // Sales saved without a subtotal get it worked out the same way
+        lineTotal: {
+          $ifNull: [
+            "$searchItem.subtotal",
+            { $round: [{ $multiply: [{ $subtract: [num("$searchItem.salesRate"), "$unitDiscount"] }, "$qty"] }, 2] },
+          ],
+        },
+      },
+    },
+  ];
+
+  if (searchQuery) {
+    const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    pipeline.push({
+      $match: { $or: [{ invoiceNumber: rx }, { "searchItem.barcode": rx }, { "searchItem.productDescription": rx }] },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { date: -1, _id: -1, lineIndex: 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        ...catalogueLookupStages("searchItem.productId", "searchItem.variantId"),
+        {
+          $project: {
+            _id: 0,
+            saleId: "$_id",
+            lineIndex: 1,
+            invoiceNumber: 1,
+            date: 1,
+            salesType: 1,
+            productName: productNameOf("$searchItem.variantId", "$searchItem.productDescription"),
+            barcode: firstFilled("$searchItem.barcode", "$variantDoc.barCode", "$productDoc.barCode"),
+            color: firstFilled("$searchItem.color", "$variantDoc.color", "$productDoc.color"),
+            size: firstFilled("$searchItem.size", "$variantDoc.size", "$productDoc.size"),
+            qty: 1,
+            buyPrice,
+            wsPrice: cataloguePrice("wholesalePrice"),
+            rsPrice: cataloguePrice("retailPrice"),
+            discount: "$unitDiscount",
+            total: "$lineTotal",
+          },
+        },
+      ],
+      // Per-unit prices need the catalogue, so the totals join it too
+      totals: [
+        ...catalogueLookupStages("searchItem.productId", "searchItem.variantId"),
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalQty: { $sum: "$qty" },
+            totalBuyPrice: { $sum: buyPrice },
+            totalWsPrice: { $sum: cataloguePrice("wholesalePrice") },
+            totalRsPrice: { $sum: cataloguePrice("retailPrice") },
+            totalDiscount: { $sum: "$unitDiscount" },
+            totalAmount: { $sum: "$lineTotal" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalQty: 0,
+    totalBuyPrice: 0,
+    totalWsPrice: 0,
+    totalRsPrice: 0,
+    totalDiscount: 0,
+    totalAmount: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    user: { _id: userId, name: req.user.name || null },
+    filters: { startDate, endDate, salesType: salesType || "ALL", search: searchQuery || null },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User sales product report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
 // @desc User sales invoice report — the sale invoices made by the logged-in
 // user, one row each, with what was returned on them.
-//
-//   A sale belongs to the user in `createdBy`. Sales saved before that field
-//   existed fall back to `discountGivenBy`.
 //
 // Every figure is the sale's own stored field:
 //
@@ -5575,7 +5757,7 @@ exports.getUserSalesInvoiceReport = asynchandeler(async (req, res) => {
 
   const match = {
     date: { $gte: rangeStart, $lte: rangeEnd },
-    $or: [{ createdBy: userId }, { createdBy: null, discountGivenBy: userId }],
+    ...ownSalesMatch(userId),
   };
   if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
 

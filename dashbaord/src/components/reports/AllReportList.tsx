@@ -132,6 +132,11 @@ const categories: ReportCategory[] = [
         description: "Your own sale invoices with return, discount, VAT, payable, paid & due",
         path: "/user-sales-invoice",
       },
+      {
+        name: "User Sales Product",
+        description: "Product lines on your own sales with buy, WS & RS price, discount and total",
+        path: "/user-sales-product",
+      },
     ],
   },
   {
