@@ -6172,6 +6172,89 @@ exports.getUserSalesInvoiceReport = asynchandeler(async (req, res) => {
   );
 });
 
+// The ranking behind the Top User and Top Salesman reports: one row per seller
+// (`sellerExpr` picks who a sale belongs to; a sale with nobody is left out),
+// the biggest TOTAL SALES first, cut to `topN` when that is above 0.
+//
+//   INVOICES  = number of sales
+//   CUSTOMERS = different customers served: a listed customer by account, a
+//               walking one by mobile number (by name when there is none)
+//   TOTAL SALES = Σ sale.total
+//   DISC      = Σ (total × discountPercent / 100 + lessTaka)
+//   PAYABLE / DUE = Σ sale.payable / sale.presentDue
+//   PAID      = Σ cash the shop kept (netPaid; paid − changes on older sales)
+const sellerRankingStages = (sellerExpr, topN) => {
+  const num = (expr) => ({ $ifNull: [expr, 0] });
+  return [
+    { $addFields: { sellerId: sellerExpr } },
+    { $match: { sellerId: { $ne: null } } },
+    {
+      $group: {
+        _id: "$sellerId",
+        invoices: { $sum: 1 },
+        customerKeys: {
+          $addToSet: {
+            $cond: [
+              { $ne: [{ $ifNull: ["$customerType.customerId", null] }, null] },
+              { $toString: "$customerType.customerId" },
+              {
+                $concat: [
+                  "walking:",
+                  { $ifNull: ["$customerType.walking.mobileNumber", { $ifNull: ["$customerType.walking.customerName", ""] }] },
+                ],
+              },
+            ],
+          },
+        },
+        totalSales: { $sum: num("$total") },
+        discount: {
+          $sum: {
+            $add: [{ $divide: [{ $multiply: [num("$total"), num("$discountPercent")] }, 100] }, num("$lessTaka")],
+          },
+        },
+        payable: { $sum: num("$payable") },
+        paid: {
+          $sum: { $ifNull: ["$netPaid", { $max: [0, { $subtract: [num("$paid"), num("$changes")] }] }] },
+        },
+        due: { $sum: num("$presentDue") },
+      },
+    },
+    {
+      $addFields: {
+        customers: { $size: "$customerKeys" },
+        discount: { $round: ["$discount", 2] },
+      },
+    },
+    { $sort: { totalSales: -1, invoices: -1, _id: 1 } },
+    ...(topN > 0 ? [{ $limit: topN }] : []),
+  ];
+};
+
+const SELLER_TOTALS_GROUP = {
+  $group: {
+    _id: null,
+    count: { $sum: 1 },
+    totalInvoices: { $sum: "$invoices" },
+    totalCustomers: { $sum: "$customers" },
+    totalSales: { $sum: "$totalSales" },
+    totalDiscount: { $sum: "$discount" },
+    totalPayable: { $sum: "$payable" },
+    totalPaid: { $sum: "$paid" },
+    totalDue: { $sum: "$due" },
+  },
+};
+
+const EMPTY_SELLER_TOTALS = {
+  count: 0,
+  totalInvoices: 0,
+  totalCustomers: 0,
+  totalSales: 0,
+  totalDiscount: 0,
+  totalPayable: 0,
+  totalPaid: 0,
+  totalDue: 0,
+};
+
 // @desc Top user report — one row per user who made sales in the period,
 // the biggest seller first.
 //
@@ -6222,51 +6305,9 @@ exports.getTopUserReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const num = (expr) => ({ $ifNull: [expr, 0] });
-
   const pipeline = [
     { $match: match },
-    { $addFields: { sellerId: { $ifNull: ["$createdBy", "$discountGivenBy"] } } },
-    { $match: { sellerId: { $ne: null } } },
-    {
-      $group: {
-        _id: "$sellerId",
-        invoices: { $sum: 1 },
-        customerKeys: {
-          $addToSet: {
-            $cond: [
-              { $ne: [{ $ifNull: ["$customerType.customerId", null] }, null] },
-              { $toString: "$customerType.customerId" },
-              {
-                $concat: [
-                  "walking:",
-                  { $ifNull: ["$customerType.walking.mobileNumber", { $ifNull: ["$customerType.walking.customerName", ""] }] },
-                ],
-              },
-            ],
-          },
-        },
-        totalSales: { $sum: num("$total") },
-        discount: {
-          $sum: {
-            $add: [{ $divide: [{ $multiply: [num("$total"), num("$discountPercent")] }, 100] }, num("$lessTaka")],
-          },
-        },
-        payable: { $sum: num("$payable") },
-        paid: {
-          $sum: { $ifNull: ["$netPaid", { $max: [0, { $subtract: [num("$paid"), num("$changes")] }] }] },
-        },
-        due: { $sum: num("$presentDue") },
-      },
-    },
-    {
-      $addFields: {
-        customers: { $size: "$customerKeys" },
-        discount: { $round: ["$discount", 2] },
-      },
-    },
-    { $sort: { totalSales: -1, invoices: -1, _id: 1 } },
-    ...(topN > 0 ? [{ $limit: topN }] : []),
+    ...sellerRankingStages({ $ifNull: ["$createdBy", "$discountGivenBy"] }, topN),
     {
       $facet: {
         rows: [
@@ -6311,21 +6352,7 @@ exports.getTopUserReport = asynchandeler(async (req, res) => {
             },
           },
         ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              totalInvoices: { $sum: "$invoices" },
-              totalCustomers: { $sum: "$customers" },
-              totalSales: { $sum: "$totalSales" },
-              totalDiscount: { $sum: "$discount" },
-              totalPayable: { $sum: "$payable" },
-              totalPaid: { $sum: "$paid" },
-              totalDue: { $sum: "$due" },
-            },
-          },
-        ],
+        totals: [SELLER_TOTALS_GROUP],
       },
     },
   ];
@@ -6360,6 +6387,336 @@ exports.getTopUserReport = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "Top user report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Upcoming delivery order report — the sales still waiting to be
+// delivered: invoiceStatus "pending" with a `deliveryDate` inside the period.
+// One row per invoice, the soonest delivery first.
+//
+//   INVOICE DATE  = sale.date            DELIVERY DATE = sale.deliveryDate
+//   CUSTOMER INFO = name and phone (walking details, else the listed customer)
+//   PRODUCT DESCRIPTION = every line of the sale that is still a sale
+//                   (returned and exchange lines are left out): product name
+//                   (a variant shows its product's name), barcode, color,
+//                   size and quantity
+//   REMARKS       = sale.remark
+//
+// `search` matches the customer's name or phone, or the invoice number.
+exports.getUpcomingDeliveryOrderReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { invoiceStatus: "pending", deliveryDate: { $gte: rangeStart, $lte: rangeEnd } };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+
+  const searchQuery = typeof search === "string" ? search.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:upcoming-delivery-order:${startDate}:${endDate}:${salesType || "all"}:${searchQuery || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Upcoming delivery order report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const num = (expr) => ({ $ifNull: [expr, 0] });
+  // The looked-up document with this _id, or null
+  const docOf = (docs, id) => ({
+    $first: { $filter: { input: docs, as: "d", cond: { $eq: ["$$d._id", id] } } },
+  });
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCustomerName: { $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"] },
+        resolvedCustomerPhone: { $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"] },
+      },
+    },
+  ];
+
+  if (searchQuery) {
+    const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    pipeline.push({
+      $match: { $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }, { invoiceNumber: rx }] },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { deliveryDate: 1, date: 1, _id: 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: "products",
+            localField: "searchItem.productId",
+            foreignField: "_id",
+            as: "productDocs",
+            pipeline: [{ $project: { name: 1, barCode: 1, color: 1, size: 1 } }],
+          },
+        },
+        {
+          $lookup: {
+            from: "variants",
+            localField: "searchItem.variantId",
+            foreignField: "_id",
+            as: "variantDocs",
+            pipeline: [
+              { $project: { barCode: 1, color: 1, size: 1, product: 1 } },
+              {
+                $lookup: {
+                  from: "products",
+                  localField: "product",
+                  foreignField: "_id",
+                  as: "parent",
+                  pipeline: [{ $project: { name: 1 } }],
+                },
+              },
+              { $addFields: { parentName: { $first: "$parent.name" } } },
+            ],
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            invoiceNumber: 1,
+            salesType: 1,
+            date: 1,
+            deliveryDate: 1,
+            customerName: filled("$resolvedCustomerName"),
+            customerPhone: filled("$resolvedCustomerPhone"),
+            remark: filled("$remark"),
+            products: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: { $ifNull: ["$searchItem", []] },
+                    as: "line",
+                    cond: { $eq: [{ $ifNull: ["$$line.salesStatus", "sale"] }, "sale"] },
+                  },
+                },
+                as: "line",
+                in: {
+                  $let: {
+                    vars: {
+                      productDoc: docOf("$productDocs", "$$line.productId"),
+                      variantDoc: docOf("$variantDocs", "$$line.variantId"),
+                    },
+                    in: {
+                      // Never a variant's own name: see productNameOf
+                      productName: firstFilled("$$variantDoc.parentName", "$$productDoc.name", {
+                        $cond: [
+                          { $ne: [{ $ifNull: ["$$line.variantId", null] }, null] },
+                          null,
+                          "$$line.productDescription",
+                        ],
+                      }),
+                      barcode: firstFilled("$$line.barcode", "$$variantDoc.barCode", "$$productDoc.barCode"),
+                      color: firstFilled("$$line.color", "$$variantDoc.color", "$$productDoc.color"),
+                      size: firstFilled("$$line.size", "$$variantDoc.size", "$$productDoc.size"),
+                      qty: num("$$line.quantity"),
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalQty: {
+              $sum: {
+                $sum: {
+                  $map: {
+                    input: {
+                      $filter: {
+                        input: { $ifNull: ["$searchItem", []] },
+                        as: "line",
+                        cond: { $eq: [{ $ifNull: ["$$line.salesStatus", "sale"] }, "sale"] },
+                      },
+                    },
+                    as: "line",
+                    in: num("$$line.quantity"),
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || { count: 0, totalQty: 0 };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: { startDate, endDate, salesType: salesType || "ALL", search: searchQuery || null },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Upcoming delivery order report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Top salesman report — one row per salesman (the employee in the
+// sale's `salesMen`) who sold in the period, the biggest seller first. A sale
+// with no salesman is left out.
+//
+//   EMPLOYEE INFO = name, employee id and mobile
+//   DESIGNATION / DEPARTMENT = from the employee's record
+//   the money columns are those of the Top User report (sellerRankingStages)
+//
+// `top` (e.g. 5) keeps only that many, and the totals row covers just them.
+exports.getTopSalesmanReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, top } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const topN = Math.max(0, parseInt(top, 10) || 0);
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:top-salesman:${startDate}:${endDate}:${salesType || "all"}:t${topN}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Top salesman report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const nameLookup = (from, localField, as) => ({
+    $lookup: { from, localField, foreignField: "_id", as, pipeline: [{ $project: { name: 1 } }] },
+  });
+
+  const pipeline = [
+    { $match: match },
+    ...sellerRankingStages("$salesMen", topN),
+    {
+      $facet: {
+        rows: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: "employees",
+              localField: "_id",
+              foreignField: "_id",
+              as: "employee",
+              pipeline: [
+                { $project: { fullName: 1, employeeId: 1, mobile: 1, designation: 1, deapartment: 1 } },
+                nameLookup("employeedesignations", "designation", "designationDoc"),
+                nameLookup("departments", "deapartment", "departmentDoc"),
+              ],
+            },
+          },
+          { $unwind: { path: "$employee", preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 0,
+              salesMenId: "$_id",
+              name: filled("$employee.fullName"),
+              employeeId: filled("$employee.employeeId"),
+              mobile: filled("$employee.mobile"),
+              designation: filled({ $first: "$employee.designationDoc.name" }),
+              department: filled({ $first: "$employee.departmentDoc.name" }),
+              invoices: 1,
+              customers: 1,
+              totalSales: 1,
+              discount: 1,
+              payable: 1,
+              paid: 1,
+              due: 1,
+            },
+          },
+        ],
+        totals: [SELLER_TOTALS_GROUP],
+      },
+    },
+  ];
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || EMPTY_SELLER_TOTALS;
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: { startDate, endDate, salesType: salesType || "ALL", top: topN },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Top salesman report fetched successfully",
     { ...payload, fromCache: false },
   );
 });

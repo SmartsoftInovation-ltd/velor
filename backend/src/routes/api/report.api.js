@@ -157,6 +157,18 @@ _.route("/salesman-sales-invoice").post(
   authorize("salesman-sales-invoice-report", "view"),
   reportController.getSalesmanSalesInvoiceReport,
 );
+_.route("/upcoming-delivery-order").post(
+  authGuard,
+  reportLimiter,
+  authorize("upcoming-delivery-order-report", "view"),
+  reportController.getUpcomingDeliveryOrderReport,
+);
+_.route("/top-salesman").post(
+  authGuard,
+  reportLimiter,
+  authorize("top-salesman-report", "view"),
+  reportController.getTopSalesmanReport,
+);
 _.route("/top-user").post(
   authGuard,
   reportLimiter,

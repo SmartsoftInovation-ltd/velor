@@ -12,8 +12,11 @@ const {
   getTopUserReport,
   getSalesmanSalesInvoiceReport,
   getSalesmanSalesProductReport,
+  getTopSalesmanReport,
+  getUpcomingDeliveryOrderReport,
 } = require("../../src/controller/report.controller");
 const employeeModel = require("../../src/models/employee.model");
+const { employeeDesignationModel, departmentModel } = require("../../src/models/advancePayment.model");
 const userModel = require("../../src/models/user.model");
 const roleModel = require("../../src/models/role.model");
 const productModel = require("../../src/models/product.model");
@@ -312,6 +315,90 @@ describe("user sales invoice report", () => {
       const all = await run(getSalesmanSalesProductReport, me);
       expect(all.rows.map((r) => r.salesmanName).sort()).toEqual(["Akram", "Sajib"]);
       expect(all.totals).toMatchObject({ count: 2, totalQty: 3, totalAmount: 3850 });
+    });
+
+    it("ranks salesmen by total sales, with their designation and department", async () => {
+      const designationId = new mongoose.Types.ObjectId();
+      const departmentId = new mongoose.Types.ObjectId();
+      const zahirul = new mongoose.Types.ObjectId();
+      await insert(employeeDesignationModel, { _id: designationId, name: "Manager", slug: "manager" });
+      await insert(departmentModel, { _id: departmentId, name: "Sales", slug: "sales" });
+      await insert(employeeModel, { _id: zahirul, fullName: "Zahirul Islam", employeeId: "EMP-000001", mobile: "01999878862", designation: designationId, deapartment: departmentId });
+
+      const walking = (mobileNumber) => ({ type: "walking", walking: { customerName: "Walk", mobileNumber } });
+      // Zahirul: 2 invoices to the same customer; entered by different users
+      await sale({ salesMen: zahirul, createdBy: me, customerType: walking("01700000001"), total: 1000, discountPercent: 10, payable: 900, netPaid: 900, presentDue: 0 });
+      await sale({ salesMen: zahirul, createdBy: other, customerType: walking("01700000001"), total: 2000, lessTaka: 200, payable: 1800, netPaid: 1000, presentDue: 800 });
+      await sale({ salesMen: akram, createdBy: me, customerType: walking("01700000002"), total: 9000, payable: 9000, netPaid: 9000, presentDue: 0 });
+      // No salesman: left out
+      await sale({ createdBy: me, total: 99999, payable: 99999 });
+
+      const { rows, totals } = await run(getTopSalesmanReport, me);
+      expect(rows.map((r) => r.name)).toEqual(["Akram", "Zahirul Islam"]);
+      expect(rows[0]).toMatchObject({ employeeId: null, mobile: null, designation: null, department: null, invoices: 1, totalSales: 9000 });
+      expect(rows[1]).toMatchObject({
+        employeeId: "EMP-000001",
+        mobile: "01999878862",
+        designation: "Manager",
+        department: "Sales",
+        invoices: 2,
+        customers: 1,
+        totalSales: 3000,
+        discount: 300,
+        payable: 2700,
+        paid: 1900,
+        due: 800,
+      });
+      expect(totals).toMatchObject({ count: 2, totalInvoices: 3, totalCustomers: 2, totalSales: 12000, totalDiscount: 300, totalPayable: 11700, totalPaid: 10900, totalDue: 800 });
+
+      require("../mocks/redisCache").__reset();
+      const top = await run(getTopSalesmanReport, me, { top: 1 });
+      expect(top.rows.map((r) => r.name)).toEqual(["Akram"]);
+      expect(top.totals).toMatchObject({ count: 1, totalSales: 9000 });
+    });
+  });
+
+  describe("upcoming delivery order report", () => {
+    const day = (offset) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return d;
+    };
+    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const runUpcoming = (extra) => run(getUpcomingDeliveryOrderReport, me, { startDate: ymd(day(0)), endDate: ymd(day(7)), ...extra });
+
+    it("lists pending sales due for delivery in the period, with their products", async () => {
+      const shirtId = new mongoose.Types.ObjectId();
+      const variantId = new mongoose.Types.ObjectId();
+      await insert(productModel, { _id: shirtId, name: "Casual Full Shirt", barCode: "1783868530394", color: "Merun", size: "M" });
+      await insert(variantModel, { _id: variantId, product: shirtId, variantName: "Shirt Red L", barCode: "999", color: "Red", size: "L" });
+
+      await sale({
+        invoiceNumber: "LATER", invoiceStatus: "pending", deliveryDate: day(4), remark: "Call first",
+        searchItem: [
+          { productId: shirtId, quantity: 1, salesRate: 100 },
+          { variantId, productDescription: "Shirt Red L", quantity: 2, salesRate: 100 },
+          { productId: shirtId, quantity: 5, salesRate: 100, salesStatus: "exchange" },
+        ],
+      });
+      await sale({ invoiceNumber: "SOON", invoiceStatus: "pending", deliveryDate: day(1), searchItem: [{ productId: shirtId, quantity: 3, salesRate: 100 }] });
+      // Not pending, outside the period, or no delivery date: left out
+      await sale({ invoiceNumber: "DONE", invoiceStatus: "complete", deliveryDate: day(1) });
+      await sale({ invoiceNumber: "FAR", invoiceStatus: "pending", deliveryDate: day(30) });
+      await sale({ invoiceNumber: "NODATE", invoiceStatus: "pending" });
+
+      const { rows, totals } = await runUpcoming();
+      expect(rows.map((r) => r.invoiceNumber)).toEqual(["SOON", "LATER"]);
+      expect(rows[1]).toMatchObject({ customerName: "Akram", customerPhone: "01999878862", remark: "Call first" });
+      expect(rows[1].products).toEqual([
+        { productName: "Casual Full Shirt", barcode: "1783868530394", color: "Merun", size: "M", qty: 1 },
+        { productName: "Casual Full Shirt", barcode: "999", color: "Red", size: "L", qty: 2 },
+      ]);
+      expect(rows[0].remark).toBeNull();
+      expect(totals).toMatchObject({ count: 2, totalQty: 6 });
+
+      require("../mocks/redisCache").__reset();
+      expect((await runUpcoming({ search: "soon" })).rows.map((r) => r.invoiceNumber)).toEqual(["SOON"]);
     });
   });
 

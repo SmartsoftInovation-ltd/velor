@@ -152,6 +152,16 @@ const categories: ReportCategory[] = [
         description: "Product lines by salesman with buy, WS & RS price, discount and total",
         path: "/salesman-sales-product",
       },
+      {
+        name: "Top Salesman",
+        description: "Salesmen ranked by sales, with invoices, customers, discount, payable, paid & due",
+        path: "/top-salesman",
+      },
+      {
+        name: "Upcoming Delivery Order",
+        description: "Pending sales by delivery date, with customer, products and remarks",
+        path: "/upcoming-delivery-order",
+      },
     ],
   },
   {
