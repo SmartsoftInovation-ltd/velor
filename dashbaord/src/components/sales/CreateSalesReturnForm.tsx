@@ -78,8 +78,20 @@ interface SearchItem {
   size?: string;
   quantity: number;
   salesRate: number;
+  discount?: number;
+  discountType?: "amount" | "percent";
   subtotal: number;
 }
+
+// What the customer paid for one unit: the rate less the line's own discount
+// (taka off each unit, or a percent). Mirrors netUnitPrice in the API, which
+// works the refund out again from the sale.
+const netUnitPrice = (si: SearchItem) => {
+  const rate = Number(si.salesRate) || 0;
+  const discount = Number(si.discount) || 0;
+  const net = si.discountType === "percent" ? rate * (1 - discount / 100) : rate - discount;
+  return Math.max(0, Math.round(net * 100) / 100);
+};
 
 interface SaleDetail {
   _id: string;
@@ -205,7 +217,7 @@ const CreateSalesReturnForm = () => {
           meta: metaParts.join(" / "),
           barCode: variantObj?.barCode ?? productObj?.barCode ?? "",
           image,
-          unitPrice: si.salesRate ?? 0,
+          unitPrice: netUnitPrice(si),
           maxQuantity: si.quantity ?? 1,
           selected: false,
           quantity: 1,

@@ -7,6 +7,7 @@ jest.mock("../../src/config/redis.config", () => require("../mocks/redisCache"))
 const salesModel = require("../../src/models/sales.model");
 const productModel = require("../../src/models/product.model");
 const variantModel = require("../../src/models/variant.model");
+const salesReturnModel = require("../../src/models/salesReturn.model");
 const { getCustomerInvoiceProfitReport } = require("../../src/controller/report.controller");
 
 // The report reads startDate/endDate as local days, so "today" must be the
@@ -16,9 +17,10 @@ const localToday = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-// PROFIT = SALES TOTAL − DISCOUNT − BUY PRICE, where SALES TOTAL is the stored
-// sale.total, DISCOUNT is the invoice-level discountPercent + lessTaka and BUY
-// PRICE is purchasePrice × quantity of the sold lines (variant first).
+// PROFIT comes from utils/saleProfit.util.js, recomputed from each line's
+// salesRate / discount / quantity: Σ lineNet − invoice discount − refunds −
+// BUY PRICE (purchasePrice × quantity of the sold lines, variant first).
+// SALES TOTAL is the gross of the sold lines and DISCOUNT the invoice's discount.
 describe("customer invoice profit report", () => {
   const tenantId = new mongoose.Types.ObjectId();
   const productId = new mongoose.Types.ObjectId();
@@ -86,8 +88,8 @@ describe("customer invoice profit report", () => {
       invoiceNumber: "INV-2",
       total: 3000,
       searchItem: [
-        { productId: variantProductId, variantId, quantity: 3, salesStatus: "sale" },
-        { productId, quantity: 4, salesStatus: "return" },
+        { productId: variantProductId, variantId, quantity: 3, salesRate: 1000, salesStatus: "sale" },
+        { productId, quantity: 4, salesRate: 500, salesStatus: "return" },
       ],
     });
 
@@ -96,8 +98,8 @@ describe("customer invoice profit report", () => {
   });
 
   it("sums totals across invoices", async () => {
-    await sale({ invoiceNumber: "INV-3", total: 1000, searchItem: [{ productId, quantity: 2 }] });
-    await sale({ invoiceNumber: "INV-4", total: 2000, lessTaka: 100, searchItem: [{ productId, quantity: 4 }] });
+    await sale({ invoiceNumber: "INV-3", total: 1000, searchItem: [{ productId, quantity: 2, salesRate: 500 }] });
+    await sale({ invoiceNumber: "INV-4", total: 2000, lessTaka: 100, searchItem: [{ productId, quantity: 4, salesRate: 500 }] });
 
     const { totals } = await runReport();
     // cost 500 + 1000, discount 0 + 100, profit 500 + 900
@@ -151,7 +153,7 @@ describe("invoice profit report", () => {
       changes: 80, // no netPaid stored: falls back to paid − changes
       presentDue: 5000,
       paymentStatus: "partial",
-      searchItem: [{ productId, quantity: 10, salesStatus: "sale" }],
+      searchItem: [{ productId, quantity: 10, salesRate: 565, salesStatus: "sale" }],
     });
 
     const { rows, totals } = await runReport();
@@ -169,6 +171,114 @@ describe("invoice profit report", () => {
     expect(totals).toMatchObject({ count: 1, totalDelivery: 120, totalPaid: 120, totalProfit: 1000 });
   });
 
+  // One invoice carries one discount: the line's own, or the invoice percent,
+  // or less taka. DISC shows whichever it was and TOTAL stays the gross price.
+  const bill = (doc) =>
+    insert(salesModel, {
+      date: new Date(),
+      customerType: { type: "walking", walking: { customerName: "Sujon" } },
+      discountPercent: 0,
+      lessTaka: 0,
+      ...doc,
+    });
+
+  it("takes a line's own discount, per unit or percent, off the gross total", async () => {
+    // amount: (1000 − 100) × 2 = 1800; cost 800; profit 1000
+    await bill({ invoiceNumber: "AMT", searchItem: [{ productId, quantity: 2, salesRate: 1000, discount: 100, discountType: "amount" }] });
+    // percent: 1000 × 2 − 10% = 1800; cost 800; profit 1000
+    await bill({ invoiceNumber: "PCT", searchItem: [{ productId, quantity: 2, salesRate: 1000, discount: 10, discountType: "percent" }] });
+
+    const { rows, totals } = await runReport();
+    for (const row of rows) expect(row).toMatchObject({ total: 2000, discount: 200, buyPrice: 800, profit: 1000 });
+    expect(totals).toMatchObject({ totalSales: 4000, totalDiscount: 400, totalProfit: 2000 });
+  });
+
+  it("takes an invoice percent or less taka off the gross total", async () => {
+    // 2000 − 5% = 1900; cost 800; profit 1100
+    await bill({ invoiceNumber: "GLOBAL", discountPercent: 5, searchItem: [{ productId, quantity: 2, salesRate: 1000 }] });
+    // 2000 − 150 = 1850; cost 800; profit 1050
+    await bill({ invoiceNumber: "LESS", lessTaka: 150, searchItem: [{ productId, quantity: 2, salesRate: 1000 }] });
+
+    const { rows } = await runReport();
+    const byInvoice = Object.fromEntries(rows.map((r) => [r.invoiceNumber, r]));
+    expect(byInvoice.GLOBAL).toMatchObject({ total: 2000, discount: 100, profit: 1100 });
+    expect(byInvoice.LESS).toMatchObject({ total: 2000, discount: 150, profit: 1050 });
+  });
+
+  it("recomputes from the lines instead of trusting the stored total", async () => {
+    await bill({ invoiceNumber: "TAMPERED", total: 99999, searchItem: [{ productId, quantity: 1, salesRate: 1000 }] });
+
+    const { rows } = await runReport();
+    expect(rows[0]).toMatchObject({ total: 1000, profit: 600 });
+  });
+
+  it("lists sales of every invoice status", async () => {
+    for (const invoiceStatus of ["complete", "draft", "pending"]) {
+      await bill({ invoiceNumber: invoiceStatus, invoiceStatus, searchItem: [{ productId, quantity: 1, salesRate: 1000 }] });
+    }
+
+    const { rows, totals } = await runReport();
+    expect(rows.map((r) => r.invoiceNumber).sort()).toEqual(["complete", "draft", "pending"]);
+    expect(totals).toMatchObject({ count: 3, totalProfit: 1800 });
+  });
+
+  it("gives back the refund and the cost of the units a sales return took back", async () => {
+    // Sold 5 × 1000 less 500 = 4500. 2 units returned: the line flips to
+    // "return" and 1800 is refunded. 3 units stay: cost 3 × 400 = 1200.
+    const { insertedId } = await bill({
+      invoiceNumber: "RET",
+      lessTaka: 500,
+      return: 1800,
+      searchItem: [{ productId, quantity: 5, salesRate: 1000, salesStatus: "return" }],
+    });
+    await insert(salesReturnModel, { invoiceNumber: insertedId, allproduct: [{ product: productId, variant: null, quantity: 2 }] });
+
+    const { rows } = await runReport();
+    // 5000 − 500 − 1800 − 1200
+    expect(rows[0]).toMatchObject({ total: 5000, discount: 500, returned: 1800, buyPrice: 1200, profit: 1500 });
+  });
+
+  it("uses the cost stamped on the line over the catalogue's current price", async () => {
+    // Catalogue says 400 today; the line was sold when it cost 300
+    await bill({ invoiceNumber: "STAMPED", searchItem: [{ productId, quantity: 2, salesRate: 1000, purchasePrice: 300 }] });
+
+    const { rows } = await runReport();
+    expect(rows[0]).toMatchObject({ buyPrice: 600, profit: 1400 });
+  });
+
+  it("leaves out a return line that no sales return stands behind", async () => {
+    await bill({
+      invoiceNumber: "INLINE",
+      searchItem: [
+        { productId, quantity: 1, salesRate: 1000, salesStatus: "sale" },
+        { productId, quantity: 3, salesRate: 1000, salesStatus: "return" },
+      ],
+    });
+
+    const { rows } = await runReport();
+    expect(rows[0]).toMatchObject({ total: 1000, buyPrice: 400, profit: 600 });
+  });
+
+  it("adds up to the profit the dashboard's Total Sale box shows", async () => {
+    const { getSalesSummary } = require("../../src/controller/dashboard.controller");
+    await bill({ invoiceNumber: "A", discountPercent: 5, searchItem: [{ productId, quantity: 2, salesRate: 1000 }] });
+    await bill({ invoiceNumber: "B", searchItem: [{ productId, quantity: 3, salesRate: 700, discount: 50, discountType: "amount" }] });
+
+    const { totals } = await runReport();
+    const box = await runForTenant(tenantId, async () => {
+      let body;
+      let error;
+      const res = { status: () => res, json: (b) => (body = b) };
+      await getSalesSummary({ query: { range: "today" }, body: {} }, res, (err) => (error = err));
+      if (error) throw error;
+      return body.data;
+    });
+
+    // A: 2000 − 100 − 800 = 1100; B: 3 × 650 − 1200 = 750
+    expect(totals.totalProfit).toBe(1850);
+    expect(box.sales.profit).toBe(1850);
+  });
+
   it("filters by payment status", async () => {
     const base = { date: new Date(), customerType: { type: "walking", walking: {} }, searchItem: [] };
     await insert(salesModel, { ...base, invoiceNumber: "P", total: 100, paymentStatus: "paid" });
@@ -176,6 +286,156 @@ describe("invoice profit report", () => {
 
     const { rows } = await runReport({ paymentStatus: "due" });
     expect(rows.map((r) => r.invoiceNumber)).toEqual(["D"]);
+  });
+});
+
+describe("product profit report", () => {
+  const tenantId = new mongoose.Types.ObjectId();
+  const productId = new mongoose.Types.ObjectId();
+  const parentId = new mongoose.Types.ObjectId();
+  const variantId = new mongoose.Types.ObjectId();
+  const { getProductProfitReport, getInvoiceProfitReport } = require("../../src/controller/report.controller");
+
+  beforeAll(connectTestDb);
+  afterEach(async () => {
+    await clearTestDb();
+    require("../mocks/redisCache").__reset();
+  });
+  afterAll(disconnectTestDb);
+
+  const insert = (model, doc) =>
+    runForTenant(tenantId, () =>
+      model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
+    );
+
+  const run = (handler, extra = {}) =>
+    runForTenant(tenantId, async () => {
+      const today = localToday();
+      let body;
+      let error;
+      const req = { body: { startDate: today, endDate: today, ...extra }, query: {} };
+      const res = { status: () => res, json: (b) => (body = b) };
+      await handler(req, res, (err) => (error = err));
+      if (error) throw error;
+      return body.data;
+    });
+  const runReport = (extra) => run(getProductProfitReport, extra);
+
+  const bill = (doc) =>
+    insert(salesModel, {
+      date: new Date(),
+      customerType: { type: "walking", walking: { customerName: "Sujon" } },
+      discountPercent: 0,
+      lessTaka: 0,
+      ...doc,
+    });
+
+  beforeEach(async () => {
+    await insert(productModel, { _id: productId, name: "Casual Half Shirt", barCode: "111", color: "Black", size: "L", purchasePrice: 400 });
+    await insert(productModel, { _id: parentId, name: "Jeans Pant", purchasePrice: 999 });
+    await insert(variantModel, { _id: variantId, product: parentId, barCode: "222", color: "Blue", size: "32", purchasePrice: 700 });
+  });
+
+  it("lists one row per sold line with the line's own discount and profit", async () => {
+    await bill({
+      invoiceNumber: "INV-1",
+      searchItem: [
+        // (1950 − 250) × 1 − 400
+        { productId, variantId: null, quantity: 1, salesRate: 1950, discount: 250, discountType: "amount", barcode: "111", color: "Black", size: "L" },
+        // 1000 × 2 − 10% − 2 × 700
+        { productId: null, variantId, quantity: 2, salesRate: 1000, discount: 10, discountType: "percent", barcode: "", color: "", size: "" },
+      ],
+    });
+
+    const { rows, totals } = await runReport();
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      invoiceNumber: "INV-1",
+      productName: "Casual Half Shirt",
+      barcode: "111",
+      color: "Black",
+      size: "L",
+      qty: 1,
+      salesPrice: 1950,
+      total: 1950,
+      discount: 250,
+      profit: 1300,
+    });
+    // A variant line takes its product's name, and blanks on the line fall
+    // back to the variant
+    expect(rows[1]).toMatchObject({
+      productName: "Jeans Pant",
+      barcode: "222",
+      color: "Blue",
+      size: "32",
+      qty: 2,
+      salesPrice: 1000,
+      total: 2000,
+      discount: 200,
+      profit: 400,
+    });
+    expect(totals).toMatchObject({ count: 2, totalQty: 3, totalSalesPrice: 2950, totalAmount: 3950, totalDiscount: 450, totalProfit: 1700 });
+  });
+
+  it("leaves a name and details empty when neither the line nor the catalogue has them", async () => {
+    await bill({ invoiceNumber: "GONE", searchItem: [{ productId: new mongoose.Types.ObjectId(), quantity: 1, salesRate: 500 }] });
+
+    const { rows } = await runReport();
+    expect(rows[0]).toMatchObject({ productName: null, barcode: null, color: null, size: null, profit: 500 });
+  });
+
+  it("gives each line its share of an invoice discount, adding up to the invoice profit", async () => {
+    // less 300 over 3 units = 100 a unit
+    await bill({
+      invoiceNumber: "LESS",
+      lessTaka: 300,
+      searchItem: [
+        { productId, quantity: 1, salesRate: 1000 },
+        { variantId, quantity: 2, salesRate: 1500 },
+      ],
+    });
+    await bill({ invoiceNumber: "PCT", discountPercent: 10, searchItem: [{ productId, quantity: 2, salesRate: 1000 }] });
+
+    const { rows, totals } = await runReport();
+    const byKey = Object.fromEntries(rows.map((r) => [`${r.invoiceNumber}:${r.lineIndex}`, r]));
+    expect(byKey["LESS:0"]).toMatchObject({ discount: 100, profit: 500 }); // 1000 − 100 − 400
+    expect(byKey["LESS:1"]).toMatchObject({ discount: 200, profit: 1400 }); // 3000 − 200 − 1400
+    expect(byKey["PCT:0"]).toMatchObject({ discount: 200, profit: 1000 }); // 2000 − 200 − 800
+
+    const invoices = await run(getInvoiceProfitReport);
+    expect(totals.totalProfit).toBe(invoices.totals.totalProfit);
+  });
+
+  it("counts only the units a sales return left with the customer", async () => {
+    const { insertedId } = await bill({
+      invoiceNumber: "RET",
+      return: 2000,
+      searchItem: [
+        { productId, quantity: 5, salesRate: 1000, salesStatus: "return" },
+        { variantId, quantity: 1, salesRate: 1500, salesStatus: "return" },
+      ],
+    });
+    await insert(salesReturnModel, {
+      invoiceNumber: insertedId,
+      allproduct: [
+        { product: productId, variant: null, quantity: 2 },
+        { product: null, variant: variantId, quantity: 1 },
+      ],
+    });
+
+    const { rows } = await runReport();
+    // The variant line came back whole and drops out; 3 shirts stay
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ qty: 3, total: 3000, discount: 0, buyPrice: 1200, profit: 1800 });
+  });
+
+  it("searches by invoice, barcode or the name the line was sold under", async () => {
+    await bill({ invoiceNumber: "A-1", searchItem: [{ productId, quantity: 1, salesRate: 100, barcode: "111", productDescription: "Casual Half Shirt" }] });
+    await bill({ invoiceNumber: "B-2", searchItem: [{ variantId, quantity: 1, salesRate: 100, barcode: "222", productDescription: "Jeans Pant" }] });
+
+    expect((await runReport({ search: "jeans" })).rows.map((r) => r.invoiceNumber)).toEqual(["B-2"]);
+    require("../mocks/redisCache").__reset();
+    expect((await runReport({ search: "111" })).rows.map((r) => r.invoiceNumber)).toEqual(["A-1"]);
   });
 });
 
@@ -232,9 +492,9 @@ describe("top customer report", () => {
     early.setHours(0, 0, 1, 0);
     const late = new Date();
     // Big: 2 invoices, qty 3 + 2, cost 500, total 1500, discount 10% of 1000 + 50
-    await listedSale(bigId, { date: early, total: 1000, discountPercent: 10, payable: 900, paid: 500, presentDue: 400, searchItem: [{ productId, quantity: 3 }] });
-    await listedSale(bigId, { date: late, total: 500, lessTaka: 50, payable: 450, paid: 450, presentDue: 0, searchItem: [{ productId, quantity: 2 }, { productId, quantity: 9, salesStatus: "return" }] });
-    await listedSale(smallId, { date: early, total: 300, payable: 300, paid: 300, presentDue: 0, searchItem: [{ productId, quantity: 1 }] });
+    await listedSale(bigId, { date: early, total: 1000, discountPercent: 10, payable: 900, paid: 500, presentDue: 400, searchItem: [{ productId, quantity: 3, salesRate: 1000 / 3 }] });
+    await listedSale(bigId, { date: late, total: 500, lessTaka: 50, payable: 450, paid: 450, presentDue: 0, searchItem: [{ productId, quantity: 2, salesRate: 250 }, { productId, quantity: 9, salesRate: 250, salesStatus: "return" }] });
+    await listedSale(smallId, { date: early, total: 300, payable: 300, paid: 300, presentDue: 0, searchItem: [{ productId, quantity: 1, salesRate: 300 }] });
     await insert(salesModel, { date: late, total: 9999, customerType: { type: "walking", walking: { customerName: "Walk" } }, searchItem: [] });
 
     const { rows, totals } = await runReport();
@@ -256,8 +516,8 @@ describe("top customer report", () => {
   });
 
   it("keeps only the top N customers", async () => {
-    await listedSale(bigId, { date: new Date(), total: 1000, searchItem: [] });
-    await listedSale(smallId, { date: new Date(), total: 10, searchItem: [] });
+    await listedSale(bigId, { date: new Date(), searchItem: [{ productId, quantity: 1, salesRate: 1000 }] });
+    await listedSale(smallId, { date: new Date(), searchItem: [{ productId, quantity: 1, salesRate: 10 }] });
 
     const { rows, totals } = await runReport({ top: 1 });
     expect(rows.map((r) => r.customerName)).toEqual(["Big"]);

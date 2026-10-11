@@ -21,6 +21,7 @@ const Account = require("../models/account.model");
 const stockAdjustModel = require("../models/stockadjust.model");
 const purchaseReturnModel = require("../models/purchaseReturn.model");
 const salesReturnModel = require("../models/salesReturn.model");
+const { saleProfitStages } = require("../utils/saleProfit.util");
 
 const NS = "dashboard";
 const CACHE_TTL = 2 * 60; // 2 minutes — dashboard tolerates slight staleness
@@ -66,154 +67,14 @@ const resolveRange = (range, startDate, endDate) => {
   return { start, end: now, key: range };
 };
 
-// Profit pipeline, shared by the Total Sale box and the dashboard overview so
-// the two can never disagree.
-//
-// Profit is revenue actually earned minus what the goods cost, per line:
-//
-//   grossLine    = salesRate × quantity
-//   lineDiscount = discountType "amount" ? discount × quantity   (taka/unit)
-//                                        : grossLine × discount% (percent)
-//   netLine      = grossLine − lineDiscount
-//   invoiceCut   = netLine × sale.discountPercent / 100
-//   lessCut      = sale.lessTaka ÷ (number of lines on the sale)
-//   profit      += (netLine − invoiceCut − lessCut) − purchasePrice × quantity
-//
-// Notes on the choices here:
-//   - The line's own discount is read from the stored searchItem, NOT re-resolved
-//     from the catalogue. The sales form resolves a product/variant/category
-//     discount at pick time and freezes it onto the line, so re-resolving would
-//     double-count and would also re-price historical sales whenever the
-//     catalogue changes. What the customer was charged is what profit uses.
-//   - "amount" discounts are per unit, mirroring the sales form's
-//     (salesRate − discount) × quantity.
-//   - discountPercent applies to the already-discounted netLine, matching how
-//     the form computes the invoice total.
-//   - lessTaka is split equally across the sale's lines (60 over 3 lines = 20
-//     each), so a whole-invoice reduction lands proportionally on profit.
-//   - VAT, delivery and labour are excluded: VAT is passed through to the
-//     government and the other two are cost recovery, not margin.
-//   - Only salesStatus "sale" lines count; returns and exchanges are not sales.
-//   - subtotal is deliberately NOT trusted — it is written by the client. Every
-//     figure is recomputed here from salesRate/discount/quantity.
+// Profit within a range, for the Total Sale box and the dashboard overview.
+// It sums the per-sale profit the invoice profit reports show, so the box and
+// the reports can never disagree — see utils/saleProfit.util.js for the
+// formula and .claude/rules/profit-calculation.md for the rules behind it.
 const buildProfitPipeline = (dateMatch) => [
   { $match: dateMatch },
-  // Captured before $unwind — once unwound the array length is gone, and
-  // lessTaka cannot be divided across the sale's lines without it.
-  { $addFields: { lineCount: { $size: { $ifNull: ["$searchItem", []] } } } },
-  { $unwind: "$searchItem" },
-  { $match: { "searchItem.salesStatus": "sale" } },
-  {
-    $lookup: {
-      from: "products",
-      localField: "searchItem.productId",
-      foreignField: "_id",
-      as: "productDoc",
-    },
-  },
-  {
-    $lookup: {
-      from: "variants",
-      localField: "searchItem.variantId",
-      foreignField: "_id",
-      as: "variantDoc",
-    },
-  },
-  {
-    $addFields: {
-      grossLine: {
-        $multiply: [
-          { $ifNull: ["$searchItem.salesRate", 0] },
-          { $ifNull: ["$searchItem.quantity", 0] },
-        ],
-      },
-      unitCost: {
-        $ifNull: [
-          { $first: "$variantDoc.purchasePrice" },
-          { $ifNull: [{ $first: "$productDoc.purchasePrice" }, 0] },
-        ],
-      },
-    },
-  },
-  {
-    $addFields: {
-      netLine: {
-        $subtract: [
-          "$grossLine",
-          {
-            $cond: [
-              { $eq: ["$searchItem.discountType", "percent"] },
-              {
-                $divide: [
-                  {
-                    $multiply: [
-                      "$grossLine",
-                      { $ifNull: ["$searchItem.discount", 0] },
-                    ],
-                  },
-                  100,
-                ],
-              },
-              {
-                $multiply: [
-                  { $ifNull: ["$searchItem.discount", 0] },
-                  { $ifNull: ["$searchItem.quantity", 0] },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    },
-  },
-  {
-    $addFields: {
-      netRevenue: {
-        $subtract: [
-          {
-            $subtract: [
-              "$netLine",
-              {
-                $divide: [
-                  {
-                    $multiply: [
-                      "$netLine",
-                      { $ifNull: ["$discountPercent", 0] },
-                    ],
-                  },
-                  100,
-                ],
-              },
-            ],
-          },
-          // Guard against a zero lineCount: $unwind already proves at least one
-          // line exists, but a divide-by-zero would poison the whole sum.
-          {
-            $cond: [
-              { $gt: ["$lineCount", 0] },
-              { $divide: [{ $ifNull: ["$lessTaka", 0] }, "$lineCount"] },
-              0,
-            ],
-          },
-        ],
-      },
-    },
-  },
-  {
-    $group: {
-      _id: null,
-      // Kept at full precision; rounded once by the caller. Rounding per line
-      // would drift across a large invoice count.
-      profit: {
-        $sum: {
-          $subtract: [
-            "$netRevenue",
-            { $multiply: ["$unitCost", { $ifNull: ["$searchItem.quantity", 0] }] },
-          ],
-        },
-      },
-    },
-  },
+  ...saleProfitStages(),
+  { $group: { _id: null, profit: { $sum: "$profit" } } },
 ];
 
 // @desc  aggregated dashboard overview — one call, many widgets

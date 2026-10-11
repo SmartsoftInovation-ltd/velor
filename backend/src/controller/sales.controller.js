@@ -31,6 +31,8 @@ const {
   setCache,
 } = require("@/utils/cache.util");
 
+const { stampPurchasePrices } = require("@/utils/saleCost.util");
+
 const NS = "sales";
 
 // Server-side discount-limit enforcement. The frontend disables discount fields
@@ -77,6 +79,27 @@ const enforceDiscountLimit = (user, body) => {
         2,
       )}%.`,
       statusCodes.FORBIDDEN,
+    );
+  }
+};
+
+// One discount per invoice (see .claude/rules/profit-calculation.md): a
+// product's or variant's own discount or one the seller types on a line, OR
+// the invoice discountPercent, OR lessTaka — never two of them together. The
+// form locks the other fields, but a client can be bypassed, so the rule is
+// re-checked here on the merged sale.
+const enforceSingleDiscount = (sale) => {
+  const items = Array.isArray(sale?.searchItem) ? sale.searchItem : [];
+  const levels = [
+    items.some((it) => Number(it?.discount || 0) > 0) && "an item discount",
+    Number(sale?.discountPercent || 0) > 0 && "an invoice discount",
+    Number(sale?.lessTaka || 0) > 0 && "less taka",
+  ].filter(Boolean);
+
+  if (levels.length > 1) {
+    throw new customError(
+      `Only one discount is allowed on a sale, but this one has ${levels.join(" and ")}.`,
+      statusCodes.BAD_REQUEST,
     );
   }
 };
@@ -350,6 +373,7 @@ const enqueueSalesNotifications = async (createdSale) => {
 exports.createSales = asynchandeler(async (req, res) => {
   // Enforce the seller's discount limit and stamp who is accountable for it.
   enforceDiscountLimit(req.user, req.body);
+  enforceSingleDiscount(req.body);
   normalizeNetPaid(req.body);
   enforceWalkingPaidInFull(req.body);
   req.body.discountGivenBy = req.user?._id;
@@ -359,6 +383,8 @@ exports.createSales = asynchandeler(async (req, res) => {
 
   try {
     await session.withTransaction(async () => {
+      req.body.searchItem = await stampPurchasePrices(req.body.searchItem, session);
+
       // Create sales (must be inside txn)
       const docs = await salesModel.create([req.body], { session });
       createdSale = docs[0];
@@ -978,6 +1004,14 @@ exports.updateSales = asynchandeler(async (req, res) => {
         discountPercent: req.body.discountPercent ?? oldSale.discountPercent,
         lessTaka: req.body.lessTaka ?? oldSale.lessTaka,
       });
+      enforceSingleDiscount({
+        searchItem: req.body.searchItem ?? oldSale.searchItem,
+        discountPercent: req.body.discountPercent ?? oldSale.discountPercent,
+        lessTaka: req.body.lessTaka ?? oldSale.lessTaka,
+      });
+      if (req.body.searchItem) {
+        req.body.searchItem = await stampPurchasePrices(req.body.searchItem, session, oldSale.searchItem);
+      }
       normalizeNetPaid(req.body, oldSale);
       // An edit must not be able to leave a walking sale with a due either.
       enforceWalkingPaidInFull(req.body, oldSale);

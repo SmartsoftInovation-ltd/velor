@@ -134,6 +134,12 @@ _.route("/invoice-profit").post(
   authorize("invoice-profit-report", "view"),
   reportController.getInvoiceProfitReport,
 );
+_.route("/product-profit").post(
+  authGuard,
+  reportLimiter,
+  authorize("product-profit-report", "view"),
+  reportController.getProductProfitReport,
+);
 _.route("/top-customer").post(
   authGuard,
   reportLimiter,

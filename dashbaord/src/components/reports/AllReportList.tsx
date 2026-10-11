@@ -121,6 +121,11 @@ const categories: ReportCategory[] = [
         description: "Invoice-wise total, discount, delivery, payable, paid, due & profit",
         path: "/invoice-profit",
       },
+      {
+        name: "Product Profit",
+        description: "Product-wise quantity, sales price, total, discount & profit per sold line",
+        path: "/product-profit",
+      },
     ],
   },
   {

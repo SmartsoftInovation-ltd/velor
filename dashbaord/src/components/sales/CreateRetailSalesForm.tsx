@@ -604,6 +604,21 @@ export default function CreateRetailSalesForm({
   const discountLocked = hasItemDiscount || (parseFloat(lessTaka) || 0) > 0;
   const lessTakaLocked = hasItemDiscount || (parseFloat(discount) || 0) > 0;
 
+  // One discount per invoice. An item discount wins, so the invoice discount and
+  // less-taka are dropped the moment a discounted item is in the cart — a
+  // customer's regular discount would otherwise stay behind the locked field
+  // and be saved on top. With no item discount, the invoice percent wins over
+  // less-taka. The API rejects a sale that carries more than one.
+  useEffect(() => {
+    if (hasItemDiscount) {
+      if (discount) setDiscount("");
+      if (lessTaka) setLessTaka("");
+    } else if ((parseFloat(discount) || 0) > 0 && (parseFloat(lessTaka) || 0) > 0) {
+      setLessTaka("");
+    }
+  }, [hasItemDiscount, discount, lessTaka]);
+
+
   // The invoice discount % can never be typed above the seller's own limit.
   // 0 = no limit. Item-level product discounts are separate (they lock this
   // field entirely via hasItemDiscount instead of being summed in here).

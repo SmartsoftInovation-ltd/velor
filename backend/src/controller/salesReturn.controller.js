@@ -76,7 +76,18 @@ async function recordReturnTransaction({ sale, returnDoc, refundMethod, session 
 // Units are counted over "sale" and "return" lines: a line is flipped to
 // "return" once returned, but it was still sold when the less was given, so
 // the per-unit share must not grow as items come back. Unit prices come from
-// the sale itself, not the request, so the refund cannot be inflated.
+// the sale itself, not the request, so the refund cannot be inflated, and are
+// net of the line's own discount.
+// What the customer paid for one unit of a line: its salesRate less the line's
+// own discount (taka off each unit, or a percent). Refunding the bare
+// salesRate would hand back more than a discounted item was sold for.
+const netUnitPrice = (line) => {
+  const rate = Number(line.salesRate) || 0;
+  const discount = Number(line.discount) || 0;
+  const net = line.discountType === "percent" ? rate * (1 - discount / 100) : rate - discount;
+  return Math.max(0, Math.round(net * 100) / 100);
+};
+
 function computeReturnAmounts(sale, allproduct) {
   const lines = (sale.searchItem || []).filter((si) => si.salesStatus !== "exchange");
   const soldUnits = lines.reduce((sum, si) => sum + (Number(si.quantity) || 0), 0);
@@ -92,7 +103,7 @@ function computeReturnAmounts(sale, allproduct) {
         ? si.variantId?.toString() === item.variant.toString()
         : si.productId?.toString() === String(item.product),
     );
-    const unitPrice = line ? Number(line.salesRate) || 0 : Number(item.unitPrice) || 0;
+    const unitPrice = line ? netUnitPrice(line) : Number(item.unitPrice) || 0;
     const quantity = Number(item.quantity) || 0;
     gross += unitPrice * quantity;
     units += quantity;
@@ -110,6 +121,8 @@ function computeReturnAmounts(sale, allproduct) {
     totalReturnAmount: Math.max(0, round2(gross - discountAmount - lessTakaShare)),
   };
 }
+
+exports.computeReturnAmounts = computeReturnAmounts;
 
 exports.createSalesReturn = asynchandeler(async (req, res) => {
   const data = await validateSalesReturn(req);

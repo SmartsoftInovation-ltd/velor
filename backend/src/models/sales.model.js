@@ -54,6 +54,11 @@ const searchItemSchema = new mongoose.Schema(
     },
 
     subtotal: { type: Number, default: 0, min: 0 },
+
+    // What one unit cost when the line was sold, stamped server-side from the
+    // variant's or product's purchasePrice. Absent on sales saved before this
+    // field existed; profit then falls back to the catalogue's current price.
+    purchasePrice: { type: Number, min: 0 },
   },
   { _id: false },
 );

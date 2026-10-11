@@ -28,6 +28,7 @@ const { MANUAL_ENTRY_ONLY } = require("./createTransition.controller");
 const FundHandoverDescription = require("../models/fundHandoverDescription.model");
 const Product = require("../models/product.model");
 const { buildLowStockStages } = require("../utils/lowStock.util");
+const { saleProfitStages, saleLineProfitStages } = require("../utils/saleProfit.util");
 const {
   getCache,
   setCache,
@@ -4158,157 +4159,16 @@ exports.getCustomerSalesInvoiceReport = asynchandeler(async (req, res) => {
   );
 });
 
-// Per-sale stages adding `buyPrice`, `discountAmount`, `itemsQty` and `profit`
-// — shared by the customer invoice profit and top customer reports so both
-// use one formula (see getCustomerInvoiceProfitReport for what each means).
-const saleProfitStages = () => [
-  // Every product and variant on the invoice in one lookup each; the cost of
-  // each line is then picked out of these arrays below.
-  {
-    $lookup: {
-      from: "variants",
-      localField: "searchItem.variantId",
-      foreignField: "_id",
-      as: "variantDocs",
-      pipeline: [{ $project: { purchasePrice: 1 } }],
-    },
-  },
-  {
-    $lookup: {
-      from: "products",
-      localField: "searchItem.productId",
-      foreignField: "_id",
-      as: "productDocs",
-      pipeline: [{ $project: { purchasePrice: 1 } }],
-    },
-  },
-  {
-    $addFields: {
-      buyPrice: {
-        $reduce: {
-          input: { $ifNull: ["$searchItem", []] },
-          initialValue: 0,
-          in: {
-            $add: [
-              "$$value",
-              {
-                // Only sold lines carry a cost; returns and exchanges are not sales.
-                $cond: [
-                  { $eq: [{ $ifNull: ["$$this.salesStatus", "sale"] }, "sale"] },
-                  {
-                    $multiply: [
-                      { $ifNull: ["$$this.quantity", 0] },
-                      {
-                        $ifNull: [
-                          {
-                            $first: {
-                              $map: {
-                                input: {
-                                  $filter: {
-                                    input: "$variantDocs",
-                                    as: "v",
-                                    cond: { $eq: ["$$v._id", "$$this.variantId"] },
-                                  },
-                                },
-                                as: "v",
-                                in: "$$v.purchasePrice",
-                              },
-                            },
-                          },
-                          {
-                            $ifNull: [
-                              {
-                                $first: {
-                                  $map: {
-                                    input: {
-                                      $filter: {
-                                        input: "$productDocs",
-                                        as: "p",
-                                        cond: { $eq: ["$$p._id", "$$this.productId"] },
-                                      },
-                                    },
-                                    as: "p",
-                                    in: "$$p.purchasePrice",
-                                  },
-                                },
-                              },
-                              0,
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  0,
-                ],
-              },
-            ],
-          },
-        },
-      },
-      itemsQty: {
-        $reduce: {
-          input: { $ifNull: ["$searchItem", []] },
-          initialValue: 0,
-          in: {
-            $add: [
-              "$$value",
-              {
-                $cond: [
-                  { $eq: [{ $ifNull: ["$$this.salesStatus", "sale"] }, "sale"] },
-                  { $ifNull: ["$$this.quantity", 0] },
-                  0,
-                ],
-              },
-            ],
-          },
-        },
-      },
-      discountAmount: {
-        $add: [
-          {
-            $divide: [
-              { $multiply: [{ $ifNull: ["$total", 0] }, { $ifNull: ["$discountPercent", 0] }] },
-              100,
-            ],
-          },
-          { $ifNull: ["$lessTaka", 0] },
-        ],
-      },
-    },
-  },
-  {
-    $addFields: {
-      profit: {
-        $subtract: [
-          { $subtract: [{ $ifNull: ["$total", 0] }, "$discountAmount"] },
-          "$buyPrice",
-        ],
-      },
-    },
-  },
-];
-
 // @desc Customer invoice profit report — one row per sale invoice with what
 // the goods cost, what was charged and the margin left over.
 //
-//   SALES TOTAL = sale.total — the sum of the line subtotals, already net of
-//                 each line's own (product/variant) discount
-//   DISCOUNT    = sale.total × discountPercent / 100 + lessTaka — the
-//                 invoice-level cuts the seller added on top
-//   BUY PRICE   = Σ purchasePrice × quantity over the "sale" lines, reading the
-//                 variant's purchasePrice and falling back to the product's
-//   PROFIT      = SALES TOTAL − DISCOUNT − BUY PRICE
+//   SALES TOTAL = Σ salesRate × quantity of the sold lines, before any discount
+//   DISCOUNT    = the invoice's discount, whichever level it was given at
+//   BUY PRICE   = Σ purchasePrice × quantity still with the customer, at the
+//                 cost stamped on the line when it was sold
+//   PROFIT      = the shared per-sale formula (utils/saleProfit.util.js)
 //
-// This is the dashboard Total Sale box's profit (buildProfitPipeline in
-// dashboard.controller.js) read per invoice: VAT, delivery and labour stay out
-// because they are not margin. The one difference is that SALES TOTAL is taken
-// from the stored `total` here, where the box recomputes it from
-// salesRate/discount/quantity.
-//
-// BUY PRICE uses the catalogue's current purchasePrice — the sale line does not
-// store the cost it was bought at — so editing a product's purchase price
-// re-prices this report's history.
+// Sales of every invoiceStatus are listed, drafts and pending included.
 exports.getCustomerInvoiceProfitReport = asynchandeler(async (req, res) => {
   const { startDate, endDate, customerId, customerName, salesType } = req.body || {};
   const { page, limit, skip } = parsePagination(req);
@@ -4395,8 +4255,8 @@ exports.getCustomerInvoiceProfitReport = asynchandeler(async (req, res) => {
               customerName: "$resolvedCustomerName",
               customerPhone: "$resolvedCustomerPhone",
               buyPrice: 1,
-              salesTotal: { $ifNull: ["$total", 0] },
-              discount: "$discountAmount",
+              salesTotal: "$grossSales",
+              discount: "$totalDiscountAmount",
               profit: 1,
             },
           },
@@ -4407,8 +4267,8 @@ exports.getCustomerInvoiceProfitReport = asynchandeler(async (req, res) => {
               _id: null,
               count: { $sum: 1 },
               totalBuyPrice: { $sum: "$buyPrice" },
-              totalSales: { $sum: { $ifNull: ["$total", 0] } },
-              totalDiscount: { $sum: "$discountAmount" },
+              totalSales: { $sum: "$grossSales" },
+              totalDiscount: { $sum: "$totalDiscountAmount" },
               totalProfit: { $sum: "$profit" },
             },
           },
@@ -4463,16 +4323,18 @@ exports.getCustomerInvoiceProfitReport = asynchandeler(async (req, res) => {
 // @desc Invoice profit report — one row per sale invoice with the full bill
 // (total, discount, delivery, payable, paid, due) next to its profit.
 //
-//   TOTAL    = sale.total — the line subtotals, already net of line discounts
-//   DISC     = total × discountPercent / 100 + lessTaka
+//   TOTAL    = Σ salesRate × quantity of the sold lines, before any discount
+//   DISC     = the invoice's discount, whichever level it was given at: the
+//              lines' own discounts, or discountPercent, or lessTaka
 //   DELIVERY = sale.deliveryCost
 //   PAYABLE  = sale.payable (includes VAT, delivery and labour)
 //   PAID     = cash the shop kept (netPaid; paid − changes on older sales)
 //   DUE      = sale.presentDue
-//   PROFIT   = TOTAL − DISC − BUY PRICE, the dashboard formula per invoice
-//              (saleProfitStages). Delivery, VAT and labour are pass-through
-//              charges, not margin, so they stay out of it.
+//   PROFIT   = TOTAL − DISC − refunds − BUY PRICE, the shared per-sale formula
+//              (utils/saleProfit.util.js). Delivery, VAT and labour are
+//              pass-through charges, not margin, so they stay out of it.
 //
+// Sales of every invoiceStatus are listed, drafts and pending included.
 // `paymentStatus` narrows to paid / partial / due invoices.
 exports.getInvoiceProfitReport = asynchandeler(async (req, res) => {
   const { startDate, endDate, customerName, salesType, paymentStatus } = req.body || {};
@@ -4577,12 +4439,13 @@ exports.getInvoiceProfitReport = asynchandeler(async (req, res) => {
               customerCode: "$customerInfo.customSerialId",
               customerName: "$resolvedCustomerName",
               customerPhone: "$resolvedCustomerPhone",
-              total: { $ifNull: ["$total", 0] },
-              discount: "$discountAmount",
+              total: "$grossSales",
+              discount: "$totalDiscountAmount",
               delivery: { $ifNull: ["$deliveryCost", 0] },
               payable: { $ifNull: ["$payable", 0] },
               paid: "$netPaidResolved",
               due: { $ifNull: ["$presentDue", 0] },
+              returned: "$returnAmount",
               buyPrice: 1,
               profit: 1,
             },
@@ -4593,12 +4456,13 @@ exports.getInvoiceProfitReport = asynchandeler(async (req, res) => {
             $group: {
               _id: null,
               count: { $sum: 1 },
-              totalSales: { $sum: { $ifNull: ["$total", 0] } },
-              totalDiscount: { $sum: "$discountAmount" },
+              totalSales: { $sum: "$grossSales" },
+              totalDiscount: { $sum: "$totalDiscountAmount" },
               totalDelivery: { $sum: { $ifNull: ["$deliveryCost", 0] } },
               totalPayable: { $sum: { $ifNull: ["$payable", 0] } },
               totalPaid: { $sum: "$netPaidResolved" },
               totalDue: { $sum: { $ifNull: ["$presentDue", 0] } },
+              totalReturned: { $sum: "$returnAmount" },
               totalBuyPrice: { $sum: "$buyPrice" },
               totalProfit: { $sum: "$profit" },
             },
@@ -4618,6 +4482,7 @@ exports.getInvoiceProfitReport = asynchandeler(async (req, res) => {
     totalPayable: 0,
     totalPaid: 0,
     totalDue: 0,
+    totalReturned: 0,
     totalBuyPrice: 0,
     totalProfit: 0,
   };
@@ -4649,13 +4514,197 @@ exports.getInvoiceProfitReport = asynchandeler(async (req, res) => {
   );
 });
 
+// null for a missing or empty value, so a blank stored on the sale line still
+// falls through to the catalogue
+const filled = (expr) => ({
+  $cond: [{ $in: [{ $ifNull: [expr, null] }, [null, ""]] }, null, expr],
+});
+const firstFilled = (...exprs) =>
+  exprs.reduceRight((rest, expr) => ({ $ifNull: [filled(expr), rest] }), null);
+
+// @desc Product profit report — one row per sold line, with the profit that
+// line made.
+//
+//   PRODUCT NAME = the product's name; for a variant line, the name of the
+//                  variant's product
+//   BARCODE / COLOR / SIZE = as sold, falling back to the variant or product
+//   QTY          = units sold and not returned
+//   SALES PRICE  = salesRate, the price of one unit
+//   TOTAL        = SALES PRICE × QTY
+//   DISC         = the line's discount: its own, or its share of the invoice's
+//   PROFIT       = TOTAL − DISC − BUY PRICE, the shared per-line formula
+//                  (saleLineProfitStages in utils/saleProfit.util.js)
+//
+// A sale's rows add up to its invoice profit report figure. Sales of every
+// invoiceStatus are listed. `search` matches the invoice number, barcode or
+// the name the line was sold under.
+exports.getProductProfitReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  // endDate arrives as a bare day, which parses to midnight and would drop
+  // every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+
+  const searchQuery = typeof search === "string" ? search.trim() : "";
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:product-profit:${startDate}:${endDate}:${salesType || "all"}:${searchQuery || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Product profit report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const pipeline = [{ $match: match }, ...saleLineProfitStages()];
+
+  if (searchQuery) {
+    const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    pipeline.push({
+      $match: { $or: [{ invoiceNumber: rx }, { "line.barcode": rx }, { "line.productDescription": rx }] },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { date: -1, _id: -1, lineIndex: 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        // Names are only needed for the rows on this page
+        {
+          $lookup: {
+            from: "products",
+            localField: "line.productId",
+            foreignField: "_id",
+            as: "productDoc",
+            pipeline: [{ $project: { name: 1, barCode: 1, color: 1, size: 1 } }],
+          },
+        },
+        { $unwind: { path: "$productDoc", preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: "variants",
+            localField: "line.variantId",
+            foreignField: "_id",
+            as: "variantDoc",
+            pipeline: [
+              { $project: { barCode: 1, color: 1, size: 1, product: 1 } },
+              {
+                // A variant line usually carries no productId of its own, so
+                // its product's name is reached through the variant.
+                $lookup: {
+                  from: "products",
+                  localField: "product",
+                  foreignField: "_id",
+                  as: "parent",
+                  pipeline: [{ $project: { name: 1 } }],
+                },
+              },
+              { $unwind: { path: "$parent", preserveNullAndEmptyArrays: true } },
+            ],
+          },
+        },
+        { $unwind: { path: "$variantDoc", preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: 0,
+            saleId: "$_id",
+            lineIndex: 1,
+            date: 1,
+            invoiceNumber: 1,
+            salesType: 1,
+            productName: firstFilled("$variantDoc.parent.name", "$productDoc.name", "$line.productDescription"),
+            barcode: firstFilled("$line.barcode", "$variantDoc.barCode", "$productDoc.barCode"),
+            color: firstFilled("$line.color", "$variantDoc.color", "$productDoc.color"),
+            size: firstFilled("$line.size", "$variantDoc.size", "$productDoc.size"),
+            qty: "$line.qty",
+            salesPrice: "$line.salesRate",
+            total: "$line.total",
+            discount: "$line.discount",
+            buyPrice: "$line.buyPrice",
+            profit: "$line.profit",
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalQty: { $sum: "$line.qty" },
+            totalSalesPrice: { $sum: "$line.salesRate" },
+            totalAmount: { $sum: "$line.total" },
+            totalDiscount: { $sum: "$line.discount" },
+            totalBuyPrice: { $sum: "$line.buyPrice" },
+            totalProfit: { $sum: "$line.profit" },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalQty: 0,
+    totalSalesPrice: 0,
+    totalAmount: 0,
+    totalDiscount: 0,
+    totalBuyPrice: 0,
+    totalProfit: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: {
+      startDate,
+      endDate,
+      salesType: salesType || "ALL",
+      search: searchQuery || null,
+    },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Product profit report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
 // @desc Top customer report — one row per LISTED customer (walking sales have
 // no customer account to rank), ordered by sales total, highest first.
 //
 //   SALES INVOICES = number of sales in the period
-//   ITEMS QTY      = Σ quantity of the "sale" lines
-//   SALES TOTAL    = Σ sale.total
-//   DISCOUNT       = Σ (total × discountPercent / 100 + lessTaka)
+//   ITEMS QTY      = Σ quantity sold and not returned
+//   SALES TOTAL    = Σ salesRate × quantity of the sold lines, before discount
+//   DISCOUNT       = Σ of each invoice's discount, whichever level it was at
 //   PAYABLE / PAID / DUE = Σ payable / paid / presentDue
 //   PROFIT         = Σ per-invoice profit, the customer invoice profit
 //                    report's formula (saleProfitStages)
@@ -4712,8 +4761,8 @@ exports.getTopCustomerReport = asynchandeler(async (req, res) => {
         _id: "$customerType.customerId",
         invoices: { $sum: 1 },
         itemsQty: { $sum: "$itemsQty" },
-        salesTotal: { $sum: { $ifNull: ["$total", 0] } },
-        discount: { $sum: "$discountAmount" },
+        salesTotal: { $sum: "$grossSales" },
+        discount: { $sum: "$totalDiscountAmount" },
         payable: { $sum: { $ifNull: ["$payable", 0] } },
         paid: { $sum: { $ifNull: ["$paid", 0] } },
         due: { $sum: { $ifNull: ["$presentDue", 0] } },
