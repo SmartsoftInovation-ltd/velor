@@ -6,7 +6,15 @@ jest.mock("../../src/config/redis.config", () => require("../mocks/redisCache"))
 
 const salesModel = require("../../src/models/sales.model");
 const { customerModel } = require("../../src/models/customer.model");
-const { getUserSalesInvoiceReport, getUserSalesProductReport } = require("../../src/controller/report.controller");
+const {
+  getUserSalesInvoiceReport,
+  getUserSalesProductReport,
+  getTopUserReport,
+  getSalesmanSalesInvoiceReport,
+} = require("../../src/controller/report.controller");
+const employeeModel = require("../../src/models/employee.model");
+const userModel = require("../../src/models/user.model");
+const roleModel = require("../../src/models/role.model");
 const productModel = require("../../src/models/product.model");
 const variantModel = require("../../src/models/variant.model");
 const migration = require("../../src/migrations/009-backfill-sale-created-by");
@@ -187,6 +195,94 @@ describe("user sales invoice report", () => {
       expect(rows[0]).toMatchObject({ discount: 100, total: 2700 });
       require("../mocks/redisCache").__reset();
       expect((await runProducts(me, { search: "nothing" })).rows).toHaveLength(0);
+    });
+  });
+
+  describe("top user report", () => {
+    const roleId = new mongoose.Types.ObjectId();
+    const customerA = new mongoose.Types.ObjectId();
+    const runTop = (extra) => run(getTopUserReport, me, extra);
+    const walking = (mobileNumber) => ({ type: "walking", walking: { customerName: "Walk", mobileNumber } });
+
+    beforeEach(async () => {
+      await insert(roleModel, { _id: roleId, name: "Sales", slug: "sales" });
+      await insert(userModel, { _id: me, name: "Zahirul Islam", phone: "01999878862", email: "zahirul@example.com", roles: [roleId] });
+      await insert(userModel, { _id: other, name: "Sujon", phone: "01999878863", email: "sujon@example.com", roles: [] });
+    });
+
+    it("totals each user's sales and ranks by total sales", async () => {
+      // me: 3 invoices, 2 customers (one listed twice, one walking)
+      await sale({ createdBy: me, customerType: { type: "listed", customerId: customerA, walking: null }, total: 1000, discountPercent: 10, payable: 900, netPaid: 900, presentDue: 0 });
+      await sale({ createdBy: me, customerType: { type: "listed", customerId: customerA, walking: null }, total: 2000, lessTaka: 200, payable: 1800, netPaid: 1000, presentDue: 800 });
+      await sale({ createdBy: me, customerType: walking("01700000001"), total: 500, payable: 500, paid: 600, changes: 100, presentDue: 0 });
+      // other: bigger seller, saved before createdBy existed
+      await sale({ discountGivenBy: other, customerType: walking("01700000002"), total: 9000, payable: 9000, netPaid: 9000, presentDue: 0 });
+      // Nobody to credit: left out
+      await sale({ total: 99999, payable: 99999 });
+
+      const { rows, totals } = await runTop();
+      expect(rows.map((r) => r.name)).toEqual(["Sujon", "Zahirul Islam"]);
+      expect(rows[1]).toMatchObject({
+        name: "Zahirul Islam",
+        phone: "01999878862",
+        email: "zahirul@example.com",
+        roles: ["Sales"],
+        invoices: 3,
+        customers: 2,
+        totalSales: 3500,
+        discount: 300,
+        payable: 3200,
+        paid: 2400,
+        due: 800,
+      });
+      expect(rows[0]).toMatchObject({ roles: [], invoices: 1, customers: 1, totalSales: 9000 });
+      expect(totals).toMatchObject({ count: 2, totalInvoices: 4, totalCustomers: 3, totalSales: 12500, totalDiscount: 300, totalPayable: 12200, totalPaid: 11400, totalDue: 800 });
+    });
+
+    it("keeps only the top N, with totals for just those", async () => {
+      await sale({ createdBy: me, total: 100, payable: 100 });
+      await sale({ createdBy: other, total: 900, payable: 900 });
+
+      const { rows, totals } = await runTop({ top: 1 });
+      expect(rows.map((r) => r.name)).toEqual(["Sujon"]);
+      expect(totals).toMatchObject({ count: 1, totalSales: 900 });
+    });
+  });
+
+  describe("salesman sales invoice report", () => {
+    const akram = new mongoose.Types.ObjectId();
+    const sajib = new mongoose.Types.ObjectId();
+    const runSalesman = (extra) => run(getSalesmanSalesInvoiceReport, me, extra);
+
+    beforeEach(async () => {
+      await insert(employeeModel, { _id: akram, fullName: "Akram" });
+      await insert(employeeModel, { _id: sajib, fullName: "Sajib" });
+    });
+
+    it("lists invoices by the sale's salesman, whoever entered them", async () => {
+      // 10000 − 15% (1500) + 150 VAT → payable 8650, as on the sheet
+      await sale({ invoiceNumber: "A-1", salesMen: akram, createdBy: other, total: 10000, discountPercent: 15, vatPercent: 1.7647058823529411, payable: 8650, netPaid: 7000, presentDue: 1650 });
+      await sale({ invoiceNumber: "S-1", salesMen: sajib, createdBy: me, total: 500, payable: 500, netPaid: 500, presentDue: 0 });
+
+      const one = await runSalesman({ salesMenId: String(akram) });
+      expect(one.rows).toHaveLength(1);
+      expect(one.rows[0]).toMatchObject({
+        invoiceNumber: "A-1",
+        salesmanName: "Akram",
+        customerType: "walking",
+        total: 10000,
+        discount: 1500,
+        vat: 150,
+        payable: 8650,
+        paid: 7000,
+        due: 1650,
+      });
+      expect(one.totals).toMatchObject({ count: 1, totalAmount: 10000, totalPayable: 8650, totalDue: 1650 });
+
+      require("../mocks/redisCache").__reset();
+      const all = await runSalesman();
+      expect(all.rows.map((r) => r.salesmanName).sort()).toEqual(["Akram", "Sajib"]);
+      expect(all.totals).toMatchObject({ count: 2, totalAmount: 10500 });
     });
   });
 

@@ -283,6 +283,12 @@ const CustomerSalesInvoiceReport = lazy(
 const InvoiceProfitReport = lazy(
   () => import("./components/reports/Sales/InvoiceProfitReport"),
 );
+const SalesmanSalesInvoiceReport = lazy(
+  () => import("./components/reports/Sales/SalesmanSalesInvoiceReport"),
+);
+const TopUserReport = lazy(
+  () => import("./components/reports/Sales/TopUserReport"),
+);
 const UserSalesProductReport = lazy(
   () => import("./components/reports/Sales/UserSalesProductReport"),
 );
@@ -1261,6 +1267,22 @@ export default function App() {
                   element={
                     <ProtectedRoute module="invoice-profit-report" action="view">
                       <InvoiceProfitReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/salesman-sales-invoice"
+                  element={
+                    <ProtectedRoute module="salesman-sales-invoice-report" action="view">
+                      <SalesmanSalesInvoiceReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/top-user"
+                  element={
+                    <ProtectedRoute module="top-user-report" action="view">
+                      <TopUserReport />
                     </ProtectedRoute>
                   }
                 />

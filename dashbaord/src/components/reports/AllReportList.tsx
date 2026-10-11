@@ -137,6 +137,16 @@ const categories: ReportCategory[] = [
         description: "Product lines on your own sales with buy, WS & RS price, discount and total",
         path: "/user-sales-product",
       },
+      {
+        name: "Top User",
+        description: "Users ranked by sales, with invoices, customers, discount, payable, paid & due",
+        path: "/top-user",
+      },
+      {
+        name: "Salesman Sales Invoice",
+        description: "Invoice-wise sales by salesman with discount, VAT, payable, paid & due",
+        path: "/salesman-sales-invoice",
+      },
     ],
   },
   {
