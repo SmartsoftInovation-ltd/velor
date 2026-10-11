@@ -5537,6 +5537,194 @@ exports.getProductSalesReturnSummaryReport = asynchandeler(async (req, res) => {
   );
 });
 
+// @desc User sales invoice report — the sale invoices made by the logged-in
+// user, one row each, with what was returned on them.
+//
+//   A sale belongs to the user in `createdBy`. Sales saved before that field
+//   existed fall back to `discountGivenBy`.
+//
+// Every figure is the sale's own stored field:
+//
+//   TOTAL    = sale.total
+//   RETURN   = sale.return — money refunded through sales returns
+//   DISC     = total × discountPercent / 100 + lessTaka (the sale stores the
+//              percent and the less-taka, not the amount)
+//   VAT      = (total − percent discount) × vatPercent / 100 (stored as a
+//              percent too; worked out the way the sales form charges it)
+//   DELIVERY / LABOUR = deliveryCost / labourCost
+//   PAYABLE  = sale.payable, as saved — the return is shown beside it, not
+//              taken off
+//   PAID     = cash the shop kept (netPaid; paid − changes on older sales)
+//   DUE      = sale.presentDue
+//
+// Sales of every invoiceStatus are listed.
+exports.getUserSalesInvoiceReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, search } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const userId = req.user._id;
+
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = {
+    date: { $gte: rangeStart, $lte: rangeEnd },
+    $or: [{ createdBy: userId }, { createdBy: null, discountGivenBy: userId }],
+  };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+
+  const searchQuery = typeof search === "string" ? search.trim() : "";
+
+  // Keyed by user: every user sees a different sheet for the same filters.
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:user-sales-invoice:${userId}:${startDate}:${endDate}:${salesType || "all"}:${searchQuery || "all"}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "User sales invoice report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const num = (expr) => ({ $ifNull: [expr, 0] });
+
+  const pipeline = [
+    { $match: match },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerType.customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+      },
+    },
+    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCustomerName: { $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"] },
+        resolvedCustomerPhone: { $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"] },
+        percentDiscount: { $divide: [{ $multiply: [num("$total"), num("$discountPercent")] }, 100] },
+        returnAmount: num("$return"),
+        paidAmount: {
+          $ifNull: ["$netPaid", { $max: [0, { $subtract: [num("$paid"), num("$changes")] }] }],
+        },
+      },
+    },
+    {
+      $addFields: {
+        discountAmount: { $round: [{ $add: ["$percentDiscount", num("$lessTaka")] }, 2] },
+        vatAmount: {
+          $round: [
+            { $divide: [{ $multiply: [{ $subtract: [num("$total"), "$percentDiscount"] }, num("$vatPercent")] }, 100] },
+            2,
+          ],
+        },
+      },
+    },
+  ];
+
+  if (searchQuery) {
+    const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    pipeline.push({
+      $match: { $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }, { invoiceNumber: rx }] },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      rows: [
+        { $sort: { date: -1, _id: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            date: 1,
+            invoiceNumber: 1,
+            salesType: 1,
+            customerType: "$customerType.type",
+            customerName: "$resolvedCustomerName",
+            customerPhone: "$resolvedCustomerPhone",
+            total: num("$total"),
+            returned: "$returnAmount",
+            discount: "$discountAmount",
+            vat: "$vatAmount",
+            delivery: num("$deliveryCost"),
+            labour: num("$labourCost"),
+            payable: num("$payable"),
+            paid: "$paidAmount",
+            due: num("$presentDue"),
+          },
+        },
+      ],
+      totals: [
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalAmount: { $sum: num("$total") },
+            totalReturned: { $sum: "$returnAmount" },
+            totalDiscount: { $sum: "$discountAmount" },
+            totalVat: { $sum: "$vatAmount" },
+            totalDelivery: { $sum: num("$deliveryCost") },
+            totalLabour: { $sum: num("$labourCost") },
+            totalPayable: { $sum: num("$payable") },
+            totalPaid: { $sum: "$paidAmount" },
+            totalDue: { $sum: num("$presentDue") },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalAmount: 0,
+    totalReturned: 0,
+    totalDiscount: 0,
+    totalVat: 0,
+    totalDelivery: 0,
+    totalLabour: 0,
+    totalPayable: 0,
+    totalPaid: 0,
+    totalDue: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    user: { _id: userId, name: req.user.name || null },
+    filters: { startDate, endDate, salesType: salesType || "ALL", search: searchQuery || null },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "User sales invoice report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
 // @desc Top customer report — one row per LISTED customer (walking sales have
 // no customer account to rank), ordered by sales total, highest first.
 //

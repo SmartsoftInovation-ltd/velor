@@ -139,6 +139,18 @@ describe("sale discount and cost rules", () => {
     });
   });
 
+  describe("who made the sale", () => {
+    it("records the signed-in user as createdBy, and an edit cannot reassign it", async () => {
+      const someoneElse = "64b000000000000000000009";
+      const res = await create(sale({ createdBy: someoneElse }), 201);
+
+      expect(String((await stored(res.body.data._id)).createdBy)).toBe(String(shop.user._id));
+
+      await update(res.body.data._id, { createdBy: someoneElse, remark: "edited" }, 200);
+      expect(String((await stored(res.body.data._id)).createdBy)).toBe(String(shop.user._id));
+    });
+  });
+
   describe("line cost", () => {
     const setCataloguePrice = (purchasePrice) =>
       runForTenant(shop.tenant._id, () =>

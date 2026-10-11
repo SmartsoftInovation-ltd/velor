@@ -101,6 +101,7 @@ describe("Velor migration", () => {
         ["006-drop-global-role-indexes", "applied"],
         ["007-backfill-category-serial", "applied"],
         ["008-backfill-sale-purchase-price", "applied"],
+        ["009-backfill-sale-created-by", "applied"],
       ]);
     });
 

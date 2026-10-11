@@ -377,6 +377,8 @@ exports.createSales = asynchandeler(async (req, res) => {
   normalizeNetPaid(req.body);
   enforceWalkingPaidInFull(req.body);
   req.body.discountGivenBy = req.user?._id;
+  // Who made the sale — from the session, never from the request.
+  req.body.createdBy = req.user?._id;
 
   const session = await mongoose.startSession();
   let createdSale;
@@ -1017,6 +1019,8 @@ exports.updateSales = asynchandeler(async (req, res) => {
       enforceWalkingPaidInFull(req.body, oldSale);
       // Record who applied the discount on this edit.
       req.body.discountGivenBy = req.user?._id;
+      // The sale stays with whoever made it; an edit cannot reassign it.
+      delete req.body.createdBy;
 
       // 2) Decide NEW state (if field not sent, keep old)
       const newInvoiceStatus = req.body.invoiceStatus ?? oldSale.invoiceStatus;

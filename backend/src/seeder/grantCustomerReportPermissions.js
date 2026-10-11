@@ -27,6 +27,7 @@ const PERMISSION_NAMES = [
   "Push Sales Product Report",
   "Product Sales Return Report",
   "Product Sales Return Summary Report",
+  "User Sales Invoice Report",
   "Top Customer Report",
   "Supplier Ledger Report",
   "Supplier Balance Summary Report",

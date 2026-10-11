@@ -13,6 +13,7 @@ const MIGRATIONS = [
   require("./006-drop-global-role-indexes"),
   require("./007-backfill-category-serial"),
   require("./008-backfill-sale-purchase-price"),
+  require("./009-backfill-sale-created-by"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

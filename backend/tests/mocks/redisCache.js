@@ -20,6 +20,12 @@ const cache = {
     }
     return entry.value;
   },
+  async incr(key) {
+    const entry = store.get(key);
+    const next = (alive(entry) ? Number(entry.value) || 0 : 0) + 1;
+    store.set(key, { value: String(next), expiresAt: alive(entry) ? entry.expiresAt : null });
+    return next;
+  },
   async del(key) {
     return store.delete(key) ? 1 : 0;
   },

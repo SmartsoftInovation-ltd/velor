@@ -126,6 +126,16 @@ const salesSchema = new mongoose.Schema(
       required: [true, "Salesman is required"],
     },
 
+    // The logged-in user who made the sale. Set once, server-side, when the
+    // sale is created and never changed by an edit — unlike discountGivenBy
+    // below, which moves to whoever last edited it. The user sales invoice
+    // report lists a user's sales by this.
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
+
     // The logged-in user (seller/admin) who created this sale and is
     // accountable for any discount applied. Set server-side from req.user,
     // never trusted from the request body. Populated in reports.
