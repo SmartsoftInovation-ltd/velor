@@ -257,6 +257,8 @@ const saleProfitStages = () => [
  *   qty        units sold and not returned (a fully returned line is dropped)
  *   salesRate  price of one unit
  *   total      salesRate × qty
+ *   itemDiscount  the line's own discount alone (total − itemDiscount is
+ *              what the sale stores as the line's subtotal)
  *   discount   the line's own discount plus its share of the invoice's:
  *              discountPercent on the line's net, lessTaka spread equally
  *              over every unit sold on the invoice
@@ -324,6 +326,7 @@ const saleLineProfitStages = () => [
         qty: "$soldLines.keptQty",
         salesRate: "$soldLines.salesRate",
         total: { $round: ["$lineTotal", 2] },
+        itemDiscount: { $round: ["$lineItemDiscount", 2] },
         discount: { $round: ["$lineDiscount", 2] },
         buyPrice: { $round: ["$lineBuyPrice", 2] },
         profit: { $round: [{ $subtract: ["$lineTotal", { $add: ["$lineDiscount", "$lineBuyPrice"] }] }, 2] },

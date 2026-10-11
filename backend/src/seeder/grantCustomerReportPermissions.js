@@ -23,6 +23,7 @@ const PERMISSION_NAMES = [
   "Customer Invoice Profit Report",
   "Invoice Profit Report",
   "Product Profit Report",
+  "Top Sales Product Report",
   "Top Customer Report",
   "Supplier Ledger Report",
   "Supplier Balance Summary Report",

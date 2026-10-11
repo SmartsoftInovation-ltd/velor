@@ -439,6 +439,99 @@ describe("product profit report", () => {
   });
 });
 
+describe("top sales product report", () => {
+  const tenantId = new mongoose.Types.ObjectId();
+  const shirtId = new mongoose.Types.ObjectId();
+  const parentId = new mongoose.Types.ObjectId();
+  const variantId = new mongoose.Types.ObjectId();
+  const { getTopSalesProductReport } = require("../../src/controller/report.controller");
+
+  beforeAll(connectTestDb);
+  afterEach(async () => {
+    await clearTestDb();
+    require("../mocks/redisCache").__reset();
+  });
+  afterAll(disconnectTestDb);
+
+  const insert = (model, doc) =>
+    runForTenant(tenantId, () =>
+      model.collection.insertOne({ tenantId, createdAt: new Date(), updatedAt: new Date(), ...doc }),
+    );
+
+  const runReport = (extra = {}) =>
+    runForTenant(tenantId, async () => {
+      const today = localToday();
+      let body;
+      let error;
+      const req = { body: { startDate: today, endDate: today, ...extra }, query: {} };
+      const res = { status: () => res, json: (b) => (body = b) };
+      await getTopSalesProductReport(req, res, (err) => (error = err));
+      if (error) throw error;
+      return body.data;
+    });
+
+  const bill = (searchItem, doc = {}) =>
+    insert(salesModel, {
+      date: new Date(),
+      customerType: { type: "walking", walking: { customerName: "Sujon" } },
+      discountPercent: 0,
+      lessTaka: 0,
+      searchItem,
+      ...doc,
+    });
+
+  beforeEach(async () => {
+    await insert(productModel, { _id: shirtId, name: "Casual Full Shirt", barCode: "688", color: "Black", size: "M", purchasePrice: 800 });
+    await insert(productModel, { _id: parentId, name: "Jeans Pant", purchasePrice: 1 });
+    await insert(variantModel, { _id: variantId, product: parentId, barCode: "690", color: "Light Wash", size: "34", purchasePrice: 900 });
+  });
+
+  it("adds a product's lines up across invoices and ranks by quantity sold", async () => {
+    await bill([{ productId: shirtId, quantity: 12, salesRate: 1650 }]);
+    await bill([
+      { productId: shirtId, quantity: 8, salesRate: 1650 },
+      { productId: null, variantId, quantity: 10, salesRate: 1700 },
+    ]);
+
+    const { rows, totals } = await runReport();
+    expect(rows).toHaveLength(2);
+    // 20 × 1650 = 33000; cost 20 × 800; profit 17000
+    expect(rows[0]).toMatchObject({
+      productName: "Casual Full Shirt",
+      barcode: "688",
+      color: "Black",
+      size: "M",
+      buyPrice: 800,
+      salesPrice: 1650,
+      qty: 20,
+      total: 33000,
+      profit: 17000,
+    });
+    // The variant takes its product's name and its own purchase price
+    expect(rows[1]).toMatchObject({ productName: "Jeans Pant", barcode: "690", buyPrice: 900, salesPrice: 1700, qty: 10, total: 17000, profit: 8000 });
+    expect(totals).toMatchObject({ count: 2, totalBuyPrice: 1700, totalSalesPrice: 3350, totalQty: 30, totalAmount: 50000, totalProfit: 25000 });
+  });
+
+  it("takes the line's own discount off the total, as the stored subtotal does", async () => {
+    await bill([{ productId: shirtId, quantity: 2, salesRate: 1000, discount: 100, discountType: "amount" }]);
+
+    const { rows } = await runReport();
+    // (1000 − 100) × 2 = 1800; cost 1600
+    expect(rows[0]).toMatchObject({ salesPrice: 1000, qty: 2, total: 1800, profit: 200 });
+  });
+
+  it("keeps only the top N, with totals for just those", async () => {
+    await bill([
+      { productId: shirtId, quantity: 5, salesRate: 1000 },
+      { variantId, quantity: 1, salesRate: 1000 },
+    ]);
+
+    const { rows, totals } = await runReport({ top: 1 });
+    expect(rows.map((r) => r.productName)).toEqual(["Casual Full Shirt"]);
+    expect(totals).toMatchObject({ count: 1, totalQty: 5 });
+  });
+});
+
 describe("top customer report", () => {
   const tenantId = new mongoose.Types.ObjectId();
   const productId = new mongoose.Types.ObjectId();

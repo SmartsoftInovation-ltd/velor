@@ -107,6 +107,11 @@ const categories: ReportCategory[] = [
         description: "Product-wise totals with weighted average buy price",
         path: "/sales-summary",
       },
+      {
+        name: "Top Sales Product",
+        description: "Best-selling products with buy price, sales price, qty, total & profit",
+        path: "/top-sales-product",
+      },
     ],
   },
   {

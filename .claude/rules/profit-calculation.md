@@ -87,6 +87,19 @@ The row also carries `returned` and `buyPrice` in the API response; they are not
 
 Any detail that is missing everywhere is `null` in the API and shown as `N/A`. A sale's rows add up to its Invoice Profit figure; returned units are simply left out here, where the invoice figure subtracts the refund instead.
 
+## Top Sales Product report columns
+
+`POST /report/top-sales-product`, screen `/top-sales-product`, permission `top-sales-product-report`. One row per product or variant sold in the period, ranked by QTY then TOTAL; `top` keeps the first N and the totals row covers only those.
+
+| Column | Value |
+|---|---|
+| PRODUCT NAME / BARCODE / COLOR / SIZE | same rules as the Product Profit report |
+| BUY PRICE | `purchasePrice` of one unit; an average over the units sold if lines carry different stamped costs |
+| SALES PRICE | `salesRate` of one unit, averaged the same way |
+| QTY | units sold and not returned |
+| TOTAL | Σ of the lines' subtotal: `salesRate × quantity` less the line's own discount |
+| PROFIT | Σ of the per-line profit (so an invoice discount's share is taken off, though TOTAL does not show it) |
+
 The Customer Invoice Profit and Top Customer reports use the same meaning for SALES TOTAL (gross) and DISCOUNT (every level), and take PROFIT from the same shared stages.
 
 ## Date field

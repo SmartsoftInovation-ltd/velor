@@ -4522,6 +4522,44 @@ const filled = (expr) => ({
 const firstFilled = (...exprs) =>
   exprs.reduceRight((rest, expr) => ({ $ifNull: [filled(expr), rest] }), null);
 
+// Joins a row's product (`productDoc`) and variant (`variantDoc`, with its
+// own product under `parent`) for display. A variant line usually carries no
+// productId of its own, so its product's name is reached through the variant.
+const catalogueLookupStages = (productField, variantField) => [
+  {
+    $lookup: {
+      from: "products",
+      localField: productField,
+      foreignField: "_id",
+      as: "productDoc",
+      pipeline: [{ $project: { name: 1, barCode: 1, color: 1, size: 1 } }],
+    },
+  },
+  { $unwind: { path: "$productDoc", preserveNullAndEmptyArrays: true } },
+  {
+    $lookup: {
+      from: "variants",
+      localField: variantField,
+      foreignField: "_id",
+      as: "variantDoc",
+      pipeline: [
+        { $project: { barCode: 1, color: 1, size: 1, product: 1 } },
+        {
+          $lookup: {
+            from: "products",
+            localField: "product",
+            foreignField: "_id",
+            as: "parent",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
+        { $unwind: { path: "$parent", preserveNullAndEmptyArrays: true } },
+      ],
+    },
+  },
+  { $unwind: { path: "$variantDoc", preserveNullAndEmptyArrays: true } },
+];
+
 // @desc Product profit report — one row per sold line, with the profit that
 // line made.
 //
@@ -4588,40 +4626,7 @@ exports.getProductProfitReport = asynchandeler(async (req, res) => {
         { $skip: skip },
         { $limit: limit },
         // Names are only needed for the rows on this page
-        {
-          $lookup: {
-            from: "products",
-            localField: "line.productId",
-            foreignField: "_id",
-            as: "productDoc",
-            pipeline: [{ $project: { name: 1, barCode: 1, color: 1, size: 1 } }],
-          },
-        },
-        { $unwind: { path: "$productDoc", preserveNullAndEmptyArrays: true } },
-        {
-          $lookup: {
-            from: "variants",
-            localField: "line.variantId",
-            foreignField: "_id",
-            as: "variantDoc",
-            pipeline: [
-              { $project: { barCode: 1, color: 1, size: 1, product: 1 } },
-              {
-                // A variant line usually carries no productId of its own, so
-                // its product's name is reached through the variant.
-                $lookup: {
-                  from: "products",
-                  localField: "product",
-                  foreignField: "_id",
-                  as: "parent",
-                  pipeline: [{ $project: { name: 1 } }],
-                },
-              },
-              { $unwind: { path: "$parent", preserveNullAndEmptyArrays: true } },
-            ],
-          },
-        },
-        { $unwind: { path: "$variantDoc", preserveNullAndEmptyArrays: true } },
+        ...catalogueLookupStages("line.productId", "line.variantId"),
         {
           $project: {
             _id: 0,
@@ -4694,6 +4699,162 @@ exports.getProductProfitReport = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "Product profit report fetched successfully",
+    { ...payload, fromCache: false },
+  );
+});
+
+// @desc Top sales product report — one row per product or variant sold in the
+// period, best seller first.
+//
+//   PRODUCT NAME = the product's name; for a variant, its product's name
+//   BUY PRICE    = purchasePrice of one unit (averaged over the units sold,
+//                  should lines carry different stamped costs)
+//   SALES PRICE  = salesRate of one unit (averaged the same way)
+//   QTY          = units sold and not returned
+//   TOTAL        = Σ of the lines' subtotal: salesRate × quantity less the
+//                  line's own discount
+//   PROFIT       = Σ per-line profit, the shared formula
+//                  (saleLineProfitStages in utils/saleProfit.util.js)
+//
+// Ranked by QTY, then TOTAL. `top` (e.g. 5) keeps only that many, and the
+// totals row covers just them; 0 or absent ranks every product sold.
+exports.getTopSalesProductReport = asynchandeler(async (req, res) => {
+  const { startDate, endDate, salesType, top } = req.body || {};
+  const { page, limit, skip } = parsePagination(req);
+
+  if (!startDate || !endDate) {
+    throw new customError("startDate and endDate are required", statusCodes.BAD_REQUEST);
+  }
+
+  const topN = Math.max(0, parseInt(top, 10) || 0);
+
+  // endDate arrives as a bare day, which parses to midnight and would drop
+  // every sale made later that same day. Push it to end-of-day.
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const match = { date: { $gte: rangeStart, $lte: rangeEnd } };
+  if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
+
+  const cacheKey = await buildCacheKey(
+    SALES_NS,
+    `report:top-sales-product:${startDate}:${endDate}:${salesType || "all"}:t${topN}:p${page}:l${limit}`,
+  );
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return apiResponse.sendSuccess(
+      res,
+      statusCodes.OK,
+      "Top sales product report fetched successfully",
+      { ...cached, fromCache: true },
+    );
+  }
+
+  const perUnit = (sum) => ({
+    $cond: [{ $gt: ["$qty", 0] }, { $round: [{ $divide: [sum, "$qty"] }, 2] }, 0],
+  });
+
+  const pipeline = [
+    { $match: match },
+    ...saleLineProfitStages(),
+    {
+      $group: {
+        // A line is a variant or a product, never both that matter: the
+        // variant is the item when there is one.
+        _id: {
+          variantId: { $ifNull: ["$line.variantId", null] },
+          productId: {
+            $cond: [{ $ne: [{ $ifNull: ["$line.variantId", null] }, null] }, null, { $ifNull: ["$line.productId", null] }],
+          },
+        },
+        qty: { $sum: "$line.qty" },
+        gross: { $sum: "$line.total" },
+        total: { $sum: { $subtract: ["$line.total", "$line.itemDiscount"] } },
+        buyTotal: { $sum: "$line.buyPrice" },
+        profit: { $sum: "$line.profit" },
+        soldAs: { $first: "$line" },
+      },
+    },
+    { $sort: { qty: -1, total: -1, "_id.variantId": 1, "_id.productId": 1 } },
+    ...(topN > 0 ? [{ $limit: topN }] : []),
+    {
+      $addFields: {
+        buyPrice: perUnit("$buyTotal"),
+        salesPrice: perUnit("$gross"),
+        total: { $round: ["$total", 2] },
+        profit: { $round: ["$profit", 2] },
+      },
+    },
+    {
+      $facet: {
+        rows: [
+          { $skip: skip },
+          { $limit: limit },
+          ...catalogueLookupStages("_id.productId", "_id.variantId"),
+          {
+            $project: {
+              _id: 0,
+              productId: "$_id.productId",
+              variantId: "$_id.variantId",
+              productName: firstFilled("$variantDoc.parent.name", "$productDoc.name", "$soldAs.productDescription"),
+              barcode: firstFilled("$soldAs.barcode", "$variantDoc.barCode", "$productDoc.barCode"),
+              color: firstFilled("$soldAs.color", "$variantDoc.color", "$productDoc.color"),
+              size: firstFilled("$soldAs.size", "$variantDoc.size", "$productDoc.size"),
+              buyPrice: 1,
+              salesPrice: 1,
+              qty: 1,
+              total: 1,
+              profit: 1,
+            },
+          },
+        ],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              totalBuyPrice: { $sum: "$buyPrice" },
+              totalSalesPrice: { $sum: "$salesPrice" },
+              totalQty: { $sum: "$qty" },
+              totalAmount: { $sum: "$total" },
+              totalProfit: { $sum: "$profit" },
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  const [result] = await Sales.aggregate(pipeline);
+  const rows = result?.rows || [];
+  const { _id, ...totals } = result?.totals?.[0] || {
+    count: 0,
+    totalBuyPrice: 0,
+    totalSalesPrice: 0,
+    totalQty: 0,
+    totalAmount: 0,
+    totalProfit: 0,
+  };
+
+  const header = await getStoreHeader();
+
+  const payload = {
+    header,
+    filters: { startDate, endDate, salesType: salesType || "ALL", top: topN },
+    rows,
+    totals,
+    pagination: paginationMeta(totals.count, page, limit, skip),
+    generatedAt: new Date(),
+  };
+
+  await setCache(cacheKey, payload, REPORT_CACHE_TTL);
+
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Top sales product report fetched successfully",
     { ...payload, fromCache: false },
   );
 });
