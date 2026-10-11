@@ -117,6 +117,11 @@ const categories: ReportCategory[] = [
         description: "In-stock products that are not selling, with buy, sales & profit stock value",
         path: "/push-sales-product",
       },
+      {
+        name: "Product Sales Return",
+        description: "Returned products with buy, WS & RS price, discount and refunded total",
+        path: "/product-sales-return",
+      },
     ],
   },
   {

@@ -140,6 +140,12 @@ _.route("/product-profit").post(
   authorize("product-profit-report", "view"),
   reportController.getProductProfitReport,
 );
+_.route("/product-sales-return").post(
+  authGuard,
+  reportLimiter,
+  authorize("product-sales-return-report", "view"),
+  reportController.getProductSalesReturnReport,
+);
 _.route("/push-sales-product").post(
   authGuard,
   reportLimiter,

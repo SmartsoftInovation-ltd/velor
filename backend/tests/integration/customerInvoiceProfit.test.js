@@ -384,6 +384,22 @@ describe("product profit report", () => {
     expect(rows[0]).toMatchObject({ productName: null, barcode: null, color: null, size: null, profit: 500 });
   });
 
+  it("never shows a variant's own name as the product name", async () => {
+    // The line was saved under the variant's name; the variant's product is gone
+    const orphan = new mongoose.Types.ObjectId();
+    await insert(variantModel, { _id: orphan, product: new mongoose.Types.ObjectId(), purchasePrice: 0 });
+    await bill({
+      invoiceNumber: "NAMES",
+      searchItem: [
+        { productId: null, variantId, quantity: 1, salesRate: 100, productDescription: "Jeans Pant - Blue 32" },
+        { productId: null, variantId: orphan, quantity: 1, salesRate: 100, productDescription: "Orphan Variant Red" },
+      ],
+    });
+
+    const { rows } = await runReport();
+    expect(rows.map((r) => r.productName)).toEqual(["Jeans Pant", null]);
+  });
+
   it("gives each line its share of an invoice discount, adding up to the invoice profit", async () => {
     // less 300 over 3 units = 100 a unit
     await bill({
