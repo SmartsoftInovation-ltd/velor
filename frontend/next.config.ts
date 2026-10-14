@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server.js + minimal node_modules for the Docker image
+  output: "standalone",
   images: {
     /* An allowlist, not a default: any image omitting `quality` is coerced up
        to 100 rather than falling back to Next's default of 75. AppImage always

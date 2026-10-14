@@ -11,6 +11,7 @@ const { connection } = require("@/config/redis.config");
 const { queuePrefix } = require("@/queues/prefix");
 const { auditLogModel } = require("@/models/auditLog.model");
 const { dbConnect } = require("@/database/db");
+const { onShutdown } = require("@/lib/gracefulShutdown");
 
 dbConnect()
   .then(() => {
@@ -18,7 +19,9 @@ dbConnect()
       console.error("Settings invalidation listener failed:", err.message),
     );
     console.log("✅ Audit worker DB connected");
-    startAuditWorker();
+    const worker = startAuditWorker();
+    // close() waits for the jobs already running before the process exits
+    onShutdown("audit-worker", () => worker.close());
   })
   .catch((err) => {
     console.error("❌ Audit worker DB connection failed:", err.message);
@@ -64,6 +67,8 @@ function startAuditWorker() {
   worker.on("ready", () => {
     console.log("🚀 Audit worker is ready and listening for jobs...");
   });
+
+  return worker;
 }
 
 function toObjectId(id) {

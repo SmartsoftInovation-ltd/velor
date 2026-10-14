@@ -27,6 +27,7 @@ const storeInformationModel = require("@/models/storeInformation.model");
 const employeeModel = require("@/models/employee.model");
 const { bumpNsVersion } = require("@/utils/cache.util");
 const { dbConnect } = require("@/database/db");
+const { onShutdown } = require("@/lib/gracefulShutdown");
 
 const MODELS = {
   category: categoryModel,
@@ -48,7 +49,9 @@ dbConnect()
       console.error("Settings invalidation listener failed:", err.message),
     );
     console.log("✅ Worker DB connected");
-    startImageWorker();
+    const worker = startImageWorker();
+    // close() waits for the jobs already running before the process exits
+    onShutdown("image-worker", () => worker.close());
   })
   .catch((err) => {
     console.error("❌ Worker DB connection failed:", err.message);
@@ -181,4 +184,6 @@ function startImageWorker() {
     console.error(`❌ Job failed   [${job?.id}]:`, err.message),
   );
   worker.on("error", (err) => console.error("🔥 Worker error:", err));
+
+  return worker;
 }

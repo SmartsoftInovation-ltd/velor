@@ -11,6 +11,7 @@ const { connection } = require("@/config/redis.config");
 const { queuePrefix } = require("@/queues/prefix");
 const { sendEmail } = require("@/helpers/nodemailer");
 const { dbConnect } = require("@/database/db");
+const { onShutdown } = require("@/lib/gracefulShutdown");
 
 dbConnect()
   .then(() => {
@@ -18,7 +19,9 @@ dbConnect()
       console.error("Settings invalidation listener failed:", err.message),
     );
     console.log("✅ Email Worker DB connected");
-    startEmailWorker();
+    const worker = startEmailWorker();
+    // close() waits for the jobs already running before the process exits
+    onShutdown("email-worker", () => worker.close());
   })
   .catch((err) => {
     console.error("❌ Email Worker DB connection failed:", err.message);
@@ -49,4 +52,6 @@ function startEmailWorker() {
     console.error(`❌ Email Job failed [${job?.id}]:`, err.message),
   );
   worker.on("error", (err) => console.error("🔥 Email Worker error:", err));
+
+  return worker;
 }

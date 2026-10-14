@@ -12,6 +12,7 @@ const { queuePrefix } = require("@/queues/prefix");
 const { sendSMS } = require("@/helpers/sms");
 const SmsLog = require("@/models/smsLog.model");
 const { dbConnect } = require("@/database/db");
+const { onShutdown } = require("@/lib/gracefulShutdown");
 const { emitToTenant } = require("@/socket/socket");
 const { getTenantId } = require("@/tenancy/context");
 
@@ -21,7 +22,9 @@ dbConnect()
       console.error("Settings invalidation listener failed:", err.message),
     );
     console.log("✅ SMS Worker DB connected");
-    startSmsWorker();
+    const worker = startSmsWorker();
+    // close() waits for the jobs already running before the process exits
+    onShutdown("sms-worker", () => worker.close());
   })
   .catch((err) => {
     console.error("❌ SMS Worker DB connection failed:", err.message);
@@ -126,4 +129,6 @@ function startSmsWorker() {
     console.error(`❌ SMS Job failed [${job?.id}]:`, err.message),
   );
   worker.on("error", (err) => console.error("🔥 SMS Worker error:", err));
+
+  return worker;
 }

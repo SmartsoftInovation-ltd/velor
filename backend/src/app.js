@@ -7,6 +7,7 @@ const helmet = require("helmet");
 const cookieparser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const http = require("http");
+const mongoose = require("mongoose");
 const { corsOrigin } = require("./config/cors.config");
 const { isDevelopment } = require("./config/nodeEnv");
 
@@ -32,6 +33,13 @@ if (isDevelopment()) {
 } else {
   app.use(morgan("combined"));
 }
+
+// Health probe for Docker and the reverse proxy. Registered before the rate
+// limiter so probes never use up the proxy IP's request budget.
+app.get("/healthz", (req, res) => {
+  const dbUp = mongoose.connection.readyState === 1;
+  res.status(dbUp ? 200 : 503).json({ status: dbUp ? "ok" : "database unavailable" });
+});
 
 // 5. Rate Limiter -> Prevent brute-force / abuse
 const limiter = rateLimit({
