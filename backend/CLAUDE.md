@@ -6,8 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev          # start with nodemon (development)
-npm start            # same as dev
-npm run build        # deploy via pm2 (production)
+npm start            # node index.js (production; Docker/Dokploy restarts it, no pm2)
 npm run worker:image # start image upload worker (separate process)
 npm run seed:permissions
 npm run seed:roles

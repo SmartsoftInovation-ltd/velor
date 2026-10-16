@@ -9,9 +9,8 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "start": "nodemon index.js",
+    "start": "node index.js",
     "dev": "nodemon index.js",
-    "build": "pm2 start index.js --name jahirCommerce --watch --ignore-watch=\"node_modules\" --env production",
     "seed:permissions": "node src/seeder/permissionSeeder.js",
     "seed:roles": "node src/seeder/roleSeeder.js",
     "seed:role-permissions": "node src/seeder/rolePermissionSeeder.js",
@@ -71,8 +70,6 @@
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.5",
-    "nodemon": "^3.1.10",
-    "pm2": "^6.0.5",
     "qrcode": "^1.5.4",
     "redis": "^5.8.2",
     "slugify": "^1.6.6",
@@ -84,6 +81,7 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "mongodb-memory-server": "^11.2.0",
+    "nodemon": "^3.1.10",
     "supertest": "^7.2.2"
   }
 }
