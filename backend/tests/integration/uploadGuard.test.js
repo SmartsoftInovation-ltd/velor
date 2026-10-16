@@ -5,7 +5,7 @@ const request = require("supertest");
 const mongoose = require("mongoose");
 const { connectTestDb, clearTestDb, disconnectTestDb } = require("../helpers/db");
 const { setSettingsEnv } = require("../helpers/settings");
-const { runForTenant } = require("../../src/tenancy/context");
+const { runForTenant, getTenantId } = require("../../src/tenancy/context");
 const { globalErrorHandeler } = require("../../src/lib/GlobalErrorHandeler");
 const { singleFileUpload, multipleFileUploadWithFields, anyFileUpload } = require("../../src/middleware/multer.middleware");
 const service = require("../../src/settings/settings.service");
@@ -29,6 +29,7 @@ describe("upload guard", () => {
     app.post("/fields", multipleFileUploadWithFields([{ name: "thumbnail", maxCount: 1 }]), (req, res) => res.json({ ok: true }));
     app.post("/any", anyFileUpload(), (req, res) => res.json({ ok: true }));
     app.post("/none", singleFileUpload("image"), (req, res) => res.json({ ok: true }));
+    app.post("/tenant", singleFileUpload("image"), (req, res) => res.json({ tenantId: String(getTenantId()) }));
     app.use(globalErrorHandeler);
     jest.spyOn(console, "log").mockImplementation(() => {});
   });
@@ -54,6 +55,11 @@ describe("upload guard", () => {
     await service.updateSection(T, "cloudinary", { enabled: true, cloudName: "pizza-cdn", apiKey: "1", apiSecret: "s" });
     await request(app).post("/single").set("x-test-tenant", T.toString()).attach("image", png, "photo.png").expect(200);
     newTempFiles().forEach((f) => fs.unlinkSync(path.join(TEMP, f)));
+  });
+
+  it("keeps the request's tenant context after parsing a multipart body", async () => {
+    const res = await request(app).post("/tenant").set("x-test-tenant", T.toString()).field("name", "Pizza").expect(200);
+    expect(res.body.tenantId).toBe(T.toString());
   });
 
   it("does not block requests without files or without a tenant context", async () => {

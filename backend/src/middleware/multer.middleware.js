@@ -5,6 +5,12 @@ const { statusCodes } = require("../constant/constant");
 const fs = require("fs");
 const { getTenantId } = require("../tenancy/context");
 const settings = require("../settings/settings.service");
+const { AsyncResource } = require("async_hooks");
+
+// Multer calls back from busboy's stream events, which run outside the request's
+// AsyncLocalStorage scope: without this the store's tenant is lost, the upload
+// guard skips its check and the controller's queries throw TENANT_CONTEXT_REQUIRED.
+const keepTenant = (callback) => AsyncResource.bind(callback);
 
 // Uploaded files are pushed to the tenant's Cloudinary account in the background.
 // Reject them up front when that account is not configured, so the record is not
@@ -71,7 +77,7 @@ const upload = multer({
 const singleFileUpload = (fieldName) => (req, res, next) => {
   const uploader = upload.single(fieldName);
 
-  uploader(req, res, function (err) {
+  uploader(req, res, keepTenant(function (err) {
     if (err instanceof multer.MulterError) {
       console.log("multer error", "Multer error: " + err || "Multer error");
       return next(
@@ -87,7 +93,7 @@ const singleFileUpload = (fieldName) => (req, res, next) => {
       );
     }
     guardUploads(req, next);
-  });
+  }));
 };
 
 /**
@@ -98,7 +104,7 @@ const multipleFileUpload =
   (req, res, next) => {
     const uploader = upload.array(fieldName, maxCount);
 
-    uploader(req, res, function (err) {
+    uploader(req, res, keepTenant(function (err) {
       if (err instanceof multer.MulterError) {
         // Handle Multer-specific errors
         console.error("Multer multiple error:", err);
@@ -116,13 +122,13 @@ const multipleFileUpload =
         });
       }
       guardUploads(req, next);
-    });
+    }));
   };
 
 // make a another funtion using upload.fields to upload multiple files with different field names
 const multipleFileUploadWithFields = (fields) => (req, res, next) => {
   const uploader = upload.fields(fields);
-  uploader(req, res, function (err) {
+  uploader(req, res, keepTenant(function (err) {
     console.log("multer error from multipleFileUploadWithFields", err);
     if (err instanceof multer.MulterError) {
       return next(
@@ -138,12 +144,12 @@ const multipleFileUploadWithFields = (fields) => (req, res, next) => {
       );
     }
     guardUploads(req, next);
-  });
+  }));
 };
 const anyFileUpload = () => (req, res, next) => {
   const uploader = upload.any();
 
-  uploader(req, res, function (err) {
+  uploader(req, res, keepTenant(function (err) {
     if (err instanceof multer.MulterError) {
       return next(
         new customError(
@@ -160,7 +166,7 @@ const anyFileUpload = () => (req, res, next) => {
       );
     }
     guardUploads(req, next);
-  });
+  }));
 };
 
 // Export the middleware functions
