@@ -2,7 +2,7 @@ const Merchant = require("../models/marchant.model");
 const settings = require("../settings/settings.service");
 
 // Copies the single-tenant .env configuration and courier Merchant documents
-// into the tenant's encrypted settings. Sections the tenant already has are left alone.
+// into the tenant's settings. Sections the tenant already has are left alone.
 
 const present = (...values) => values.every((v) => v !== undefined && v !== null && v !== "");
 

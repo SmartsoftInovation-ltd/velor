@@ -50,7 +50,7 @@ describe("settings.service", () => {
       senderId: "8809617000000",
     };
 
-    it("encrypts secrets, returns a masked section and reports changed field names", async () => {
+    it("stores secrets in plain text, returns a masked section and reports changed field names", async () => {
       const result = await service.updateSection(T, "sms", smsPatch);
 
       expect(result.version).toBe(1);
@@ -60,7 +60,7 @@ describe("settings.service", () => {
       expect(JSON.stringify(result)).not.toContain("pizzashop-real-api-key");
 
       const raw = await TenantSettings.findOne({ tenantId: T }).lean();
-      expect(JSON.stringify(raw)).not.toContain("pizzashop-real-api-key");
+      expect(raw.data.sms.apiKey).toMatchObject({ value: "pizzashop-real-api-key", last4: "-key" });
 
       const settings = await service.getSettings(T);
       expect(settings.sms.apiKey).toBe("pizzashop-real-api-key");

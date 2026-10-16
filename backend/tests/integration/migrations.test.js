@@ -102,6 +102,7 @@ describe("Velor migration", () => {
         ["007-backfill-category-serial", "applied"],
         ["008-backfill-sale-purchase-price", "applied"],
         ["009-backfill-sale-created-by", "applied"],
+        ["010-decrypt-settings-secrets", "applied"],
       ]);
     });
 
@@ -110,7 +111,7 @@ describe("Velor migration", () => {
       expect(serials.map((c) => c.categorySerialId)).toEqual(["CAT-VLR-01", "CAT-VLR-02"]);
     });
 
-    it("imports env values and merchants into Velor's encrypted settings", async () => {
+    it("imports env values and merchants into Velor's settings", async () => {
       service.clearSettingsCache();
       const s = await service.getSettings(velor._id);
 

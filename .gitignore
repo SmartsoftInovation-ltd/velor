@@ -1,0 +1,2 @@
+# Stack environment for compose.yaml (real values live in Dokploy)
+.env

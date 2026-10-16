@@ -2,7 +2,7 @@ const joi = require("joi");
 const IORedis = require("ioredis");
 const TenantSettings = require("../models/platform/tenantSettings.model");
 const { SECTIONS } = require("./definitions");
-const { encryptSecret, tryDecryptSecret, maskSecret } = require("./crypto");
+const { storeSecret, readSecret, hasSecret, maskSecret } = require("./secret");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 
@@ -10,7 +10,7 @@ const INVALIDATION_CHANNEL = "tenant-settings:invalidate";
 const CACHE_TTL_MS = Number(process.env.SETTINGS_CACHE_TTL_MS) || 60_000;
 const CACHE_MAX_ENTRIES = 1000;
 
-// ---------- cache (raw documents; secrets stay encrypted in memory until read) ----------
+// ---------- cache (raw documents, as stored) ----------
 
 const cache = new Map();
 
@@ -78,23 +78,23 @@ const sectionOr404 = (key) => {
 
 const isEmpty = (value) => value === undefined || value === null || value === "";
 
-// Effective section with defaults; secrets decrypted (or null when unset).
-// A secret the key ring can no longer read resolves to null and is logged: the
-// section then reads as unconfigured, which is the truth — the value cannot be
-// used — instead of failing every request that touches settings.
+// Effective section with defaults; secrets as plain text (or null when unset).
+// A legacy encrypted secret whose key is not configured resolves to null and is
+// logged: the section then reads as unconfigured, which is the truth — the value
+// cannot be used — instead of failing every request that touches settings.
 const resolveSection = (definition, stored = {}) =>
   Object.fromEntries(
     Object.entries(definition.fields).map(([name, field]) => {
       if (field.type !== "secret") {
         return [name, isEmpty(stored[name]) && stored[name] !== "" ? field.default : stored[name]];
       }
-      if (!stored[name]?.ciphertext) return [name, null];
+      if (!hasSecret(stored[name])) return [name, null];
 
-      const result = tryDecryptSecret(stored[name]);
+      const result = readSecret(stored[name]);
       if (!result.ok) {
         console.error(
           `[settings] "${definition.path}.${name}" cannot be decrypted with key "${stored[name].keyVersion}" ` +
-            `(${result.error.message}). Re-enter it to store it under the active key.`,
+            `(${result.error.message}). Set SETTINGS_ENCRYPTION_KEYS and run migration 010, or re-enter it.`,
         );
       }
       return [name, result.value];
@@ -214,11 +214,11 @@ const updateSection = async (tenantId, sectionKey, patch, { allowedFields, updat
     const field = definition.fields[name];
     if (field.type === "secret") {
       // An unreadable stored value counts as "different": re-entering the secret
-      // is how an operator replaces one encrypted under a key they no longer have.
-      const current = stored[name]?.ciphertext ? tryDecryptSecret(stored[name]).value : null;
+      // is how an operator replaces a legacy one encrypted under a key that is gone.
+      const current = readSecret(stored[name]).value;
       if (current !== null && value === current) continue;
       if (value === null) delete next[name];
-      else next[name] = encryptSecret(value);
+      else next[name] = storeSecret(value);
       changes.push(`${sectionKey}.${name}`);
       continue;
     }

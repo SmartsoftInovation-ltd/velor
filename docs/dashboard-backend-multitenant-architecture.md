@@ -51,8 +51,8 @@
 
 - একটাই database; প্রতিটা business document এ `tenantId` থাকবে। একটা Mongoose plugin নিজে থেকেই প্রতিটা query তে `tenantId` filter বসাবে — tenant না জানলে query চালাবেই না (fail-closed)।
 - **Platform owner (আপনি)** আলাদা account দিয়ে login করবেন, seller (tenant) তৈরি করবেন, তার owner account বানাবেন, আর API দিয়ে seller-এর SMS, invoice prefix, SSLCommerz, order hotline, courier key/secret, email, **Cloudinary, Groq API key** — সব **per-seller settings** হিসেবে assign করবেন।
-- এই values আর `.env` এ থাকবে না। Database এ `TenantSettings` এ থাকবে, secret গুলো **encrypted** থাকবে, API কখনো secret ফেরত দেবে না (শুধু `••••1234`)।
-- `.env` এ থাকবে শুধু platform-level জিনিস (DB, Redis, JWT secret, encryption key, public URL)। কোনো seller-এর third-party key `.env` এ থাকবে না।
+- এই values আর `.env` এ থাকবে না। Database এ `TenantSettings` এ থাকবে, secret গুলো plain text এ থাকবে, API কখনো secret ফেরত দেবে না (শুধু `••••1234`)।
+- `.env` এ থাকবে শুধু platform-level জিনিস (DB, Redis, JWT secret, public URL)। কোনো seller-এর third-party key `.env` এ থাকবে না।
 - Dashboard: একটাই build (`app.<domain>`)। Login এ workspace (store ID) লাগবে। Tenant owner তার staff add/remove করবে; staff শুধু নিজের tenant এর data দেখবে।
 - Platform console (`platform.<domain>`) আলাদা ছোট app — tenant তৈরি, settings assign, suspend।
 
@@ -84,7 +84,7 @@
 | Hosting | Everything on the VPS (API, workers, dashboard static build, platform console, later the storefront) |
 | Current scope | Backend + dashboard. Storefront later. |
 | Isolation model | Shared MongoDB database, `tenantId` on every business document, fail-closed Mongoose plugin |
-| Per-seller configuration | Stored per tenant in the database, assigned by the platform owner via API/console, secrets encrypted. Includes **every** third-party account: SMS, email, SSLCommerz, couriers, **Cloudinary**, **Groq**. No platform-shared third-party accounts. |
+| Per-seller configuration | Stored per tenant in the database, assigned by the platform owner via API/console, secrets stored in plain text and masked in every API response. Includes **every** third-party account: SMS, email, SSLCommerz, couriers, **Cloudinary**, **Groq**. No platform-shared third-party accounts. |
 | Dashboard deployment | One build for all tenants at `app.<domain>` |
 | Platform owner identity | Separate `PlatformUser` collection and login — never a row in `User` |
 
@@ -148,7 +148,8 @@ backend/src/
     platformUser.model.js
     platformAuditLog.model.js
   settings/
-    crypto.js                  AES-256-GCM encrypt/decrypt, key versions, last4 mask
+    secret.js                  plain-text storage shape, last4 mask
+    crypto.js                  legacy: decrypts secrets saved before the plain-text switch
     settings.service.js        getSettings(tenantId), cache, invalidation (Redis pub/sub)
     settings.schema.js         Joi schemas per section
   integrations/
@@ -322,8 +323,7 @@ Each seller needs different SMS keys, invoice prefix, SSLCommerz store, order ho
 | `DATABASE_URL`, `REDIS_URL`, `PORT`, `NODE_ENV` | infra |
 | `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET` (fix the `SCCERET` typo during migration, accept both for one release) | staff/shopper JWT |
 | `PLATFORM_ACCESS_TOKEN_SECRET` | platform JWT |
-| `SETTINGS_ENCRYPTION_KEYS` | e.g. `v1:<base64 32 bytes>,v2:<base64 32 bytes>` — key ring for secret fields |
-| `SETTINGS_ACTIVE_KEY_VERSION` | which key encrypts new writes |
+| `SETTINGS_ENCRYPTION_KEYS` | legacy, optional: only to read or migrate secrets saved encrypted before they became plain text |
 | `API_PUBLIC_URL` | `https://api.<domain>` — base for webhook/callback URLs |
 | `APP_URL`, `PLATFORM_URL` | CORS + email links for staff |
 | `PLATFORM_SMTP_*` (optional) | Default sender for tenants without their own SMTP (password reset, staff invites) |
@@ -369,17 +369,16 @@ Each seller needs different SMS keys, invoice prefix, SSLCommerz store, order ho
 | | `temperature` | number | | 0–1, default 0.3 |
 | meta | `tenantId` (unique), `updatedBy` (PlatformUser), `version` (increments on every change), timestamps | | | |
 
-**Secret field storage shape:** `{ ciphertext, iv, authTag, keyVersion, last4, updatedAt }`, never plaintext.
+**Secret field storage shape:** `{ value, last4, updatedAt }`, plain text in the database (`settings/secret.js`). Secrets saved before this change were encrypted (`{ ciphertext, iv, authTag, keyVersion, last4, updatedAt }`); they stay readable while `SETTINGS_ENCRYPTION_KEYS` is set, and migration `010-decrypt-settings-secrets` rewrites them as plain text.
 
 Courier runtime tokens (Pathao `access_token`/`refresh_token`/expiry) are **not settings**. Keep them in Redis at `t:{tenantId}:courier:pathao:token` with a TTL equal to the token's expiry.
 
-### 5.4 Encryption
+### 5.4 Secret handling
 
-- AES-256-GCM, random 12-byte IV per field, auth tag stored.
-- Key ring from env (`SETTINGS_ENCRYPTION_KEYS`), `keyVersion` saved per field → **key rotation** = add `v2`, set active version, run a re-encrypt script, then remove `v1`.
-- Decrypted values exist only in process memory, never in Redis, logs, audit snapshots or API responses.
+- Secrets are stored in plain text; there is no encryption key to configure. Anyone who can read the database (or a backup of it) can read every seller's credentials, so protect database access and backups accordingly.
+- Secret values never appear in Redis, logs, audit snapshots or API responses: the API only returns `{ isSet, last4, updatedAt }`.
 - Extend `audit.service.js` `REDACTED_FIELDS` with every secret field name. Settings changes write `PlatformAuditLog` entries with **field names only**, never values.
-- Back up the encryption keys separately from database backups. Losing the key means re-entering every seller's secrets.
+- Legacy encrypted values: run `npm run migrate -- --tenant <slug>` with the old `SETTINGS_ENCRYPTION_KEYS` still set; afterwards the key can be removed.
 
 ### 5.5 Platform API — assigning settings to a seller
 
@@ -406,7 +405,7 @@ Base: `https://api.<domain>/api/v1/platform` (platform JWT required)
 
 **Write semantics for secrets:**
 - Field **omitted** → keep the existing value (you never have to resend secrets to change `senderId`).
-- Field set to a **string** → encrypt and replace.
+- Field set to a **string** → replace.
 - Field set to **`null`** → clear it (the section becomes invalid if it's enabled and the field is required).
 
 **Example: assign SMS to Pizzashop**

@@ -10,6 +10,7 @@ const http = require("http");
 const mongoose = require("mongoose");
 const { corsOrigin } = require("./config/cors.config");
 const { isDevelopment } = require("./config/nodeEnv");
+const { cache: redis } = require("./config/redis.config");
 
 const app = express();
 const server = http.createServer(app);
@@ -36,9 +37,36 @@ if (isDevelopment()) {
 
 // Health probe for Docker and the reverse proxy. Registered before the rate
 // limiter so probes never use up the proxy IP's request budget.
-app.get("/healthz", (req, res) => {
-  const dbUp = mongoose.connection.readyState === 1;
-  res.status(dbUp ? 200 : 503).json({ status: dbUp ? "ok" : "database unavailable" });
+// Redis counts as much as Mongo: without it the cache, BullMQ jobs and settings
+// invalidation all stop.
+const REDIS_PING_TIMEOUT_MS = 2000;
+
+const redisUp = async () => {
+  // A disconnected ioredis client queues commands instead of failing, so a
+  // ping alone would hang until the probe times out
+  if (redis.status !== "ready") return false;
+  try {
+    const reply = await Promise.race([
+      redis.ping(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), REDIS_PING_TIMEOUT_MS).unref(),
+      ),
+    ]);
+    return reply === "PONG";
+  } catch {
+    return false;
+  }
+};
+
+app.get("/healthz", async (req, res) => {
+  const database = mongoose.connection.readyState === 1;
+  const cacheUp = await redisUp();
+  const ok = database && cacheUp;
+  res.status(ok ? 200 : 503).json({
+    status: ok ? "ok" : "degraded",
+    database: database ? "up" : "down",
+    redis: cacheUp ? "up" : "down",
+  });
 });
 
 // 5. Rate Limiter -> Prevent brute-force / abuse
