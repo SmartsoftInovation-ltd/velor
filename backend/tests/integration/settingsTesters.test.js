@@ -105,6 +105,14 @@ describe("POST /platform/tenants/:id/settings/:section/test", () => {
     expect(cloudinary.api.ping).toHaveBeenCalledWith({ cloud_name: "cdn", api_key: "1", api_secret: "s" });
   });
 
+  it("cloudinary: reports the provider's reason when the credentials are rejected", async () => {
+    await service.updateSection(tenant._id, "cloudinary", { enabled: true, cloudName: "cdn", apiKey: "1", apiSecret: "wrong-secret" });
+    cloudinary.api.ping.mockRejectedValue({ error: { message: "api_secret mismatch", http_code: 401 } });
+
+    const res = await test("cloudinary").expect(200);
+    expect(res.body.data).toEqual({ ok: false, error: "api_secret mismatch" });
+  });
+
   it("has no test for general settings", async () => {
     await test("general").expect(404);
   });

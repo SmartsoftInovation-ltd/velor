@@ -366,7 +366,7 @@ const IntegrationForm = ({ schema, values, canEdit, onSave, onTest }: Props) => 
 
         <p className="flex items-center gap-2 text-xs text-gray-400">
           <FiShield className="size-3.5 shrink-0" />
-          Keys are stored encrypted and are never sent back to the browser.
+          Keys are never sent back to the browser.
         </p>
       </div>
 

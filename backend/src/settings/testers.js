@@ -93,8 +93,13 @@ const runSettingsTest = async (sectionKey, values) => {
   try {
     return { ok: true, detail: await TESTERS[sectionKey](values) };
   } catch (error) {
+    // Cloudinary rejects with a plain { error: { message, http_code } }, not an Error
     const message =
-      error.response?.data?.error?.message || error.response?.data?.message || error.message || "Test failed";
+      error.response?.data?.error?.message ||
+      error.response?.data?.message ||
+      error.error?.message ||
+      error.message ||
+      "Test failed";
     return { ok: false, error: scrub(String(message), values, sectionKey) };
   }
 };
