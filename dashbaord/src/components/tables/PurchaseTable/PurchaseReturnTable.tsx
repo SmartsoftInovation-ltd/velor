@@ -106,7 +106,16 @@ const PurchaseReturnTable = () => {
     try {
       await axiosSecure.delete(`/purchase-return/${selectedId}`);
       toast.success("Purchase return deleted successfully.");
+      // Deleting puts the supplier's due back and takes the refund out of
+      // its account.
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       fetchReturns();
     } catch (error: any) {
       showApiError(error, "Failed to delete purchase return.");

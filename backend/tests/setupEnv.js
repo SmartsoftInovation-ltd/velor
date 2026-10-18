@@ -8,7 +8,8 @@ process.env.NODE_ENV = "test";
 const testEnv = fs.readFileSync(path.join(__dirname, "setup/test.env"), "utf8");
 for (const line of testEnv.split(/\r?\n/)) {
   const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-  if (match && process.env[match[1]] === undefined) process.env[match[1]] = match[2];
+  if (match && process.env[match[1]] === undefined)
+    process.env[match[1]] = match[2];
 }
 
 // Each Jest worker gets its own database index on the private test Redis

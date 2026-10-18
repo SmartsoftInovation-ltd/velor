@@ -145,6 +145,50 @@ const reversePurchaseReturnRefund = async (session, purchaseReturnId) => {
   await bumpNsVersion("account");
 };
 
+// Take the return value off the supplier's running due, clamped at 0 since
+// openingDues cannot go negative. The amount actually taken is stored on the
+// return as dueReduced so an edit or delete can put back exactly that.
+// This runs alongside the cash refund: the business wants both the due
+// lowered and the refund credited to the chosen account.
+const applyPurchaseReturnDue = async (session, purchaseReturn) => {
+  const amount = Number(purchaseReturn.totalReturnAmount || 0);
+  const supplier = await SupplierModel.findById(purchaseReturn.supplier).session(
+    session,
+  );
+  if (!supplier) {
+    throw new customError("Supplier not found", statusCodes.NOT_FOUND);
+  }
+
+  const dueReduced = Math.min(Number(supplier.openingDues || 0), amount);
+  if (dueReduced > 0) {
+    await SupplierModel.updateOne(
+      { _id: supplier._id },
+      { $inc: { openingDues: -dueReduced } },
+      { session },
+    );
+  }
+
+  purchaseReturn.dueReduced = dueReduced;
+  await PurchaseReturn.updateOne(
+    { _id: purchaseReturn._id },
+    { $set: { dueReduced } },
+    { session },
+  );
+};
+
+// Put back whatever this return took off the supplier's due.
+const reversePurchaseReturnDue = async (session, purchaseReturn) => {
+  const dueReduced = Number(purchaseReturn.dueReduced || 0);
+  if (dueReduced <= 0) return;
+
+  await SupplierModel.updateOne(
+    { _id: purchaseReturn.supplier },
+    { $inc: { openingDues: dueReduced } },
+    { session },
+  );
+  purchaseReturn.dueReduced = 0;
+};
+
 // ─── createPurchaseReturn ────────────────────────────────────────────────────
 
 exports.createPurchaseReturn = asynchandeler(async (req, res) => {
@@ -319,17 +363,16 @@ exports.createPurchaseReturn = asynchandeler(async (req, res) => {
       }
     }
 
-    // Supplier dues are deliberately NOT touched. The full value is refunded
-    // in cash into the chosen account below, so reducing the dues as well
-    // would credit the same return twice. The old code also clamped the dues
-    // at zero, which silently destroyed the return value whenever the
-    // supplier had no outstanding due — the refund replaces that entirely.
+    // The return lowers the supplier's due and its value is credited to the
+    // chosen account.
+    await applyPurchaseReturnDue(session, purchaseReturn);
     await applyPurchaseReturnRefund(session, purchaseReturn);
 
     await session.commitTransaction();
     session.endSession();
 
     await bumpNsVersion(NS);
+    await bumpNsVersion("supplier");
     // Also bump product cache — this endpoint mutates stock/stockVariant and
     // purchaseReturnStock on Product/Variant, which /product/* endpoints cache.
     await bumpNsVersion("product");
@@ -600,9 +643,9 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
       await Variant.bulkWrite(oldVariantOps, { session });
     }
 
-    // Undo the cash refund this return had already paid out. Supplier dues
-    // were never moved by the refund flow, so there is nothing to revert
-    // there — only the account credit and its audit row.
+    // Undo the due reduction and the cash refund this return already made,
+    // on the supplier it was made against.
+    await reversePurchaseReturnDue(session, existing);
     await reversePurchaseReturnRefund(session, existing._id);
 
     // ── STEP 2: Validate new payload & fetch new docs ───────────────────────
@@ -745,9 +788,6 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
       }
     }
 
-    // Supplier dues are not touched — the return is settled in cash below.
-    // See the create path for why adjusting dues as well would double-count.
-
     // ── STEP 4: Update the return document ─────────────────────────────────
 
     existing.supplier = supplier;
@@ -758,14 +798,17 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
     existing.totalReturnAmount = totalReturnAmount;
     await existing.save({ session });
 
-    // Re-pay the refund at its new amount, into whichever account is now
-    // chosen. The old credit was already reversed in STEP 1.
+    // Re-apply the due reduction and the refund at the new amount, against
+    // whichever supplier and account are now chosen. The old ones were
+    // already reversed in STEP 1.
+    await applyPurchaseReturnDue(session, existing);
     await applyPurchaseReturnRefund(session, existing);
 
     await session.commitTransaction();
     session.endSession();
 
     await bumpNsVersion(NS);
+    await bumpNsVersion("supplier");
     // Also bump product cache — this endpoint mutates stock/stockVariant and
     // purchaseReturnStock on Product/Variant, which /product/* endpoints cache.
     await bumpNsVersion("product");
@@ -835,9 +878,9 @@ exports.deletePurchaseReturn = asynchandeler(async (req, res) => {
     if (productOps.length) await Product.bulkWrite(productOps, { session });
     if (variantOps.length) await Variant.bulkWrite(variantOps, { session });
 
-    // Take the refunded cash back out of the account it was paid into and
-    // delete its audit row. Supplier dues were never moved by the refund
-    // flow, so there is nothing to revert there.
+    // Put the due reduction back on the supplier, take the refunded cash back
+    // out of the account it was paid into and delete its audit row.
+    await reversePurchaseReturnDue(session, purchaseReturn);
     await reversePurchaseReturnRefund(session, purchaseReturn._id);
 
     await PurchaseReturn.findByIdAndDelete(id).session(session);
@@ -846,6 +889,7 @@ exports.deletePurchaseReturn = asynchandeler(async (req, res) => {
     session.endSession();
 
     await bumpNsVersion(NS);
+    await bumpNsVersion("supplier");
     // Also bump product cache — this endpoint mutates stock/stockVariant and
     // purchaseReturnStock on Product/Variant, which /product/* endpoints cache.
     await bumpNsVersion("product");

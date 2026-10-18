@@ -241,7 +241,32 @@ describe("purchase and purchase-return routes", () => {
       ...overrides,
     });
 
-    it("201: takes stock out, credits the refund to the account, leaves the supplier due alone", async () => {
+    it("takes the return off the supplier due and credits the same amount to the account; PUT and DELETE revert it", async () => {
+      await inTenant(() => Supplier.updateOne({ _id: supplier._id }, { $set: { openingDues: 5000 } }));
+      const created = (await as().post("/purchase-return").send(returnBody()).expect(201)).body.data;
+      expect(created.dueReduced).toBe(1200);
+      expect(await supplierDue()).toBe(3800);
+      expect(await cashNow()).toBe(11200);
+
+      await as().put(`/purchase-return/${created._id}`).send(returnBody({ products: [{ product: product._id.toString(), quantity: 1, purchasePrice: 400 }] })).expect(200);
+      expect(await supplierDue()).toBe(4600);
+      expect(await cashNow()).toBe(10400);
+
+      await as().delete(`/purchase-return/${created._id}`).expect(200);
+      expect(await supplierDue()).toBe(5000);
+      expect(await cashNow()).toBe(10000);
+    });
+
+    it("takes the due down only to 0 and puts back only what it took", async () => {
+      await inTenant(() => Supplier.updateOne({ _id: supplier._id }, { $set: { openingDues: 500 } }));
+      const created = (await as().post("/purchase-return").send(returnBody()).expect(201)).body.data;
+      expect(await supplierDue()).toBe(0);
+      expect(await cashNow()).toBe(11200);
+      await as().delete(`/purchase-return/${created._id}`).expect(200);
+      expect(await supplierDue()).toBe(500);
+    });
+
+    it("201: takes stock out, credits the refund to the account; a supplier with no due stays at 0", async () => {
       await f.supplier.create(); // another supplier, untouched
       const res = await as().post("/purchase-return").send(returnBody()).expect(201);
       expect(res.body.data.totalReturnAmount).toBe(1200);
