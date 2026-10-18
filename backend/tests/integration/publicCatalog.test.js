@@ -39,7 +39,7 @@ describe("public catalogue for storefront visitors", () => {
     invalidateTenantCache();
     service.clearSettingsCache();
     // Responses are cached per tenant; a stale entry would mask a scoping bug
-    await cache.flushall();
+    await cache.flushdb(); // this worker's Redis database only (was flushall)
 
     velor = await createTenantWithStaff({ slug: "velor", email: "staff@velor.test" });
     pizza = await createTenantWithStaff({ slug: "pizzashop", email: "staff@pizza.test" });
@@ -65,7 +65,7 @@ describe("public catalogue for storefront visitors", () => {
   });
 
   afterEach(async () => {
-    await cache.flushall();
+    await cache.flushdb(); // this worker's Redis database only (was flushall)
     await clearTestDb();
     invalidateTenantCache();
   });

@@ -6,3 +6,7 @@ node_modules/
 
 
 .env*
+# test artefacts
+coverage/
+reports/
+.stryker-tmp/

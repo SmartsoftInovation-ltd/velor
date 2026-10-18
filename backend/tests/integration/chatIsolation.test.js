@@ -67,7 +67,9 @@ describe("live chat stays inside one store", () => {
 
   // Resolves with the first matching event, or null if none arrives in time.
   // A null result is what proves a message did *not* leak.
-  const nextEvent = (client, event, ms = 700) =>
+  // 2 s (was 700 ms): under coverage + 4 parallel workers a delivered message
+  // could take longer than 700 ms and the test failed at random
+  const nextEvent = (client, event, ms = 2000) =>
     new Promise((resolve) => {
       const timer = setTimeout(() => resolve(null), ms);
       client.once(event, (payload) => {

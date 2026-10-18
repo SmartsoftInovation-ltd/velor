@@ -43,25 +43,26 @@ const MODELS = {
   employee: employeeModel,
 };
 
-dbConnect()
-  .then(() => {
-    startSettingsInvalidationListener().catch((err) =>
-      console.error("Settings invalidation listener failed:", err.message),
-    );
-    console.log("✅ Worker DB connected");
-    const worker = startImageWorker();
-    // close() waits for the jobs already running before the process exits
-    onShutdown("image-worker", () => worker.close());
-  })
-  .catch((err) => {
-    console.error("❌ Worker DB connection failed:", err.message);
-    process.exit(1);
-  });
+// Only when run as a process (npm run worker:image); tests require the module
+// for its processor without connecting or starting a worker.
+if (require.main === module) {
+  dbConnect()
+    .then(() => {
+      startSettingsInvalidationListener().catch((err) =>
+        console.error("Settings invalidation listener failed:", err.message),
+      );
+      console.log("✅ Worker DB connected");
+      const worker = startImageWorker();
+      // close() waits for the jobs already running before the process exits
+      onShutdown("image-worker", () => worker.close());
+    })
+    .catch((err) => {
+      console.error("❌ Worker DB connection failed:", err.message);
+      process.exit(1);
+    });
+}
 
-function startImageWorker() {
-  const worker = new Worker(
-    IMAGE_QUEUE_NAME,
-    tenantJob(async (job) => {
+const processImageJob = async (job) => {
       if (job.name === "delete-cloudinary-image") {
         const { publicId, cloudName } = job.data;
         console.log(`[Worker] Deleting image from Cloudinary: ${publicId}`);
@@ -171,8 +172,13 @@ function startImageWorker() {
         // Re-throw so BullMQ retries according to defaultJobOptions
         throw err;
       }
-    }),
-    { connection, prefix: queuePrefix(), concurrency: 3 },
+};
+
+function startImageWorker(options = {}) {
+  const worker = new Worker(
+    IMAGE_QUEUE_NAME,
+    tenantJob(processImageJob),
+    { connection, prefix: queuePrefix(), concurrency: 3, ...options },
   );
 
   worker.on("ready", () => console.log("✅ Image Worker ready"));
@@ -187,3 +193,5 @@ function startImageWorker() {
 
   return worker;
 }
+
+module.exports = { startImageWorker, processImageJob, MODELS };
