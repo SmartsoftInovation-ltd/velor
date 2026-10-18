@@ -156,7 +156,7 @@ interface IntegrationGridProps {
 }
 
 // Integration cards (4 per row) with a side panel to configure one. Used by the
-// store's own Store Settings page and by the Platform Console store detail.
+// Platform Console store detail (Sellers → a seller).
 const IntegrationGrid = ({
   schema,
   settings,

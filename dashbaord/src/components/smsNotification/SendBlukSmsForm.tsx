@@ -8,6 +8,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+import { smsLength, nextSmsText } from "../../utils/smsLength";
 
 // Unsaved input survives a reload or a trip to another page in this tab
 // (sessionStorage, per store); cleared once the form is submitted.
@@ -62,9 +63,6 @@ const GROUPS: GroupMeta[] = [
   },
 ];
 
-const MAX_SMS_CHARS = 1000;
-const SMS_SEGMENT = 160;
-
 const formatCount = (n?: number) =>
   typeof n === "number" ? n.toLocaleString() : "…";
 
@@ -104,7 +102,7 @@ const SendBulkSmsForm = () => {
     return counts[selectedType] ?? 0;
   }, [selectedType, counts]);
 
-  const segments = message.length === 0 ? 0 : Math.ceil(message.length / SMS_SEGMENT);
+  const sms = smsLength(message);
 
   const validate = () => {
     const next: { type?: string; message?: string } = {};
@@ -239,13 +237,15 @@ const SendBulkSmsForm = () => {
           id="message"
           placeholder="Type your message here…"
           value={message}
-          maxLength={MAX_SMS_CHARS}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setMessage((prev) => nextSmsText(prev, next));
+          }}
           rows={6}
           className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:ring-2 dark:bg-gray-900 dark:text-white/90 ${
             errors.message
               ? "border-red-400 focus:ring-red-200"
-              : "border-gray-300 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-700"
+              : "border-gray-300 focus:border-accent-500 focus:ring-accent-500/20 dark:border-gray-700"
           }`}
         />
         <div className="mt-1 flex items-center justify-between text-xs">
@@ -253,11 +253,11 @@ const SendBulkSmsForm = () => {
             <span className="text-red-500">{errors.message}</span>
           ) : (
             <span className="text-gray-400">
-              {segments} SMS segment{segments === 1 ? "" : "s"}
+              1 SMS max{sms.unicode ? " · Bangla/emoji: 70 characters" : ""}
             </span>
           )}
-          <span className="text-gray-400">
-            {message.length}/{MAX_SMS_CHARS}
+          <span className={sms.length >= sms.limit ? "font-semibold text-error-500" : "text-gray-400"}>
+            {sms.length}/{sms.limit}
           </span>
         </div>
       </div>
@@ -281,7 +281,7 @@ const SendBulkSmsForm = () => {
           onClick={handleSend}
           disabled={sending || countsLoading}
           startIcon={sending ? undefined : <FaPaperPlane />}
-          className="min-w-[180px]"
+          className="min-w-[180px] !bg-accent-500 hover:!bg-accent-600 !text-white font-semibold"
         >
           {sending ? (
             <span className="flex items-center gap-2">

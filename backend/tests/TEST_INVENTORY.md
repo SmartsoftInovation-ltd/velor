@@ -515,15 +515,6 @@ Legend — auth: `staff` (authGuard, staff audience), `shopper` (shopperGuard), 
 | GET | `/api/v1/sales-return/single-salesreturn/:id` | staff | retail-sales:view | — | salesReturnController.getSingleSalesReturn (salesReturn.controller.js) | cache; models: SalesReturn |
 | PUT | `/api/v1/sales-return/update-salesreturn/:id` | staff | retail-sales:edit | — | salesReturnController.updateSalesReturn (salesReturn.controller.js) | bump: <module NS>, product, sales; txn; models: CrateTransaction, Product, Sales, SalesReturn, Variant |
 
-## api/settings.api.js
-
-| Method | Path | Auth | Permission | Middleware | Handler | Effects |
-|---|---|---|---|---|---|---|
-| GET | `/api/v1/settings` | staff | store-settings:view | — | controller.getSettings (settings.controller.js) | — |
-| PATCH | `/api/v1/settings/general` | staff | store-settings:edit | — | controller.updateGeneral (settings.controller.js) | — |
-| GET | `/api/v1/settings/schema` | staff | store-settings:view | — | controller.getSchema (settings.controller.js) | — |
-| GET | `/api/v1/settings/webhooks` | staff | store-settings:view | — | controller.getWebhooks (settings.controller.js) | — |
-
 ## api/shop.api.js
 
 | Method | Path | Auth | Permission | Middleware | Handler | Effects |

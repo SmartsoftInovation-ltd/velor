@@ -8,11 +8,25 @@ const { customerModel } = require("../models/customer.model");
 const SmsLog = require("../models/smsLog.model");
 const { smsQueue } = require("../queues/sms.queue");
 const { statusCodes } = require("../constant/constant");
+const { smsLength } = require("../utils/smsLength.util");
 const {
   RECIPIENT_TYPES,
   resolveRecipients,
   countRecipients,
 } = require("../helpers/smsRecipients");
+
+// A typed message is capped at one SMS part: 160 plain English characters, or
+// 70 once it carries Bangla or emoji. The forms enforce it as you type; this
+// stops a request that skips them.
+const assertOneSms = (message) => {
+  const { length, limit } = smsLength(message);
+  if (length > limit) {
+    throw new customError(
+      `Message is too long for one SMS: ${length}/${limit} characters`,
+      statusCodes.BAD_REQUEST,
+    );
+  }
+};
 
 exports.sendSMS = asynchandeler(async (req, res) => {
   const { message, phoneNumber } = req.body;
@@ -23,6 +37,7 @@ exports.sendSMS = asynchandeler(async (req, res) => {
       statusCodes.BAD_REQUEST,
     );
   }
+  assertOneSms(message);
   const result = await sendSMS(phoneNumber, message);
   return apiResponse.sendSuccess(
     res,
@@ -42,6 +57,7 @@ exports.sendBulkSMS = asynchandeler(async (req, res) => {
       statusCodes.BAD_REQUEST,
     );
   }
+  assertOneSms(message);
   const result = await sendSMS(phoneNumber, message);
   return apiResponse.sendSuccess(
     res,
@@ -232,6 +248,7 @@ exports.sendBulkSmsByGroup = asynchandeler(async (req, res) => {
   if (!message || !message.trim()) {
     throw new customError("Message is required", statusCodes.BAD_REQUEST);
   }
+  assertOneSms(message.trim());
   if (!RECIPIENT_TYPES[recipientType]) {
     throw new customError(
       "Invalid recipient type. Use one of: logged, order, sales",

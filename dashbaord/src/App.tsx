@@ -16,7 +16,6 @@ const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
 const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
 const Unauthorized = lazy(() => import("./pages/OtherPage/Unauthorized"));
 const StoreSuspended = lazy(() => import("./pages/OtherPage/StoreSuspended"));
-const StoreSettingsPage = lazy(() => import("./pages/Settings/StoreSettings/StoreSettingsPage"));
 const PlatformSellersPage = lazy(() => import("./pages/PlatformConsole/SellersPage"));
 const PlatformSellerDetail = lazy(() => import("./pages/PlatformConsole/SellerDetailRoute"));
 const PlatformOperatorsPage = lazy(() => import("./pages/PlatformConsole/OperatorsPage"));
@@ -870,7 +869,6 @@ export default function App() {
                 />
 
                 {/* Platform Console (platform store owner + access code): sellers and operators */}
-                <Route path="/store-settings" element={<ProtectedRoute module="store-settings" action="view"><StoreSettingsPage /></ProtectedRoute>} />
 
                 {/* Role & Permission Layout */}
                 <Route path="/create-role" element={<ProtectedRoute module="create-role" action="add"><CreateRole /></ProtectedRoute>} />

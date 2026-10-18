@@ -18,7 +18,7 @@ describe("password reset by SMS code", () => {
   let tenant;
   const envBackup = { ...process.env };
   const PHONE = "01711000000";
-  // Reset codes go through the store's own SMS account (Store Settings → SMS),
+  // Reset codes go through the store's own SMS account (set by the platform on the seller's page),
   // never the platform's, so this is a tenant setting and not an env variable.
   const storeSms = (tenantId) =>
     service.updateSection(tenantId, "sms", {

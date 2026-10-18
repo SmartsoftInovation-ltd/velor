@@ -54,6 +54,21 @@ describe("SMS, employees, delivery charges and the audit log", () => {
       await as().get(`/sms/due-sms/logs/${res.body.data.logId}`).expect(200);
     });
 
+    it("caps a typed message at one SMS: 160 English characters, 70 with Bangla", async () => {
+      let sent;
+      nock(GATEWAY).post("/api/smsapi", (b) => (sent = b)).reply(200, { response_code: 202 });
+      await as().post("/sms/send-sms").send({ phoneNumber: "01912345678", message: "a".repeat(160) }).expect(200);
+      expect(sent.message).toHaveLength(160);
+
+      const tooLong = await as().post("/sms/send-sms").send({ phoneNumber: "01912345678", message: "a".repeat(161) }).expect(400);
+      expect(tooLong.body.message).toContain("161/160");
+      // "{" goes out as two GSM characters
+      await as().post("/sms/send-sms").send({ phoneNumber: "01912345678", message: "{".repeat(81) }).expect(400);
+      await as().post("/sms/send-sms").send({ phoneNumber: "01912345678", message: "অ".repeat(71) }).expect(400);
+      await as().post("/sms/bulk-sms").send({ phoneNumber: ["01912345678"], message: "অ".repeat(71) }).expect(400);
+      await as().post("/sms/bulk-sms/send").send({ recipientType: "logged", message: "a".repeat(161) }).expect(400);
+    });
+
     it("400 without a message; 404 for an unknown customer; 400 for an inactive one", async () => {
       const customer = await f.customer.create({ isActive: false });
       await as().post(`/sms/due-sms/send/${customer._id}`).send({}).expect(400);

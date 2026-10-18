@@ -12,7 +12,7 @@ const SendBlukSms = () => {
       />
       <PageBreadcrumb pageTitle="Send Bulk SMS" />
       <div className="space-y-6">
-        <ComponentCard title="Send Bulk SMS">
+        <ComponentCard>
           <SendBlukSmsForm />
         </ComponentCard>
       </div>

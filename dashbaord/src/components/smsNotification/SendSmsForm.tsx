@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
+import toast from "react-hot-toast";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
+import { showApiError } from "../../utils/apiError";
+import { smsLength, nextSmsText } from "../../utils/smsLength";
 
 // Unsaved input survives a reload or a trip to another page in this tab
 // (sessionStorage, per store); cleared once the form is submitted.
@@ -21,6 +24,7 @@ const SendSmsForm = () => {
     message?: string;
   }>({});
   const [loading, setLoading] = useState(false);
+  const sms = smsLength(message);
 
   const validate = () => {
     const newErrors: { phoneNumber?: string; message?: string } = {};
@@ -45,12 +49,13 @@ const SendSmsForm = () => {
         phoneNumber,
         message,
       });
+      toast.success("SMS sent successfully.");
       setPhoneNumber("");
       clearDraft(DRAFT_KEY);
       setMessage("");
       setErrors({});
     } catch (error) {
-      console.error("Error sending SMS:", error);
+      showApiError(error, "Failed to send SMS.");
     } finally {
       setLoading(false);
     }
@@ -74,7 +79,7 @@ const SendSmsForm = () => {
                 setErrors((prev) => ({ ...prev, phoneNumber: undefined }));
               }
             }}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring focus:ring-blue-200"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
           />
           {errors.phoneNumber && (
             <p className="text-sm text-red-500 mt-1">{errors.phoneNumber}</p>
@@ -90,23 +95,43 @@ const SendSmsForm = () => {
             placeholder="Type your message here..."
             value={message}
             onChange={(e) => {
-              setMessage(e.target.value);
+              const next = e.target.value;
+              setMessage((prev) => nextSmsText(prev, next));
               if (errors.message) {
                 setErrors((prev) => ({ ...prev, message: undefined }));
               }
             }}
             rows={5}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring focus:ring-blue-200"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
           />
-          {errors.message && (
-            <p className="text-sm text-red-500 mt-1">{errors.message}</p>
-          )}
+          <div className="mt-1 flex items-center justify-between gap-3 text-xs">
+            {errors.message ? (
+              <span className="text-red-500">{errors.message}</span>
+            ) : (
+              <span className="text-gray-400">
+                1 SMS max{sms.unicode ? " · Bangla/emoji: 70 characters" : ""}
+              </span>
+            )}
+            <span className={sms.length >= sms.limit ? "font-semibold text-error-500" : "text-gray-400"}>
+              {sms.length}/{sms.limit}
+            </span>
+          </div>
         </div>
 
         {/* Button */}
 
-        <Button disabled={loading}>
-          {loading ? "Sending..." : "Send SMS"}
+        <Button
+          disabled={loading}
+          className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Sending...
+            </span>
+          ) : (
+            "Send SMS"
+          )}
         </Button>
       </form>
     </div>

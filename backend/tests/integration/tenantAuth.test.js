@@ -89,11 +89,12 @@ describe("tenant-aware staff auth", () => {
       (await login({ workspace: tenantSlug, email: "staff@shop.test", password })).body.data.accessToken;
 
     it("runs the request inside the token's tenant", async () => {
-      await service.updateSection(pizza.tenant._id, "general", { orderHotline: "01711000000" });
       const token = await tokenFor("pizzashop", "Pizza-Pass1");
 
-      const res = await request(app.server).get("/api/v1/settings").set(bearer(token)).expect(200);
-      expect(res.body.data.settings.general.orderHotline).toBe("01711000000");
+      // Both stores have a staff@shop.test; only the pizzashop one may answer
+      const res = await request(app.server).get("/api/v1/auth/getme").set(bearer(token)).expect(200);
+      expect(JSON.stringify(res.body.data)).toContain("pizzashop staff");
+      expect(JSON.stringify(res.body.data)).not.toContain("burgerhub staff");
     });
 
     it("rejects a token presented for a different store", async () => {

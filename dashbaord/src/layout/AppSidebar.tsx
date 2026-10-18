@@ -625,13 +625,6 @@ const othersItems: NavItem[] = [
         ],
       },
       {
-        name: "Store Settings",
-        path: "/store-settings",
-        module: PERMISSIONS.STORE_SETTINGS,
-        hideOnPlatform: true,
-        pro: false,
-      },
-      {
         name: "Site Information",
         subSubItems: [
           {
@@ -977,11 +970,10 @@ const platformConsoleItems: NavItem[] = [
         platformOnly: true,
         pro: false,
       },
-      // No "Store Settings" here: /store-settings is a seller page behind the
-      // store session, so an operator — who holds only a platform token — was
-      // bounced to /signin by ProtectedRoute. An operator edits a store's
-      // settings on that seller's own page (Sellers → a seller), which already
-      // does it over the platform token via settingsApi.
+      // No "Store Settings" page: a store's settings (integrations, webhook
+      // URLs) are managed only by the platform, on that seller's own page
+      // (Sellers → a seller), over the platform token via settingsApi.
+      // Sellers have no settings page of their own.
       {
         name: "Operators",
         path: "/platform/operators",

@@ -6032,64 +6032,6 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
-  "/settings":
-    get:
-      operationId: "get__settings"
-      tags: ["settings"]
-      security: [{ staffBearer: [] }]
-      x-permission: "store-settings:view"
-      parameters:
-        - $ref: "#/components/parameters/Tenant"
-      responses:
-        "200": { $ref: "#/components/responses/Success" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-  "/settings/general":
-    patch:
-      operationId: "patch__settings_general"
-      tags: ["settings"]
-      security: [{ staffBearer: [] }]
-      x-permission: "store-settings:edit"
-      parameters:
-        - $ref: "#/components/parameters/Tenant"
-      requestBody:
-        content: { application/json: { schema: { type: object } } }
-      responses:
-        "200": { $ref: "#/components/responses/Success" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-  "/settings/schema":
-    get:
-      operationId: "get__settings_schema"
-      tags: ["settings"]
-      security: [{ staffBearer: [] }]
-      x-permission: "store-settings:view"
-      parameters:
-        - $ref: "#/components/parameters/Tenant"
-      responses:
-        "200": { $ref: "#/components/responses/Success" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-  "/settings/webhooks":
-    get:
-      operationId: "get__settings_webhooks"
-      tags: ["settings"]
-      security: [{ staffBearer: [] }]
-      x-permission: "store-settings:view"
-      parameters:
-        - $ref: "#/components/parameters/Tenant"
-      responses:
-        "200": { $ref: "#/components/responses/Success" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
   "/shop/auth/login":
     post:
       operationId: "post__shop_auth_login"
