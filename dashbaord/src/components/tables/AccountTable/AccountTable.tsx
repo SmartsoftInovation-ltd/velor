@@ -80,7 +80,11 @@ const AccountTable = () => {
     fetchNextPage,
     isError,
   } = useInfiniteQuery<AccountPage>({
-    queryKey: ["accounts"],
+    // Own key: the forms cache a plain account array under ["accounts"], and
+    // an infinite query reading that array crashes on `pages`. Kept under the
+    // "accounts" prefix so invalidateQueries({ queryKey: ["accounts"] })
+    // still refreshes this table.
+    queryKey: ["accounts", "paged"],
     queryFn: async ({ pageParam = 1 }) => {
       const res = await axiosSecure.get(
         `/account/all-account?page=${pageParam}&limit=${PAGE_LIMIT}`
@@ -95,7 +99,7 @@ const AccountTable = () => {
   });
 
   const fetchAccounts = () => {
-    queryClient.resetQueries({ queryKey: ["accounts"] });
+    queryClient.resetQueries({ queryKey: ["accounts", "paged"] });
   };
 
   const allAccounts = data?.pages.flatMap((p) => p.accounts) ?? [];

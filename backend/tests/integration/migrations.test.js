@@ -103,6 +103,7 @@ describe("Velor migration", () => {
         ["008-backfill-sale-purchase-price", "applied"],
         ["009-backfill-sale-created-by", "applied"],
         ["010-decrypt-settings-secrets", "applied"],
+        ["011-mark-system-transaction-categories", "applied"],
       ]);
     });
 

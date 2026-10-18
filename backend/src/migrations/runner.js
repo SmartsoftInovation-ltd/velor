@@ -15,6 +15,7 @@ const MIGRATIONS = [
   require("./008-backfill-sale-purchase-price"),
   require("./009-backfill-sale-created-by"),
   require("./010-decrypt-settings-secrets"),
+  require("./011-mark-system-transaction-categories"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

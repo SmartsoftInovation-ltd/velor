@@ -7,7 +7,7 @@ const productModel = require("../models/product.model");
 const VariantModel = require("../models/variant.model");
 const Account = require("../models/account.model");
 const CrateTransaction = require("../models/crateTransaction.model");
-const TransitionCategory = require("../models/transitionCategory.model");
+const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const {
@@ -18,25 +18,10 @@ const {
 const { statusCodes } = require("../constant/constant");
 const { bumpNsVersion } = require("@/utils/cache.util");
 
-const SUPPLIER_PAYMENT_CATEGORY_NAME = "Supplier Payment";
-
-// Supplier payments are always money going out — reuse (or lazily create) one
-// fixed "Supplier Payment" category locked to "cash payment" so every
-// supplier payment lands in the same audit-trail bucket without asking the user.
-const getSupplierPaymentCategory = async () => {
-  let category = await TransitionCategory.findOne({
-    name: SUPPLIER_PAYMENT_CATEGORY_NAME,
-  });
-
-  if (!category) {
-    category = await TransitionCategory.create({
-      name: SUPPLIER_PAYMENT_CATEGORY_NAME,
-      allowedType: "cash payment",
-    });
-  }
-
-  return category;
-};
+// Supplier payments are always money going out, filed under one fixed
+// system category (see utils/systemCategory.util.js).
+const getSupplierPaymentCategory = () =>
+  getSystemCategory(SYSTEM_CATEGORIES.SUPPLIER_PAYMENT);
 
 // Net amount actually leaving the account = paid - less/discount.
 const netPaymentAmount = (paidAmount, lessAmount) =>

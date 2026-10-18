@@ -161,6 +161,36 @@ describe("finance routes: accounts, transactions, categories, money transfer, fu
       const list = await as().get("/transaction-category/all-transition-category").expect(200);
       expect(list.body.data.categories.map((c) => c.name)).toContain("Power Bills");
     });
+
+    it("keeps the payment flows' own categories out of the list, closed to edit and delete, and their names reserved", async () => {
+      const { SYSTEM_CATEGORIES, getSystemCategory } = require("../../src/utils/systemCategory.util");
+      await category("cash payment", "Utilities");
+      const sys = await inTenant(() => getSystemCategory(SYSTEM_CATEGORIES.SUPPLIER_PAYMENT));
+      expect(sys.isSystem).toBe(true);
+      // Reused, never a second copy
+      const again = await inTenant(() => getSystemCategory(SYSTEM_CATEGORIES.SUPPLIER_PAYMENT));
+      expect(again._id.toString()).toBe(sys._id.toString());
+
+      const list = await as().get("/transaction-category/all-transition-category").expect(200);
+      expect(list.body.data.categories.map((c) => c.name)).toEqual(["Utilities"]);
+      expect(list.body.data.total).toBe(1);
+
+      await as().put(`/transaction-category/update-transition-category/${sys.slug}`).send({ name: "Renamed" }).expect(404);
+      await as().delete(`/transaction-category/delete-transition-category/${sys.slug}`).expect(404);
+      await as().post("/transaction-category/create-transaction-category").send({ categories: [{ name: "sales payment", allowedType: "cash recived" }] }).expect(400);
+      await as().put("/transaction-category/update-transition-category/utilities").send({ name: "Supplier Payment" }).expect(400);
+    });
+
+    it("migration 011 marks a payment category created before isSystem existed", async () => {
+      const TransitionCategory = require("../../src/models/transitionCategory.model");
+      const migration = require("../../src/migrations/011-mark-system-transaction-categories");
+      await inTenant(() =>
+        TransitionCategory.collection.insertOne({ tenantId: tenant._id, name: "Sales Payment", slug: "sales-payment", allowedType: "cash recived", isActive: true }),
+      );
+      expect((await as().get("/transaction-category/all-transition-category").expect(200)).body.data.total).toBe(1);
+      expect(await migration.up({ tenant })).toEqual({ marked: 1 });
+      expect((await as().get("/transaction-category/all-transition-category").expect(200)).body.data.total).toBe(0);
+    });
   });
 
   describe("money transfer (/moneytransfer)", () => {

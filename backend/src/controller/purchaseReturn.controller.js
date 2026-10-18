@@ -5,7 +5,7 @@ const Variant = require("../models/variant.model");
 const { SupplierModel } = require("../models/supplier.model");
 const Account = require("../models/account.model");
 const CrateTransaction = require("../models/crateTransaction.model");
-const TransitionCategory = require("../models/transitionCategory.model");
+const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
@@ -67,24 +67,10 @@ function validatePayload(body) {
   }
 }
 
-const REFUND_CATEGORY_NAME = "Purchase Return Refund";
-const REFUND_CATEGORY_SLUG = "purchase-return-refund";
-
-// Upserted by slug so concurrent returns can't race two categories into
-// existence — the same pattern purchase payments use.
-const getRefundCategory = async (session) => {
-  return TransitionCategory.findOneAndUpdate(
-    { slug: REFUND_CATEGORY_SLUG },
-    {
-      $setOnInsert: {
-        name: REFUND_CATEGORY_NAME,
-        allowedType: "cash recived",
-        slug: REFUND_CATEGORY_SLUG,
-      },
-    },
-    { new: true, upsert: true, session },
-  );
-};
+// Refunds are filed under one fixed system category (see
+// utils/systemCategory.util.js).
+const getRefundCategory = (session) =>
+  getSystemCategory(SYSTEM_CATEGORIES.PURCHASE_RETURN_REFUND, session);
 
 // Credit the full return value into the chosen account and log a matching
 // "cash recived" transaction, tagged with purchaseReturnReference so the

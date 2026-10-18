@@ -30,7 +30,7 @@ const { imageQueue } = require("../queues/image.queue");
 const { logAudit } = require("@/service/audit.service");
 const Account = require("../models/account.model");
 const CrateTransaction = require("../models/crateTransaction.model");
-const TransitionCategory = require("../models/transitionCategory.model");
+const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const NS_CUSTOMER = "customer";
@@ -39,26 +39,10 @@ const NS_CUSTOMER_PAYMENT = "customerPayment";
 const NS_CUSTOMER_ADVANCE = "customerAdvance";
 const CACHE_TTL = 60 * 60; // 1 hour
 
-const CUSTOMER_PAYMENT_CATEGORY_NAME = "Customer Payment Received";
-
-// Customer payments are always money coming in — reuse (or lazily create) one
-// fixed category locked to "cash recived" so every customer payment lands in
-// the same audit-trail bucket without asking the user.
-const getCustomerPaymentCategory = async (session) => {
-  let category = await TransitionCategory.findOne({
-    name: CUSTOMER_PAYMENT_CATEGORY_NAME,
-  }).session(session);
-
-  if (!category) {
-    const docs = await TransitionCategory.create(
-      [{ name: CUSTOMER_PAYMENT_CATEGORY_NAME, allowedType: "cash recived" }],
-      { session },
-    );
-    category = docs[0];
-  }
-
-  return category;
-};
+// Customer payments are always money coming in, filed under one fixed
+// system category (see utils/systemCategory.util.js).
+const getCustomerPaymentCategory = (session) =>
+  getSystemCategory(SYSTEM_CATEGORIES.CUSTOMER_PAYMENT, session);
 
 // Net amount actually received into the account = paid - less/discount - cashBack
 // (cashBack is money handed back to the customer, so it never reaches the account).
@@ -115,25 +99,10 @@ const reverseCustomerPayment = async (session, paymentId) => {
   await bumpNsVersion("account");
 };
 
-const CUSTOMER_ADVANCE_PAYMENT_CATEGORY_NAME = "Customer Advance Payment";
-
-// Customer advance payments are always money coming in — reuse (or lazily
-// create) one fixed category locked to "cash recived".
-const getCustomerAdvancePaymentCategory = async (session) => {
-  let category = await TransitionCategory.findOne({
-    name: CUSTOMER_ADVANCE_PAYMENT_CATEGORY_NAME,
-  }).session(session);
-
-  if (!category) {
-    const docs = await TransitionCategory.create(
-      [{ name: CUSTOMER_ADVANCE_PAYMENT_CATEGORY_NAME, allowedType: "cash recived" }],
-      { session },
-    );
-    category = docs[0];
-  }
-
-  return category;
-};
+// Customer advance payments are always money coming in, filed under one
+// fixed system category (see utils/systemCategory.util.js).
+const getCustomerAdvancePaymentCategory = (session) =>
+  getSystemCategory(SYSTEM_CATEGORIES.CUSTOMER_ADVANCE_PAYMENT, session);
 
 // Net amount actually received = paid - advanceCashBack (cash handed back to
 // the customer never reaches the account).
