@@ -1,6 +1,8 @@
 // module-alias must be registered before any @/ imports
 require("module-alias/register");
 require("dotenv").config();
+// Bangladesh time for every date calculation; before anything else runs
+require("./src/config/timezone");
 
 const { assertStaffSecrets } = require("./src/config/staffAuth.config");
 const { server, io } = require("./src/app");

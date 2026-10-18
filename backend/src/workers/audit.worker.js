@@ -2,6 +2,7 @@
 
 require("dotenv").config();
 require("module-alias/register");
+require("../config/timezone");
 
 const { Worker } = require("bullmq");
 const { tenantJob } = require("@/tenancy/queue");
