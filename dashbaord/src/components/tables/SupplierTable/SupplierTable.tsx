@@ -47,13 +47,6 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
   );
 };
 
-const truncateWords = (text: string, wordLimit: number) => {
-  if (!text) return "";
-  const words = text.trim().split(/\s+/);
-  if (words.length <= wordLimit) return text;
-  return words.slice(0, wordLimit).join(" ") + "...";
-};
-
 interface SupplierTableProps {
   suppliers: Supplier[];
   fetchSuppliers: () => void;
@@ -305,12 +298,12 @@ export default function SupplierTable({
                       {item.mobile}
                     </div>
 
-                    {/* Address — 25-word truncate */}
-                    <div className="px-3 text-sm text-gray-600 dark:text-gray-300 text-center">
-                      {item.supplierAddress
-                        ? truncateWords(item.supplierAddress, 25)
-                        : <span className="text-gray-300 dark:text-gray-600">—</span>
-                      }
+                    {/* Address — one line, full text on hover */}
+                    <div
+                      className="min-w-0 px-3 text-sm text-gray-600 dark:text-gray-300 truncate text-center"
+                      title={item.supplierAddress || undefined}
+                    >
+                      {item.supplierAddress || <span className="text-gray-300 dark:text-gray-600">—</span>}
                     </div>
 
                     {/* Initial Due — the figure carried in at creation, not

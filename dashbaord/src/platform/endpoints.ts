@@ -1,11 +1,13 @@
 import { platformApi as api } from "./api";
 import type {
   AuditEntry,
+  BillingCycle,
   Page,
   PlatformUser,
   SectionValues,
   SettingsSectionSchema,
   Tenant,
+  TenantBilling,
   TenantStatus,
   TestResult,
 } from "./types";
@@ -44,6 +46,48 @@ export interface Webhooks {
   pathao: string;
   steadfast: string;
 }
+
+export interface PlatformDashboard {
+  sellers: {
+    total: number;
+    byStatus: Record<TenantStatus, number>;
+    byCycle: Record<BillingCycle, number>;
+    newThisMonth: number;
+  };
+  revenue: {
+    /** Active sellers' monthly price + yearly price / 12 */
+    monthlyRecurring: number;
+    yearlyRecurring: number;
+    oneTimeTotal: number;
+    /** Price of sellers whose billing started this month */
+    soldThisMonth: number;
+  };
+  renewals: { windowDays: number; due: number; dueAmount: number; overdue: number; overdueAmount: number };
+  /** Last 12 months, oldest first: price of sellers whose billing started that month */
+  salesByMonth: { month: string; amount: number; sellers: number }[];
+  list: {
+    _id: string;
+    name: string;
+    slug: string;
+    status: TenantStatus;
+    plan: string;
+    price: number;
+    cycle: BillingCycle;
+    startedAt: string | null;
+    renewsAt: string | null;
+    /** Negative once the renewal date has passed; null with no renewal */
+    daysLeft: number | null;
+    staff: number;
+    maxStaff: number | null;
+    owner: { name: string; email: string; phone: string } | null;
+    createdAt: string;
+  }[];
+  generatedAt: string;
+}
+
+export const dashboardApi = {
+  get: () => data<PlatformDashboard>(api.get("/dashboard")),
+};
 
 export type SellerPage = Page<Tenant> & { counts: Record<TenantStatus | "all", number> };
 
@@ -89,9 +133,9 @@ export const tenantsApi = {
   list: (params: { status?: TenantStatus | ""; search?: string; page?: number; limit?: number }) =>
     data<SellerPage>(api.get("/tenants", { params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "" && v !== undefined)) })),
   get: (id: string) => data<Tenant>(api.get(`/tenants/${id}`)),
-  provision: (body: { name: string; slug: string; plan?: string; limits?: { maxStaff: number | null }; owner: OwnerInput }) =>
+  provision: (body: { name: string; slug: string; plan?: string; limits?: { maxStaff: number | null }; billing?: Partial<TenantBilling>; owner: OwnerInput }) =>
     data<ProvisionResult>(api.post("/tenants", body)),
-  update: (id: string, body: { name?: string; plan?: string; limits?: { maxStaff: number | null } }) =>
+  update: (id: string, body: { name?: string; plan?: string; limits?: { maxStaff: number | null }; billing?: Partial<TenantBilling> }) =>
     data<Tenant>(api.patch(`/tenants/${id}`, body)),
   suspend: (id: string, reason: string) => data<Tenant>(api.post(`/tenants/${id}/suspend`, { reason })),
   activate: (id: string) => data<Tenant>(api.post(`/tenants/${id}/activate`, {})),

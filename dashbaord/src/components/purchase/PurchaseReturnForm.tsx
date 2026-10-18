@@ -409,6 +409,12 @@ const PurchaseReturnForm = () => {
       // The refund credits an account balance, so the cached account list is
       // stale the moment this succeeds.
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      // Supplier due and account balance both feed dashboard boxes.
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       loadSuppliers();
       // Reset
       clearSupplier();

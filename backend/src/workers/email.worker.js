@@ -13,34 +13,40 @@ const { sendEmail } = require("@/helpers/nodemailer");
 const { dbConnect } = require("@/database/db");
 const { onShutdown } = require("@/lib/gracefulShutdown");
 
-dbConnect()
-  .then(() => {
-    startSettingsInvalidationListener().catch((err) =>
-      console.error("Settings invalidation listener failed:", err.message),
-    );
-    console.log("✅ Email Worker DB connected");
-    const worker = startEmailWorker();
-    // close() waits for the jobs already running before the process exits
-    onShutdown("email-worker", () => worker.close());
-  })
-  .catch((err) => {
-    console.error("❌ Email Worker DB connection failed:", err.message);
-    process.exit(1);
-  });
+// Only when run as a process (npm run worker:email); tests require the module
+// for its processor without connecting or starting a worker.
+if (require.main === module) {
+  dbConnect()
+    .then(() => {
+      startSettingsInvalidationListener().catch((err) =>
+        console.error("Settings invalidation listener failed:", err.message),
+      );
+      console.log("✅ Email Worker DB connected");
+      const worker = startEmailWorker();
+      // close() waits for the jobs already running before the process exits
+      onShutdown("email-worker", () => worker.close());
+    })
+    .catch((err) => {
+      console.error("❌ Email Worker DB connection failed:", err.message);
+      process.exit(1);
+    });
+}
 
-function startEmailWorker() {
+const processEmailJob = async (job) => {
+  const { to, subject, html } = job.data;
+  if (!to) {
+    // Nothing to send — treat as a no-op success so the job doesn't retry.
+    return { skipped: true, reason: "no recipient" };
+  }
+  const messageId = await sendEmail(to, subject, html);
+  return { to, messageId: messageId || null };
+};
+
+function startEmailWorker(options = {}) {
   const worker = new Worker(
     EMAIL_QUEUE_NAME,
-    tenantJob(async (job) => {
-      const { to, subject, html } = job.data;
-      if (!to) {
-        // Nothing to send — treat as a no-op success so the job doesn't retry.
-        return { skipped: true, reason: "no recipient" };
-      }
-      const messageId = await sendEmail(to, subject, html);
-      return { to, messageId: messageId || null };
-    }),
-    { connection, prefix: queuePrefix(), concurrency: 3 },
+    tenantJob(processEmailJob),
+    { connection, prefix: queuePrefix(), concurrency: 3, ...options },
   );
 
   worker.on("ready", () => console.log("✅ Email Worker ready"));
@@ -55,3 +61,5 @@ function startEmailWorker() {
 
   return worker;
 }
+
+module.exports = { startEmailWorker, processEmailJob };

@@ -12,7 +12,7 @@ const SendSms = () => {
       />
       <PageBreadcrumb pageTitle="Send SMS" />
       <div className="space-y-6">
-        <ComponentCard title="Send SMS">
+        <ComponentCard>
           <SendSmsForm />
         </ComponentCard>
       </div>

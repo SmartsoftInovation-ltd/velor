@@ -4,6 +4,7 @@ const express = require("express");
 const _ = express.Router();
 
 _.use("/auth", require("./auth.api"));
+_.use("/dashboard", require("./dashboard.api"));
 _.use("/tenants", require("./tenant.api"));
 _.use("/permissions", require("./permission.api"));
 _.use("/users", require("./user.api"));

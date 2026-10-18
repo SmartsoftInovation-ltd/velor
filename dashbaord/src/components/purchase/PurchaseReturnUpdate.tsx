@@ -342,10 +342,17 @@ const PurchaseReturnUpdate = () => {
     try {
       await axiosSecure.put(`/purchase-return/${id}`, payload);
       toast.success("Purchase return updated successfully!");
-      queryClient.invalidateQueries({ queryKey: ["purchase-returns"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-returns-v2"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-return", id] });
+      // The return moves the supplier's due and an account balance.
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-      // The refund moves an account balance, so the cached list is stale.
+      queryClient.invalidateQueries({ queryKey: ["supplier"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("dashboard-"),
+      });
       setTimeout(() => navigate("/purchase-return-list"), 50);
     } catch (error: any) {
       showApiError(error, "Failed to update purchase return.");

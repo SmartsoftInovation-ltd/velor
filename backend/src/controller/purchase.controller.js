@@ -1,12 +1,11 @@
 const mongoose = require("mongoose");
-const { default: slugify } = require("slugify");
 const Purchase = require("../models/purchase.model");
 const Product = require("../models/product.model");
 const Variant = require("../models/variant.model");
 const { SupplierModel } = require("../models/supplier.model");
 const Account = require("../models/account.model");
 const CrateTransaction = require("../models/crateTransaction.model");
-const TransitionCategory = require("../models/transitionCategory.model");
+const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
@@ -21,38 +20,10 @@ const {
 const NS = "purchase";
 const CACHE_TTL = 60 * 60; // 1 hour
 
-const PURCHASE_PAYMENT_CATEGORY_NAME = "Purchase Payment";
-const PURCHASE_PAYMENT_CATEGORY_SLUG = slugify(PURCHASE_PAYMENT_CATEGORY_NAME, {
-  lower: true,
-  strict: true,
-});
-
-// Purchase payments are always money going out — reuse (or lazily create) one
-// fixed category locked to "cash payment". Matched by slug rather than name:
-// slug is always lowercased by slugify, so it still finds a pre-existing row
-// saved with different name casing (e.g. "purchase payment" from an older
-// insert) instead of missing it and trying to insert a second row that then
-// collides on the model's unique slug index. findOneAndUpdate with upsert
-// does the find-or-create atomically in one round trip — a separate findOne
-// then create() raced under load: two concurrent purchases could both see no
-// existing category, then both try to create it, and the second create's
-// pre-save duplicate-slug check (or the unique index itself) would throw
-// "already exists".
-const getPurchasePaymentCategory = async (session) => {
-  const category = await TransitionCategory.findOneAndUpdate(
-    { slug: PURCHASE_PAYMENT_CATEGORY_SLUG },
-    {
-      $setOnInsert: {
-        name: PURCHASE_PAYMENT_CATEGORY_NAME,
-        allowedType: "cash payment",
-        slug: PURCHASE_PAYMENT_CATEGORY_SLUG,
-      },
-    },
-    { new: true, upsert: true, session },
-  );
-
-  return category;
-};
+// Purchase payments are always money going out, filed under one fixed
+// system category (see utils/systemCategory.util.js).
+const getPurchasePaymentCategory = (session) =>
+  getSystemCategory(SYSTEM_CATEGORIES.PURCHASE_PAYMENT, session);
 
 // The form caps paid at payable, but a client can be bypassed: paying a
 // supplier more than the purchase is worth would push a negative due into the

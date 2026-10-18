@@ -44,6 +44,15 @@ const tenantSchema = new mongoose.Schema(
     limits: {
       maxStaff: { type: Number, default: null, min: 0 },
     },
+    // What the platform sells this store for. price is per cycle; renewsAt is
+    // when the next payment is due (null for a one-time sale). Feeds the
+    // Platform Console dashboard.
+    billing: {
+      price: { type: Number, default: 0, min: 0 },
+      cycle: { type: String, enum: ["monthly", "yearly", "one-time"], default: "monthly" },
+      startedAt: { type: Date, default: null },
+      renewsAt: { type: Date, default: null },
+    },
     // Identifies the tenant in webhook/callback URLs; the provider secret proves the caller
     webhookKey: {
       type: String,

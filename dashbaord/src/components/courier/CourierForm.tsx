@@ -134,13 +134,13 @@ const CourierForm = () => {
             ))}
 
             {/* The single-tenant /courier/<provider>-webhook URLs were removed:
-                each store now has its own webhook URL, shown in
-                Settings -> Store Settings -> the courier's card. */}
+                each store now has its own webhook URL, which the platform
+                sets up on the seller's page in the Platform Console. */}
             <div>
               <Label>Webhook Integration URL</Label>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Your store's webhook URL is shown in Settings &rarr; Store Settings, on this
-                courier's card. Paste that one into the courier portal.
+                Your store's webhook URL is set up by the platform. Ask the platform
+                team for it and paste it into the courier portal.
               </p>
             </div>
           </div>

@@ -15,7 +15,7 @@ const {
 const Account = require("../models/account.model");
 const CrateTransaction = require("../models/crateTransaction.model");
 const SalesReturn = require("../models/salesReturn.model");
-const TransitionCategory = require("../models/transitionCategory.model");
+const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 const StoreInformation = require("../models/storeInformation.model");
 const { smsQueue } = require("../queues/sms.queue");
 const { emailQueue } = require("../queues/email.queue");
@@ -104,26 +104,10 @@ const enforceSingleDiscount = (sale) => {
   }
 };
 
-const SALES_PAYMENT_CATEGORY_NAME = "Sales Payment";
-
-// Sale payments are always money coming in — reuse (or lazily create) one
-// fixed "Sales Payment" category locked to "cash recived" so every sale
-// payment lands in the same audit-trail bucket without asking the user.
-const getSalesPaymentCategory = async (session) => {
-  let category = await TransitionCategory.findOne({
-    name: SALES_PAYMENT_CATEGORY_NAME,
-  }).session(session);
-
-  if (!category) {
-    const docs = await TransitionCategory.create(
-      [{ name: SALES_PAYMENT_CATEGORY_NAME, allowedType: "cash recived" }],
-      { session },
-    );
-    category = docs[0];
-  }
-
-  return category;
-};
+// Sale payments are always money coming in, filed under one fixed system
+// category (see utils/systemCategory.util.js).
+const getSalesPaymentCategory = (session) =>
+  getSystemCategory(SYSTEM_CATEGORIES.SALES_PAYMENT, session);
 
 // `netPaid` is the cash the shop kept: what the customer handed over, less any
 // change given back. Both `changes` and `netPaid` are derived server-side on

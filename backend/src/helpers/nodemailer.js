@@ -21,7 +21,7 @@ const resetMailTransport = () => transports.clear();
 const sendEmail = async (to, subject, template, { throwOnError = false } = {}) => {
   try {
     const config = await integrationConfig.getMailConfig();
-    if (!config) throw new Error("Mail is not configured: set up SMTP in Store Settings → Email");
+    if (!config) throw new Error("Mail is not configured: the platform sets up SMTP on the seller's page (Email)");
 
     const info = await getMailTransport(config.transport).sendMail({
       from: config.from,

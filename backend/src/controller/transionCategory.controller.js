@@ -3,8 +3,23 @@ const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const TransactionCategory = require("../models/transitionCategory.model");
 const { statusCodes } = require("../constant/constant");
+const { default: slugify } = require("slugify");
+const { SYSTEM_CATEGORY_SLUGS } = require("../utils/systemCategory.util");
 
 const ALLOWED_TYPES = ["cash recived", "cash payment"];
+
+// The app's own payment categories (Sales Payment, Supplier Payment, ...) are
+// isSystem: they never appear in this list and cannot be edited or deleted.
+// A seller category may not take one of their names either, or the payment
+// flow would pick it up as its own on the next payment.
+const NOT_SYSTEM = { isSystem: { $ne: true } };
+const isReservedName = (name) =>
+  SYSTEM_CATEGORY_SLUGS.includes(slugify(String(name), { lower: true, strict: true }));
+const reservedNameError = (name) =>
+  new customError(
+    `"${name}" is used by the system for its own payments. Try another name`,
+    statusCodes.BAD_REQUEST,
+  );
 
 // add new transaction category
 exports.addTransactionCategories = asynchandeler(async (req, res) => {
@@ -21,6 +36,7 @@ exports.addTransactionCategories = asynchandeler(async (req, res) => {
         statusCodes.BAD_REQUEST,
       );
     }
+    if (isReservedName(c.name)) throw reservedNameError(c.name);
   }
 
   const results = [];
@@ -45,8 +61,8 @@ exports.getAllTransitionCategory = asynchandeler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const [categories, total] = await Promise.all([
-    TransactionCategory.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
-    TransactionCategory.countDocuments(),
+    TransactionCategory.find(NOT_SYSTEM).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    TransactionCategory.countDocuments(NOT_SYSTEM),
   ]);
 
   if (!categories.length && page === 1) {
@@ -94,11 +110,13 @@ exports.updateTransactionCategory = asynchandeler(async (req, res) => {
     );
   }
 
+  if (name && isReservedName(name)) throw reservedNameError(name);
+
   const update = { name };
   if (allowedType) update.allowedType = allowedType;
 
   const category = await TransactionCategory.findOneAndUpdate(
-    { slug },
+    { slug, ...NOT_SYSTEM },
     update,
     { new: true },
   );
@@ -116,7 +134,7 @@ exports.updateTransactionCategory = asynchandeler(async (req, res) => {
 // delte transaction category
 exports.deleteTransactionCategory = asynchandeler(async (req, res) => {
   const { slug } = req.params;
-  const category = await TransactionCategory.findOneAndDelete({ slug });
+  const category = await TransactionCategory.findOneAndDelete({ slug, ...NOT_SYSTEM });
   if (!category) {
     throw new customError("Category not found", statusCodes.NOT_FOUND);
   }

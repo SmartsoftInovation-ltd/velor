@@ -44,7 +44,7 @@ describe("counter (POS) orders", () => {
     process.env.TENANCY_MODE = "strict";
     invalidateTenantCache();
     service.clearSettingsCache();
-    await cache.flushall();
+    await cache.flushdb(); // this worker's Redis database only (was flushall)
 
     velor = await createTenantWithStaff({ slug: "velor", email: "staff@velor.test" });
     pizza = await createTenantWithStaff({ slug: "pizzashop", email: "staff@pizza.test" });
@@ -67,7 +67,7 @@ describe("counter (POS) orders", () => {
   });
 
   afterEach(async () => {
-    await cache.flushall();
+    await cache.flushdb(); // this worker's Redis database only (was flushall)
     await clearTestDb();
     invalidateTenantCache();
   });

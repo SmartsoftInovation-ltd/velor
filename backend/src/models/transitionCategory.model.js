@@ -27,6 +27,13 @@ const transitionCategorySchema = new mongoose.Schema(
       enum: ["cash recived", "cash payment"],
       required: true,
     },
+    // Set on the categories the app books its own payments under (see
+    // utils/systemCategory.util.js). Hidden from the category list and the
+    // Add Transaction dropdown, and closed to edit and delete.
+    isSystem: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

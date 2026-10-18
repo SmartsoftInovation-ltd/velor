@@ -40,6 +40,15 @@ const purchaseReturnSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // How much this return actually took off the supplier's openingDues. It
+    // can be less than totalReturnAmount when the due was smaller (the due
+    // never goes below 0), so reverting adds back exactly this, not the total.
+    // Returns saved before dues were reduced have 0 and revert nothing.
+    dueReduced: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     products: [
       {
         product: {

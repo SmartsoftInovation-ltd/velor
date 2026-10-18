@@ -338,7 +338,7 @@ exports.verifyEmail = asynchandeler(async (req, res) => {
 });
 
 //forgot password: a one-time code by SMS, sent with the store's own SMS settings
-// (Store Settings → SMS). The platform SMS account is only for messages to a store
+// (set by the platform on the seller's page). The platform SMS account is only for messages to a store
 // owner who has no store yet, such as the sign-in details for a new store.
 const RESET_CODE_TTL_MS = 10 * 60 * 1000;
 const RESET_CODE_MAX_ATTEMPTS = 5;
@@ -364,7 +364,7 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
   const tenantId = getTenantId();
   if (!tenantId || !(await getFeatures(tenantId)).sms) {
     throw new customError(
-      "This store has not set up SMS, so reset codes cannot be sent. Ask the store owner to configure it in Store Settings.",
+      "This store has not set up SMS, so reset codes cannot be sent. Ask the platform team to set it up for this store.",
       statusCodes.SERVICE_UNAVAILABLE,
       "SMS_NOT_CONFIGURED",
     );

@@ -16,25 +16,26 @@ const { onShutdown } = require("@/lib/gracefulShutdown");
 const { emitToTenant } = require("@/socket/socket");
 const { getTenantId } = require("@/tenancy/context");
 
-dbConnect()
-  .then(() => {
-    startSettingsInvalidationListener().catch((err) =>
-      console.error("Settings invalidation listener failed:", err.message),
-    );
-    console.log("✅ SMS Worker DB connected");
-    const worker = startSmsWorker();
-    // close() waits for the jobs already running before the process exits
-    onShutdown("sms-worker", () => worker.close());
-  })
-  .catch((err) => {
-    console.error("❌ SMS Worker DB connection failed:", err.message);
-    process.exit(1);
-  });
+// Only when run as a process (npm run worker:sms); tests require the module
+// for its processor without connecting or starting a worker.
+if (require.main === module) {
+  dbConnect()
+    .then(() => {
+      startSettingsInvalidationListener().catch((err) =>
+        console.error("Settings invalidation listener failed:", err.message),
+      );
+      console.log("✅ SMS Worker DB connected");
+      const worker = startSmsWorker();
+      // close() waits for the jobs already running before the process exits
+      onShutdown("sms-worker", () => worker.close());
+    })
+    .catch((err) => {
+      console.error("❌ SMS Worker DB connection failed:", err.message);
+      process.exit(1);
+    });
+}
 
-function startSmsWorker() {
-  const worker = new Worker(
-    SMS_QUEUE_NAME,
-    tenantJob(async (job) => {
+const processSmsJob = async (job) => {
       const { logId, recipients, message } = job.data;
 
       await SmsLog.updateOne({ _id: logId }, { $set: { status: "processing" } });
@@ -114,8 +115,13 @@ function startSmsWorker() {
       }
 
       return { logId, sentCount, failedCount, status: finalStatus };
-    }),
-    { connection, prefix: queuePrefix(), concurrency: 2 },
+};
+
+function startSmsWorker(options = {}) {
+  const worker = new Worker(
+    SMS_QUEUE_NAME,
+    tenantJob(processSmsJob),
+    { connection, prefix: queuePrefix(), concurrency: 2, ...options },
   );
 
   worker.on("ready", () => console.log("✅ SMS Worker ready"));
@@ -132,3 +138,5 @@ function startSmsWorker() {
 
   return worker;
 }
+
+module.exports = { startSmsWorker, processSmsJob };

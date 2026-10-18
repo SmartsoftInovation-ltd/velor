@@ -1,5 +1,15 @@
 export type TenantStatus = "provisioning" | "active" | "suspended" | "cancelled";
 
+export type BillingCycle = "monthly" | "yearly" | "one-time";
+
+/** What the platform sells this store for: price per cycle, next renewal */
+export interface TenantBilling {
+  price: number;
+  cycle: BillingCycle;
+  startedAt: string | null;
+  renewsAt: string | null;
+}
+
 export interface Tenant {
   _id: string;
   name: string;
@@ -7,6 +17,7 @@ export interface Tenant {
   status: TenantStatus;
   plan: string;
   limits?: { maxStaff?: number | null };
+  billing?: TenantBilling;
   webhookKey: string;
   statusReason?: string;
   ownerUserId?: string | null;

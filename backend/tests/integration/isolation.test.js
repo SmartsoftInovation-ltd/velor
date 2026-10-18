@@ -29,7 +29,7 @@ describe("cross-tenant isolation (strict mode)", () => {
   beforeEach(async () => {
     invalidateTenantCache();
     service.clearSettingsCache();
-    const platformAuth = { Authorization: `Bearer ${signPlatformAccessToken(await createPlatformUser({ role: "superadmin" }))}` };
+    platformAuth = { Authorization: `Bearer ${signPlatformAccessToken(await createPlatformUser({ role: "superadmin" }))}` };
 
     stores = {};
     for (const slug of ["pizzashop", "burgerhub"]) {
@@ -52,6 +52,7 @@ describe("cross-tenant isolation (strict mode)", () => {
     await disconnectTestDb();
   });
 
+  let platformAuth;
   const as = (slug) => stores[slug].auth;
   const api = () => request(app.server);
 
@@ -107,9 +108,11 @@ describe("cross-tenant isolation (strict mode)", () => {
     expect(await names("pizzashop")).toEqual(["Pizza"]);
   });
 
+  // Settings are managed by the platform, one store at a time
   it("settings stay per store", async () => {
-    await api().patch("/api/v1/settings/general").set(as("pizzashop")).send({ orderHotline: "01711000000" }).expect(200);
-    const burger = await api().get("/api/v1/settings").set(as("burgerhub")).expect(200);
+    const id = (slug) => stores[slug].tenant._id;
+    await api().patch(`/api/v1/platform/tenants/${id("pizzashop")}/settings/general`).set(platformAuth).send({ orderHotline: "01711000000" }).expect(200);
+    const burger = await api().get(`/api/v1/platform/tenants/${id("burgerhub")}/settings`).set(platformAuth).expect(200);
     expect(burger.body.data.settings.general.orderHotline).toBe("");
   });
 

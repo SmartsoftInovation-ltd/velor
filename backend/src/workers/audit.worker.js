@@ -13,25 +13,26 @@ const { auditLogModel } = require("@/models/auditLog.model");
 const { dbConnect } = require("@/database/db");
 const { onShutdown } = require("@/lib/gracefulShutdown");
 
-dbConnect()
-  .then(() => {
-    startSettingsInvalidationListener().catch((err) =>
-      console.error("Settings invalidation listener failed:", err.message),
-    );
-    console.log("✅ Audit worker DB connected");
-    const worker = startAuditWorker();
-    // close() waits for the jobs already running before the process exits
-    onShutdown("audit-worker", () => worker.close());
-  })
-  .catch((err) => {
-    console.error("❌ Audit worker DB connection failed:", err.message);
-    process.exit(1);
-  });
+// Only when run as a process (npm run worker:audit); tests require the module
+// for its processor without connecting or starting a worker.
+if (require.main === module) {
+  dbConnect()
+    .then(() => {
+      startSettingsInvalidationListener().catch((err) =>
+        console.error("Settings invalidation listener failed:", err.message),
+      );
+      console.log("✅ Audit worker DB connected");
+      const worker = startAuditWorker();
+      // close() waits for the jobs already running before the process exits
+      onShutdown("audit-worker", () => worker.close());
+    })
+    .catch((err) => {
+      console.error("❌ Audit worker DB connection failed:", err.message);
+      process.exit(1);
+    });
+}
 
-function startAuditWorker() {
-  const worker = new Worker(
-    AUDIT_QUEUE_NAME,
-    tenantJob(async (job) => {
+const processAuditJob = async (job) => {
       // insert via native driver — bypasses the immutability pre-hooks
       // and skips schema re-validation on a payload the service already shaped
       // tenantId is stamped explicitly: the native driver skips the tenant plugin
@@ -56,8 +57,13 @@ function startAuditWorker() {
         }),
       });
       return { logged: true };
-    }),
-    { connection, prefix: queuePrefix(), concurrency: 25 },
+};
+
+function startAuditWorker(options = {}) {
+  const worker = new Worker(
+    AUDIT_QUEUE_NAME,
+    tenantJob(processAuditJob),
+    { connection, prefix: queuePrefix(), concurrency: 25, ...options },
   );
 
   worker.on("failed", (job, err) => {
@@ -77,3 +83,5 @@ function toObjectId(id) {
     ? new mongoose.Types.ObjectId(id)
     : id;
 }
+
+module.exports = { startAuditWorker, processAuditJob };

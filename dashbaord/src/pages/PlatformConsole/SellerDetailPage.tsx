@@ -25,6 +25,7 @@ import type {
   SectionValues,
 } from "../Settings/StoreSettings/types";
 import OwnerPasswordCard from "./OwnerPasswordCard";
+import SellerBillingCard from "./SellerBillingCard";
 import SellerStatusBadge from "./SellerStatusBadge";
 import SellerStatusDialog, { canSuspend } from "./SellerStatusDialog";
 import {
@@ -217,6 +218,8 @@ const Overview = ({ seller }: { seller: Tenant }) => {
           ))}
         </dl>
       </section>
+
+      <SellerBillingCard seller={seller} canEdit={isSuperadmin} />
 
       {isSuperadmin && seller.ownerUserId && <OwnerPasswordCard tenantId={seller._id} />}
     </div>

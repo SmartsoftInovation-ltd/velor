@@ -37,7 +37,15 @@
     "tenant:create": "node src/scripts/createTenant.js",
     "migrate": "node src/migrations/cli.js",
     "migrate:cutover": "node src/migrations/cli.js --cutover",
-    "migrate:audit": "node src/migrations/cli.js --audit"
+    "migrate:audit": "node src/migrations/cli.js --audit",
+    "test:unit": "jest tests/unit tests/middleware",
+    "test:integration": "jest tests/integration",
+    "test:worker": "jest tests/worker",
+    "test:contract": "jest tests/contract",
+    "test:coverage": "jest --coverage",
+    "test:mutation": "stryker run",
+    "test:bugs": "BUG_AUDIT=1 jest -t \"BUG-\"",
+    "test:inventory": "node tests/scripts/generateInventory.js"
   },
   "_moduleAliases": {
     "@": "src"
@@ -79,9 +87,15 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@babel/parser": "^7.29.9",
+    "@faker-js/faker": "^9.9.0",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/jest-runner": "^10.0.0",
+    "fishery": "^2.4.0",
     "jest": "^29.7.0",
+    "js-yaml": "^4.3.2",
     "mongodb-memory-server": "^11.2.0",
-    "nodemon": "^3.1.10",
+    "nock": "^14.0.17",
     "supertest": "^7.2.2"
   }
 }
