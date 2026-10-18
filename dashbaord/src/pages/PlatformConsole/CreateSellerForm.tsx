@@ -1,13 +1,30 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { FiCheck, FiCopy, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
+import { FiCheck, FiCopy, FiCreditCard, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
 import { HiOutlineBuildingStorefront } from "react-icons/hi2";
 import { errorMessage } from "../../platform/api";
 import { tenantsApi, type ProvisionResult } from "../../platform/endpoints";
 import { NEW_PASSWORD_MIN } from "../../lib/credentials";
-import { CredentialsNoticeLine, Field, inputClass, primaryButtonClass, secondaryButtonClass } from "./ui";
+import type { BillingCycle } from "../../platform/types";
+import { BILLING_CYCLES, nextRenewal } from "./billing";
+import { CredentialsNoticeLine, Field, inputClass, primaryButtonClass, Select, secondaryButtonClass } from "./ui";
 
-const empty = { name: "", slug: "", maxStaff: "", ownerName: "", ownerEmail: "", ownerPhone: "", ownerPassword: "" };
+const today = () => new Date().toISOString().slice(0, 10);
+
+const emptyForm = () => ({
+  name: "",
+  slug: "",
+  maxStaff: "",
+  ownerName: "",
+  ownerEmail: "",
+  ownerPhone: "",
+  ownerPassword: "",
+  price: "",
+  cycle: "monthly" as BillingCycle,
+  startedAt: today(),
+  renewsAt: nextRenewal(today(), "monthly"),
+});
+type FormState = ReturnType<typeof emptyForm>;
 
 export const slugify = (value: string) =>
   value
@@ -57,14 +74,14 @@ const CopyValue = ({ label, value }: { label: string; value: string }) => {
 // Creates a ready seller: tenant, owner role and account (with the password set
 // here), settings defaults. The owner is sent their sign-in details by SMS.
 const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClose: () => void }) => {
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(emptyForm);
   const [slugTouched, setSlugTouched] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<(ProvisionResult & { password: string }) | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const set = (key: keyof typeof empty) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const set = (key: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setForm((prev) => ({
       ...prev,
@@ -82,11 +99,17 @@ const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClo
         name: form.name.trim(),
         slug: form.slug.trim().toLowerCase(),
         ...(form.maxStaff ? { limits: { maxStaff: Number(form.maxStaff) } } : {}),
+        billing: {
+          price: form.price === "" ? 0 : Number(form.price),
+          cycle: form.cycle,
+          startedAt: form.startedAt || null,
+          renewsAt: form.cycle === "one-time" ? null : form.renewsAt || null,
+        },
         owner: { name: form.ownerName.trim(), email: form.ownerEmail.trim(), phone: form.ownerPhone.trim(), password: form.ownerPassword },
       });
       setResult({ ...created, password: form.ownerPassword });
       setShowPassword(false);
-      setForm(empty);
+      setForm(emptyForm());
       setSlugTouched(false);
       onCreated();
     } catch (err) {
@@ -192,6 +215,52 @@ const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClo
               </div>
             </Field>
           </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dashed border-gray-200 pt-6 dark:border-gray-800">
+        <Step n={3} icon={<FiCreditCard />} title="Billing" text="What this seller pays the platform, and when it renews" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            id="billing-price"
+            label="Price (৳)"
+            hint={form.cycle === "one-time" ? "Paid once" : `Per ${form.cycle === "monthly" ? "month" : "year"}`}
+          >
+            <input id="billing-price" type="number" min={0} className={inputClass} value={form.price} onChange={set("price")} placeholder="0" />
+          </Field>
+          <Field id="billing-cycle" label="Billing cycle">
+            <Select
+              id="billing-cycle"
+              value={form.cycle}
+              onChange={(v) => {
+                const cycle = v as BillingCycle;
+                setForm((f) => ({ ...f, cycle, renewsAt: cycle === "one-time" ? "" : nextRenewal(f.startedAt, cycle) || f.renewsAt }));
+              }}
+              options={BILLING_CYCLES}
+            />
+          </Field>
+          <Field id="billing-start" label="Sold on">
+            <input
+              id="billing-start"
+              type="date"
+              className={inputClass}
+              value={form.startedAt}
+              onChange={(e) => {
+                const startedAt = e.target.value;
+                setForm((f) => ({ ...f, startedAt, renewsAt: nextRenewal(startedAt, f.cycle) || f.renewsAt }));
+              }}
+            />
+          </Field>
+          <Field id="billing-renews" label="Renews on" hint={form.cycle === "one-time" ? "No renewal for a one-time sale" : "Next payment due"}>
+            <input
+              id="billing-renews"
+              type="date"
+              className={inputClass}
+              value={form.renewsAt}
+              disabled={form.cycle === "one-time"}
+              onChange={set("renewsAt")}
+            />
+          </Field>
         </div>
       </section>
 

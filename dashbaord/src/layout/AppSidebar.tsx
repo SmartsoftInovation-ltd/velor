@@ -1227,6 +1227,13 @@ const AppSidebar: React.FC = () => {
     });
   };
 
+  // The Platform Console group stays expanded: an operator moves between its
+  // few pages constantly, so it never collapses.
+  const ALWAYS_OPEN: SubmenuType[] = ["platformConsole"];
+  const isSubmenuOpen = (menuType: SubmenuType, index: number) =>
+    ALWAYS_OPEN.includes(menuType) ||
+    (openSubmenu?.type === menuType && openSubmenu?.index === index);
+
   const renderMenuItems = (
     items: NavItem[],
     menuType: NonNullable<typeof openSubmenu>["type"],
@@ -1236,7 +1243,9 @@ const AppSidebar: React.FC = () => {
         <li key={nav.name}>
           {nav.subItems ? (
             <button
-              onClick={() => handleSubmenuToggle(index, menuType)}
+              onClick={() => {
+                if (!ALWAYS_OPEN.includes(menuType)) handleSubmenuToggle(index, menuType);
+              }}
               className={`menu-item group ${
                 openSubmenu?.type === menuType && openSubmenu?.index === index
                   ? "menu-item-active"
@@ -1259,7 +1268,7 @@ const AppSidebar: React.FC = () => {
               {(isExpanded || isHovered || isMobileOpen) && (
                 <span className="truncate">{nav.name}</span>
               )}
-              {(isExpanded || isHovered || isMobileOpen) && (
+              {(isExpanded || isHovered || isMobileOpen) && !ALWAYS_OPEN.includes(menuType) && (
                 <ChevronDownIcon
                   className={`ml-auto size-4 shrink-0 transition-transform duration-200 ${
                     openSubmenu?.type === menuType &&
@@ -1302,7 +1311,7 @@ const AppSidebar: React.FC = () => {
           {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
             <div
               className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
+                isSubmenuOpen(menuType, index)
                   ? "max-h-[1200px] mt-1"
                   : "max-h-0"
               }`}

@@ -133,7 +133,7 @@ export const tenantsApi = {
   list: (params: { status?: TenantStatus | ""; search?: string; page?: number; limit?: number }) =>
     data<SellerPage>(api.get("/tenants", { params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "" && v !== undefined)) })),
   get: (id: string) => data<Tenant>(api.get(`/tenants/${id}`)),
-  provision: (body: { name: string; slug: string; plan?: string; limits?: { maxStaff: number | null }; owner: OwnerInput }) =>
+  provision: (body: { name: string; slug: string; plan?: string; limits?: { maxStaff: number | null }; billing?: Partial<TenantBilling>; owner: OwnerInput }) =>
     data<ProvisionResult>(api.post("/tenants", body)),
   update: (id: string, body: { name?: string; plan?: string; limits?: { maxStaff: number | null }; billing?: Partial<TenantBilling> }) =>
     data<Tenant>(api.patch(`/tenants/${id}`, body)),

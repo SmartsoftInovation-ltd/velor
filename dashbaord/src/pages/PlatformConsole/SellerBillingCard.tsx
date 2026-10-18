@@ -4,27 +4,13 @@ import toast from "react-hot-toast";
 import { errorMessage } from "../../platform/api";
 import { tenantsApi } from "../../platform/endpoints";
 import type { BillingCycle, Tenant } from "../../platform/types";
+import { BILLING_CYCLES, nextRenewal } from "./billing";
 import { cardClass, Field, inputClass, primaryButtonClass, secondaryButtonClass, Select } from "./ui";
 
 // What the platform sold this store for, and when it renews. Feeds the
 // Platform Console dashboard. Only a superadmin edits it.
 
-const CYCLES = [
-  { value: "monthly", label: "Monthly" },
-  { value: "yearly", label: "Yearly" },
-  { value: "one-time", label: "One-time" },
-];
-
 const toInput = (value: string | null | undefined) => (value ? value.slice(0, 10) : "");
-
-// Next renewal from a start date: one month or one year on
-const nextRenewal = (start: string, cycle: BillingCycle) => {
-  if (!start || cycle === "one-time") return "";
-  const d = new Date(`${start}T00:00:00Z`);
-  if (cycle === "monthly") d.setUTCMonth(d.getUTCMonth() + 1);
-  else d.setUTCFullYear(d.getUTCFullYear() + 1);
-  return d.toISOString().slice(0, 10);
-};
 
 const formOf = (seller: Tenant) => ({
   price: seller.billing?.price ? String(seller.billing.price) : "",
@@ -97,7 +83,7 @@ const SellerBillingCard = ({ seller, canEdit }: { seller: Tenant; canEdit: boole
               id="billing-cycle"
               value={form.cycle}
               onChange={(v) => setCycle(v as BillingCycle)}
-              options={CYCLES}
+              options={BILLING_CYCLES}
               disabled={!canEdit}
             />
           </Field>
