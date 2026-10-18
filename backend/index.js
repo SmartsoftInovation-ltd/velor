@@ -7,6 +7,7 @@ const { server, io } = require("./src/app");
 const { dbConnect } = require("./src/database/db");
 const { customError } = require("./src/lib/CustomError");
 const { scheduleTempCleanup } = require("./src/jobs/cleanTempFiles.job");
+const { scheduleAuditLogPurge } = require("./src/jobs/purgeAuditLogs.job");
 const { startSettingsInvalidationListener } = require("./src/settings/settings.service");
 const { onShutdown } = require("./src/lib/gracefulShutdown");
 
@@ -17,6 +18,7 @@ assertStaffSecrets();
 dbConnect()
   .then(() => {
     scheduleTempCleanup();
+    scheduleAuditLogPurge();
     startSettingsInvalidationListener().catch((err) =>
       console.error("Settings invalidation listener failed:", err.message),
     );

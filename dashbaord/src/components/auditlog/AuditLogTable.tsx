@@ -27,6 +27,14 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import moment from "moment";
 import axiosSecure from "../../hooks/useAxiosSecure";
 
+// Audit logs are kept for 30 days (older ones are deleted nightly by the
+// server), so the date filters cannot reach past that window
+const RETENTION_DAYS = 30;
+const localDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const TODAY = localDate(new Date());
+const RETENTION_MIN = localDate(new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000));
+
 interface AuditChange {
   field: string;
   before: unknown;
@@ -273,6 +281,8 @@ const AuditLogTable = () => {
           <input
             type="date"
             value={from}
+            min={RETENTION_MIN}
+            max={TODAY}
             onChange={(e) => setFrom(e.target.value)}
             className={inputClass}
           />
@@ -284,6 +294,8 @@ const AuditLogTable = () => {
           <input
             type="date"
             value={to}
+            min={RETENTION_MIN}
+            max={TODAY}
             onChange={(e) => setTo(e.target.value)}
             className={inputClass}
           />

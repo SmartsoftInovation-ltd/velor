@@ -64,7 +64,8 @@ auditLogSchema.index({ "user.id": 1, createdAt: -1 });
 auditLogSchema.index({ action: 1, createdAt: -1 });
 // Module-level browsing without an entity id
 auditLogSchema.index({ "entity.type": 1, createdAt: -1 });
-// Retention: auto-purge after 180 days
+// Backstop only: the nightly purge job (jobs/purgeAuditLogs.job.js) already
+// keeps 30 days; this TTL catches anything it ever misses
 auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 });
 
 // Audit logs are write-only — block mutation even from app code
