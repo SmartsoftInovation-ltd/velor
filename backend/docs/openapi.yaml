@@ -3931,6 +3931,15 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  "/platform/dashboard":
+    get:
+      operationId: "get__platform_dashboard"
+      tags: ["platform"]
+      summary: "Platform Console dashboard: sellers, what they were sold for, recurring revenue and upcoming renewals"
+      security: [{ platformBearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
   "/platform/permissions":
     get:
       operationId: "get__platform_permissions"

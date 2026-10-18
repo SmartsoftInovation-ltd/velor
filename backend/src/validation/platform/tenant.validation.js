@@ -4,6 +4,13 @@ const limits = joi.object({
   maxStaff: joi.number().integer().min(0).allow(null),
 });
 
+const billing = joi.object({
+  price: joi.number().min(0),
+  cycle: joi.string().valid("monthly", "yearly", "one-time"),
+  startedAt: joi.date().iso().allow(null),
+  renewsAt: joi.date().iso().allow(null),
+});
+
 // Owner account created with the store. The operator sets the first password;
 // the owner may keep it or change it later.
 const password = joi.string().min(8).max(128);
@@ -21,6 +28,7 @@ const createTenantSchema = joi.object({
   slug: joi.string().trim().lowercase().required(),
   plan: joi.string().trim().max(50),
   limits,
+  billing,
   owner,
 });
 
@@ -30,6 +38,7 @@ const updateTenantSchema = joi
     name: joi.string().trim().min(2).max(100),
     plan: joi.string().trim().max(50),
     limits,
+    billing,
   })
   .min(1);
 

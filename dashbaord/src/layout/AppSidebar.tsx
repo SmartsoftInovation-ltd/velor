@@ -965,6 +965,12 @@ const platformConsoleItems: NavItem[] = [
     icon: <TbBuildingCommunity />,
     subItems: [
       {
+        name: "Dashboard",
+        path: "/platform/dashboard",
+        platformOnly: true,
+        pro: false,
+      },
+      {
         name: "Sellers",
         path: "/platform/sellers",
         platformOnly: true,

@@ -33,13 +33,17 @@ const findTenantOr404 = async (tenantId) => {
   return tenant;
 };
 
-// Flattens nested update input into dot paths: { limits: { maxStaff } } -> ["limits.maxStaff"]
+// Flattens nested update input into dot paths: { limits: { maxStaff } } -> ["limits.maxStaff"].
+// A Date (billing dates, after validation) is a value, not a branch.
 const updatePaths = (input, prefix = "") =>
   Object.entries(input).flatMap(([key, value]) =>
-    value && typeof value === "object" && !Array.isArray(value)
+    value && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)
       ? updatePaths(value, `${prefix}${key}.`)
       : [`${prefix}${key}`],
   );
+
+const sameValue = (a, b) =>
+  a instanceof Date || b instanceof Date ? a?.getTime?.() === b?.getTime?.() : a === b;
 
 exports.createTenant = asynchandeler(async (req, res) => {
   const audit = (tenantId) =>
@@ -100,7 +104,7 @@ exports.updateTenant = asynchandeler(async (req, res) => {
 
   const changed = updatePaths(req.body).filter((path) => {
     const next = path.split(".").reduce((obj, key) => obj?.[key], req.body);
-    return tenant.get(path) !== next;
+    return !sameValue(tenant.get(path), next);
   });
 
   changed.forEach((path) => tenant.set(path, path.split(".").reduce((obj, key) => obj?.[key], req.body)));

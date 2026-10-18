@@ -16,6 +16,7 @@ const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
 const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
 const Unauthorized = lazy(() => import("./pages/OtherPage/Unauthorized"));
 const StoreSuspended = lazy(() => import("./pages/OtherPage/StoreSuspended"));
+const PlatformDashboardPage = lazy(() => import("./pages/PlatformConsole/PlatformDashboardPage"));
 const PlatformSellersPage = lazy(() => import("./pages/PlatformConsole/SellersPage"));
 const PlatformSellerDetail = lazy(() => import("./pages/PlatformConsole/SellerDetailRoute"));
 const PlatformOperatorsPage = lazy(() => import("./pages/PlatformConsole/OperatorsPage"));
@@ -1642,6 +1643,7 @@ export default function App() {
                     fresh gate has no operator yet — so it painted the sign-in
                     form again on every navigation inside the console. */}
                 <Route element={<PlatformGate><Outlet /></PlatformGate>}>
+                  <Route path="/platform/dashboard" element={<PlatformDashboardPage />} />
                   <Route path="/platform/sellers" element={<PlatformSellersPage />} />
                   <Route path="/platform/sellers/:tenantId" element={<PlatformSellerDetail />} />
                   <Route path="/platform/operators" element={<PlatformOperatorsPage />} />
