@@ -21,6 +21,8 @@ export interface Tenant {
   webhookKey: string;
   statusReason?: string;
   ownerUserId?: string | null;
+  /** The store owner's account, added by the list and detail endpoints */
+  owner?: { name: string; email: string; phone: string } | null;
   createdAt: string;
 }
 

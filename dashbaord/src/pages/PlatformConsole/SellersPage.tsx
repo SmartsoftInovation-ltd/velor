@@ -13,7 +13,6 @@ import SellerStatusDialog, { canSuspend } from "./SellerStatusDialog";
 import {
   Avatar,
   cardClass,
-  Chip,
   ConsoleHeader,
   EmptyState,
   FilterPills,
@@ -135,12 +134,12 @@ const SellersPage = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-white/[0.02] dark:text-gray-400">
               <tr>
                 <th className="w-16 px-5 py-3">S/N</th>
                 <th className="px-5 py-3">Seller</th>
-                <th className="px-5 py-3">Plan &amp; limits</th>
+                <th className="px-5 py-3">Owner</th>
                 <th className="px-5 py-3">Created</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3 text-right">Actions</th>
@@ -163,11 +162,21 @@ const SellersPage = () => {
                       </span>
                     </Link>
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex flex-wrap gap-1.5">
-                      <Chip>{seller.plan}</Chip>
-                      <Chip tone="gray">{seller.limits?.maxStaff ? plural(seller.limits.maxStaff, "staff seat") : "Unlimited staff"}</Chip>
-                    </div>
+                  <td className="max-w-[240px] px-5 py-3.5">
+                    {seller.owner ? (
+                      <>
+                        <span className="block truncate text-gray-800 dark:text-gray-200" title={seller.owner.name}>{seller.owner.name}</span>
+                        <a
+                          href={`mailto:${seller.owner.email}`}
+                          className="block truncate text-xs text-gray-500 hover:text-accent-600 dark:text-gray-400"
+                          title={seller.owner.email}
+                        >
+                          {seller.owner.email}
+                        </a>
+                      </>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-gray-600 dark:text-gray-400">{formatDate(seller.createdAt)}</td>
                   <td className="px-5 py-3.5"><SellerStatusBadge status={seller.status} /></td>

@@ -65,12 +65,9 @@ describe("SellerDetailPage (Platform Console)", () => {
     const name = screen.getByLabelText(/seller name/i);
     await userEvent.clear(name);
     await userEvent.type(name, "Pizza Palace");
-    const maxStaff = screen.getByLabelText(/max staff/i);
-    await userEvent.clear(maxStaff);
-    await userEvent.type(maxStaff, "8");
     await userEvent.click(screen.getByRole("button", { name: /save seller info/i }));
 
-    await waitFor(() => expect(tenants.update).toHaveBeenCalledWith("t1", { name: "Pizza Palace", plan: "standard", limits: { maxStaff: 8 } }));
+    await waitFor(() => expect(tenants.update).toHaveBeenCalledWith("t1", { name: "Pizza Palace" }));
   });
 
   it("configures a seller integration through the platform API", async () => {

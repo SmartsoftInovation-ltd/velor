@@ -302,7 +302,6 @@ const PlatformDashboardPage = () => {
                       </td>
                       <td className="px-5 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
                         {s.staff}
-                        {s.maxStaff != null && <span className="text-gray-400"> / {s.maxStaff}</span>}
                       </td>
                     </tr>
                   ))}

@@ -7,6 +7,7 @@ import { tenantsApi, type ProvisionResult } from "../../platform/endpoints";
 import { NEW_PASSWORD_MIN } from "../../lib/credentials";
 import type { BillingCycle } from "../../platform/types";
 import { BILLING_CYCLES, nextRenewal } from "./billing";
+import BillingDateField from "./BillingDateField";
 import { CredentialsNoticeLine, Field, inputClass, primaryButtonClass, Select, secondaryButtonClass } from "./ui";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -14,7 +15,6 @@ const today = () => new Date().toISOString().slice(0, 10);
 const emptyForm = () => ({
   name: "",
   slug: "",
-  maxStaff: "",
   ownerName: "",
   ownerEmail: "",
   ownerPhone: "",
@@ -98,7 +98,6 @@ const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClo
       const created = await tenantsApi.provision({
         name: form.name.trim(),
         slug: form.slug.trim().toLowerCase(),
-        ...(form.maxStaff ? { limits: { maxStaff: Number(form.maxStaff) } } : {}),
         billing: {
           price: form.price === "" ? 0 : Number(form.price),
           cycle: form.cycle,
@@ -154,6 +153,7 @@ const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClo
               <input id="seller-name" className={inputClass} value={form.name} onChange={set("name")} placeholder="Pizza Shop" required />
             </Field>
           </div>
+          <div className="sm:col-span-2">
           <Field id="seller-slug" label="Workspace" hint="Lowercase letters, digits and hyphens. Staff type it at sign-in.">
             <input
               id="seller-slug"
@@ -167,9 +167,7 @@ const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClo
               required
             />
           </Field>
-          <Field id="seller-max-staff" label="Max staff" hint="Leave blank for unlimited">
-            <input id="seller-max-staff" type="number" min={1} className={inputClass} value={form.maxStaff} onChange={set("maxStaff")} placeholder="Unlimited" />
-          </Field>
+          </div>
         </div>
       </section>
 
@@ -222,15 +220,15 @@ const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClo
         <Step n={3} icon={<FiCreditCard />} title="Billing" text="What this seller pays the platform, and when it renews" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
-            id="billing-price"
+            id="new-billing-price"
             label="Price (৳)"
             hint={form.cycle === "one-time" ? "Paid once" : `Per ${form.cycle === "monthly" ? "month" : "year"}`}
           >
-            <input id="billing-price" type="number" min={0} className={inputClass} value={form.price} onChange={set("price")} placeholder="0" />
+            <input id="new-billing-price" type="number" min={0} className={inputClass} value={form.price} onChange={set("price")} placeholder="0" />
           </Field>
-          <Field id="billing-cycle" label="Billing cycle">
+          <Field id="new-billing-cycle" label="Billing cycle">
             <Select
-              id="billing-cycle"
+              id="new-billing-cycle"
               value={form.cycle}
               onChange={(v) => {
                 const cycle = v as BillingCycle;
@@ -239,26 +237,21 @@ const CreateSellerForm = ({ onCreated, onClose }: { onCreated: () => void; onClo
               options={BILLING_CYCLES}
             />
           </Field>
-          <Field id="billing-start" label="Sold on">
-            <input
-              id="billing-start"
-              type="date"
-              className={inputClass}
+          <Field id="new-billing-start" label="Sold on">
+            <BillingDateField
+              id="new-billing-start"
               value={form.startedAt}
-              onChange={(e) => {
-                const startedAt = e.target.value;
-                setForm((f) => ({ ...f, startedAt, renewsAt: nextRenewal(startedAt, f.cycle) || f.renewsAt }));
-              }}
+              onChange={(startedAt) =>
+                setForm((f) => ({ ...f, startedAt, renewsAt: nextRenewal(startedAt, f.cycle) || f.renewsAt }))
+              }
             />
           </Field>
-          <Field id="billing-renews" label="Renews on" hint={form.cycle === "one-time" ? "No renewal for a one-time sale" : "Next payment due"}>
-            <input
-              id="billing-renews"
-              type="date"
-              className={inputClass}
+          <Field id="new-billing-renews" label="Renews on" hint={form.cycle === "one-time" ? "No renewal for a one-time sale" : "Next payment due"}>
+            <BillingDateField
+              id="new-billing-renews"
               value={form.renewsAt}
               disabled={form.cycle === "one-time"}
-              onChange={set("renewsAt")}
+              onChange={(renewsAt) => setForm((f) => ({ ...f, renewsAt }))}
             />
           </Field>
         </div>

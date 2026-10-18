@@ -33,6 +33,15 @@ const findTenantOr404 = async (tenantId) => {
   return tenant;
 };
 
+// Adds each seller's owner (name, email, phone) for the console's lists and
+// detail page. Owners live in their own store; this runs in platform scope.
+const withOwners = async (tenants) => {
+  const ids = tenants.map((t) => t.ownerUserId).filter(Boolean);
+  const owners = ids.length ? await User.find({ _id: { $in: ids } }).select("name email phone").lean() : [];
+  const byId = Object.fromEntries(owners.map((o) => [String(o._id), { name: o.name, email: o.email, phone: o.phone }]));
+  return tenants.map((t) => ({ ...t.toObject(), owner: byId[String(t.ownerUserId)] || null }));
+};
+
 // Flattens nested update input into dot paths: { limits: { maxStaff } } -> ["limits.maxStaff"].
 // A Date (billing dates, after validation) is a value, not a branch.
 const updatePaths = (input, prefix = "") =>
@@ -91,12 +100,19 @@ exports.listTenants = asynchandeler(async (req, res) => {
     counts.all += count;
   }
 
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenants fetched", { items, total, page, limit, counts });
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenants fetched", {
+    items: await withOwners(items),
+    total,
+    page,
+    limit,
+    counts,
+  });
 });
 
 exports.getTenant = asynchandeler(async (req, res) => {
   const tenant = await findTenantOr404(tenantIdParam(req));
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenant fetched", tenant);
+  const [withOwner] = await withOwners([tenant]);
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenant fetched", withOwner);
 });
 
 exports.updateTenant = asynchandeler(async (req, res) => {
@@ -120,7 +136,8 @@ exports.updateTenant = asynchandeler(async (req, res) => {
     });
   }
 
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenant updated", tenant);
+  const [withOwner] = await withOwners([tenant]);
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Tenant updated", withOwner);
 });
 
 const changeStatus = (action) =>
@@ -143,7 +160,8 @@ const changeStatus = (action) =>
     invalidateTenantCache(tenant._id);
     await recordPlatformAudit({ req, actor: req.platformUser, action: audit, tenantId: tenant._id });
 
-    return apiResponse.sendSuccess(res, statusCodes.OK, `Tenant ${to}`, tenant);
+    const [withOwner] = await withOwners([tenant]);
+    return apiResponse.sendSuccess(res, statusCodes.OK, `Tenant ${to}`, withOwner);
   });
 
 exports.suspendTenant = changeStatus("suspend");

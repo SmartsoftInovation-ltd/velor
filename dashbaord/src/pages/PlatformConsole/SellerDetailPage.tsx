@@ -76,34 +76,15 @@ const SectionTitle = ({
 const Overview = ({ seller }: { seller: Tenant }) => {
   const { isSuperadmin } = usePlatformAuth();
   const queryClient = useQueryClient();
-  const initial = {
-    name: seller.name,
-    plan: seller.plan,
-    maxStaff: seller.limits?.maxStaff?.toString() ?? "",
-  };
+  const initial = { name: seller.name };
   const [form, setForm] = useState(initial);
-  useEffect(
-    () =>
-      setForm({
-        name: seller.name,
-        plan: seller.plan,
-        maxStaff: seller.limits?.maxStaff?.toString() ?? "",
-      }),
-    [seller],
-  );
-  const dirty =
-    form.name !== initial.name ||
-    form.plan !== initial.plan ||
-    form.maxStaff !== initial.maxStaff;
+  useEffect(() => setForm({ name: seller.name }), [seller]);
+  const dirty = form.name !== initial.name;
 
   const save = useMutation({
     mutationFn: () =>
       tenantsApi.update(seller._id, {
         name: form.name.trim(),
-        plan: form.plan.trim(),
-        limits: {
-          maxStaff: form.maxStaff === "" ? null : Number(form.maxStaff),
-        },
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(["platform", "tenant", seller._id], updated);
@@ -124,8 +105,21 @@ const Overview = ({ seller }: { seller: Tenant }) => {
     ...(seller.statusReason
       ? [["Reason", seller.statusReason] as [string, ReactNode]]
       : []),
-    ["Plan", <Chip>{seller.plan}</Chip>],
-    ["Staff limit", seller.limits?.maxStaff ?? "Unlimited"],
+    ["Owner", seller.owner?.name ?? "—"],
+    [
+      "Email",
+      seller.owner?.email ? (
+        <a
+          href={`mailto:${seller.owner.email}`}
+          className="break-all hover:text-accent-600"
+        >
+          {seller.owner.email}
+        </a>
+      ) : (
+        "—"
+      ),
+    ],
+    ["Phone", seller.owner?.phone ?? "—"],
     ["Created", formatDate(seller.createdAt, true)],
   ];
 
@@ -134,7 +128,7 @@ const Overview = ({ seller }: { seller: Tenant }) => {
       <section className={`${cardClass} p-6 lg:col-span-3`}>
         <SectionTitle
           title="Seller information"
-          text="Name, plan and staff seats for this seller."
+          text="The name this seller is shown under."
         />
         <form
           onSubmit={(event) => {
@@ -153,33 +147,6 @@ const Overview = ({ seller }: { seller: Tenant }) => {
               required
             />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="seller-plan" label="Plan">
-              <input
-                id="seller-plan"
-                className={inputClass}
-                value={form.plan}
-                readOnly={!isSuperadmin}
-                onChange={(e) => setForm({ ...form, plan: e.target.value })}
-              />
-            </Field>
-            <Field
-              id="seller-max-staff"
-              label="Max staff"
-              hint="Leave blank for unlimited"
-            >
-              <input
-                id="seller-max-staff"
-                type="number"
-                min={0}
-                placeholder="Unlimited"
-                className={inputClass}
-                value={form.maxStaff}
-                readOnly={!isSuperadmin}
-                onChange={(e) => setForm({ ...form, maxStaff: e.target.value })}
-              />
-            </Field>
-          </div>
           {isSuperadmin && (
             <div className="flex justify-end gap-2 pt-1">
               <button

@@ -5,6 +5,7 @@ import { errorMessage } from "../../platform/api";
 import { tenantsApi } from "../../platform/endpoints";
 import type { BillingCycle, Tenant } from "../../platform/types";
 import { BILLING_CYCLES, nextRenewal } from "./billing";
+import BillingDateField from "./BillingDateField";
 import { cardClass, Field, inputClass, primaryButtonClass, secondaryButtonClass, Select } from "./ui";
 
 // What the platform sold this store for, and when it renews. Feeds the
@@ -88,24 +89,15 @@ const SellerBillingCard = ({ seller, canEdit }: { seller: Tenant; canEdit: boole
             />
           </Field>
           <Field id="billing-start" label="Sold on" hint="When this seller started paying">
-            <input
-              id="billing-start"
-              type="date"
-              className={inputClass}
-              value={form.startedAt}
-              readOnly={!canEdit}
-              onChange={(e) => setStart(e.target.value)}
-            />
+            <BillingDateField id="billing-start" value={form.startedAt} readOnly={!canEdit} onChange={setStart} />
           </Field>
           <Field id="billing-renews" label="Renews on" hint={form.cycle === "one-time" ? "No renewal for a one-time sale" : "Next payment due"}>
-            <input
+            <BillingDateField
               id="billing-renews"
-              type="date"
-              className={inputClass}
               value={form.renewsAt}
               readOnly={!canEdit}
               disabled={form.cycle === "one-time"}
-              onChange={(e) => setForm({ ...form, renewsAt: e.target.value })}
+              onChange={(renewsAt) => setForm((f) => ({ ...f, renewsAt }))}
             />
           </Field>
         </div>

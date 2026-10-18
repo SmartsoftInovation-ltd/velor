@@ -28,7 +28,6 @@ describe("CreateSellerForm", () => {
     expect(screen.getByLabelText(/workspace/i)).toHaveValue("pizza-shop");
     await userEvent.clear(screen.getByLabelText(/workspace/i));
     await userEvent.type(screen.getByLabelText(/workspace/i), "PizzaShop");
-    await userEvent.type(screen.getByLabelText(/max staff/i), "10");
     await fillOwner();
     await userEvent.click(screen.getByRole("button", { name: /create seller/i }));
 
@@ -36,7 +35,7 @@ describe("CreateSellerForm", () => {
       expect(provision).toHaveBeenCalledWith({
         name: "Pizza Shop",
         slug: "pizzashop",
-        limits: { maxStaff: 10 },
+        billing: expect.objectContaining({ price: 0, cycle: "monthly" }),
         owner: { name: "Rahim", email: "rahim@pizza.com", phone: "01711000000", password: "Pizza-Owner-1" },
       }),
     );
