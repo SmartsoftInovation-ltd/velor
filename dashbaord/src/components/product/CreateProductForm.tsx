@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import { FaTrashAlt, FaCloudUploadAlt, FaInfoCircle, FaCubes, FaGlobe, FaSearchPlus, FaBarcode, FaTimesCircle, FaRulerCombined } from "react-icons/fa";
+import { FaTrashAlt, FaCloudUploadAlt, FaInfoCircle, FaCube, FaCubes, FaPercent, FaGlobe, FaSearchPlus, FaBarcode, FaTimesCircle, FaRulerCombined } from "react-icons/fa";
 import { MdOutlineQrCodeScanner } from "react-icons/md";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
-import Select from "../form/Select";
 import SearchableSelect from "../form/SearchableSelect";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
@@ -86,6 +85,71 @@ const quillModules = {
 
 // --- HELPER COMPONENTS ---
 const RequiredAsterisk = () => <span className="text-red-500 ml-0.5 font-bold">*</span>;
+
+const VARIANT_TYPES: { value: FormValues["variantType"]; label: string; hint: string; icon: React.ReactNode }[] = [
+  { value: "multipleVariant", label: "Multiple Variant", hint: "Sizes and colors are added as variants, each with its own price and stock.", icon: <FaCubes /> },
+  { value: "singleVariant", label: "Single Variant", hint: "One item with a single price and stock.", icon: <FaCube /> },
+];
+
+// Segmented choice instead of a dropdown: every option is visible at once
+function SegmentedPicker<T extends string>({ label, value, options, onChange, hint }: {
+  label: string;
+  value: T;
+  options: { value: T; label: string; icon?: React.ReactNode }[];
+  onChange: (value: T) => void;
+  hint?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="grid h-11 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-white/[0.03]"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-1.5 text-sm font-semibold transition-all ${
+                selected
+                  ? "bg-white text-accent-700 shadow-theme-xs ring-1 ring-accent-500/30 dark:bg-accent-500/15 dark:text-accent-400"
+                  : "text-gray-500 hover:bg-white/60 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5"
+              }`}
+            >
+              {option.icon && <span className={`shrink-0 ${selected ? "text-accent-500" : "text-gray-400"}`}>{option.icon}</span>}
+              <span className="truncate">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      {hint && <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+    </div>
+  );
+}
+
+const PRICE_TYPES: { value: "Percentage" | "TK"; label: string; icon: React.ReactNode }[] = [
+  { value: "Percentage", label: "Percent", icon: <FaPercent className="size-3" /> },
+  { value: "TK", label: "TK", icon: <span className="text-sm font-bold leading-none">৳</span> },
+];
+
+const UNITS: { value: string; label: string }[] = [
+  { value: "Piece", label: "Piece" },
+  { value: "Kg", label: "Kg" },
+  { value: "Gram", label: "Gram" },
+  { value: "Packet", label: "Packet" },
+];
+
+const GROUP_UNITS: { value: string; label: string }[] = [
+  { value: "Box", label: "Box" },
+  { value: "Dozen", label: "Dozen" },
+  { value: "Packet", label: "Packet" },
+];
 
 const SectionCard = ({ icon, title, children, className = "" }: any) => (
   <div className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-theme-sm overflow-hidden ${className}`}>
@@ -202,7 +266,7 @@ const clearProductDraftFiles = async () => {
 // --- MAIN COMPONENT ---
 const CreateProductForm = () => {
   const initialFormValues: FormValues = {
-    name: "", description: "", category: "", subcategory: "", brand: "", variantType: "singleVariant",
+    name: "", description: "", category: "", subcategory: "", brand: "", variantType: "multipleVariant",
     sku: "", barCode: "", stock: "", alertQuantity: "", purchasePrice: "", retailPrice: "", wholesalePrice: "",
     size: "", color: "", weight: "", dimensions: { width: "", height: "", depth: "" },
     unit: "", groupUnit: "", groupUnitQuantity: "", tag: "", specifications: "",
@@ -655,7 +719,7 @@ const CreateProductForm = () => {
               <div><Label>Category<RequiredAsterisk /></Label><SearchableSelect options={categories.map(c => ({ value: c._id, label: c.name }))} value={formData.category} onChange={handleCategoryChange} /></div>
               <div><Label>Subcategory<RequiredAsterisk /></Label><SearchableSelect options={dynamicSubCategories.map(s => ({ value: s._id, label: s.name }))} value={formData.subcategory} onChange={(v) => setFormData(p => ({ ...p, subcategory: v }))} placeholder={isFetchingSubCats ? "Loading..." : "Select Subcategory"} /></div>
               <div><Label>Brand<RequiredAsterisk /></Label><SearchableSelect options={brands.map(b => ({ value: b._id, label: b.name }))} value={formData.brand} onChange={(v) => setFormData(p => ({ ...p, brand: v }))} /></div>
-              <div><Label>Variant Type<RequiredAsterisk /></Label><Select options={[{value:"singleVariant", label:"Single Variant"}, {value:"multipleVariant", label:"Multiple Variant"}]} value={formData.variantType} onChange={(v) => setFormData(p => ({...p, variantType: v as any}))} /></div>
+              <div><Label>Variant Type<RequiredAsterisk /></Label><SegmentedPicker label="Variant Type" value={formData.variantType} options={VARIANT_TYPES} hint={VARIANT_TYPES.find((o) => o.value === formData.variantType)?.hint} onChange={(v) => setFormData(p => ({ ...p, variantType: v }))} /></div>
               <div className="md:col-span-2"><Label>Description</Label><div className="quill-container"><ReactQuill theme="snow" value={formData.description} onChange={(c) => setFormData(p=>({...p, description:c}))} modules={quillModules} className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden" /><style>{`.ql-editor { min-height: 200px; }`}</style></div></div>
             </div>
           </SectionCard>
@@ -709,7 +773,7 @@ const CreateProductForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-5 items-end">
                   <div>
                     <Label>Retail Price Type</Label>
-                    <Select options={[{value:"Percentage", label:"Percentage"}, {value:"TK", label:"TK"}]} value={retailMarginType} onChange={(v)=>setRetailMarginType(v as any)} />
+                    <SegmentedPicker label="Retail Price Type" value={retailMarginType} options={PRICE_TYPES} onChange={setRetailMarginType} />
                   </div>
                   {retailMarginType === "Percentage" ? (
                     <>
@@ -734,7 +798,7 @@ const CreateProductForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-5 items-end">
                   <div>
                     <Label>Wholesale Price Type</Label>
-                    <Select options={[{value:"Percentage", label:"Percentage"}, {value:"TK", label:"TK"}]} value={wholesaleMarginType} onChange={(v)=>setWholesaleMarginType(v as any)} />
+                    <SegmentedPicker label="Wholesale Price Type" value={wholesaleMarginType} options={PRICE_TYPES} onChange={setWholesaleMarginType} />
                   </div>
                   {wholesaleMarginType === "Percentage" ? (
                     <>
@@ -772,8 +836,8 @@ const CreateProductForm = () => {
                 <div><Label>Size</Label><Input name="size" value={formData.size} onChange={handleInputChange} placeholder="XL, 42, etc" /><FieldError msg={errors.size} /></div>
                 <div><Label>Color<RequiredAsterisk /></Label><Input name="color" value={formData.color} onChange={handleInputChange} placeholder="Red, Blue" /><FieldError msg={errors.color} /></div>
                 <div><Label>Product Weight<RequiredAsterisk /></Label><Input type="number" name="weight" value={formData.weight} onChange={handleInputChange} onKeyDown={(e) => !/[0-9.]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.preventDefault()} placeholder="e.g. 0.5 kg" /><FieldError msg={errors.weight} /></div>
-                <div><Label>Unit<RequiredAsterisk /></Label><Select options={[{value:"Piece", label:"Piece"}, {value:"Kg", label:"Kg"}, {value:"Gram", label:"Gram"}, {value:"Packet", label:"Packet"}]} value={formData.unit} onChange={(v)=>setFormData(p=>({...p, unit:v}))} onClear={()=>setFormData(p=>({...p, unit:""}))} /><FieldError msg={errors.unit} /></div>
-                <div><Label>Group Unit</Label><Select options={[{value:"Box", label:"Box"}, {value:"Dozen", label:"Dozen"}, {value:"Packet", label:"Packet"}]} value={formData.groupUnit} onChange={(v)=>setFormData(p=>({...p, groupUnit:v}))} onClear={()=>setFormData(p=>({...p, groupUnit:""}))} /></div>
+                <div><Label>Unit<RequiredAsterisk /></Label><SearchableSelect options={UNITS} value={formData.unit} onChange={(v) => setFormData(p => ({ ...p, unit: v }))} placeholder="Select Unit" searchPlaceholder="Search unit..." hasError={Boolean(errors.unit)} /><FieldError msg={errors.unit} /></div>
+                <div><Label>Group Unit</Label><SearchableSelect options={GROUP_UNITS} value={formData.groupUnit} onChange={(v) => setFormData(p => ({ ...p, groupUnit: v }))} placeholder="Select Group Unit" searchPlaceholder="Search group unit..." /></div>
                 <div><Label>Group Qty</Label><Input type="number" name="groupUnitQuantity" value={formData.groupUnitQuantity} onChange={handleInputChange} onKeyDown={(e) => !/[0-9.]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.preventDefault()} placeholder="e.g. 10" /></div>
                 
                 <div className="md:col-span-3">
