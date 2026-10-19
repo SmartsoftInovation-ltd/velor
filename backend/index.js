@@ -10,7 +10,9 @@ const { dbConnect } = require("./src/database/db");
 const { customError } = require("./src/lib/CustomError");
 const { scheduleTempCleanup } = require("./src/jobs/cleanTempFiles.job");
 const { scheduleAuditLogPurge } = require("./src/jobs/purgeAuditLogs.job");
-const { startSettingsInvalidationListener } = require("./src/settings/settings.service");
+const {
+  startSettingsInvalidationListener,
+} = require("./src/settings/settings.service");
 const { onShutdown } = require("./src/lib/gracefulShutdown");
 
 // Before anything listens: a weak or missing token secret makes every tenant
@@ -31,7 +33,10 @@ dbConnect()
     });
     // io.close() disconnects every socket and then closes the HTTP server, which
     // stops new requests and waits for the ones in flight
-    onShutdown("api", () => new Promise((resolve) => io.close(() => resolve())));
+    onShutdown(
+      "api",
+      () => new Promise((resolve) => io.close(() => resolve())),
+    );
   })
   .catch((err) => {
     throw new customError("Startup error: " + err, 500);
