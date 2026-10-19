@@ -23,7 +23,7 @@ describe("password reset by SMS code", () => {
   const storeSms = (tenantId) =>
     service.updateSection(tenantId, "sms", {
       enabled: true, apiUrl: "https://sms.test/send", apiKey: "k", senderId: "s",
-    });
+    }, { allowReadOnly: true });
 
   beforeAll(async () => {
     Object.assign(process.env, STAFF_ENV);

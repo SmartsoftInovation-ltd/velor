@@ -14,7 +14,8 @@ const MIN_PASSWORD_LENGTH = 12;
  *   node src/seeder/seedPlatformAdmin.js --reset
  *
  * Credentials come from the environment — PLATFORM_ADMIN_EMAIL,
- * PLATFORM_ADMIN_PASSWORD and the optional PLATFORM_ADMIN_NAME — so the seeder
+ * PLATFORM_ADMIN_PASSWORD and the optional PLATFORM_ADMIN_NAME and
+ * PLATFORM_ADMIN_PHONE (where the sign-in code is texted) — so the seeder
  * runs unattended and the same values serve every environment's own .env.
  *
  * SECURITY: this account governs every seller on the platform. Its password
@@ -24,7 +25,7 @@ const MIN_PASSWORD_LENGTH = 12;
  * and change the value then re-run with --reset to rotate — that also revokes
  * every open console session.
  */
-async function seedPlatformAdmin({ email, password, name = "Platform Admin", reset = false } = {}) {
+async function seedPlatformAdmin({ email, password, name = "Platform Admin", phone, reset = false } = {}) {
   const normalizedEmail = email?.trim().toLowerCase();
   if (!normalizedEmail) throw new Error("PLATFORM_ADMIN_EMAIL is required");
   if (!password) throw new Error("PLATFORM_ADMIN_PASSWORD is required");
@@ -41,6 +42,7 @@ async function seedPlatformAdmin({ email, password, name = "Platform Admin", res
       }
       existing.password = password;
       existing.isActive = true;
+      if (!existing.phone && phone?.trim()) existing.phone = phone.trim();
       // Sign out every open console session: the old password is gone
       existing.tokenVersion += 1;
       await existing.save();
@@ -51,6 +53,8 @@ async function seedPlatformAdmin({ email, password, name = "Platform Admin", res
     const user = await PlatformUser.create({
       name,
       email: normalizedEmail,
+      // The sign-in code is texted here
+      phone: phone?.trim() || null,
       password,
       role: "superadmin",
       isActive: true,
@@ -66,13 +70,14 @@ const fromEnv = (argv) => ({
   email: process.env.PLATFORM_ADMIN_EMAIL,
   password: process.env.PLATFORM_ADMIN_PASSWORD,
   name: process.env.PLATFORM_ADMIN_NAME,
+  phone: process.env.PLATFORM_ADMIN_PHONE,
 });
 
 if (require.main === module) {
-  const { email, password, name, reset } = fromEnv(process.argv.slice(2));
+  const { email, password, name, phone, reset } = fromEnv(process.argv.slice(2));
   mongoose
     .connect(process.env.DATABASE_URL)
-    .then(() => seedPlatformAdmin({ email, password, name, reset }))
+    .then(() => seedPlatformAdmin({ email, password, name, phone, reset }))
     .then(() => mongoose.disconnect())
     .catch(async (err) => {
       console.error("Error seeding platform admin:", err.message);

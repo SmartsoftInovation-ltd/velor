@@ -291,16 +291,6 @@ export default function SignInForm() {
           Protected workspace. You are signed out automatically when your session expires.
         </div>
       </form>
-
-      <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
-        Don&apos;t have a workspace?{" "}
-        <a
-          href="mailto:smartsoftinnovationbd@gmail.com?subject=Workspace%20access%20request"
-          className="font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
-        >
-          Request access
-        </a>
-      </p>
     </div>
   );
 }

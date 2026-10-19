@@ -67,22 +67,43 @@ describe("platform console API", () => {
   describe("platform users", () => {
     it("superadmin lists, creates and updates operators", async () => {
       const created = await request(app).post("/api/v1/platform/users").set(adminAuth)
-        .send({ name: "Support One", email: "support1@platform.test", password: "Support-Pass-123", role: "support" }).expect(201);
+        .send({ name: "Support One", email: "support1@platform.test", phone: "+8801712345678", password: "Support-Pass-123", role: "support" }).expect(201);
       expect(created.body.data.password).toBeUndefined();
+      expect(created.body.data.phone).toBe("01712345678");
 
       const list = await request(app).get("/api/v1/platform/users").set(adminAuth).expect(200);
       expect(list.body.data.map((u) => u.email)).toContain("support1@platform.test");
 
       const id = created.body.data._id;
-      const updated = await request(app).patch(`/api/v1/platform/users/${id}`).set(adminAuth).send({ role: "superadmin", isActive: false }).expect(200);
-      expect(updated.body.data).toMatchObject({ role: "superadmin", isActive: false, tokenVersion: 1 });
+      const updated = await request(app).patch(`/api/v1/platform/users/${id}`).set(adminAuth).send({ role: "superadmin", isActive: false, phone: "01812345678" }).expect(200);
+      expect(updated.body.data).toMatchObject({ role: "superadmin", isActive: false, phone: "01812345678", tokenVersion: 1 });
     });
 
     it("rejects weak passwords, duplicates, self-deactivation and support users", async () => {
-      await request(app).post("/api/v1/platform/users").set(adminAuth).send({ name: "X Y", email: "x@platform.test", password: "short", role: "support" }).expect(400);
-      await request(app).post("/api/v1/platform/users").set(adminAuth).send({ name: "Dup", email: admin.email, password: PASSWORD, role: "support" }).expect(400);
+      await request(app).post("/api/v1/platform/users").set(adminAuth).send({ name: "X Y", email: "x@platform.test", phone: "01712345678", password: "short", role: "support" }).expect(400);
+      await request(app).post("/api/v1/platform/users").set(adminAuth).send({ name: "Dup", email: admin.email, phone: "01712345678", password: PASSWORD, role: "support" }).expect(400);
+      // The sign-in code needs somewhere to go
+      await request(app).post("/api/v1/platform/users").set(adminAuth).send({ name: "No Phone", email: "np@platform.test", password: PASSWORD, role: "support" }).expect(400);
+      await request(app).post("/api/v1/platform/users").set(adminAuth).send({ name: "Bad Phone", email: "bp@platform.test", phone: "12345", password: PASSWORD, role: "support" }).expect(400);
       await request(app).patch(`/api/v1/platform/users/${admin._id}`).set(adminAuth).send({ isActive: false }).expect(400);
+      // Your own phone moves on your profile, behind your password
+      await request(app).patch(`/api/v1/platform/users/${admin._id}`).set(adminAuth).send({ phone: "01812345678" }).expect(400);
       await request(app).get("/api/v1/platform/users").set(supportAuth).expect(403);
+    });
+
+    it("deletes another operator, never yourself, and records it", async () => {
+      const target = await createPlatformUser({ role: "support" });
+
+      await request(app).delete(`/api/v1/platform/users/${target._id}`).set(supportAuth).expect(403);
+      await request(app).delete(`/api/v1/platform/users/${admin._id}`).set(adminAuth).expect(400);
+      await request(app).delete("/api/v1/platform/users/not-an-id").set(adminAuth).expect(400);
+
+      await request(app).delete(`/api/v1/platform/users/${target._id}`).set(adminAuth).expect(200);
+      expect(await PlatformUser.exists({ _id: target._id })).toBeNull();
+      const log = await PlatformAuditLog.findOne({ action: "PLATFORM_USER_DELETED" }).lean();
+      expect(log.metadata).toMatchObject({ email: target.email });
+
+      await request(app).delete(`/api/v1/platform/users/${target._id}`).set(adminAuth).expect(404);
     });
 
     it("a password reset revokes the operator's sessions", async () => {

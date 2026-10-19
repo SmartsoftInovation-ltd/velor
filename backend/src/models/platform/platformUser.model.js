@@ -8,6 +8,14 @@ const platformUserSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, select: false },
+    // Where the sign-in code is texted. Accounts made before this field existed
+    // have none and fall back to PLATFORM_ADMIN_PHONE (platformOtp.service.js).
+    phone: {
+      type: String,
+      trim: true,
+      default: null,
+      match: [/^01[3-9]\d{8}$/, "Invalid Bangladeshi mobile number"],
+    },
     // superadmin: full control; support: read-only
     role: { type: String, enum: ["superadmin", "support"], default: "support" },
     isActive: { type: Boolean, default: true },

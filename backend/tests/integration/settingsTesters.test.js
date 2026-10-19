@@ -51,7 +51,7 @@ describe("POST /platform/tenants/:id/settings/:section/test", () => {
   });
 
   it("sms: checks the balance with the tenant key", async () => {
-    await service.updateSection(tenant._id, "sms", { enabled: true, apiUrl: "http://sms.test/send", balanceUrl: "http://sms.test/balance", apiKey: "k-123", senderId: "880" });
+    await service.updateSection(tenant._id, "sms", { enabled: true, apiUrl: "http://sms.test/send", balanceUrl: "http://sms.test/balance", apiKey: "k-123", senderId: "880" }, { allowReadOnly: true });
     axios.get.mockResolvedValue({ data: { balance: 10 } });
 
     const res = await test("sms").expect(200);

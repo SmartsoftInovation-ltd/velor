@@ -39,7 +39,7 @@ describe("SMS, employees, delivery charges and the audit log", () => {
 
   describe("due SMS (/sms)", () => {
     beforeEach(async () => {
-      await settings.updateSection(tenant._id, "sms", { enabled: true, apiUrl: `${GATEWAY}/api/smsapi`, apiKey: "dummy-sms-key", senderId: "SHOP" });
+      await settings.updateSection(tenant._id, "sms", { enabled: true, apiUrl: `${GATEWAY}/api/smsapi`, apiKey: "dummy-sms-key", senderId: "SHOP" }, { allowReadOnly: true });
       settings.clearSettingsCache();
     });
 

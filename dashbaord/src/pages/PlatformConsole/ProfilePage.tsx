@@ -59,14 +59,17 @@ const ProfilePage = () => {
 
   const [name, setName] = useState(operator?.name ?? "");
   const [email, setEmail] = useState(operator?.email ?? "");
+  const [phone, setPhone] = useState(operator?.phone ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const emailChanged = email.trim().toLowerCase() !== (operator?.email ?? "").toLowerCase();
   const nameChanged = name.trim() !== (operator?.name ?? "");
-  // The API asks for the current password before it moves an email or a password
-  const needsCurrentPassword = emailChanged || Boolean(password);
+  const phoneChanged = phone.trim() !== (operator?.phone ?? "");
+  // The API asks for the current password before it moves an email, the phone
+  // the sign-in code goes to, or a password
+  const needsCurrentPassword = emailChanged || phoneChanged || Boolean(password);
 
   const save = useMutation({
     mutationFn: (body: ProfileUpdate) => updateProfile(body),
@@ -82,10 +85,11 @@ const ProfilePage = () => {
   const problem = () => {
     if (!name.trim()) return "Your name cannot be empty";
     if (!email.trim()) return "Your email cannot be empty";
+    if (phoneChanged && !/^(\+?88)?01[3-9]\d{8}$/.test(phone.trim())) return "Enter a valid Bangladeshi mobile number (01XXXXXXXXX)";
     if (password && password.length < MIN_PASSWORD) return `A new password needs at least ${MIN_PASSWORD} characters`;
     if (password && password !== confirmPassword) return "The two passwords do not match";
     if (needsCurrentPassword && !currentPassword) return "Enter your current password to confirm this change";
-    if (!nameChanged && !emailChanged && !password) return "Nothing to save yet";
+    if (!nameChanged && !emailChanged && !phoneChanged && !password) return "Nothing to save yet";
     return null;
   };
 
@@ -97,6 +101,7 @@ const ProfilePage = () => {
     save.mutate({
       ...(nameChanged && { name: name.trim() }),
       ...(emailChanged && { email: email.trim() }),
+      ...(phoneChanged && { phone: phone.trim() }),
       ...(password && { password }),
       ...(needsCurrentPassword && { currentPassword }),
     });
@@ -111,7 +116,7 @@ const ProfilePage = () => {
       <ConsoleHeader
         crumbs={[{ label: "Platform Console" }, { label: "Your profile" }]}
         title="Your profile"
-        subtitle="Your operator account — name, sign-in email and password."
+        subtitle="Your operator account — name, sign-in email, phone and password."
       />
 
       <div className="grid gap-5 lg:grid-cols-[20rem_1fr]">
@@ -157,6 +162,9 @@ const ProfilePage = () => {
             <Field id="profile-email" label="Sign-in email" hint="You sign in to the console with this address.">
               <input id="profile-email" type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
             </Field>
+            <Field id="profile-phone" label="Phone" hint="Your sign-in code is texted to this number.">
+              <input id="profile-phone" type="tel" inputMode="tel" placeholder="01XXXXXXXXX" className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+            </Field>
           </div>
 
           <h2 className="mt-7 flex items-center gap-2 border-t border-gray-100 pt-5 text-sm font-semibold text-gray-900 dark:border-gray-800 dark:text-white/90">
@@ -181,7 +189,7 @@ const ProfilePage = () => {
               <Field
                 id="profile-current-password"
                 label="Current password"
-                hint={emailChanged && !password ? "Moving your sign-in email needs it." : "Needed to set a new password."}
+                hint={password ? "Needed to set a new password." : "Moving your sign-in email or phone needs it."}
               >
                 <PasswordInput
                   id="profile-current-password"

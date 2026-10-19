@@ -4,6 +4,7 @@
 // Field types: string | uri | email | boolean | number | integer | enum | secret
 // required: field must be set while the section is active (see isActive)
 // ownerEditable: a tenant owner may change it from the dashboard
+// readOnly: shown in the forms but nobody can change it; the default applies
 
 const SECTIONS = {
   general: {
@@ -23,12 +24,11 @@ const SECTIONS = {
     isActive: (s) => s.enabled,
     fields: {
       enabled: { type: "boolean", default: false },
-      provider: { type: "enum", values: ["bulksmsbd"], default: "bulksmsbd" },
-      // Every seller signs up with the same BulkSMSBD endpoints, so they are
-      // prefilled rather than left blank; a seller on a different gateway host
-      // just overwrites them.
-      apiUrl: { type: "uri", default: "http://bulksmsbd.net/api/smsapi", required: true },
-      balanceUrl: { type: "uri", default: "http://bulksmsbd.net/api/getBalanceApi" },
+      provider: { type: "enum", values: ["bulksmsbd"], default: "bulksmsbd", readOnly: true },
+      // Every seller uses the same BulkSMSBD endpoints, so they are fixed: only
+      // the account (API key, sender ID) differs from store to store.
+      apiUrl: { type: "uri", default: "http://bulksmsbd.net/api/smsapi", required: true, readOnly: true },
+      balanceUrl: { type: "uri", default: "http://bulksmsbd.net/api/getBalanceApi", readOnly: true },
       apiKey: { type: "secret", required: true },
       senderId: { type: "string", default: "", required: true },
     },

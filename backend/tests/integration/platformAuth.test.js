@@ -83,6 +83,27 @@ describe("platform auth API", () => {
       expect(await PlatformAuditLog.countDocuments({ action: "PLATFORM_LOGIN_OTP_SENT", actor: user._id })).toBe(1);
     });
 
+    it("texts the code to the signing-in operator's own phone", async () => {
+      const user = await createPlatformUser({ phone: "01812345678" });
+
+      const res = await request(app).post(`${BASE}/login`).send({ email: user.email, password: PASSWORD }).expect(200);
+
+      expect(res.body.data.phone).toBe("01*******78");
+      expect(sentMessages[0].number).toBe("01812345678");
+    });
+
+    it("falls back to PLATFORM_ADMIN_PHONE only for an operator without a phone", async () => {
+      const user = await createPlatformUser();
+      const saved = process.env.PLATFORM_ADMIN_PHONE;
+      delete process.env.PLATFORM_ADMIN_PHONE;
+      try {
+        await request(app).post(`${BASE}/login`).send({ email: user.email, password: PASSWORD }).expect(503);
+      } finally {
+        process.env.PLATFORM_ADMIN_PHONE = saved;
+      }
+      expect(sendPlatformSms).not.toHaveBeenCalled();
+    });
+
     it("stores only a hash of the code", async () => {
       const user = await createPlatformUser();
       const res = await request(app).post(`${BASE}/login`).send({ email: user.email, password: PASSWORD }).expect(200);
@@ -278,6 +299,59 @@ describe("platform auth API", () => {
 
   // Every operator owns their own account, support role included — the
   // superadmin-only /platform/users routes are for managing other people.
+  // A superadmin switching an operator off, or deleting them, must shut every
+  // door: the open session, the 7-day refresh cookie, a code already texted,
+  // and any new sign-in.
+  describe("an operator a superadmin deactivates or deletes", () => {
+    const { signPlatformAccessToken } = require("../../src/utils/platformTokens");
+
+    const removedBy = async (action, target) => {
+      const admin = await createPlatformUser({ role: "superadmin" });
+      const auth = { Authorization: `Bearer ${signPlatformAccessToken(admin)}` };
+      if (action === "deactivate") {
+        await request(app).patch(`/api/v1/platform/users/${target._id}`).set(auth).send({ isActive: false }).expect(200);
+      } else {
+        await request(app).delete(`/api/v1/platform/users/${target._id}`).set(auth).expect(200);
+      }
+    };
+
+    it.each([
+      ["deactivate", 403],
+      ["delete", 401],
+    ])("after %s: the session, refresh, a pending code and a new sign-in all fail", async (action, loginStatus) => {
+      const { user, cookie, accessToken } = await signIn({ role: "support" });
+      // A second sign-in left waiting on its code
+      const pending = await request(app).post(`${BASE}/login`).send({ email: user.email, password: PASSWORD }).expect(200);
+      const pendingCode = codeFromSms();
+
+      await removedBy(action, user);
+
+      await request(app).get(`${BASE}/me`).set("Authorization", `Bearer ${accessToken}`).expect(401);
+      await request(app).post(`${BASE}/refresh`).set("Cookie", cookie).expect(401);
+      await request(app)
+        .post(`${BASE}/verify-otp`)
+        .send({ challengeId: pending.body.data.challengeId, code: pendingCode })
+        .expect(401);
+
+      sendPlatformSms.mockClear();
+      await request(app).post(`${BASE}/login`).send({ email: user.email, password: PASSWORD }).expect(loginStatus);
+      await request(app)
+        .post(`${BASE}/resend-otp`)
+        .send({ email: user.email, password: PASSWORD, challengeId: pending.body.data.challengeId })
+        .expect(401);
+      // No code is texted to an operator who can no longer get in
+      expect(sendPlatformSms).not.toHaveBeenCalled();
+    });
+
+    it("can sign in again once reactivated", async () => {
+      const { user } = await signIn({ role: "support" });
+      await removedBy("deactivate", user);
+      await PlatformUser.updateOne({ _id: user._id }, { isActive: true });
+
+      await request(app).post(`${BASE}/login`).send({ email: user.email, password: PASSWORD }).expect(200);
+    });
+  });
+
   describe("PATCH /me", () => {
     const NEW_PASSWORD = "Another-Passw0rd!";
 
@@ -321,6 +395,24 @@ describe("platform auth API", () => {
         .expect(200);
 
       expect((await PlatformUser.findById(user._id)).email).toBe("moved@platform.test");
+    });
+
+    it("changes the phone only with the current password", async () => {
+      const { user, accessToken } = await signIn();
+
+      await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ phone: "01812345678" })
+        .expect(401);
+
+      await request(app)
+        .patch(`${BASE}/me`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({ phone: "+8801812345678", currentPassword: PASSWORD })
+        .expect(200);
+
+      expect((await PlatformUser.findById(user._id)).phone).toBe("01812345678");
     });
 
     it("refuses an email another operator already uses", async () => {

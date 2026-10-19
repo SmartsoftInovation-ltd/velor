@@ -9,6 +9,8 @@ const PLATFORM_AUDIT_ACTIONS = [
   "PLATFORM_LOGOUT",
   // An operator changed their own name, email or password
   "PLATFORM_PROFILE_UPDATED",
+  // A superadmin removed another operator's account
+  "PLATFORM_USER_DELETED",
   "TENANT_CREATED",
   "TENANT_UPDATED",
   "TENANT_SUSPENDED",

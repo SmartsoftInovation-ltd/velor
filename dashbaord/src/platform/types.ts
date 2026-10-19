@@ -79,7 +79,10 @@ export interface PlatformUser {
   _id: string;
   name: string;
   email: string;
+  /** Where the sign-in code is texted; null on accounts made before operators had one */
+  phone?: string | null;
   role: "superadmin" | "support";
   isActive: boolean;
   lastLoginAt?: string | null;
+  createdAt?: string;
 }

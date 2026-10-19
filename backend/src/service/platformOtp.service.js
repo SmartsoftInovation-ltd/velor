@@ -3,7 +3,7 @@ const { cache } = require("../config/redis.config");
 const { sendPlatformSms } = require("./platformSms.service");
 
 // Second factor for the Platform Console. The password alone is not enough: a
-// one-time code goes to the operator phone in .env, and only that code exchanges
+// one-time code goes to the signing-in operator's own phone, and only that code exchanges
 // for a session. Codes live in Redis so they expire on their own and survive a
 // restart no longer than their TTL.
 
@@ -14,7 +14,9 @@ const RESEND_AFTER_SECONDS = 60;
 
 const key = (challengeId) => `platform:otp:${challengeId}`;
 
-const operatorPhone = () => process.env.PLATFORM_ADMIN_PHONE?.trim() || null;
+// The operator's own phone. PLATFORM_ADMIN_PHONE only covers accounts saved
+// before operators had a phone, so they can still sign in and add one.
+const operatorPhone = (user) => user?.phone?.trim() || process.env.PLATFORM_ADMIN_PHONE?.trim() || null;
 
 // Only a hash of the code is stored: Redis never holds a usable code
 const hashCode = (challengeId, code) =>
@@ -24,13 +26,13 @@ const hashCode = (challengeId, code) =>
 const maskPhone = (phone) => `${phone.slice(0, 2)}${"*".repeat(Math.max(0, phone.length - 4))}${phone.slice(-2)}`;
 
 /**
- * Creates a challenge, texts the code to the operator phone and returns what the
- * client needs to show the code screen. Throws when the platform has no operator
- * phone or the SMS provider rejects the message.
+ * Creates a challenge, texts the code to the operator's phone and returns what the
+ * client needs to show the code screen. Throws when there is no phone to send to
+ * or the SMS provider rejects the message.
  */
 const startChallenge = async (user) => {
-  const phone = operatorPhone();
-  if (!phone) throw new Error("PLATFORM_ADMIN_PHONE is not configured");
+  const phone = operatorPhone(user);
+  if (!phone) throw new Error("The operator has no phone and PLATFORM_ADMIN_PHONE is not configured");
 
   const challengeId = crypto.randomUUID();
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");

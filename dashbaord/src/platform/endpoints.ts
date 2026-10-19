@@ -106,8 +106,9 @@ export interface PlatformSession {
 export interface ProfileUpdate {
   name?: string;
   email?: string;
+  phone?: string;
   password?: string;
-  /** Required by the API for an email or password change */
+  /** Required by the API for an email, phone or password change */
   currentPassword?: string;
 }
 
@@ -156,7 +157,8 @@ export const settingsApi = {
 
 export const usersApi = {
   list: () => data<PlatformUser[]>(api.get("/users")),
-  create: (body: { name: string; email: string; password: string; role: PlatformUser["role"] }) => data<PlatformUser>(api.post("/users", body)),
-  update: (id: string, body: Partial<{ name: string; password: string; role: PlatformUser["role"]; isActive: boolean }>) =>
+  create: (body: { name: string; email: string; phone: string; password: string; role: PlatformUser["role"] }) => data<PlatformUser>(api.post("/users", body)),
+  update: (id: string, body: Partial<{ name: string; phone: string; password: string; role: PlatformUser["role"]; isActive: boolean }>) =>
     data<PlatformUser>(api.patch(`/users/${id}`, body)),
+  remove: (id: string) => data<{ _id: string }>(api.delete(`/users/${id}`)),
 };

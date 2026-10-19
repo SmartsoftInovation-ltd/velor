@@ -25,7 +25,7 @@ describe("SMS worker (queue: due-sms)", () => {
   });
 
   beforeEach(async () => {
-    await settings.updateSection(tenantId, "sms", { enabled: true, apiUrl: `${GATEWAY}/api/smsapi`, apiKey: "dummy-sms-key", senderId: "SHOP" });
+    await settings.updateSection(tenantId, "sms", { enabled: true, apiUrl: `${GATEWAY}/api/smsapi`, apiKey: "dummy-sms-key", senderId: "SHOP" }, { allowReadOnly: true });
     settings.clearSettingsCache();
   });
   afterEach(() => nock.cleanAll());

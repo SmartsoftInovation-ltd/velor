@@ -67,6 +67,23 @@ describe("platform tenant settings API", () => {
     expect(JSON.stringify(res.body)).not.toContain("sms-key-123456");
   });
 
+  it("keeps the SMS provider and its URLs fixed", async () => {
+    // Sending the value it already has is fine: the form may send the whole section
+    await request(app).patch(url("/sms")).set(adminAuth)
+      .send({ provider: "bulksmsbd", apiUrl: "http://bulksmsbd.net/api/smsapi", balanceUrl: "http://bulksmsbd.net/api/getBalanceApi" })
+      .expect(200);
+
+    for (const patch of [{ apiUrl: "http://evil.test/send" }, { balanceUrl: "http://evil.test/balance" }]) {
+      const res = await request(app).patch(url("/sms")).set(adminAuth).send(patch).expect(400);
+      expect(res.body.message).toMatch(/cannot be changed/);
+    }
+
+    const schema = await request(app).get("/api/v1/platform/settings/schema").set(supportAuth).expect(200);
+    const sms = schema.body.data.find((section) => section.key === "sms");
+    const readOnly = sms.fields.filter((field) => field.readOnly).map((field) => field.name);
+    expect(readOnly).toEqual(["provider", "apiUrl", "balanceUrl"]);
+  });
+
   it("audits changed field names only", async () => {
     await request(app).patch(url("/sms")).set(adminAuth)
       .send({ enabled: true, apiUrl: "http://bulksmsbd.net/api/smsapi", apiKey: "sms-key-123456", senderId: "8809617" });

@@ -188,7 +188,7 @@ const getFeatures = async (tenantId) => {
  * Applies a partial update to one section.
  * Omitted fields keep their value; null resets a field (clears a secret).
  */
-const updateSection = async (tenantId, sectionKey, patch, { allowedFields, updatedBy = null } = {}) => {
+const updateSection = async (tenantId, sectionKey, patch, { allowedFields, updatedBy = null, allowReadOnly = false } = {}) => {
   const definition = sectionOr404(sectionKey);
 
   if (allowedFields) {
@@ -226,6 +226,9 @@ const updateSection = async (tenantId, sectionKey, patch, { allowedFields, updat
     const before = isEmpty(stored[name]) && stored[name] !== "" ? field.default : stored[name];
     const after = value === null ? field.default : value;
     if (before === after) continue;
+    if (field.readOnly && !allowReadOnly) {
+      throw new customError(`${sectionKey}.${name} cannot be changed`, statusCodes.BAD_REQUEST);
+    }
     if (value === null) delete next[name];
     else next[name] = value;
     changes.push(`${sectionKey}.${name}`);

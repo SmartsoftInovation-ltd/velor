@@ -51,6 +51,32 @@ describe("ProfilePage (Platform Console)", () => {
     await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ name: "New Name" }));
   });
 
+  it("asks for the current password before moving the sign-in phone", async () => {
+    renderPage();
+
+    await userEvent.type(screen.getByLabelText("Phone"), "01812345678");
+    await userEvent.type(await screen.findByLabelText("Current password"), "Platform-Passw0rd!");
+    await save();
+
+    await waitFor(() =>
+      expect(updateProfile).toHaveBeenCalledWith({
+        phone: "01812345678",
+        currentPassword: "Platform-Passw0rd!",
+      }),
+    );
+  });
+
+  it("refuses a phone that is not a Bangladeshi mobile", async () => {
+    renderPage();
+
+    await userEvent.type(screen.getByLabelText("Phone"), "12345");
+    await userEvent.type(await screen.findByLabelText("Current password"), "Platform-Passw0rd!");
+    await save();
+
+    expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/valid Bangladeshi mobile/));
+    expect(updateProfile).not.toHaveBeenCalled();
+  });
+
   it("asks for the current password before moving the sign-in email", async () => {
     renderPage();
 

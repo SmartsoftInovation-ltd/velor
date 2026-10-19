@@ -86,14 +86,14 @@ describe("integrations/config", () => {
     it("uses the tenant's settings, not env", async () => {
       process.env.BULK_SMS_API_KEY = "envkey";
       await service.updateSection(T, "general", { invoicePrefix: "PZS", orderHotline: "01711000000", storefrontUrl: "https://pizza.test" });
-      await service.updateSection(T, "sms", { enabled: true, apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" });
+      await service.updateSection(T, "sms", { enabled: true, apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" }, { allowReadOnly: true });
       await service.updateSection(T, "cloudinary", { enabled: true, cloudName: "pizza-cdn", apiKey: "222", apiSecret: "pizza-secret" });
       await service.updateSection(T, "sslcommerz", { enabled: true, isLive: false, storeId: "pizzastore", storePassword: "pizzapass" });
 
       await inTenant(async () => {
         await expect(config.getInvoicePrefix()).resolves.toBe("PZS");
         await expect(config.getGeneralConfig()).resolves.toMatchObject({ orderHotline: "01711000000", storefrontUrl: "https://pizza.test" });
-        await expect(config.getSmsConfig()).resolves.toMatchObject({ apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" });
+        await expect(config.getSmsConfig()).resolves.toMatchObject({ apiUrl: "http://sms.pizza", apiKey: "pizza-sms-key", senderId: "8801" }, { allowReadOnly: true });
         await expect(config.getCloudinaryConfig()).resolves.toEqual({ cloud_name: "pizza-cdn", api_key: "222", api_secret: "pizza-secret" });
       });
     });

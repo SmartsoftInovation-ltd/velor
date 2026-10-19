@@ -165,17 +165,19 @@ exports.me = asynchandeler(async (req, res) =>
   apiResponse.sendSuccess(res, statusCodes.OK, "Current platform user", req.platformUser.toJSON()),
 );
 
-// Every operator owns their own name, email and password — support included,
+// Every operator owns their own name, email, phone and password — support included,
 // which is why this is not under the superadmin-only /platform/users routes.
 // Role and isActive are not here: an operator cannot promote themselves.
 exports.updateMe = asynchandeler(async (req, res) => {
-  const { name, email, currentPassword, password } = req.body;
+  const { name, email, phone, currentPassword, password } = req.body;
   const user = await PlatformUser.findById(req.platformUser._id).select("+password");
   if (!user) throw new customError("Platform user not found", statusCodes.NOT_FOUND);
 
-  // Changing the email or the password proves the current password first: a
-  // console left open must not be enough to take the account over.
-  if ((password || (email && email !== user.email)) && !(await user.comparePassword(currentPassword))) {
+  // Changing the email, the phone (where the sign-in code goes) or the password
+  // proves the current password first: a console left open must not be enough
+  // to take the account over.
+  const sensitive = password || (email && email !== user.email) || (phone && phone !== user.phone);
+  if (sensitive && !(await user.comparePassword(currentPassword))) {
     throw new customError("Your current password is incorrect", statusCodes.UNAUTHORIZED);
   }
 
@@ -185,6 +187,7 @@ exports.updateMe = asynchandeler(async (req, res) => {
     user.email = email;
   }
   if (name !== undefined) user.name = name;
+  if (phone !== undefined) user.phone = phone;
 
   let passwordChanged = false;
   if (password) {

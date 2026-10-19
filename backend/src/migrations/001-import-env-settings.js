@@ -79,7 +79,8 @@ module.exports = {
         skipped.push({ section, reason: "already configured" });
       } else {
         try {
-          await settings.updateSection(tenant._id, section, patch);
+          // Copies the .env values as they were, fixed fields included
+          await settings.updateSection(tenant._id, section, patch, { allowReadOnly: true });
           imported.push(section);
         } catch (error) {
           skipped.push({ section, reason: error.message });

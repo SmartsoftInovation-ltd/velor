@@ -44,14 +44,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div aria-hidden className="pointer-events-none absolute -right-40 -top-40 size-[34rem] rounded-full bg-emerald-500/15 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-48 -left-24 size-[28rem] rounded-full bg-emerald-400/[0.06] blur-3xl" />
 
-        <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BrandMark className="size-7 rounded-lg" />
-            <span className="text-sm font-semibold tracking-wide">ECOMPOS</span>
-          </div>
-          <span className="rounded border border-white/15 px-2 py-0.5 font-mono text-[10px] tracking-[0.12em] text-white/60">
-            BAIG DIGITAL
-          </span>
+        <div className="relative flex items-center gap-3">
+          <BrandMark className="size-7 rounded-lg" />
+          <span className="text-sm font-semibold tracking-wide">ECOMPOS</span>
         </div>
 
         <div className="relative flex flex-1 flex-col justify-center">

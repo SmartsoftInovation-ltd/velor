@@ -6,6 +6,7 @@ const describeField = (name, field) => ({
   name,
   type: field.type,
   required: Boolean(field.required),
+  ...(field.readOnly ? { readOnly: true } : {}),
   ...(field.type !== "secret" && field.default !== undefined ? { default: field.default } : {}),
   ...(field.values ? { values: field.values } : {}),
   ...(field.min !== undefined ? { min: field.min } : {}),

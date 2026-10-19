@@ -4278,6 +4278,18 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: "delete__platform_users_id_"
+      tags: ["user"]
+      security: [{ platformBearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/product/addproductimage/{slug}":
     post:
       operationId: "post__product_addproductimage_slug_"
