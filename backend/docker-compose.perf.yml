@@ -1,0 +1,40 @@
+# Phase 2 performance stack. Isolated from the dev stack:
+#   Mongo -> 127.0.0.1:27018 (dev uses 27017), Redis -> 127.0.0.1:6380 (dev uses 6379).
+# Production Mongo version not detectable from repo -> 7.0 per Phase 2 default.
+# Single-node replica set because the app uses transactions (sales, purchase, returns...).
+# Resources are capped so the dataset does NOT fit entirely in cache (honest numbers).
+name: velor-perf
+services:
+  mongo-perf:
+    image: mongo:7.0
+    container_name: velor-mongo-perf
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "1.5"]
+    ports:
+      - "127.0.0.1:27018:27017"
+    mem_limit: 4g
+    cpus: 2
+    volumes:
+      - velor_mongo_perf_data:/data/db
+    healthcheck:
+      # Initiates the replica set on first boot, then reports healthy once PRIMARY.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]}).ok }"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
+  redis-perf:
+    image: redis:7
+    container_name: velor-redis-perf
+    command: ["redis-server", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+    ports:
+      - "127.0.0.1:6380:6379"
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  velor_mongo_perf_data:

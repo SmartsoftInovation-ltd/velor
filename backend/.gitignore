@@ -10,3 +10,6 @@ node_modules/
 coverage/
 reports/
 .stryker-tmp/
+
+# Phase 2 perf env (local Docker only)
+.env.perf

@@ -45,7 +45,16 @@
     "test:coverage": "jest --coverage",
     "test:mutation": "stryker run",
     "test:bugs": "BUG_AUDIT=1 jest -t \"BUG-\"",
-    "test:inventory": "node tests/scripts/generateInventory.js"
+    "test:inventory": "node tests/scripts/generateInventory.js",
+    "perf:up": "DOCKER_CONTEXT=default docker compose -f docker-compose.perf.yml up -d --wait",
+    "perf:down": "DOCKER_CONTEXT=default docker compose -f docker-compose.perf.yml down",
+    "perf:status": "DOCKER_CONTEXT=default docker compose -f docker-compose.perf.yml ps",
+    "perf:guard": "node perf/lib/guard.js",
+    "perf:seed": "node perf/lib/guard.js && node --max-old-space-size=6144 perf/seed/index.js",
+    "perf:inventory": "node perf/lib/guard.js && node perf/inventory/index.js",
+    "perf:measure": "node perf/lib/guard.js && node perf/measure/index.js",
+    "perf:experiment": "node perf/lib/guard.js && node perf/experiments/index.js",
+    "perf:report": "node scripts/phase2-report.mjs"
   },
   "_moduleAliases": {
     "@": "src"
