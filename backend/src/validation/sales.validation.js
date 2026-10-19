@@ -106,9 +106,8 @@ const createSalesSchema = Joi.object({
     "array.min": "At least 1 item is required",
   }),
 
-  salesMen: objectId.required().messages({
-    "any.required": "Salesman is required",
-  }),
+  // Optional; null means the sale has no salesman
+  salesMen: objectId.optional().allow(null),
 
   invoiceStatus: Joi.string()
     .valid("complete", "draft", "pending")
@@ -157,7 +156,8 @@ const updateSalesSchema = Joi.object({
 
   searchItem: Joi.array().items(searchItemSchema).optional(),
 
-  salesMen: objectId.optional(),
+  // null clears the salesman
+  salesMen: objectId.optional().allow(null),
 
   invoiceStatus: Joi.string().valid("complete", "draft", "pending").optional(),
 

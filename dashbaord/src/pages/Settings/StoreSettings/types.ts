@@ -4,6 +4,8 @@ export interface SchemaField {
   name: string;
   type: FieldType;
   required: boolean;
+  /** Shown but never editable: the same value for every store */
+  readOnly?: boolean;
   default?: string | number | boolean;
   values?: string[];
   min?: number;

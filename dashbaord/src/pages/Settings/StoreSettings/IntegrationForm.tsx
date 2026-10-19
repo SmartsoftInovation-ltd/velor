@@ -78,6 +78,7 @@ const IntegrationForm = ({ schema, values, canEdit, onSave, onTest }: Props) => 
   const patch = useMemo(() => {
     const body: Record<string, unknown> = {};
     for (const field of schema.fields) {
+      if (field.readOnly) continue;
       if (field.type === "secret") {
         if (field.name in secrets && (secrets[field.name] === null || secrets[field.name])) body[field.name] = secrets[field.name];
       } else if (draft[field.name] !== initial[field.name]) {
@@ -143,11 +144,18 @@ const IntegrationForm = ({ schema, values, canEdit, onSave, onTest }: Props) => 
     const help = meta?.fields[field.name]?.help;
     const placeholder = meta?.fields[field.name]?.placeholder;
     const wide = field.type === "secret" || field.type === "uri" || field.type === "enum";
+    const editable = canEdit && !field.readOnly;
 
     const labelNode = (
       <label htmlFor={id} className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
-        {field.required && <span className="text-error-500" aria-hidden>*</span>}
+        {field.required && !field.readOnly && <span className="text-error-500" aria-hidden>*</span>}
+        {field.readOnly && (
+          <span title="The same for every store" className="ml-1 inline-flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-white/5 dark:text-gray-400">
+            <FiLock aria-hidden className="size-2.5" />
+            Fixed
+          </span>
+        )}
       </label>
     );
 
@@ -165,7 +173,7 @@ const IntegrationForm = ({ schema, values, canEdit, onSave, onTest }: Props) => 
     } else if (field.type === "enum") {
       const options = meta?.fields[field.name]?.options;
       control = (
-        <select id={id} className={inputClass} value={String(draft[field.name])} disabled={!canEdit} onChange={(e) => set(field.name, e.target.value)}>
+        <select id={id} className={inputClass} value={String(draft[field.name])} disabled={!editable} onChange={(e) => set(field.name, e.target.value)}>
           {field.values?.map((option) => (
             <option key={option} value={option}>{options?.[option] ?? option}</option>
           ))}
@@ -261,7 +269,8 @@ const IntegrationForm = ({ schema, values, canEdit, onSave, onTest }: Props) => 
             list={listId}
             className={inputClass}
             value={String(draft[field.name])}
-            disabled={!canEdit}
+            disabled={!editable}
+            readOnly={field.readOnly}
             placeholder={placeholder}
             onChange={(e) => set(field.name, e.target.value)}
           />

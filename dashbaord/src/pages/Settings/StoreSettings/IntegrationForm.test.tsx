@@ -10,9 +10,9 @@ const sms: SectionSchema = {
   testable: true,
   fields: [
     { name: "enabled", type: "boolean", required: false, default: false },
-    { name: "provider", type: "enum", required: false, default: "bulksmsbd", values: ["bulksmsbd"] },
-    { name: "apiUrl", type: "uri", required: true, default: "" },
-    { name: "balanceUrl", type: "uri", required: false, default: "" },
+    { name: "provider", type: "enum", required: false, readOnly: true, default: "bulksmsbd", values: ["bulksmsbd"] },
+    { name: "apiUrl", type: "uri", required: true, readOnly: true, default: "http://bulksmsbd.net/api/smsapi" },
+    { name: "balanceUrl", type: "uri", required: false, readOnly: true, default: "http://bulksmsbd.net/api/getBalanceApi" },
     { name: "apiKey", type: "secret", required: true },
     { name: "senderId", type: "string", required: true, default: "" },
   ],
@@ -36,7 +36,7 @@ const renderForm = (props: Partial<Parameters<typeof IntegrationForm>[0]> = {}) 
   render(
     <IntegrationForm
       schema={sms}
-      values={{ enabled: false, provider: "bulksmsbd", apiUrl: "", balanceUrl: "", apiKey: { isSet: false, last4: "" }, senderId: "" }}
+      values={{ enabled: false, provider: "bulksmsbd", apiUrl: "http://bulksmsbd.net/api/smsapi", balanceUrl: "http://bulksmsbd.net/api/getBalanceApi", apiKey: { isSet: false, last4: "" }, senderId: "" }}
       canEdit
       onSave={onSave}
       onTest={onTest}
@@ -51,7 +51,6 @@ describe("IntegrationForm", () => {
     const { onSave } = renderForm();
 
     await userEvent.click(screen.getByRole("switch", { name: /enable sms/i }));
-    await userEvent.type(screen.getByLabelText(/api url/i), "http://sms.example.test/send");
     await userEvent.type(screen.getByLabelText(/^api key/i), "secret-key-1234");
     await userEvent.type(screen.getByLabelText(/sender id/i), "8809617");
     await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
@@ -59,11 +58,23 @@ describe("IntegrationForm", () => {
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledWith({
         enabled: true,
-        apiUrl: "http://sms.example.test/send",
         apiKey: "secret-key-1234",
         senderId: "8809617",
       }),
     );
+  });
+
+  it("shows the provider and its URLs but never lets them change", async () => {
+    renderForm();
+
+    for (const label of [/^provider/i, /^api url/i, /^balance url/i]) {
+      expect(screen.getByLabelText(label)).toBeDisabled();
+    }
+    expect(screen.getByLabelText(/^api url/i)).toHaveValue("http://bulksmsbd.net/api/smsapi");
+    expect(screen.getByLabelText(/^balance url/i)).toHaveValue("http://bulksmsbd.net/api/getBalanceApi");
+    expect(screen.getAllByText("Fixed")).toHaveLength(3);
+    // Only the account fields stay open
+    expect(screen.getByLabelText(/sender id/i)).toBeEnabled();
   });
 
   it("shows a stored secret masked, replaces it only on request and can remove it", async () => {

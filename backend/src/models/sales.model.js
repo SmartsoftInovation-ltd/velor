@@ -120,10 +120,11 @@ const salesSchema = new mongoose.Schema(
 
     searchItem: { type: [searchItemSchema], default: [] },
 
+    // Optional: a sale may be made without naming a salesman
     salesMen: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
-      required: [true, "Salesman is required"],
+      default: null,
     },
 
     // The logged-in user who made the sale. Set once, server-side, when the

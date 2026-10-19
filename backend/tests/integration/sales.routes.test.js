@@ -182,8 +182,16 @@ describe("sales routes (/api/v1/sales)", () => {
     });
 
     it.each([
+      ["no salesman", undefined],
+      ["an empty salesman", null],
+    ])("saves a sale with %s", async (_name, salesMen) => {
+      const res = await create(sale({ salesMen })).expect(201);
+      const saved = await inTenant(() => Sales.findById(res.body.data._id).lean());
+      expect(saved.salesMen).toBeNull();
+    });
+
+    it.each([
       ["no line", () => ({ searchItem: [] })],
-      ["no salesman", () => ({ salesMen: undefined })],
       ["a malformed salesman id", () => ({ salesMen: "nope" })],
       ["a line without product or variant", () => ({ searchItem: [{ quantity: 1, salesRate: 10, salesStatus: "sale" }] })],
       ["a negative quantity", () => ({ searchItem: [line({ quantity: -1 })] })],

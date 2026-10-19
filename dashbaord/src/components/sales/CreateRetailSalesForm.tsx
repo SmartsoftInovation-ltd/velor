@@ -822,11 +822,6 @@ export default function CreateRetailSalesForm({
       return;
     }
 
-    if (!salesman) {
-      toast.error("Please select a salesman.");
-      return;
-    }
-
     // A walking sale cannot leave a due behind — there is no account to bill.
     if (isWalkingUnderpaid) {
       toast.error(
@@ -920,7 +915,8 @@ export default function CreateRetailSalesForm({
       deliveryDate: deliveryDate || (isEdit ? null : undefined),
       customerType,
       searchItem,
-      salesMen: salesman,
+      // Optional: on edit an empty picker clears the stored salesman
+      salesMen: salesman || null,
       invoiceStatus: invoiceStatus.toLowerCase(),
       remark: remarks,
       sendSms,

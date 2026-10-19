@@ -42,7 +42,7 @@ describe("platform console API", () => {
       expect(sms.fields).toEqual(expect.arrayContaining([
         { name: "enabled", type: "boolean", required: false, default: false },
         { name: "apiKey", type: "secret", required: true },
-        { name: "provider", type: "enum", required: false, default: "bulksmsbd", values: ["bulksmsbd"] },
+        { name: "provider", type: "enum", required: false, readOnly: true, default: "bulksmsbd", values: ["bulksmsbd"] },
       ]));
       expect(res.body.data.find((section) => section.key === "general").testable).toBe(false);
     });
