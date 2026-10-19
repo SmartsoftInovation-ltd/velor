@@ -401,13 +401,20 @@ describe("staff auth routes (/api/v1/auth)", () => {
       await client(staffToken).get("/auth/getme").expect(401);
     });
 
-    // BUG-012: the new password is written to the database in plain text, so it
-    // is exposed at rest and the user can no longer sign in with it
-    test.failing("PUT /auth/user-update/:id stores a new password hashed, and it signs in [BUG-012]", async () => {
+    // BUG-012 (fixed): the new password was written to the database in plain
+    // text, so the user could no longer sign in with it
+    it("PUT /auth/user-update/:id stores a new password hashed, and it signs in [BUG-012]", async () => {
       await client(managerToken).put(`/auth/user-update/${staff._id}`).send({ name: "S", email: "staff@authshop.com", phone: staff.phone, password: "Fresh-Pass1" }).expect(200);
       const stored = await reload(staff._id);
-      expect(stored.password).not.toBe("Fresh-Pass1");
+      expect(stored.password).toMatch(/^\$2[aby]\$/);
       await login({ email: "staff@authshop.com", password: "Fresh-Pass1" }).expect(200);
+    });
+
+    it("accepts a 4-character password on add and edit, and nothing shorter", async () => {
+      const c = client(managerToken);
+      await c.put(`/auth/user-update/${staff._id}`).send({ name: "S", email: "staff@authshop.com", phone: staff.phone, password: "abc" }).expect(400);
+      await c.put(`/auth/user-update/${staff._id}`).send({ name: "S", email: "staff@authshop.com", phone: staff.phone, password: "1234" }).expect(200);
+      await login({ email: "staff@authshop.com", password: "1234" }).expect(200);
     });
 
     it("PUT /auth/user-update/:id ignores protected fields", async () => {
@@ -437,6 +444,18 @@ describe("staff auth routes (/api/v1/auth)", () => {
       const stored = await runForTenant(tenant._id, () => User.findOne({ email: "cashier@authshop.com" }).lean());
       expect(stored.roles.map(String)).toEqual([role.insertedId.toString()]);
       expect(stored.createdBy.toString()).toBe(owner._id.toString());
+    });
+
+    it("POST /auth/add-user takes a 4-character password, refuses a 3-character one, and the user signs in", async () => {
+      const role = await runForTenant(tenant._id, () =>
+        Role.collection.insertOne({ tenantId: tenant._id, name: "cashier", slug: "cashier", isActive: true, permissions: [] }),
+      );
+      const add = (email, phone, password) =>
+        client(tokenFor(owner)).post("/auth/add-user").field("name", "Short Pass").field("email", email).field("phone", phone)
+          .field("password", password).field("role", role.insertedId.toString());
+      await add("three@authshop.com", "01944444444", "ab1").expect(400);
+      await add("four@authshop.com", "01955555555", "ab12").expect(201);
+      await login({ email: "four@authshop.com", password: "ab12" }).expect(200);
     });
 
     // BUG-009: add-user spreads the validated body into User.create (allowUnknown),

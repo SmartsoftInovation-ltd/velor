@@ -793,6 +793,10 @@ exports.updateUser = asynchandeler(async (req, res) => {
 
   //  Add password only if given
   if (data.password && data.password.trim() !== "") {
+    // Same minimum as every other password entry point
+    if (data.password.length < PASSWORD_MIN_LENGTH) {
+      throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
+    }
     updateData.password = data.password;
   }
 

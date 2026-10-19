@@ -253,7 +253,7 @@ const UserEdit = () => {
                   <Input
                     id="edit-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter new password"
+                    placeholder="Min. 4 characters"
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })); }}
                     className={`pr-11 ${errors.password ? "border-red-500 focus:border-red-500" : ""}`}

@@ -14,7 +14,7 @@ error code on an edge case).
 
 | Severity | Id | Summary | Test |
 |---|---|---|---|
-| Critical | BUG-012 | Admin password change stores the password in plain text | `integration/auth.routes.test.js` |
+| Critical | BUG-012 | ~~Admin password change stores the password in plain text~~ **Fixed** | `integration/auth.routes.test.js` |
 | Critical | BUG-018 | A sales return can take back more units than were sold | `integration/salesReturn.routes.test.js` |
 | Critical | BUG-019 | A product that is not on the sale is refunded at the client's price | `integration/salesReturn.routes.test.js` |
 | Critical | BUG-046 | Marking an order "Delivered" puts its stock back | `integration/commerce.routes.test.js` |
@@ -211,6 +211,9 @@ error code on an edge case).
 - **Actual:** the password is stored verbatim; the user can no longer sign in
   (bcrypt compare fails), and anyone with database or backup access reads it.
 - **Tests:** `tests/integration/auth.routes.test.js` "[BUG-012]".
+- **Fixed:** the timestamps option adds `$set: { updatedAt }` to the update, so
+  the hook only looked inside `$set` and skipped the top-level `password`. The
+  hook now hashes a password in either place.
 
 ### BUG-013 — Creating a sale with short stock answers 500 (Low)
 

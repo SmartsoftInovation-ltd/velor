@@ -114,24 +114,16 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// compare password
+// Hash a password written through findOneAndUpdate / findByIdAndUpdate. It can
+// sit at the top level of the update or inside $set — and both at once: the
+// timestamps option adds `$set: { updatedAt }` to an update written without
+// one, so checking only `$set` left a top-level password stored in plain text.
 userSchema.pre("findOneAndUpdate", async function (next) {
   try {
     const update = this.getUpdate() || {};
-
-    // handle both direct and $set updates
-    const $set = update.$set || update;
-
-    if ($set.password) {
-      $set.password = await bcrypt.hash($set.password, 10);
-    }
-
-    // re-assign update safely
-    if (update.$set) update.$set = $set;
-    else Object.assign(update, $set);
-
+    if (update.password) update.password = await bcrypt.hash(update.password, 10);
+    if (update.$set?.password) update.$set.password = await bcrypt.hash(update.$set.password, 10);
     this.setUpdate(update);
-
     return next();
   } catch (error) {
     return next(error);

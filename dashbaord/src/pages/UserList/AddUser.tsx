@@ -265,7 +265,7 @@ const AddUser = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Min. 6 characters"
+                    placeholder="Min. 4 characters"
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
