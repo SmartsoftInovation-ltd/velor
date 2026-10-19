@@ -50,6 +50,7 @@ import {
 } from "../../../config/permissions";
 import KpiCard from "./KpiCard";
 import RangeSelector from "./RangeSelector";
+import WelcomeBar from "./WelcomeBar";
 import RevenueTrendChart from "./RevenueTrendChart";
 import SalesTypeDonut from "./SalesTypeDonut";
 import TopProductsChart from "./TopProductsChart";
@@ -332,69 +333,38 @@ export default function InteractiveDashboard() {
 
   return (
     <div className="space-y-5">
-      {/* ── Header ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white/90">
-            Dashboard
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Performance for {RANGE_LABEL[range]}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <RangeSelector value={range} onChange={setRange} />
-          <button
-            onClick={() =>
-              Promise.all([
-                refetch(),
-                refetchTrend(),
-                refetchInvoices(),
-                refetchSalesSummary(),
-                refetchTransactionSummary(),
-                refetchInventorySummary(),
-                refetchCustomerSummary(),
-                refetchSupplierSummary(),
-                refetchEmployeeSummary(),
-                refetchPurchaseSummary(),
-                refetchSoldItemsSummary(),
-                refetchInventoryValueSummary(),
-                refetchStockCostSummary(),
-                refetchProductStatusSummary(),
-                refetchSupplierPaymentSummary(),
-                refetchCustomerDuePaymentSummary(),
-                refetchInflowTransactionSummary(),
-                refetchOutflowTransactionSummary(),
-                refetchDayCashSummary(),
-                refetchAccountsBalanceSummary(),
-              ])
-            }
-            disabled={
-              isFetching ||
-              isTrendFetching ||
-              isInvoiceFetching ||
-              isSalesSummaryFetching ||
-              isTransactionSummaryFetching ||
-              isInventorySummaryFetching ||
-              isCustomerSummaryFetching ||
-              isSupplierSummaryFetching ||
-              isEmployeeSummaryFetching ||
-              isPurchaseSummaryFetching ||
-              isSoldItemsSummaryFetching ||
-              isInventoryValueSummaryFetching ||
-              isStockCostSummaryFetching ||
-              isProductStatusSummaryFetching ||
-              isSupplierPaymentSummaryFetching ||
-              isCustomerDuePaymentSummaryFetching ||
-              isInflowTransactionSummaryFetching ||
-              isOutflowTransactionSummaryFetching
-            }
-            title="Refresh"
-            className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-colors hover:border-brand-300 hover:text-brand-500 disabled:opacity-40 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400"
-          >
-            <FiRefreshCw
-              size={15}
-              className={
+      {/* ── Header: welcome, quick actions, period and refresh ── */}
+      <WelcomeBar
+        subtitle={`Performance for ${RANGE_LABEL[range]}`}
+        toolbar={
+          <>
+            <RangeSelector value={range} onChange={setRange} />
+            <button
+              onClick={() =>
+                Promise.all([
+                  refetch(),
+                  refetchTrend(),
+                  refetchInvoices(),
+                  refetchSalesSummary(),
+                  refetchTransactionSummary(),
+                  refetchInventorySummary(),
+                  refetchCustomerSummary(),
+                  refetchSupplierSummary(),
+                  refetchEmployeeSummary(),
+                  refetchPurchaseSummary(),
+                  refetchSoldItemsSummary(),
+                  refetchInventoryValueSummary(),
+                  refetchStockCostSummary(),
+                  refetchProductStatusSummary(),
+                  refetchSupplierPaymentSummary(),
+                  refetchCustomerDuePaymentSummary(),
+                  refetchInflowTransactionSummary(),
+                  refetchOutflowTransactionSummary(),
+                  refetchDayCashSummary(),
+                  refetchAccountsBalanceSummary(),
+                ])
+              }
+              disabled={
                 isFetching ||
                 isTrendFetching ||
                 isInvoiceFetching ||
@@ -413,13 +383,40 @@ export default function InteractiveDashboard() {
                 isCustomerDuePaymentSummaryFetching ||
                 isInflowTransactionSummaryFetching ||
                 isOutflowTransactionSummaryFetching
-                  ? "animate-spin"
-                  : ""
               }
-            />
-          </button>
-        </div>
-      </div>
+              title="Refresh"
+              aria-label="Refresh"
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-accent-100 bg-white text-accent-600 shadow-theme-xs transition-all hover:-translate-y-0.5 hover:bg-accent-50 active:translate-y-0 disabled:opacity-40 dark:border-accent-500/20 dark:bg-white/[0.03] dark:text-accent-400 dark:hover:bg-accent-500/15"
+            >
+              <FiRefreshCw
+                size={15}
+                className={
+                  isFetching ||
+                  isTrendFetching ||
+                  isInvoiceFetching ||
+                  isSalesSummaryFetching ||
+                  isTransactionSummaryFetching ||
+                  isInventorySummaryFetching ||
+                  isCustomerSummaryFetching ||
+                  isSupplierSummaryFetching ||
+                  isEmployeeSummaryFetching ||
+                  isPurchaseSummaryFetching ||
+                  isSoldItemsSummaryFetching ||
+                  isInventoryValueSummaryFetching ||
+                  isStockCostSummaryFetching ||
+                  isProductStatusSummaryFetching ||
+                  isSupplierPaymentSummaryFetching ||
+                  isCustomerDuePaymentSummaryFetching ||
+                  isInflowTransactionSummaryFetching ||
+                  isOutflowTransactionSummaryFetching
+                    ? "animate-spin"
+                    : ""
+                }
+              />
+            </button>
+          </>
+        }
+      />
 
       {isError ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-20 dark:border-gray-800 dark:bg-white/[0.03]">
