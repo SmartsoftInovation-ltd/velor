@@ -123,7 +123,7 @@ error code on an edge case).
 
 - **Where:** `src/service/couriers/courierCityZone.js` (constructor), used by
   `GET /courier/cities`, `/courier/zone/:cityId`, `/courier/areas/:zoneId`.
-- **Problem:** the base URL is Pathao's *sandbox* and the client id/secret/user/
+- **Problem:** the base URL is Ptomathao's *sandbox* and the client id/secret/user/
   password are literals in the source. The tenant's own Pathao settings are
   never read, so a live store gets sandbox cities/zones, and any upstream
   error (including a 4xx for an unknown city) is answered 500.
@@ -783,3 +783,514 @@ error code on an edge case).
   Three error shapes in one API; clients must special-case each.
 - **Tests:** `tests/contract/envelope.test.js` (routes that reach a 500 are
   listed in `knownFailures.js` `ENVELOPE_DEVIATIONS`).
+
+<!-- PHASE2:START -->
+
+---
+
+# Phase 2 — Million-Data Query Performance Bugs
+
+These bugs were found by running every database query of the app against a big
+test database: 2M sales, 2.8M ledger rows, 900k variants, 600k customers and
+500k products. The biggest shop (`megamart`) alone has 1.1M sales. A query that
+is fast with 1,000 sales can take minutes with 1 million. Every bug below is
+slow, or crashes the API, at that size.
+
+**This list is the only file you need to fix them.** Each bug says what is wrong,
+which file to change, how to fix it step by step, and how fast the fix was when
+we tried it on the test database. (Background data, if you ever need it:
+`reports/phase2/PHASE2_QUERY_REPORT.md`, `FINDINGS.md`, `AUDIT.md`.)
+
+Severity: **Critical** (takes over 10 s, never finishes, or crashes the API) ·
+**High** (over 1 s, or many extra database calls) · **Medium** (slow, but under
+1 s) · **Low** (wasted memory or disk).
+
+**29 bugs** — Critical 13, High 11, Medium 4, Low 1. Phase 3 verdict: **NOT READY**
+until the Critical bugs are fixed.
+
+## Words used below
+
+- **Index:** a sorted list MongoDB keeps for one or more fields, like the index
+  of a book. Without one on `date`, a "last 30 days" report reads all 1.1M sales
+  to find the 30 days' worth. You add one in the model file:
+  `salesSchema.index({ tenantId: 1, date: -1 })`. Always put `tenantId` first.
+- **Full scan:** MongoDB reads every document of the shop because no index fits.
+- **Paging with `skip`:** `?page=1000` makes MongoDB read and throw away the
+  first 999 pages, so deep pages get slower and slower.
+- **Keyset paging ("load more"):** the client sends the last row it has
+  (`?after=<createdAt>_<_id>`) and the query asks for rows older than it. Every
+  page is equally fast.
+- **`$lookup`:** a join to another collection. Running one per sale over 1M sales
+  is what makes the reports take minutes. Join only the rows you show (after `$limit`).
+- **Unbounded list:** an endpoint with no `limit` that returns the whole
+  collection. At this size the API process runs out of memory and crashes.
+- **Summary table:** a small collection updated when a sale is saved (for example
+  one row per shop per day with that day's totals). Reports read it instead of
+  re-adding 1M sales each time.
+
+## Fix order
+
+Do the steps in this order; later steps depend on earlier ones.
+
+| Step | What to do | Fixes |
+|---|---|---|
+| 1 | Add the missing indexes (only model-file changes, safe and quick) | P2-002, P2-006, P2-015, P2-017, P2-018, P2-019, P2-022, P2-023, P2-025 |
+| 2 | Put a limit on every list and switch to keyset paging | P2-005, P2-006, P2-010, P2-012, P2-013, P2-020, P2-021, P2-024, P2-028 |
+| 3 | Remove the Variant `post('find')` hook | P2-007 |
+| 4 | Reorder the report pipelines: filter by date first, page, then join | P2-001, P2-002, P2-008, P2-009, P2-014, P2-015, P2-016, P2-017 |
+| 5 | Fix the product searches | P2-004, P2-011 |
+| 6 | Add summary tables for profit and the dashboard | P2-001, P2-003, P2-014, P2-016 |
+| 7 | Cache, audit purge, index clean-up | P2-026, P2-027, P2-029 |
+
+## How to check a fix
+
+1. Start the test database: `npm run perf:up` (it is already seeded).
+2. Re-measure the queries you changed, for example everything that touches sales:
+   `PERF_STEP=replay PERF_FORCE=1 PERF_ONLY='sales' npm run perf:measure`
+3. The goal is in each bug's **Target** line. Run `npm test` as well, so the
+   Phase 1 tests still pass.
+4. When you are done: `docker compose -f docker-compose.perf.yml down -v` removes
+   the test database.
+
+## Summary
+
+| Severity | Id | Summary | Now | After the tested fix |
+|---|---|---|---|---|
+| Critical | BUG-P2-001 | Profit reports take over a minute | >60 s | 30 days: 22.7 s; a year still >60 s (needs step 6) |
+| Critical | BUG-P2-002 | Sales has no date, customer or salesman index | >60 s | 30 days: 0.4 s |
+| Critical | BUG-P2-003 | Dashboard overview takes 135 s | 135 s | 0.001–0.35 s |
+| Critical | BUG-P2-004 | POS product search never returns | >90 s | not proven yet |
+| Critical | BUG-P2-005 | `get-sales` without a page crashes the API | crash | 4 ms |
+| Critical | BUG-P2-006 | Paged sales list re-sorts every sale on each page | 4–30 s | 4 ms |
+| Critical | BUG-P2-007 | Variant hook loads whole purchases on every variant read | 0.3–2.7 s per call | 1–525 ms |
+| Critical | BUG-P2-008 | Cash ledger is read whole for dropdowns and reports | >60 s, crash | 0.4–218 ms; cash-ledger still 18 s |
+| Critical | BUG-P2-009 | Customer due and balance reports join every customer | >60 s | 24 s (needs more work) |
+| Critical | BUG-P2-010 | List endpoints return whole collections | 4–51 s, 11 crash | 1–6 ms |
+| Critical | BUG-P2-011 | Public product search joins the whole catalogue first | 19.8 s | not tried |
+| Critical | BUG-P2-012 | Courier-return list returns every product | 10 s, crash | not tried |
+| Critical | BUG-P2-013 | Account transaction history has no limit | 0.9 s → up to 10 s | not tried |
+| High | BUG-P2-014 | Stock reports add up the whole catalogue | >60 s | not tried |
+| High | BUG-P2-015 | Product ledger unwinds every sale line | 11 s | 3.5 s |
+| High | BUG-P2-016 | Push-sales report pulls 375k lines into Node | 51 s | 30 days: 0.6 s |
+| High | BUG-P2-017 | Purchase and supplier reports read every purchase | >60 s | 0.4 s |
+| High | BUG-P2-018 | Stock-adjust and sales-return reports have no index | 41 s | 0.04–1.3 s |
+| High | BUG-P2-019 | Dashboard customer widgets: 1,145 database calls | 42 s | 28 ms |
+| High | BUG-P2-020 | Every list page counts the whole collection | 0.5–0.8 s | 1 ms |
+| High | BUG-P2-021 | Deep product-list pages use `skip` | 0.3 s | 3 ms |
+| High | BUG-P2-022 | Variant duplicate check reads all variants | 0.6 s per save | not tried |
+| High | BUG-P2-023 | Track-order has no `invoiceId` index | 0.3 s | not tried |
+| High | BUG-P2-024 | Due-SMS "send all" loads every customer at once | 1.6 s | not tried |
+| Medium | BUG-P2-025 | Orders have no date or status index | 0.4–0.8 s | 0.2–0.5 s |
+| Medium | BUG-P2-026 | Audit purge deletes a million rows in one go | 2.6 s, blocks | 12 ms per batch |
+| Medium | BUG-P2-027 | Every sale empties the caches | hit rate 0–24 % | not tried |
+| Medium | BUG-P2-028 | Three smaller lists have no paging | 0.08–1.4 s | not tried |
+| Low | BUG-P2-029 | Duplicate and unused indexes | 59 MB wasted | — |
+
+## Phase 2 details
+
+### BUG-P2-001 — Profit reports take over a minute (Critical)
+
+- **Problem:** to show profit, the pipeline reads every sale of the shop, then
+  joins variants, products and sales returns for each one. 30 days takes 60–68 s;
+  a year or two never finishes.
+- **Where:** `src/utils/saleProfit.util.js` (`saleProfitStages`,
+  `saleLineProfitStages`), used by `src/controller/report.controller.js:4476`,
+  `:4681` and `src/controller/dashboard.controller.js:473`.
+- **Affects:** Invoice Profit, Product Profit, Top Customer, Top Sales Product,
+  Customer Invoice Profit, the dashboard profit box.
+- **How to fix:**
+  1. Add the `date` index from BUG-P2-002.
+  2. Run `npm run migrate` (migration 008) so every sale line has its own
+     `purchasePrice`. Then join variants/products only for lines that still have
+     no `purchasePrice`.
+  3. Join `salesreturns` only for sales that have a `"return"` line.
+  4. Put `$sort` + `$skip`/`$limit` before the joins, so only the page's rows are
+     joined. Compute the totals row in a separate aggregate.
+  5. For ranges longer than about a month, add a daily profit summary table per
+     shop, updated on sale create/edit/return (see step 6 of the fix order).
+- **Rule:** follow `.claude/rules/profit-calculation.md`. The profit formula stays
+  in `saleProfit.util.js` only; don't write a second one.
+- **After the tested fix:** 30 days 68 s → 22.7 s with the same results; a summary
+  table reads in 0.5–1.5 ms. A year still >60 s without the summary table.
+- **Target:** under 1 s for any range.
+
+### BUG-P2-002 — Sales has no date, customer or salesman index (Critical)
+
+- **Problem:** `sales` only has indexes on `tenantId`, `invoiceNumber` and
+  `createdBy`. So every report or dashboard widget that filters by date,
+  customer or salesman reads all 1.1M sales. About 40 queries are hit.
+- **Where:** `src/models/sales.model.js` (add the indexes); the slowest query
+  is `src/controller/report.controller.js:2867` (Sales Invoice report).
+- **Affects:** sales-invoice, sales-product, sales-summary, customer-sales-*,
+  salesman-sales-* reports, the dashboard sales widgets, and the customer and
+  salesman pickers.
+- **How to fix:**
+  1. In `sales.model.js` add:
+     ```js
+     salesSchema.index({ tenantId: 1, date: -1, _id: -1 });
+     salesSchema.index({ tenantId: 1, createdAt: -1, _id: -1 });
+     salesSchema.index({ tenantId: 1, "customerType.customerId": 1, date: -1 });
+     salesSchema.index({ tenantId: 1, salesMen: 1, date: -1 });
+     ```
+  2. In the reports, move the `customers` `$lookup` after `$limit`.
+  3. The customer and salesman pickers (`/report/sales/customers`,
+     `/report/sales/salesmen`) should read the `customers` / `employees`
+     collections, not run `distinct` over sales.
+- **After the tested fix:** sales-invoice 30 days 31.6 s → 0.4 s (a year: 11 s);
+  dashboard widgets 24 s → 0.2–0.35 s; customer picker 24 s → 0.4 s.
+  Cost: about 150 MB of index memory, sale saves about 5 % slower.
+- **Target:** under 0.5 s for 30 days.
+
+### BUG-P2-003 — Dashboard overview takes 135 s (Critical)
+
+- **Problem:** `/dashboard/overview` runs 31 aggregates in one request. When the
+  cache is empty it takes 135 s, and every new sale empties the cache.
+- **Where:** `src/controller/dashboard.controller.js` `getOverview`;
+  `src/utils/cache.util.js:77-85`.
+- **How to fix:**
+  1. Fix BUG-P2-001 and BUG-P2-002 first (most of the time is those queries).
+  2. Split the overview into separate widget endpoints, so one slow widget does
+     not block the page.
+  3. Read the totals from a daily summary table per shop.
+  4. Stop emptying the `dashboard` cache on every write (BUG-P2-027).
+- **After the tested fix:** each widget 24 s → 0.2–0.35 s; from a summary table
+  0.5–1.5 ms.
+- **Target:** under 0.5 s.
+
+### BUG-P2-004 — POS product search never returns (Critical)
+
+- **Problem:** the POS product picker searches with a case-insensitive "contains"
+  regex over 275k products and 496k variants on every keystroke. No index can
+  help such a regex. Typing `a` never returns; `sh` takes 14 s.
+- **Where:** `src/controller/sales.controller.js:803`
+  (`GET /sales/get-sales-products?q=`).
+- **How to fix:**
+  1. Do nothing until the user has typed at least 2–3 characters.
+  2. `$match` first, then `$limit: 20`, and only then any `$lookup`.
+  3. Search a field that has an index. Either store a lower-case `nameLower`
+     and search by prefix (`^shi`) with `{ tenantId: 1, nameLower: 1 }`, or use
+     the text index that already exists (`$text`). Barcode and SKU should be
+     exact-match lookups.
+- **Watch out:** prefix search finds "shirt" for `shi` but no longer finds
+  "t-shirt". `$text` keeps whole-word matching.
+- **After the tested fix:** not proven. The test searched for prefixes that match
+  no product, so it must be redone with real ones.
+- **Target:** under 50 ms per keystroke.
+
+### BUG-P2-005 — `get-sales` without a page crashes the API (Critical)
+
+- **Problem:** `GET /sales/get-sales` with no `page`/`limit` returns all 1.1M
+  sales with 5 populates and puts them in Redis. The API runs out of memory
+  (4 GB) and crashes.
+- **Where:** `src/controller/sales.controller.js:637`.
+- **How to fix:**
+  1. Always page: default limit 50, max 100.
+  2. Remove the "no page" branch, and never cache a whole-shop array.
+  3. Check the dashboard: any screen that calls it without a page must page.
+- **After the tested fix:** 3.8 ms per page.
+
+### BUG-P2-006 — Paged sales list re-sorts every sale on each page (Critical)
+
+- **Problem:** each page of the sales list sorts all 1.1M sales by `createdAt`
+  in memory, skips to the page, counts every sale again and runs a "contains"
+  regex on the invoice number. 4 s on page 1, up to 30 s on the last page.
+- **Where:** `src/controller/sales.controller.js:682`.
+- **How to fix:**
+  1. Add `salesSchema.index({ tenantId: 1, createdAt: -1, _id: -1 })` (BUG-P2-002).
+  2. Use keyset paging: `{ $or: [{ createdAt: { $lt: lastCreatedAt } },
+     { createdAt: lastCreatedAt, _id: { $lt: lastId } }] }`,
+     `sort({ createdAt: -1, _id: -1 })`, `limit(n)`.
+  3. Drop the exact total count per page: fetch `limit + 1` rows and return
+     `hasNextPage`.
+  4. Search invoices by prefix: `invoiceNumber: { $regex: "^" + escaped }`
+     (the `{tenantId, invoiceNumber}` index already exists).
+- **Watch out:** the UI changes from page numbers to next / load more.
+- **After the tested fix:** page 1 12 s → 2 ms; page 1000 → 5 ms; invoice search 1.6 ms.
+
+### BUG-P2-007 — Variant hook loads whole purchases on every variant read (Critical)
+
+- **Problem:** a `post('find')` hook on the Variant model runs another query on
+  `purchases` (field `allproduct.variant`, no index) every time variants are
+  read or populated, and loads up to 89k full purchase documents. That happens
+  on product lists, stock, the sales list, purchases, and after every sale.
+- **Where:** `src/models/variant.model.js:315`.
+- **How to fix:**
+  1. Remove the hook (the Product model already dropped its twin).
+  2. Where a screen really needs the purchased quantity, add
+     `purchaseSchema.index({ tenantId: 1, "allproduct.variant": 1 })` and run one
+     aggregate for the page's variants:
+     `$match {tenantId, "allproduct.variant": {$in: ids}}` → `$unwind "$allproduct"`
+     → `$match` again → `$group { _id: "$allproduct.variant", qty: { $sum: "$allproduct.quantity" } }`.
+- **After the tested fix:** stock page 351 ms → 1 ms; sales list 1.9 s → 525 ms.
+  Purchase saves about 3 % slower.
+
+### BUG-P2-008 — Cash ledger is read whole for dropdowns and reports (Critical)
+
+- **Problem:** the ledger (`cratetransactions`, 1.54M rows) is read whole to fill
+  dropdowns, and the reports filter on `date` without an index. Cash-ledger
+  takes >60 s, transaction-category makes 1,551 database calls, and
+  transaction-report crashes the API.
+- **Where:** `src/controller/invoice.controller.js:887` and the
+  `/invoice/getallaccounts`, `/invoice/transaction-category`,
+  `/transaction/get-alltransaction`, `/report/accounts-ledger`,
+  `/report/transaction-report` handlers.
+- **How to fix:**
+  1. Fill the dropdowns from `accounts` and `transitioncategories`, not from the ledger.
+  2. Add `{ tenantId: 1, date: -1 }` and `{ tenantId: 1, account: 1, date: 1, createdAt: 1 }`
+     to the cratetransaction model.
+  3. Page the transaction lists (keyset), and compute totals in one `$group`.
+  4. Cash-ledger: keep a running balance instead of re-adding every row.
+- **After the tested fix:** getallaccounts 2.6 s → 0.4 ms; transaction-category
+  18 s → 0.4 ms; transaction report 30 days 2.8 s → 218 ms; accounts ledger
+  8.9 s → 3–10 ms. Cash-ledger still 18 s for 30 days (needs step 4).
+
+### BUG-P2-009 — Customer due and balance reports join every customer (Critical)
+
+- **Problem:** for each of 330k customers the report joins sales and payments on
+  fields with no index. The due list and balance summary never finish; the
+  customer ledger takes 28 s.
+- **Where:** `src/controller/report.controller.js:9666` (customer-due-list,
+  customer-balance-summary, customer-ledger, customer-payment).
+- **How to fix:**
+  1. Add `salesSchema.index({ tenantId: 1, "customerType.customerId": 1, date: -1 })`
+     and `customerPaymentRecivedSchema.index({ tenantId: 1, customer: 1, date: -1 })`.
+  2. Page the customers first, then run one `$group` over sales for just that page
+     of customers, instead of a join per customer.
+  3. Better: keep a running `due` on the customer, updated on sale, payment and return.
+- **Watch out:** the faster version gave slightly different totals for inactive
+  customers. Compare the numbers with the old report before you ship it.
+- **After the tested fix:** due list >60 s → 24 s (still too slow, needs step 3);
+  one customer 725 ms.
+
+### BUG-P2-010 — List endpoints return whole collections (Critical)
+
+- **Problem:** 47 list queries have no limit and return everything with populates.
+  11 endpoints crash the API with out-of-memory.
+- **Where:** `src/controller/product.controller.js:976` (price-range, 275k products,
+  48 s) and `/product/getproduct`, `/product/multiplevarinatproduct`, `/variant`,
+  `/search-variant`, `/purchase/all-allpurchases`, `/customer/get-customers`,
+  `/order/allorders`, `/auth/getallusers`, `/stock/stock-adjust/category/:id`,
+  `/invoice/followup-report`.
+- **How to fix:**
+  1. Every list takes a limit: default 50, max 100.
+  2. Keyset paging (as in BUG-P2-006) with a `{ tenantId: 1, createdAt: -1, _id: -1 }`
+     index on each collection.
+  3. Use `.select()` and populate only the fields the screen shows.
+  4. The price range should be one `$group` with `$min`/`$max`, not a list of products.
+- **After the tested fix:** products 15.8 s → 2–3 ms; variants 12.9 s → 2–4 ms;
+  orders 7.5 s → 2–4 ms; purchases 4.9 s → 1–2 ms; customers 3.7 s → 1–6 ms.
+
+### BUG-P2-011 — Public product search joins the whole catalogue first (Critical)
+
+- **Problem:** `GET /product/search-product?name=` (no login needed) joins variants,
+  discounts and subcategories for all 275k products and only then filters by
+  name. One search takes 19.8 s, so anyone can slow the server down with it.
+- **Where:** `src/controller/product.controller.js:1239` and `:1275`.
+- **How to fix:** `$match` on the name first, `$limit: 20`, then the joins. Use the
+  same indexed search as BUG-P2-004, require 2–3 characters, and put a rate limit
+  on the route.
+- **Target:** under 100 ms.
+
+### BUG-P2-012 — Courier-return list returns every product (Critical)
+
+- **Problem:** the filter `courierReturn: { $exists: true, $ne: null }` matches
+  every product, because the field is an empty array `[]` by default. So it
+  returns all 275k products and 496k variants (10 s each) and crashes Node.
+- **Where:** `src/controller/curierReturn.controller.js:88` and `:95`.
+- **How to fix:** filter with `{ "courierReturn.0": { $exists: true } }` (the array
+  has at least one item), and add a limit with keyset paging.
+
+### BUG-P2-013 — Account transaction history has no limit (Critical)
+
+- **Problem:** `GET /transaction/account-transaction/:accountId` returns every row
+  of the account. An account with 91k rows takes 0.9 s; the cash account has
+  1.04M rows, 11 times more, which runs the API out of memory.
+- **Where:** `src/controller/createTransition.controller.js:250`.
+- **How to fix:** add a limit with keyset paging on `createdAt`. The index
+  `{ tenantId, account, createdAt }` already exists.
+
+### BUG-P2-014 — Stock reports add up the whole catalogue (High)
+
+- **Problem:** stock-details, stock, low-stock and size-color-stock join variants
+  for every product and sort huge results in memory. Stock-details never
+  finishes; size-color-stock fails with "`$push` used too much memory".
+- **Where:** `src/controller/report.controller.js` (the four stock reports) and
+  the dashboard inventory widgets.
+- **How to fix:**
+  1. Page the products before the variants `$lookup`.
+  2. Keep stock and stock-value totals per product (and per shop), updated
+     whenever stock changes.
+  3. Low stock: keep a `stockAlert` flag and index `{ tenantId: 1, stockAlert: 1 }`.
+- **Target:** under 1 s.
+
+### BUG-P2-015 — Product ledger unwinds every sale line (High)
+
+- **Problem:** to show one product's history, the report unwinds every line of
+  all 1.1M sales. 11 s and 409 database calls.
+- **Where:** `src/controller/report.controller.js:1886` (`/report/product-ledger`).
+- **How to fix:**
+  1. Add `salesSchema.index({ tenantId: 1, "searchItem.variantId": 1, date: -1 })`
+     (and the same for `searchItem.productId`), plus the purchases index from BUG-P2-007.
+  2. `$match` on the product/variant before `$unwind`, and again after it.
+  3. Require a date range.
+- **Watch out:** the tested version did not return exactly the same rows as the
+  current report. Compare the results before you ship it.
+- **After the tested fix:** sales part 6.9 s → 3.5 s; purchases 0.9 s → 0.24 s.
+  This index makes sale saves about 6 % slower, the most of any index here.
+
+### BUG-P2-016 — Push-sales report pulls 375k lines into Node (High)
+
+- **Problem:** the report loads 375k sale lines, 191k orders and 253k products into
+  Node and ranks them in JavaScript. 51 s and 575 database calls.
+- **Where:** `src/controller/report.controller.js:4887`, `:4904`, `:5088`.
+- **How to fix:** add up the sold quantity per product inside MongoDB (`$group`),
+  then `$sort` and `$limit: 50`, on the date-indexed range (BUG-P2-002). Return only
+  the top N.
+- **After the tested fix:** 30 days 0.6 s; 2 years still 11.5 s (needs a summary table).
+
+### BUG-P2-017 — Purchase and supplier reports read every purchase (High)
+
+- **Problem:** purchase-product and purchase-summary unwind every purchase line of
+  the shop before filtering by date; they never finish. Supplier payments have
+  no date index.
+- **Where:** `src/controller/report.controller.js:492` (purchase-product,
+  purchase-summary, purchase-invoice, supplier-payment, supplier-ledger).
+- **How to fix:**
+  1. `$match` the date range before `$unwind`.
+  2. Add `supplierDuePaymentSchema.index({ tenantId: 1, date: -1 })`.
+- **After the tested fix:** supplier-payment 30 days 0.4 s.
+
+### BUG-P2-018 — Stock-adjust and sales-return reports have no index (High)
+
+- **Problem:** `/invoice/overallStock` sorts all stock adjustments without an
+  index (41 s); the product sales-return reports scan every return (14 s).
+- **Where:** `/invoice/overallStock`, `/report/product-sales-return`,
+  `/report/product-sales-return-summary`, `/report/stock-adjustment`.
+- **How to fix:**
+  1. Add `stockAdjustSchema.index({ tenantId: 1, createdAt: -1 })` and page overallStock.
+  2. Add `salesReturnSchema.index({ tenantId: 1, date: -1 })`.
+- **After the tested fix:** overallStock 41 s → 36 ms; sales-return 30 days 1.3 s.
+
+### BUG-P2-019 — Dashboard customer widgets: 1,145 database calls (High)
+
+- **Problem:** the customer and payment widgets read all 330k customers and run one
+  query per row in a loop. `/dashboard/inflow-transaction-summary` takes 42 s
+  with 1,145 database calls.
+- **Where:** `src/controller/dashboard.controller.js:389` (inflow-transaction-summary,
+  customer-summary, customer-due-payment-summary, day-cash-summary,
+  transaction-summary).
+- **How to fix:**
+  1. Add `customerPaymentRecivedSchema.index({ tenantId: 1, createdAt: -1 })` and
+     `{ tenantId: 1, customer: 1, createdAt: -1 }`.
+  2. Replace the per-row loop with one `$group` aggregate.
+  3. Cache the customer counts.
+- **After the tested fix:** payments for 30 days 203 ms → 28 ms.
+
+### BUG-P2-020 — Every list page counts the whole collection (High)
+
+- **Problem:** each page of the product lists runs `countDocuments` with a
+  case-insensitive "contains" regex over 275k products (0.5–0.8 s per page,
+  up to 4.8 s for the endpoint).
+- **Where:** `src/controller/product.controller.js:830` (`/product/productperpage`),
+  `/product/all-single-variant-products`, `/stock/getallmultiplevariant`.
+- **How to fix:** fetch `limit + 1` rows and return `hasNextPage` instead of a
+  total; search by prefix or `$text` (as in BUG-P2-004).
+- **Watch out:** the screen can no longer show "page 3 of 5,500".
+- **After the tested fix:** 74 ms → 0.8 ms.
+
+### BUG-P2-021 — Deep product-list pages use `skip` (High)
+
+- **Problem:** the last page of the product list reads and skips 275k entries
+  (0.3 s), and gets slower as the catalogue grows.
+- **Where:** `src/controller/product.controller.js:715`.
+- **How to fix:** keyset paging with `productSchema.index({ tenantId: 1, createdAt: -1, _id: -1 })`.
+- **After the tested fix:** 3.4 ms on any page.
+
+### BUG-P2-022 — Variant duplicate check reads all variants (High)
+
+- **Problem:** before saving a variant, the duplicate check searches `variantName`,
+  which has no index, so it reads all 496k variants. Every variant create and edit
+  takes 0.6 s.
+- **Where:** `src/validation/variant.validation.js:74` (`ensureUniqueVariantFields`).
+- **How to fix:** add `variantSchema.index({ tenantId: 1, variantName: 1 })`
+  (`sku` and `barCode` already have one).
+- **Target:** under 5 ms.
+
+### BUG-P2-023 — Track-order has no `invoiceId` index (High)
+
+- **Problem:** looking up one order by its invoice id reads all 220k orders (0.3 s).
+  The public shop tracking page and the SteadFast courier webhook use it too.
+- **Where:** `src/controller/order.controller.js:632`, `:731`,
+  `src/controller/shopOrder.controller.js:259`, `SteadFastCourier.js:128`.
+- **How to fix:** add `orderSchema.index({ tenantId: 1, invoiceId: 1 })`.
+- **Target:** under 5 ms.
+
+### BUG-P2-024 — Due-SMS "send all" loads every customer at once (High)
+
+- **Problem:** `POST /sms/due-sms/send-all` loads 313k customers into one array
+  (1.6 s and a lot of memory), then queues one job per customer.
+- **Where:** `src/controller/sms.controller.js:158`.
+- **How to fix:** select only customers with a due greater than 0, read them with
+  a cursor in batches of 1,000–5,000, and queue each batch.
+
+### BUG-P2-025 — Orders have no date or status index (Medium)
+
+- **Problem:** the order status and order summary endpoints read all 220k orders
+  (0.4–0.8 s).
+- **Where:** `src/controller/invoice.controller.js:403` and `/order/getorderstatus`,
+  `/order/getordercountandamount`, `/order/datewiseordersummary`,
+  `/invoice/order-status`.
+- **How to fix:** add `orderSchema.index({ tenantId: 1, createdAt: -1, _id: -1 })`
+  and `orderSchema.index({ tenantId: 1, orderStatus: 1, createdAt: -1 })`.
+- **After the tested fix:** 30 days 0.86 s → 0.5 s; status counts 0.45 s → 0.22 s.
+
+### BUG-P2-026 — Audit purge deletes a million rows in one go (Medium)
+
+- **Problem:** the purge job keeps 30 days but the TTL index keeps 180, so its
+  first run deletes about 1M audit rows in a single `deleteMany`. It also runs on
+  every server start (every deploy).
+- **Where:** `src/jobs/purgeAuditLogs.job.js:20`.
+- **How to fix:** either let the TTL index do the work (set it to the 30-day
+  policy) or delete in batches of 1,000–5,000 by `_id`. Don't run it at startup.
+- **After the tested fix:** 12 ms per 5,000-row batch.
+
+### BUG-P2-027 — Every sale empties the caches (Medium)
+
+- **Problem:** each sale invalidates the product, report and dashboard caches, so
+  the cache rarely helps: product list hit rate 90 % → 24 % while selling, and
+  the sales-invoice report 0 % (each miss took 122 s). The cache version keys
+  never expire.
+- **Where:** `src/utils/cache.util.js:69` (`incr` with no expiry) and `:77-85`.
+- **How to fix:** only invalidate what the sale really changes (a sale today
+  doesn't change last month's report), and give the version keys an expiry (`EX`).
+
+### BUG-P2-028 — Three smaller lists have no paging (Medium)
+
+- **Problem:** three lists return everything: customer advance payments (16.5k
+  rows, 80 ms), `/invoice/pushwebsalesvariant` (496k variants, 1.4 s) and
+  `/sales-return/allsalesreturn` (33k returns, 250 ms).
+- **Where:** `/customer/get-customer-advance-payment-reviced`,
+  `/invoice/pushwebsalesvariant`, `/sales-return/allsalesreturn`.
+- **How to fix:** limit plus keyset paging with `{ tenantId: 1, createdAt: -1, _id: -1 }`.
+
+### BUG-P2-029 — Duplicate and unused indexes (Low)
+
+- **Problem:** the tenant plugin adds `{ tenantId: 1 }` to every collection, even
+  where another index already starts with `tenantId`. That is 25 useless indexes
+  (59 MB). Also, the size chart's unique `slug` index is never created, because
+  `slug` is declared twice.
+- **Where:** `src/tenancy/tenantPlugin.js`, `src/models/sizeChart.model.js`.
+- **How to fix:** drop the single `{ tenantId: 1 }` where a compound index starts
+  with `tenantId`; declare `slug` once in sizeChart, as unique. Check production
+  index usage (`$indexStats`) before dropping anything.
+
+## Not tested yet
+
+The audit found places the test run never measured, so there may be more bugs:
+
+- The invoice transaction summaries, the orders "invoicewise" branch, the shop
+  (storefront) paths and the `updateMany` calls on size chart and discount.
+- Profit reports over 1–2 years: they were stopped at 60 s, so the real time is unknown.
+- The POS search fix (BUG-P2-004) has to be re-measured with prefixes that match products.
+
+<!-- PHASE2:END -->

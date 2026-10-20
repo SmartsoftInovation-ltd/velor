@@ -61,12 +61,17 @@ const captured = (scenarioId, origin, cmdName) => {
 const drain = async (res, coll) => {
   let n = res.cursor ? res.cursor.firstBatch.length : res.n ?? res.values?.length ?? 0;
   let cid = res.cursor?.id;
-  const docs = res.cursor ? [...res.cursor.firstBatch] : [];
+  // Iterative, bounded copy: spreading a large batch into push() overflows the call stack.
+  const docs = [];
+  const take = (batch) => {
+    for (let i = 0; i < batch.length && docs.length < 5000; i++) docs.push(batch[i]);
+  };
+  if (res.cursor) take(res.cursor.firstBatch);
   const keep = docs.length < 5000;
   while (cid && !(typeof cid === "object" ? cid.isZero?.() : cid === 0)) {
     const r = await db.command({ getMore: cid, collection: coll });
     n += r.cursor.nextBatch.length;
-    if (keep && docs.length < 5000) docs.push(...r.cursor.nextBatch);
+    if (keep) take(r.cursor.nextBatch);
     cid = r.cursor.id;
   }
   return { n, docs };

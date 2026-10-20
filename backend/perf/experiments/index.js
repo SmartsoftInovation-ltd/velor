@@ -247,13 +247,18 @@ exp("E02b-invoice-profit-plain-lookups", "F-003", async () => {
     a.plain_split_30d = await MP("on-demand + plain lookups, split +idx 30d", splitFacet("sales", shape(c30).pipeline));
     a.plain_split_1y = await MP("same 1y", splitFacet("sales", shape(setRange(base, R["1y"])).pipeline));
     a.plain_split_2y = await MP("same 2y", splitFacet("sales", shape(setRange(base, R["2y"])).pipeline));
+    if (a.plain_30d.timedOut) {
+      a.equal = null;
+      a.note = "plain localField/foreignField lookups time out even on 30 d: worse than E02 (sub-pipeline lookups); rejected";
+      return a;
+    }
     const ref = await firstDoc(c30);
     const got = await firstDoc(shape(c30));
     a.equal = approxEq(ref[0].totals, got[0].totals) && approxEq(ref[0].rows.map((r) => [String(r._id), r.profit, r.customerName]), got[0].rows.map((r) => [String(r._id), r.profit, r.customerName]));
     return a;
   });
   const best = (x, y) => (result[y] && !result[y].timedOut && (result[x]?.timedOut || result[y].p95Ms < result[x].p95Ms) ? y : x);
-  return { variants: result, indexes, targets: [["rep-invoice-profit-30d", O, best("plain_30d", "plain_split_30d")], ["rep-invoice-profit-1y", O, "plain_split_1y"], ["rep-invoice-profit-2y", O, "plain_split_2y"], ["rep-invoice-profit-2y-last", O, "plain_split_2y"]], change: "E02 + $lookup into variants/products/salesreturns by localField/foreignField only (no sub-pipeline: _id / invoiceNumber values come from the same tenant's sale, so the tenantId re-check is redundant) — lets MongoDB 7.0 run the joins in SBE", equalityChecked: "totals and rows identical to the original on 30d" };
+  return { variants: result, indexes, targets: [["rep-invoice-profit-30d", O, best("plain_30d", "plain_split_30d")], ["rep-invoice-profit-1y", O, "plain_split_1y"], ["rep-invoice-profit-2y", O, "plain_split_2y"], ["rep-invoice-profit-2y-last", O, "plain_split_2y"]], change: "E02 + $lookup into variants/products/salesreturns by localField/foreignField only (no sub-pipeline: _id / invoiceNumber values come from the same tenant's sale, so the tenantId re-check is redundant) — lets MongoDB 7.0 run the joins in SBE", equalityChecked: result.plain_30d.timedOut ? "not checked: every variant timed out (>60 s even on 30 d) — rejected, worse than E02" : "totals and rows identical to the original on 30d" };
 });
 
 // ---------- F-003: other profit pipelines (product profit, top product, top customer, customer profit, dashboard) ----------
@@ -292,6 +297,58 @@ exp("E03-profit-others", "F-003", async () => {
     for (const [s2, rg] of Object.entries(tmap)) targets.push([s2, O, `${key}_ondemand_${rg}`]);
   }
   return { variants, indexes, targets, equalityChecked: equal, change: "on-demand catalogue/returns $lookups (same as E02) + the date index of the screen (date, createdAt or customer+date)" };
+});
+
+// ---------- F-003: E03 variants that hit the 60 s cap, re-run with PERF_MAX_TIME_MS=300000 ----------
+exp("E03b-profit-others-long", "F-003", async () => {
+  const prev = JSON.parse(fs.readFileSync(path.join(L.EXP_DIR, "raw", "E03-profit-others.json"), "utf8"));
+  const T = {
+    "product-profit-30d": ["rep-product-profit-30d", "src/controller/report.controller.js:4681", "salesDate"],
+    "top-customer-2y": ["rep-top-customer-2y", "src/controller/report.controller.js:6874", "salesDate"],
+    "top-sales-product-2y": ["rep-top-sales-product-2y", "src/controller/report.controller.js:4843", "salesDate"],
+    "overview-30d": ["dash-overview-30d", "src/controller/dashboard.controller.js:473", "salesCreated"],
+  };
+  const todo = Object.entries(prev.variants).filter(([, m]) => m.timedOut).map(([k]) => k);
+  log("   capMs", L.MAX_TIME_MS, "re-running", todo.join(", "));
+  const variants = {};
+  const indexes = [];
+  for (const ix of [...new Set(Object.values(T).map((t) => t[2]))]) {
+    const mine = todo.filter((k) => T[Object.keys(T).find((p) => k.startsWith(p + "_"))][2] === ix);
+    if (!mine.length) continue;
+    const r = await withIdx([ix], async () => {
+      const a = {};
+      for (const k of mine) {
+        const pre = Object.keys(T).find((p) => k.startsWith(p + "_"));
+        const [sid, O] = T[pre];
+        const [, kind, rg] = k.slice(pre.length).split("_");
+        const c = setRange(L.captured(sid, O), R[rg]);
+        a[k] = await M(`${k} +idx (cap ${L.MAX_TIME_MS} ms)`, kind === "ondemand" ? { ...c, pipeline: onDemandProfitLookups(c.pipeline) } : c);
+      }
+      return a;
+    });
+    Object.assign(variants, r.result);
+    indexes.push(...r.indexes);
+  }
+  const targets = prev.targets.filter(([, , v]) => variants[v]);
+  return { variants, indexes, targets, capMs: L.MAX_TIME_MS, change: prev.change + ` (long ranges re-measured with a ${L.MAX_TIME_MS / 1000} s cap)` };
+});
+
+// ---------- write cost re-check for purchases (W01 purchases_+set coincided with a host-wide slowdown) ----------
+exp("W02-write-cost-purchases", "write", async () => {
+  const N = Number(process.env.PERF_WRITE_N || 10000);
+  const out = {};
+  for (const [label, keys] of [["purchases_baseline", []], ["purchases_+set", ["purchLineVariant", "purchasesCreated"]], ["purchases_baseline_again", []], ["purchases_+set_again", ["purchLineVariant", "purchasesCreated"]]]) {
+    const made = [];
+    for (const k of keys) {
+      const [c, key, opts] = idx[k];
+      made.push(await L.createIndex(c, key, { ...(opts || {}), name: L.idxName(key) }));
+    }
+    const w = await L.writeCost("purchases", ctx.tenantId, { n: N });
+    for (const m of made) await L.dropIndex(m.coll, m.name);
+    out[label] = { coll: "purchases", indexes: keys.map((k) => idx[k][1]), sizeMB: made.reduce((s, m) => s + (m.sizeMB || 0), 0), ...w };
+    log(`   ${label}: insert p50/p95 ${w.insertP50Ms}/${w.insertP95Ms} ms ${w.insertOpsPerSec}/s, update p95 ${w.updateP95Ms} ${w.updateOpsPerSec}/s`);
+  }
+  return { variants: out, indexes: [], targets: [] };
 });
 
 // ---------- F-004: dashboard createdAt aggregates ----------
