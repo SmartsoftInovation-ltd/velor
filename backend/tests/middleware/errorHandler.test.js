@@ -121,7 +121,7 @@ describe("globalErrorHandeler", () => {
 
   // BUG-001: a Joi ValidationError (validateAsync without a catch) has
   // `details`, not `errors`, so it is not recognised and answers 500
-  test.failing("maps a Joi ValidationError to 400 with Joi's message [BUG-001]", async () => {
+  it("maps a Joi ValidationError to 400 with Joi's message [BUG-001]", async () => {
     let err;
     try {
       await Joi.object({ name: Joi.string().required() }).validateAsync({});

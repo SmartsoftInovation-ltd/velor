@@ -103,6 +103,15 @@ const normalizeDatabaseError = (error) => {
     return error;
   }
 
+  // Joi: validators that call validateAsync() without a catch let its
+  // ValidationError through. It carries `details`, not Mongoose's `errors`.
+  if (error.name === "ValidationError" && Array.isArray(error.details)) {
+    error.statusCode = 400;
+    error.isOperationalError = true;
+    error.message = error.details.map((d) => d.message).join(", ");
+    return error;
+  }
+
   if (error.name === "ValidationError" && error.errors) {
     error.statusCode = 400;
     error.isOperationalError = true;

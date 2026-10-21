@@ -229,7 +229,7 @@ describe("sales routes (/api/v1/sales)", () => {
     });
 
     // BUG-014: the customer's running due is overwritten with the client's `balance`
-    test.failing("works a listed customer's due out on the server, not from the client's balance [BUG-014]", async () => {
+    it("works a listed customer's due out on the server, not from the client's balance [BUG-014]", async () => {
       const customer = await f.customer.create({ openingDues: 500 });
       await create(
         sale({ customerType: { type: "listed", customerId: customer._id.toString() }, paid: 200, balance: 0 }),

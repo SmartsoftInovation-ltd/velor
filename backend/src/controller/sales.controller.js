@@ -356,16 +356,39 @@ const enqueueSalesNotifications = async (createdSale) => {
 // @desc create a new sales
 // @desc create a new sales (transaction safe + background notifications)
 // What a sale leaves the customer owing: the bill less what was paid (net of
-// change) and the advance used
+// change). `payable` is already net of the advance used (the sale forms take
+// it off), the same "present due" the form shows.
 const saleDue = (sale) =>
   Math.max(
     0,
-    toPaisa(
-      (Number(sale.payable) || 0) -
-        (Number(sale.netPaid ?? sale.paid) || 0) -
-        (Number(sale.customerAdvancePaymentAdjust) || 0),
-    ),
+    toPaisa((Number(sale.payable) || 0) - (Number(sale.netPaid ?? sale.paid) || 0)),
   );
+
+/**
+ * Move a listed customer's running due by `change` (a sale's due added, or
+ * taken back). The due is worked out here, never taken from the request's
+ * `balance`, and moved rather than set, so payments recorded in between
+ * survive. Floored at 0 like the other due reversals.
+ */
+const moveCustomerDue = async (session, customerId, change) => {
+  if (!customerId || !change) return;
+  await customerModel.updateOne(
+    { _id: customerId },
+    [
+      {
+        $set: {
+          openingDues: {
+            $max: [0, { $round: [{ $add: [{ $ifNull: ["$openingDues", 0] }, change] }, 2] }],
+          },
+        },
+      },
+    ],
+    { session },
+  );
+};
+
+const listedCustomerId = (sale) =>
+  sale?.customerType?.type === "listed" ? sale.customerType.customerId?.toString() || null : null;
 
 /**
  * A listed customer's due limit (credit limit). The form shows it, but a
@@ -614,17 +637,8 @@ exports.createSales = asynchandeler(async (req, res) => {
         }
       }
 
-      //  Update customer opening dues if listed
-      if (
-        createdSale.customerType?.type === "listed" &&
-        createdSale.customerType?.customerId
-      ) {
-        await customerModel.findByIdAndUpdate(
-          createdSale.customerType.customerId,
-          { openingDues: req.body.balance || 0 },
-          { session },
-        );
-      }
+      // A listed customer now owes this sale's due on top of what they owed
+      await moveCustomerDue(session, listedCustomerId(createdSale), saleDue(createdSale));
 
       // Adjust customer advance payment if applicable
       const advanceAdjust = Number(req.body.customerAdvancePaymentAdjust || 0);
@@ -1333,16 +1347,16 @@ exports.updateSales = asynchandeler(async (req, res) => {
         await applySalePayments(session, updatedSale);
       }
 
-      // 7) Update customer opening dues if listed
-      if (
-        updatedSale.customerType?.type === "listed" &&
-        updatedSale.customerType?.customerId
-      ) {
-        await customerModel.findByIdAndUpdate(
-          updatedSale.customerType.customerId,
-          { openingDues: updatedSale.balance || 0 },
-          { session },
-        );
+      // 7) Move the listed customer's due by what the edit changed: the old
+      // sale's due comes off, the new one goes on (onto another customer if
+      // the sale was moved to one)
+      const oldDueCustomer = listedCustomerId(oldSale);
+      const newDueCustomer = listedCustomerId(updatedSale);
+      if (oldDueCustomer && oldDueCustomer === newDueCustomer) {
+        await moveCustomerDue(session, newDueCustomer, saleDue(updatedSale) - saleDue(oldSale));
+      } else {
+        await moveCustomerDue(session, oldDueCustomer, -saleDue(oldSale));
+        await moveCustomerDue(session, newDueCustomer, saleDue(updatedSale));
       }
 
       // 8) Apply a change of the advance used. Delete gives the stored figure
@@ -1591,17 +1605,9 @@ exports.deleteSales = asynchandeler(async (req, res) => {
 
       await salesModel.findByIdAndDelete(saleId, { session });
 
-      // 6️ Revert customer opening dues if listed
-      if (
-        sale.customerType?.type === "listed" &&
-        sale.customerType?.customerId
-      ) {
-        await customerModel.findByIdAndUpdate(
-          sale.customerType.customerId,
-          { openingDues: sale.previousDue || 0 },
-          { session },
-        );
-      }
+      // 6️ Take only this sale's due back off a listed customer. Restoring the
+      // previousDue snapshot wiped every payment received since the sale.
+      await moveCustomerDue(session, listedCustomerId(sale), -saleDue(sale));
 
       // 7️ Restore customer advance payment if applicable
       const advanceAdjust = Number(sale.customerAdvancePaymentAdjust || 0);

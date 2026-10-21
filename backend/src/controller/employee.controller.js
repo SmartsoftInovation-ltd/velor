@@ -675,10 +675,7 @@ exports.deleteEmployeeDesignation = asynchandeler(async (req, res) => {
 exports.createEmployeeDepartment = asynchandeler(async (req, res) => {
   const { name } = req.body;
   if (!name) {
-    throw new customError(
-      statusCodes.BAD_REQUEST,
-      "Department name is required",
-    );
+    throw new customError("Department name is required", statusCodes.BAD_REQUEST);
   }
   const employeeDepartment = await departmentModel.create(req.body);
   if (!employeeDepartment) {
@@ -807,7 +804,7 @@ exports.deleteEmployeeDepartment = asynchandeler(async (req, res) => {
 exports.createEmployeeSection = asynchandeler(async (req, res) => {
   const { name } = req.body;
   if (!name) {
-    throw new customError(statusCodes.BAD_REQUEST, "Section name is required");
+    throw new customError("Section name is required", statusCodes.BAD_REQUEST);
   }
   const employeeSection = await sectionModel.create(req.body);
   if (!employeeSection) {

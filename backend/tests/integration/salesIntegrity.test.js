@@ -82,7 +82,7 @@ describe("sale integrity, audience and supplier payments", () => {
   // ------------------------------------------------------------------ dues & advances
   // BUG-014 (delete path): the due is restored from the sale's previousDue
   // snapshot, wiping every payment received since
-  test.failing("deleting a sale takes only that sale's due back off the customer [BUG-014]", async () => {
+  it("deleting a sale takes only that sale's due back off the customer [BUG-014]", async () => {
     const c = await f.customer.create({ openingDues: 500 });
     const s = await create({ customerType: { type: "listed", customerId: c._id.toString() }, paid: 1200, payable: 2000, previousDue: 500, balance: 1300 });
     await as().post("/customer/customer-payment-recived").send({ customer: c._id.toString(), paidAmount: 300, paymentMode: account._id.toString() }).expect(201);
