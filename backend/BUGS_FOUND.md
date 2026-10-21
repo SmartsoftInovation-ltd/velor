@@ -1060,16 +1060,16 @@ Do the steps in this order; later steps depend on earlier ones.
 | Severity | Id | Summary | Now | After the tested fix |
 |---|---|---|---|---|
 | Critical | BUG-P2-001 | Profit reports take over a minute | >60 s | 30 days: 22.7 s; a year still >60 s (needs step 6) |
-| Critical | BUG-P2-002 | Sales has no date, customer or salesman index | >60 s | 30 days: 0.4 s |
+| Critical | BUG-P2-002 | ~~Sales has no date, customer or salesman index~~ **Fixed** | >60 s | 30 days: 0.4 s |
 | Critical | BUG-P2-003 | Dashboard overview takes 135 s | 135 s | 0.001–0.35 s |
-| Critical | BUG-P2-004 | POS product search never returns | >90 s | not proven yet |
-| Critical | BUG-P2-005 | `get-sales` without a page crashes the API | crash | 4 ms |
-| Critical | BUG-P2-006 | Paged sales list re-sorts every sale on each page | 4–30 s | 4 ms |
-| Critical | BUG-P2-007 | Variant hook loads whole purchases on every variant read | 0.3–2.7 s per call | 1–525 ms |
-| Critical | BUG-P2-008 | Cash ledger is read whole for dropdowns and reports | >60 s, crash | 0.4–218 ms; cash-ledger still 18 s |
-| Critical | BUG-P2-009 | Customer due and balance reports join every customer | >60 s | 24 s (needs more work) |
+| Critical | BUG-P2-004 | ~~POS product search never returns~~ **Fixed** | >90 s | not proven yet |
+| Critical | BUG-P2-005 | ~~`get-sales` without a page crashes the API~~ **Fixed** | crash | 4 ms |
+| Critical | BUG-P2-006 | ~~Paged sales list re-sorts every sale on each page~~ **Fixed** | 4–30 s | 4 ms |
+| Critical | BUG-P2-007 | ~~Variant hook loads whole purchases on every variant read~~ **Fixed** | 0.3–2.7 s per call | 1–525 ms |
+| Critical | BUG-P2-008 | ~~Cash ledger is read whole for dropdowns and reports~~ **Fixed** | >60 s, crash | 0.4–218 ms; cash-ledger still 18 s |
+| Critical | BUG-P2-009 | ~~Customer due and balance reports join every customer~~ **Fixed** | >60 s | 24 s (needs more work) |
 | Critical | BUG-P2-010 | List endpoints return whole collections | 4–51 s, 11 crash | 1–6 ms |
-| Critical | BUG-P2-011 | Public product search joins the whole catalogue first | 19.8 s | not tried |
+| Critical | BUG-P2-011 | ~~Public product search joins the whole catalogue first~~ **Fixed** | 19.8 s | not tried |
 | Critical | BUG-P2-012 | Courier-return list returns every product | 10 s, crash | not tried |
 | Critical | BUG-P2-013 | Account transaction history has no limit | 0.9 s → up to 10 s | not tried |
 | High | BUG-P2-014 | Stock reports add up the whole catalogue | >60 s | not tried |
@@ -1117,7 +1117,7 @@ Do the steps in this order; later steps depend on earlier ones.
   table reads in 0.5–1.5 ms. A year still >60 s without the summary table.
 - **Target:** under 1 s for any range.
 
-### BUG-P2-002 — Sales has no date, customer or salesman index (Critical)
+### ~~BUG-P2-002 — Sales has no date, customer or salesman index (Critical)~~
 
 - **Problem:** `sales` only has indexes on `tenantId`, `invoiceNumber` and
   `createdBy`. So every report or dashboard widget that filters by date,
@@ -1143,6 +1143,22 @@ Do the steps in this order; later steps depend on earlier ones.
   dashboard widgets 24 s → 0.2–0.35 s; customer picker 24 s → 0.4 s.
   Cost: about 150 MB of index memory, sale saves about 5 % slower.
 - **Target:** under 0.5 s for 30 days.
+- **Fixed (measured on the perf DB, megamart):** the four indexes are in
+  `sales.model.js` (plus `{ paymentStatus, createdAt }`,
+  `{ paymentStatus, invoiceStatus, customerType.customerId }` and a covering
+  `{ invoiceStatus, customerType.customerId, date, payable, netPaid }`), built by
+  migration `014-phase2-indexes`. Reports page before they join: sales-invoice
+  30 days 32.6 s → 0.3 s (2 years: timeout → 7.8 s); salesman-sales-invoice
+  2 years 36 s → 3.7 s; user-sales-invoice 3.0 → 0.63 s; customer-sales-invoice
+  4.6 → 2.3 s. The line reports group per item and price items in batches:
+  sales-product 30 days → 3 s (2 years: timeout → 21 s), customer-sales-product
+  32 → 2.4 s, customer-sales-summary 32 → 2.0 s, salesman-sales-product timeout →
+  8.2 s, user-sales-product 28 → 2.5 s, sales-summary 30 days timeout → 2.2 s.
+  The salesman picker 2.8 s → 10 ms; the customer picker reads customers by an
+  indexed word-prefix search (`?search=`, at most 50): 29.7 s / 13 MB → 7 ms /
+  4.6 KB, and the Sales Invoice report's dropdown searches on the server.
+  Still above 0.5 s: the per-item line reports and sales-summary over a month
+  (they price tens of thousands of items) — the summary tables of fix step 6.
 
 ### BUG-P2-003 — Dashboard overview takes 135 s (Critical)
 
@@ -1160,7 +1176,7 @@ Do the steps in this order; later steps depend on earlier ones.
   0.5–1.5 ms.
 - **Target:** under 0.5 s.
 
-### BUG-P2-004 — POS product search never returns (Critical)
+### ~~BUG-P2-004 — POS product search never returns (Critical)~~
 
 - **Problem:** the POS product picker searches with a case-insensitive "contains"
   regex over 275k products and 496k variants on every keystroke. No index can
@@ -1179,8 +1195,15 @@ Do the steps in this order; later steps depend on earlier ones.
 - **After the tested fix:** not proven. The test searched for prefixes that match
   no product, so it must be redone with real ones.
 - **Target:** under 50 ms per keystroke.
+- **Fixed:** products, variants and customers keep `searchWords` (the
+  lower-case words of the name, `searchWordsPlugin`, indexed with tenantId,
+  backfilled by migration `015-backfill-search-words`). The POS search matches
+  scanned codes exactly and names by word prefix from 2 characters, each
+  condition its own indexed query (one `$or` under tenantId fell back to a full
+  scan), and limits before any join: `q=a` timeout → 8 ms, `q=sh` 13.8 s → 14 ms.
+  "shi" finds "Cotton Shirt"; a single letter searches codes only.
 
-### BUG-P2-005 — `get-sales` without a page crashes the API (Critical)
+### ~~BUG-P2-005 — `get-sales` without a page crashes the API (Critical)~~
 
 - **Problem:** `GET /sales/get-sales` with no `page`/`limit` returns all 1.1M
   sales with 5 populates and puts them in Redis. The API runs out of memory
@@ -1191,8 +1214,12 @@ Do the steps in this order; later steps depend on earlier ones.
   2. Remove the "no page" branch, and never cache a whole-shop array.
   3. Check the dashboard: any screen that calls it without a page must page.
 - **After the tested fix:** 3.8 ms per page.
+- **Fixed:** the list always pages (default 50, max 100) and never caches a
+  whole-shop list; it selects only the fields the screens show. No-page call:
+  crash → 50 ms. The sales history table loads 50 rows at a time ("Load more")
+  and filters on the server; its stat cards come from `GET /sales/get-sales-stats`.
 
-### BUG-P2-006 — Paged sales list re-sorts every sale on each page (Critical)
+### ~~BUG-P2-006 — Paged sales list re-sorts every sale on each page (Critical)~~
 
 - **Problem:** each page of the sales list sorts all 1.1M sales by `createdAt`
   in memory, skips to the page, counts every sale again and runs a "contains"
@@ -1209,8 +1236,15 @@ Do the steps in this order; later steps depend on earlier ones.
      (the `{tenantId, invoiceNumber}` index already exists).
 - **Watch out:** the UI changes from page numbers to next / load more.
 - **After the tested fix:** page 1 12 s → 2 ms; page 1000 → 5 ms; invoice search 1.6 ms.
+- **Fixed:** keyset paging (`after=<createdAt>_<_id>`, `nextCursor` in the
+  answer) on `{ tenantId, createdAt, _id }`; `limit + 1` replaces the count.
+  Page numbers still work for the pickers (the page's ids are read from the
+  index first) up to 10,000 rows, deeper is a 400 `USE_CURSOR`. Invoice search
+  is an indexed prefix (any case, or the sequence number alone); a phone-like
+  term matches the walking customer's mobile. Page 1 15.7 s → 10 ms, page 1000
+  16 s → 29 ms, the oldest page by cursor 2–6 ms, search 29 s → 8 ms.
 
-### BUG-P2-007 — Variant hook loads whole purchases on every variant read (Critical)
+### ~~BUG-P2-007 — Variant hook loads whole purchases on every variant read (Critical)~~
 
 - **Problem:** a `post('find')` hook on the Variant model runs another query on
   `purchases` (field `allproduct.variant`, no index) every time variants are
@@ -1226,8 +1260,10 @@ Do the steps in this order; later steps depend on earlier ones.
      → `$match` again → `$group { _id: "$allproduct.variant", qty: { $sum: "$allproduct.quantity" } }`.
 - **After the tested fix:** stock page 351 ms → 1 ms; sales list 1.9 s → 525 ms.
   Purchase saves about 3 % slower.
+- **Fixed:** the hook is removed; its one consumer (push-web-sales variants)
+  reads the `purchaseQuantityStock` counter purchases already keep.
 
-### BUG-P2-008 — Cash ledger is read whole for dropdowns and reports (Critical)
+### ~~BUG-P2-008 — Cash ledger is read whole for dropdowns and reports (Critical)~~
 
 - **Problem:** the ledger (`cratetransactions`, 1.54M rows) is read whole to fill
   dropdowns, and the reports filter on `date` without an index. Cash-ledger
@@ -1246,8 +1282,16 @@ Do the steps in this order; later steps depend on earlier ones.
 - **After the tested fix:** getallaccounts 2.6 s → 0.4 ms; transaction-category
   18 s → 0.4 ms; transaction report 30 days 2.8 s → 218 ms; accounts ledger
   8.9 s → 3–10 ms. Cash-ledger still 18 s for 30 days (needs step 4).
+- **Fixed:** getallaccounts is one distinct over the ledger's account index
+  (21 s → 7 ms); transaction-category reads the categories (52 s → 6 ms, one
+  entry per category); `/invoice/transaction-report` pages and totals in one
+  `$group` (crash → 4 s for 2 years); the cash ledger joins only the page
+  (timeout → 3.5 s for 2 years); the manual transaction list reads a partial
+  index holding only manual entries (3 s → 24 ms). Indexes `{ tenantId, date }`
+  and `{ tenantId, account, date, createdAt }` added. Not done: step 4 (a
+  running balance) — the 2-year totals still add up the range's rows.
 
-### BUG-P2-009 — Customer due and balance reports join every customer (Critical)
+### ~~BUG-P2-009 — Customer due and balance reports join every customer (Critical)~~
 
 - **Problem:** for each of 330k customers the report joins sales and payments on
   fields with no index. The due list and balance summary never finish; the
@@ -1264,6 +1308,14 @@ Do the steps in this order; later steps depend on earlier ones.
   customers. Compare the numbers with the old report before you ship it.
 - **After the tested fix:** due list >60 s → 24 s (still too slow, needs step 3);
   one customer 725 ms.
+- **Fixed:** the due list and balance summary sort and page the customers
+  first and look up only the page's customers; their totals count straight from
+  customers and sales (inactive/deleted customers subtracted), the balance
+  summary's from a covering index. The customer ledger matches each source with
+  plain indexed predicates and reads only this customer's returns; the payment
+  report finds customers by index, pages each side of the union before merging
+  and joins only the page. Due list timeout → 1.2 s, balance summary timeout →
+  1.8 s, ledger 29.5 → 1.4 s, payment 45 → 1.1 s (all 2 years / all customers).
 
 ### BUG-P2-010 — List endpoints return whole collections (Critical)
 
@@ -1283,7 +1335,7 @@ Do the steps in this order; later steps depend on earlier ones.
 - **After the tested fix:** products 15.8 s → 2–3 ms; variants 12.9 s → 2–4 ms;
   orders 7.5 s → 2–4 ms; purchases 4.9 s → 1–2 ms; customers 3.7 s → 1–6 ms.
 
-### BUG-P2-011 — Public product search joins the whole catalogue first (Critical)
+### ~~BUG-P2-011 — Public product search joins the whole catalogue first (Critical)~~
 
 - **Problem:** `GET /product/search-product?name=` (no login needed) joins variants,
   discounts and subcategories for all 275k products and only then filters by
@@ -1293,6 +1345,11 @@ Do the steps in this order; later steps depend on earlier ones.
   same indexed search as BUG-P2-004, require 2–3 characters, and put a rate limit
   on the route.
 - **Target:** under 100 ms.
+- **Fixed:** the public search matches the name by word prefix (`searchWords`)
+  and barcode/sku/slug by prefix, each its own indexed query, limited to 50
+  before the joins; `searchWords` never leaves the API; the route is rate
+  limited (`searchLimiter`, 120 a minute per caller). `name=saree` 40 ms,
+  `barCode=1` 10 ms.
 
 ### BUG-P2-012 — Courier-return list returns every product (Critical)
 

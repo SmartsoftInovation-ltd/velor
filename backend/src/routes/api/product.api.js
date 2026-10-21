@@ -5,6 +5,7 @@ const {
   multipleFileUploadWithFields,
 } = require("../../middleware/multer.middleware");
 const { authGuard, optionalAuth } = require("../../middleware/authMiddleware");
+const { searchLimiter } = require("../../middleware/rateLimit.middleware");
 const { authorize } = require("../../middleware/checkPermission.middleware");
 
 _.route("/createproduct").post(
@@ -85,6 +86,6 @@ _.route("/discount-products").get(optionalAuth, Product.getDiscountProducts);
 
 _.route("/best-selling-products").get(optionalAuth, Product.getBestSellingProducts);
 
-_.route("/search-product").get(optionalAuth, Product.getNameWiseSearch);
+_.route("/search-product").get(optionalAuth, searchLimiter, Product.getNameWiseSearch);
 
 module.exports = _;

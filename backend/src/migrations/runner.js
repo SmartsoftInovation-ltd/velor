@@ -18,6 +18,8 @@ const MIGRATIONS = [
   require("./011-mark-system-transaction-categories"),
   require("./012-sales-return-unique-invoice"),
   require("./013-audit-job-id-index"),
+  require("./014-phase2-indexes"),
+  require("./015-backfill-search-words"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

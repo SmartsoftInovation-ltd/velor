@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import ComponentCard from "../../components/common/ComponentCard";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -43,25 +43,31 @@ const ProductList = () => {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  const { data: products = [], isLoading, isFetching, isError, error, refetch } = useQuery({
+  // One page at a time from the server, newest first; the search (a word of
+  // the name, or a barcode / sku) runs there too (BUG-P2-010)
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["products", debouncedSearch],
-    queryFn: async () => {
-      let endpoint = "/product/getproduct";
-      if (debouncedSearch) {
-        const isBarcode = /^\d{13}$/.test(debouncedSearch.trim());
-        const params = new URLSearchParams();
-        if (isBarcode) {
-          params.append("barCode", debouncedSearch.trim());
-        } else {
-          params.append("name", debouncedSearch.trim());
-        }
-        endpoint = `/product/search-product?${params.toString()}`;
-      }
-      const { data } = await axiosSecure.get(endpoint);
-      return data?.data?.products || [];
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const { data } = await axiosSecure.get("/product/getproduct", {
+        params: { limit: 50, after: pageParam, search: debouncedSearch.trim() || undefined },
+      });
+      return data?.data as { products: Parameters<typeof ProductTable>[0]["products"]; nextCursor: string | null };
     },
+    getNextPageParam: (last) => last?.nextCursor ?? undefined,
     staleTime: 2 * 60 * 1000,
   });
+  const products = data?.pages.flatMap((p) => p?.products ?? []) ?? [];
 
   const handleSearch = (query?: string) => {
     const val = query || "";
@@ -117,6 +123,9 @@ const ProductList = () => {
               fetchProducts={handleSearch}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
+              hasMore={hasNextPage}
+              loadingMore={isFetchingNextPage}
+              onLoadMore={() => fetchNextPage()}
             />
           )}
         </ComponentCard>

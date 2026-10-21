@@ -138,6 +138,9 @@ const scenarios = (ctx) => {
   add({ id: "rep-sales-product-2y", method: "POST", url: "/report/sales-product?page=1&limit=50", body: s2, rf: "RF-01", scenario: "range 2y" });
   add({ id: "rep-sales-summary-2y", method: "POST", url: "/report/sales-summary?page=1&limit=50", body: s2, rf: "RF-01", scenario: "range 2y" });
   add({ id: "rep-sales-summary-30d", method: "POST", url: "/report/sales-summary?page=1&limit=50", body: RANGES["30d"], rf: "RF-01", scenario: "range 30d" });
+  // 30-day versions of the line reports (the BUG-P2-002 target is for 30 days)
+  add({ id: "rep-sales-product-30d", method: "POST", url: "/report/sales-product?page=1&limit=50", body: RANGES["30d"], rf: "RF-01", scenario: "range 30d" });
+  add({ id: "rep-sales-invoice-30d", method: "POST", url: "/report/sales-invoice?page=1&limit=50", body: RANGES["30d"], rf: "RF-01", scenario: "range 30d" });
   add({ id: "rep-customer-sales-invoice-2y", method: "POST", url: "/report/customer-sales-invoice?page=1&limit=50", body: { ...s2, customerId: ctx.topCustomer }, rf: "RF-01", scenario: "2y, top customer (21k invoices)" });
   add({ id: "rep-customer-invoice-profit-2y", method: "POST", url: "/report/customer-invoice-profit?page=1&limit=50", body: s2, rf: "RF-02", scenario: "2y, all customers" });
   add({ id: "rep-customer-invoice-profit-topcust", method: "POST", url: "/report/customer-invoice-profit?page=1&limit=50", body: { ...s2, customerId: ctx.topCustomer }, rf: "RF-02", scenario: "2y, top customer" });
@@ -229,6 +232,10 @@ const scenarios = (ctx) => {
   add({ id: "prod-multivariant", method: "GET", url: "/product/multiplevarinatproduct", rf: "RF-06", scenario: "no filter" });
   add({ id: "prod-discount-products", method: "GET", url: "/product/discount-products", rf: "RF-06", scenario: "no filter" });
   add({ id: "prod-search-a", method: "GET", url: "/product/search-product?q=a", rf: "RF-08", scenario: "q=a" });
+  // The public search's real parameters (q is not one of them, so prod-search-a only measured a 400)
+  add({ id: "prod-search-name", method: "GET", url: "/product/search-product?name=saree", rf: "RF-08", scenario: "name=saree (BUG-P2-011)" });
+  add({ id: "prod-search-name-short", method: "GET", url: "/product/search-product?name=sa", rf: "RF-08", scenario: "name=sa (BUG-P2-011)" });
+  add({ id: "prod-search-barcode", method: "GET", url: "/product/search-product?barCode=1", rf: "RF-08", scenario: "barCode prefix (BUG-P2-011)" });
   add({ id: "prod-price-range", method: "GET", url: "/product/price-range?minPrice=0&maxPrice=1000000", rf: "RF-18", scenario: "widest range" });
   add({ id: "prod-best-selling", method: "GET", url: "/product/best-selling-products", rf: "RF-05", scenario: "storefront" });
   add({ id: "prod-newarrival", method: "GET", url: "/product/newarrival", rf: "RF-05", scenario: "storefront" });

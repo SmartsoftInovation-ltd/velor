@@ -12,6 +12,7 @@ import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import ComponentCard from "../common/ComponentCard";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import useRemoteLookup from "../../hooks/useRemoteLookup";
 import { showApiError } from "../../utils/apiError";
 
 const DiscountUpdate = () => {
@@ -24,8 +25,6 @@ const DiscountUpdate = () => {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [subCategories, setSubCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [variantProducts, setVariantProducts] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     discountName: "",
@@ -39,6 +38,25 @@ const DiscountUpdate = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Products and variant products are searched on the server as the user
+  // types: the product lists answer one page (BUG-P2-010). A product discount
+  // takes single-variant products, a variant discount multi-variant ones.
+  type Named = { _id: string; name: string };
+  const productLookup = useRemoteLookup<Named>(
+    "discount-products",
+    "/product/getproduct",
+    (body) => body?.data?.products as Named[] | undefined,
+    { params: { variantType: "singleVariant" }, enabled: formData.discountPlan === "product" },
+  );
+  const variantLookup = useRemoteLookup<Named>(
+    "discount-variant-products",
+    "/product/multiplevarinatproduct",
+    (body) => body?.data?.products as Named[] | undefined,
+    { enabled: formData.discountPlan === "variant" },
+  );
+  const itemLookup =
+    formData.discountPlan === "product" ? productLookup : formData.discountPlan === "variant" ? variantLookup : null;
 
   const typeOptions = [
     { value: "tk", label: "Tk" },
@@ -61,14 +79,6 @@ const DiscountUpdate = () => {
       } else if (plan === "subCategory") {
         const res = await axiosSecure.get(`/subcategories`);
         setSubCategories(res.data.data.subCategories || res.data.data || []);
-      } else if (plan === "product") {
-        const res = await axiosSecure.get(`/product/getproduct`);
-        const allProducts = res.data?.data?.products || res.data?.data || [];
-        const safeArray = Array.isArray(allProducts) ? allProducts : [];
-        setProducts(safeArray.filter((p: any) => p.variantType === "singleVariant"));
-      } else if (plan === "variant") {
-        const res = await axiosSecure.get(`/product/multiplevarinatproduct`);
-        setVariantProducts(res.data.data?.products || []);
       }
     } catch (error) {
       console.error("Failed to fetch options:", error);
@@ -103,8 +113,11 @@ const DiscountUpdate = () => {
             setSelectedItemId(fetchedDiscount.subCategory._id || fetchedDiscount.subCategory);
           } else if (fetchedDiscount.discountPlan === "product" && fetchedDiscount.product) {
             setSelectedItemId(fetchedDiscount.product._id || fetchedDiscount.product);
+            // The saved product is shown even before any search reaches it
+            if (fetchedDiscount.product._id) productLookup.select(fetchedDiscount.product);
           } else if (fetchedDiscount.discountPlan === "variant" && fetchedDiscount.variant) {
             setSelectedItemId(fetchedDiscount.variant._id || fetchedDiscount.variant);
+            if (fetchedDiscount.variant._id) variantLookup.select(fetchedDiscount.variant);
           }
         }
       } catch (error) {
@@ -283,17 +296,19 @@ const DiscountUpdate = () => {
                             value: sub._id,
                           }))
                         : formData.discountPlan === "product"
-                        ? (products || []).map((prod: any) => ({
+                        ? productLookup.items.map((prod) => ({
                             label: prod.name,
                             value: prod._id,
                           }))
-                        : (variantProducts || []).map((prod: any) => ({
+                        : variantLookup.items.map((prod) => ({
                             label: prod.name,
                             value: prod._id,
                           }))
                     }
                     value={selectedItemId}
+                    onSearchChange={itemLookup?.onSearchChange}
                     onChange={(value) => {
+                      itemLookup?.remember(value);
                       setSelectedItemId(value);
                       if (value)
                         setErrors((prev) => ({ ...prev, selectedItemId: "" }));

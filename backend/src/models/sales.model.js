@@ -225,6 +225,22 @@ salesSchema.post("save", async function (doc, next) {
   }
 });
 
+// Phase 2 (BUG-P2-002/006/009): reports and widgets filter by date, customer
+// or salesman, and the sales list pages newest first. The tenant plugin puts
+// tenantId in front of each. Built by migration 014 where autoIndex is off.
+salesSchema.index({ date: -1, _id: -1 });
+salesSchema.index({ createdAt: -1, _id: -1 });
+salesSchema.index({ "customerType.customerId": 1, date: -1 });
+salesSchema.index({ salesMen: 1, date: -1 });
+// The sales list's paid/due counts and due total (get-sales-stats)
+salesSchema.index({ paymentStatus: 1, createdAt: -1 });
+// The customer due list counts listed customers' due invoices (BUG-P2-009)
+salesSchema.index({ paymentStatus: 1, invoiceStatus: 1, "customerType.customerId": 1 });
+// The customer balance summary's totals: what listed customers were billed and
+// paid, read from this index alone (it carries payable and netPaid), not from
+// half a million sale documents (BUG-P2-009)
+salesSchema.index({ invoiceStatus: 1, "customerType.customerId": 1, date: 1, payable: 1, netPaid: 1 });
+
 salesSchema.plugin(tenantPlugin);
 const Sales = mongoose.models.Sales || mongoose.model("Sales", salesSchema);
 

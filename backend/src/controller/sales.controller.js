@@ -25,6 +25,8 @@ const SmsLog = require("../models/smsLog.model");
 const { clientCommandMessageReg } = require("bullmq");
 const settings = require("../settings/settings.service");
 const { getTenantId } = require("../tenancy/context");
+const { getInvoicePrefix } = require("../integrations/config");
+const { nameSearchFilter, idsMatchingAny } = require("../utils/searchWords.util");
 const {
   bumpNsVersion,
   buildCacheKey,
@@ -756,104 +758,180 @@ exports.getAllSales = asynchandeler(async (req, res) => {
     );
   }
 
-  // Backward-compatible unpaginated list — existing callers expect a flat array
-  if (!req.query.page && !req.query.limit && !search) {
-    // salesType and invoiceStatus may each be a string or a {$in:[...]} —
-    // serialise both so a multi-value query never shares a cache key with a
-    // single-value one.
-    const filterKey = (value) =>
-      value
-        ? Array.isArray(value?.$in)
-          ? value.$in.join("|")
-          : value
-        : "*";
-    const filterSuffix = Object.keys(listFilter).length
-      ? `all:${filterKey(listFilter.salesType)}:${filterKey(listFilter.invoiceStatus)}`
-      : "all";
-    const cacheKey = await buildCacheKey(NS, filterSuffix);
-    const cached = await getCache(cacheKey);
-    if (cached) {
-      return apiResponse.sendSuccess(
-        res,
-        statusCodes.OK,
-        "Sales fetched successfully",
-        cached,
-      );
-    }
-
-    const sales = await salesModel
-      .find(listFilter)
-      .sort({ createdAt: -1 })
-      .populate("customerType.customerId")
-      .populate("searchItem.productId")
-      .populate("searchItem.variantId")
-      .populate("salesMen")
-      .populate("discountGivenBy", "name email discountLimit");
-
-    // A filtered list (e.g. an order page with no orders yet) legitimately
-    // returns nothing — send an empty array instead of a 404 in that case.
-    const payload = sales || [];
-    await setCache(cacheKey, payload, 300);
-    return apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "Sales fetched successfully",
-      payload,
-    );
-  }
-
-  // Paginated + searchable list — used by infinite-scroll dropdowns
-  const page = Math.max(1, parseInt(req.query.page) || 1);
+  // The list is always paged (BUG-P2-005): the "everything" branch returned
+  // and cached every sale of the shop, and ran the API out of memory.
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-  const skip = (page - 1) * limit;
+  const query = { ...listFilter, ...(await salesListFilters(req.query)) };
 
-  const query = search
-    ? { invoiceNumber: { $regex: String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } }
-    : {};
-
-  const cacheKey = await buildCacheKey(
-    NS,
-    `list:p${page}:l${limit}:s${search || ""}`,
-  );
-  const cached = await getCache(cacheKey);
-  if (cached) {
-    return apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "Sales fetched successfully",
-      cached,
+  // Keyset paging on the { tenantId, createdAt, _id } index (BUG-P2-006):
+  // `after` is the last row the client has. `page` still works for the
+  // page-numbered pickers; with the index it walks keys instead of sorting
+  // every sale.
+  const cursor = parseSalesCursor(req.query.after);
+  if (cursor) {
+    query.$and = [
+      ...(query.$and || []),
+      {
+        $or: [
+          { createdAt: { $lt: cursor.createdAt } },
+          { createdAt: cursor.createdAt, _id: { $lt: cursor.id } },
+        ],
+      },
+    ];
+  }
+  const page = cursor ? 1 : Math.max(1, parseInt(req.query.page) || 1);
+  // Page numbers are for the pickers, which never go deep. Skipping costs one
+  // index key per row skipped (a million rows: about a minute), so deep
+  // paging goes through the cursor, which costs the same on every page.
+  if ((page - 1) * limit > MAX_PAGE_SKIP) {
+    throw new customError(
+      `Page numbers reach the first ${MAX_PAGE_SKIP} sales; page further with the \`after\` cursor`,
+      statusCodes.BAD_REQUEST,
+      "USE_CURSOR",
     );
   }
 
-  const [sales, total] = await Promise.all([
-    salesModel
+  // One extra row says whether there is a next page; the exact total (a count
+  // of every matching sale on each page) is not computed any more.
+  // A page-number request skips inside the index: the page's ids are read
+  // first (covered by { tenantId, createdAt, _id }, no documents loaded), then
+  // only those sales. Skipping on the documents themselves fetched every
+  // skipped sale (page 1000: 6 s).
+  let pageFilter = query;
+  if (page > 1) {
+    const ids = await salesModel
       .find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("customerType.customerId")
-      .populate("searchItem.productId")
-      .populate("searchItem.variantId")
-      .populate("salesMen")
-      .populate("discountGivenBy", "name email discountLimit"),
-    salesModel.countDocuments(query),
-  ]);
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit + 1)
+      .select({ _id: 1, createdAt: 1 })
+      .lean();
+    pageFilter = { _id: { $in: ids.map((r) => r._id) } };
+  }
 
-  const payload = {
+  const rows = await salesModel
+    .find(pageFilter)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit + 1)
+    .select(SALES_LIST_FIELDS)
+    .populate("customerType.customerId", "fullName mobileNumber openingDues")
+    .populate("paymentMethod.singlePayment.paymentTo", "name")
+    .populate("paymentMethod.multiplePayment.paymentTo", "name")
+    .lean();
+
+  const hasNextPage = rows.length > limit;
+  const sales = hasNextPage ? rows.slice(0, limit) : rows;
+  const last = sales[sales.length - 1];
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Sales fetched successfully", {
     sales,
-    total,
     page,
     limit,
-    hasNextPage: page * limit < total,
-  };
-  await setCache(cacheKey, payload, 300);
+    hasNextPage,
+    nextCursor: hasNextPage && last ? `${new Date(last.createdAt).toISOString()}_${last._id}` : null,
+  });
+});
 
-  apiResponse.sendSuccess(
-    res,
-    statusCodes.OK,
-    "Sales fetched successfully",
-    payload,
-  );
+const MAX_PAGE_SKIP = 10000;
+
+// What the sales list screens show of a sale; the line items, salesman and
+// discount-giver were populated for every row and never displayed.
+const SALES_LIST_FIELDS =
+  "invoiceNumber date createdAt salesType customerType total payable paid presentDue paymentStatus invoiceStatus paymentMethod";
+
+const escapeSalesRegex = (str = "") => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// "<createdAt ISO>_<_id>" of the last row the client holds
+const parseSalesCursor = (after) => {
+  if (!after) return null;
+  const [iso, id] = String(after).split("_");
+  const createdAt = new Date(iso);
+  if (Number.isNaN(createdAt.getTime()) || !mongoose.isValidObjectId(id)) {
+    throw new customError("Invalid cursor", statusCodes.BAD_REQUEST);
+  }
+  return { createdAt, id: new mongoose.Types.ObjectId(id) };
+};
+
+/**
+ * The list's own filters, applied on the server (the history table used to
+ * load every sale and filter in the browser).
+ *   search        invoice number by prefix (indexed). Digits alone also find
+ *                 the invoice with that sequence number (INV-<prefix>-<NN>),
+ *                 and a phone-like term matches a walking customer's mobile
+ *   paymentStatus paid | partial | due
+ *   paymentTo     an account id the sale was paid into
+ */
+const salesListFilters = async (q) => {
+  const filter = {};
+  const and = [];
+  const search = String(q.search || "").trim();
+  if (search) {
+    const prefix = escapeSalesRegex(search);
+    const or = [
+      { invoiceNumber: { $regex: `^${prefix}` } },
+      { invoiceNumber: { $regex: `^${escapeSalesRegex(search.toUpperCase())}` } },
+    ];
+    if (/^\d+$/.test(search)) {
+      const invoicePrefix = escapeSalesRegex(await getInvoicePrefix());
+      or.push({ invoiceNumber: { $regex: `^INV-${invoicePrefix}-${search.padStart(2, "0")}` } });
+    }
+    if (/^\+?\d{3,}$/.test(search)) {
+      or.push({ "customerType.walking.mobileNumber": { $regex: `^${prefix}` } });
+    }
+    and.push({ $or: or });
+  }
+  if (q.paymentStatus) filter.paymentStatus = String(q.paymentStatus);
+  if (q.paymentTo && mongoose.isValidObjectId(q.paymentTo)) {
+    const account = new mongoose.Types.ObjectId(String(q.paymentTo));
+    and.push({
+      $or: [
+        { "paymentMethod.singlePayment.paymentTo": account },
+        { "paymentMethod.multiplePayment.paymentTo": account },
+      ],
+    });
+  }
+  if (and.length) filter.$and = and;
+  return filter;
+};
+
+/**
+ * The sales list's stat cards, worked out on the server for the same
+ * salesType / invoiceStatus the list shows. Today's figures read the date
+ * index; the paid/due counts and the due total each use an index on
+ * paymentStatus.
+ */
+exports.getSalesStats = asynchandeler(async (req, res) => {
+  const base = {};
+  for (const field of ["salesType", "invoiceStatus"]) {
+    const values = String(req.query[field] || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (values.length) base[field] = values.length > 1 ? { $in: values } : values[0];
+  }
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const [today, paidCount, dueCount, due] = await Promise.all([
+    salesModel.aggregate([
+      { $match: { ...base, createdAt: { $gte: startOfToday } } },
+      { $group: { _id: null, count: { $sum: 1 }, amount: { $sum: { $ifNull: ["$payable", 0] } } } },
+    ]),
+    salesModel.countDocuments({ ...base, paymentStatus: "paid" }),
+    salesModel.countDocuments({ ...base, paymentStatus: { $in: ["partial", "due"] } }),
+    salesModel.aggregate([
+      { $match: { ...base, paymentStatus: { $in: ["partial", "due"] } } },
+      { $group: { _id: null, totalDue: { $sum: { $ifNull: ["$presentDue", 0] } } } },
+    ]),
+  ]);
+
+  apiResponse.sendSuccess(res, statusCodes.OK, "Sales stats fetched successfully", {
+    todayCount: today[0]?.count || 0,
+    todayAmount: today[0]?.amount || 0,
+    totalDue: due[0]?.totalDue || 0,
+    paidCount,
+    dueCount,
+  });
 });
 
 // search by product name or barCode  sku and search also variant model variantName
@@ -893,8 +971,6 @@ const applicableDiscountPipeline = async () => {
 };
 
 exports.searchProductsAndVariants = async (req, res) => {
-  const escapeRegex = (str = "") => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
   try {
     const q = String(req.query.q || "").trim();
     // 1–50; anything else (not a number, 0, negative) falls back to 20.
@@ -910,59 +986,24 @@ exports.searchProductsAndVariants = async (req, res) => {
       );
     }
 
-    // A single word could be a scanned code or one word of a name ("Shirt"),
-    // so it is tried as both: codes match exactly (and score higher, so a scan
-    // still lands first), the name by substring.
-    const isLikelyCode = /^[0-9A-Za-z\-_.]{4,}$/.test(q);
-    const qRegex = new RegExp(escapeRegex(q), "i");
-
-    const productMatch = isLikelyCode
-      ? {
-          $or: [
-            { sku: q },
-            { barCode: q },
-            { qrCode: q },
-            { slug: q.toLowerCase?.() || q },
-            { name: qRegex },
-          ],
-        }
-      : {
-          $or: [
-            { name: qRegex },
-            { slug: q.toLowerCase?.() || q },
-            { sku: qRegex },
-            { barCode: qRegex },
-          ],
-        };
-
-    const variantMatch = isLikelyCode
-      ? {
-          $or: [
-            { sku: q },
-            { barCode: q },
-            { qrCode: q },
-            { slug: q.toLowerCase?.() || q },
-            { variantName: qRegex },
-          ],
-        }
-      : {
-          $or: [
-            { variantName: qRegex },
-            { slug: q.toLowerCase?.() || q },
-            { sku: qRegex },
-            { barCode: qRegex },
-          ],
-        };
-
+    // Every match goes through an index (BUG-P2-004): a scanned code exactly,
+    // a typed name by the beginning of its words (searchWords). A
+    // case-insensitive "contains" regex read the whole catalogue on every
+    // keystroke. Each query is limited before anything is joined to it.
+    const exact = [
+      { sku: q },
+      { barCode: q },
+      { qrCode: q },
+      { slug: q.toLowerCase() },
+    ];
+    const byName = nameSearchFilter(q);
     const discountPipeline = await applicableDiscountPipeline();
 
-    const results = await productModel.aggregate([
-      { $match: productMatch },
-
-      // product discount populate — applicable discounts only (active and
-      // within its dates). Deactivating or expiring a discount leaves the
-      // product's reference in place, so the filter has to live here or the
-      // sale form would still apply it.
+    // product discount populate — applicable discounts only (active and
+    // within its dates). Deactivating or expiring a discount leaves the
+    // product's reference in place, so the filter has to live here or the
+    // sale form would still apply it.
+    const withDiscount = [
       {
         $lookup: {
           from: "discounts",
@@ -972,31 +1013,13 @@ exports.searchProductsAndVariants = async (req, res) => {
           as: "discount",
         },
       },
-      {
-        $unwind: {
-          path: "$discount",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+      { $unwind: { path: "$discount", preserveNullAndEmptyArrays: true } },
+    ];
 
-      {
-        $addFields: {
-          _type: "product",
-          _score: {
-            $cond: [
-              {
-                $or: [
-                  { $eq: ["$sku", q] },
-                  { $eq: ["$barCode", q] },
-                  { $eq: ["$qrCode", q] },
-                ],
-              },
-              100,
-              10,
-            ],
-          },
-        },
-      },
+    const productStages = (score) => [
+      { $limit: limit },
+      ...withDiscount,
+      { $addFields: { _type: "product", _score: score } },
       {
         $project: {
           _id: 1,
@@ -1021,96 +1044,77 @@ exports.searchProductsAndVariants = async (req, res) => {
           discount: 1,
         },
       },
+    ];
 
+    const variantStages = (score) => [
+      { $limit: limit },
+      ...withDiscount,
       {
-        $unionWith: {
-          coll: variantModel.collection.name,
-          pipeline: [
-            { $match: variantMatch },
-
-            // variant discount populate — applicable discounts only (see above)
-            {
-              $lookup: {
-                from: "discounts",
-                localField: "discount",
-                foreignField: "_id",
-                pipeline: discountPipeline,
-                as: "discount",
-              },
-            },
-            {
-              $unwind: {
-                path: "$discount",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-
-            {
-              $lookup: {
-                from: productModel.collection.name,
-                localField: "product",
-                foreignField: "_id",
-                as: "productInfo",
-              },
-            },
-            {
-              $unwind: {
-                path: "$productInfo",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-            {
-              $addFields: {
-                _type: "variant",
-                productName: "$productInfo.name",
-                _score: {
-                  $cond: [
-                    {
-                      $or: [
-                        { $eq: ["$sku", q] },
-                        { $eq: ["$barCode", q] },
-                        { $eq: ["$qrCode", q] },
-                      ],
-                    },
-                    100,
-                    10,
-                  ],
-                },
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                _type: 1,
-                _score: 1,
-                product: 1,
-                productName: 1,
-                variantName: 1,
-                slug: 1,
-                sku: 1,
-                barCode: 1,
-                qrCode: 1,
-                image: 1,
-                stockVariant: 1,
-                purchasePrice: 1,
-                retailPrice: 1,
-                totalSales: 1,
-                wholesalePrice: 1,
-                size: 1,
-                color: 1,
-                discount: 1,
-                unit: 1,
-                groupUnit: 1,
-                groupUnitQuantity: 1,
-              },
-            },
-          ],
+        $lookup: {
+          from: productModel.collection.name,
+          localField: "product",
+          foreignField: "_id",
+          pipeline: [{ $project: { name: 1 } }],
+          as: "productInfo",
         },
       },
+      { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+      { $addFields: { _type: "variant", productName: "$productInfo.name", _score: score } },
+      {
+        $project: {
+          _id: 1,
+          _type: 1,
+          _score: 1,
+          product: 1,
+          productName: 1,
+          variantName: 1,
+          slug: 1,
+          sku: 1,
+          barCode: 1,
+          qrCode: 1,
+          image: 1,
+          stockVariant: 1,
+          purchasePrice: 1,
+          retailPrice: 1,
+          totalSales: 1,
+          wholesalePrice: 1,
+          size: 1,
+          color: 1,
+          discount: 1,
+          unit: 1,
+          groupUnit: 1,
+          groupUnitQuantity: 1,
+        },
+      },
+    ];
 
-      { $sort: { _score: -1, _id: -1 } },
-      { $limit: limit },
+    // Exact codes: each field its own indexed query, then only those ids joined
+    const [exactProductIds, exactVariantIds] = await Promise.all([
+      idsMatchingAny(productModel, exact, limit),
+      idsMatchingAny(variantModel, exact, limit),
     ]);
+    const none = Promise.resolve([]);
+    const [exactProducts, exactVariants, namedProducts, namedVariants] = await Promise.all([
+      exactProductIds.length
+        ? productModel.aggregate([{ $match: { _id: { $in: exactProductIds } } }, ...productStages(100)])
+        : none,
+      exactVariantIds.length
+        ? variantModel.aggregate([{ $match: { _id: { $in: exactVariantIds } } }, ...variantStages(100)])
+        : none,
+      byName ? productModel.aggregate([{ $match: byName }, ...productStages(10)]) : none,
+      byName ? variantModel.aggregate([{ $match: byName }, ...variantStages(10)]) : none,
+    ]);
+
+    // A scanned code first, then name matches; an item found both ways once
+    const seen = new Set();
+    const results = [...exactProducts, ...exactVariants, ...namedProducts, ...namedVariants]
+      .filter((row) => {
+        const key = String(row._id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, limit);
 
     return apiResponse.sendSuccess(
       res,
@@ -1122,6 +1126,7 @@ exports.searchProductsAndVariants = async (req, res) => {
     return apiResponse.sendError(res, statusCodes.SERVER_ERROR, err.message);
   }
 };
+
 
 // update sales
 exports.updateSales = asynchandeler(async (req, res) => {

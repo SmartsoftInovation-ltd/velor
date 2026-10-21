@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FaChevronDown, FaSearch, FaTimes } from "react-icons/fa";
 
 interface Option {
@@ -13,6 +13,10 @@ interface SearchableSelectProps {
   placeholder?: string;
   searchPlaceholder?: string;
   hasError?: boolean;
+  // When given, the typed search is reported here (debounce in the parent) so
+  // the options can be fetched from the server rather than filtered from a
+  // full list held in the browser
+  onSearchChange?: (search: string) => void;
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -22,9 +26,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   placeholder = "Select...",
   searchPlaceholder = "Search...",
   hasError = false,
+  onSearchChange,
 }) => {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearchState] = useState("");
+  // Latest callback in a ref, so the outside-click listener need not re-bind
+  const onSearchChangeRef = useRef(onSearchChange);
+  onSearchChangeRef.current = onSearchChange;
+  const setSearch = useCallback((value: string) => {
+    setSearchState(value);
+    onSearchChangeRef.current?.(value);
+  }, []);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selected = options.find((o) => o.value === value);
@@ -42,7 +54,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [setSearch]);
 
   const handleSelect = (val: string) => {
     onChange(val);

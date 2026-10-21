@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
+const { searchWordsPlugin } = require("../utils/searchWords.util");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
 
@@ -306,6 +307,14 @@ customerSchema.post("save", async function (doc, next) {
   }
 });
 
+// Indexed word-prefix search on the name (the report customer picker, BUG-P2-002).
+// Before tenantPlugin, which puts tenantId in front of the indexes declared so far.
+customerSchema.plugin(searchWordsPlugin, { field: "fullName" });
+// The due list sorts customers by what they owe (BUG-P2-009)
+customerSchema.index({ openingDues: -1, fullName: 1, _id: 1 });
+// The balance summary lists customers by name
+customerSchema.index({ fullName: 1, _id: 1 });
+
 customerSchema.plugin(tenantPlugin);
 const customerModel =
   mongoose.models.Customer || mongoose.model("Customer", customerSchema);
@@ -424,6 +433,11 @@ customerPaymentRecivedSchema.post("save", async function (doc, next) {
   }
 });
 
+// Phase 2 (BUG-P2-009): a customer's payments, by date
+customerPaymentRecivedSchema.index({ customer: 1, date: -1 });
+// The customer payment report pages the range newest first (BUG-P2-009)
+customerPaymentRecivedSchema.index({ date: -1, _id: -1 });
+
 customerPaymentRecivedSchema.plugin(tenantPlugin);
 const customerPaymentRecived =
   mongoose.models.CustomerPaymentRecived ||
@@ -521,6 +535,9 @@ customerAdvancePaymentRecivedSchema.post("save", async function (doc, next) {
     next(error);
   }
 });
+
+// The customer payment report pages the range newest first (BUG-P2-009)
+customerAdvancePaymentRecivedSchema.index({ date: -1, _id: -1 });
 
 customerAdvancePaymentRecivedSchema.plugin(tenantPlugin);
 const customerAdvancePaymentModel =

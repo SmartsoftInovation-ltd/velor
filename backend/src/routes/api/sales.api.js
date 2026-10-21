@@ -37,6 +37,7 @@ const SALES_READERS = [
 
 _.route("/create-sales").post(authGuard, authorizeSalesCreate, validate(createSalesSchema), salesController.createSales);
 _.route("/get-sales").get(authGuard, authorizeAny(...SALES_READERS), salesController.getAllSales);
+_.route("/get-sales-stats").get(authGuard, authorizeAny(...SALES_READERS), salesController.getSalesStats);
 _.route("/get-sales-products").get(authGuard, authorizeAny(...SALES_READERS), salesController.searchProductsAndVariants);
 _.route("/update-sales/:saleId").put(authGuard, authorize("retail-sales", "edit"), validate(updateSalesSchema), salesController.updateSales);
 _.route("/delete-sales/:saleId").delete(authGuard, authorize("retail-sales", "delete"), salesController.deleteSales);

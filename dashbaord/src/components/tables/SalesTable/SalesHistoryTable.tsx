@@ -360,33 +360,7 @@ function formatTime(iso?: string): string {
 
 const money = (n = 0) => `৳${Number(n || 0).toLocaleString()}`;
 
-// Every account a sale was paid into — single and multiple are storage shapes,
-// and a sale can carry both.
-function paymentAccounts(sale: Sale): string[] {
-  const payments = [
-    ...(sale.paymentMethod?.singlePayment ? [sale.paymentMethod.singlePayment] : []),
-    ...(sale.paymentMethod?.multiplePayment ?? []),
-  ].filter((p) => p && (p.amount ?? 0) > 0);
 
-  return [
-    ...new Set(
-      payments.map((p) =>
-        typeof p.paymentTo === "object" && p.paymentTo?.name ? p.paymentTo.name : "Cash",
-      ),
-    ),
-  ];
-}
-
-function isToday(iso?: string): boolean {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear()
-  );
-}
 
 const salesTypeLabel: Record<string, string> = {
   wholesale: "Wholesale",
@@ -436,7 +410,14 @@ const SalesHistoryTable = ({
   const canEdit   = usePermission("sales-history", "edit");
   const canDelete = usePermission("sales-history", "delete");
   const [salesList, setSalesList] = useState<Sale[]>([]);
+  // The list is paged on the server (the shop can hold a million sales): rows
+  // accumulate page by page through the cursor the API hands back.
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [stats, setStats] = useState({ todayCount: 0, todayAmount: 0, totalDue: 0, paidCount: 0, dueCount: 0 });
+  const [accounts, setAccounts] = useState<{ _id: string; name: string }[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
@@ -494,79 +475,90 @@ const SalesHistoryTable = ({
     .map((t) => t.trim())
     .filter(Boolean);
 
-  const fetchSales = async () => {
+  // The server filters: what the list may hold (the page's own salesType /
+  // invoiceStatus) narrowed by whatever the filter bar picks.
+  const listParams = () => {
+    const params = new URLSearchParams();
+    const type = typeFilter || salesType;
+    const invoiceStatus = invoiceStatusFilter || invoiceStatusProp;
+    if (type) params.set("salesType", type);
+    if (invoiceStatus) params.set("invoiceStatus", invoiceStatus);
+    return params;
+  };
+
+  const fetchStats = async () => {
+    try {
+      const res = await axiosSecure.get(`/sales/get-sales-stats?${listParams().toString()}`);
+      if (res?.data?.data) setStats(res.data.data);
+    } catch {
+      // The cards are a summary; the list still works without them
+    }
+  };
+
+  // reset: start again from the newest sale; otherwise load the next page
+  const fetchSales = async (reset = true) => {
     // Guard against a second click while the first request is still running.
     if (isSubmitting) return;
-    setLoading(true);
+    if (!reset && !nextCursor) return;
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
     setIsError(false);
     setIsSubmitting(true);
     try {
-      const params = new URLSearchParams();
-      if (salesType) params.set("salesType", salesType);
-      if (invoiceStatusProp) params.set("invoiceStatus", invoiceStatusProp);
-      const qs = params.toString();
-      const endpoint = qs ? `/sales/get-sales?${qs}` : "/sales/get-sales";
-      const res = await axiosSecure.get(endpoint);
-      setSalesList(res?.data?.data || []);
+      const params = listParams();
+      params.set("limit", "50");
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter) params.set("paymentStatus", statusFilter);
+      if (paymentFilter) params.set("paymentTo", paymentFilter);
+      if (!reset && nextCursor) params.set("after", nextCursor);
+      const res = await axiosSecure.get(`/sales/get-sales?${params.toString()}`);
+      const page = res?.data?.data;
+      const rows: Sale[] = page?.sales || [];
+      setSalesList((prev) => (reset ? rows : [...prev, ...rows]));
+      setNextCursor(page?.nextCursor || null);
+      if (reset) fetchStats();
     } catch (error) {
       setIsError(true);
       showApiError(error, "Failed to load sales.");
     } finally {
       setIsSubmitting(false);
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
+  // The search box asks the server once typing pauses
   useEffect(() => {
-    fetchSales();
+    const handler = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  useEffect(() => {
+    fetchSales(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [salesType, invoiceStatusProp]);
+  }, [salesType, invoiceStatusProp, debouncedSearch, statusFilter, typeFilter, paymentFilter, invoiceStatusFilter]);
 
-  const filtered = salesList.filter((s) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      s.invoiceNumber?.toLowerCase().includes(q) ||
-      getCustomerName(s.customerType).toLowerCase().includes(q) ||
-      getMobile(s.customerType).includes(q);
+  // Payment filter options: the shop's accounts (the list holds one page only)
+  useEffect(() => {
+    axiosSecure
+      .get("/account/all-account")
+      .then((res) => {
+        const list = res?.data?.data?.accounts ?? res?.data?.data ?? [];
+        setAccounts(Array.isArray(list) ? list.map((a: { _id: string; name: string }) => ({ _id: a._id, name: a.name })) : []);
+      })
+      .catch(() => setAccounts([]));
+  }, []);
 
-    const matchesStatus = !statusFilter || s.paymentStatus === statusFilter;
-    const matchesType = !typeFilter || s.salesType === typeFilter;
-    const matchesPayment = !paymentFilter || paymentAccounts(s).includes(paymentFilter);
-    const matchesInvoiceStatus =
-      !invoiceStatusFilter || s.invoiceStatus === invoiceStatusFilter;
+  // Filtering happens on the server; the rows are already the filtered list
+  const filtered = salesList;
 
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesType &&
-      matchesPayment &&
-      matchesInvoiceStatus
-    );
-  });
-
-  // Stats reflect the whole dataset, not the current filter — they're a summary
-  // of the business, not of what happens to be on screen.
-  const todaySales = salesList.filter((s) => isToday(s.createdAt || s.date));
-  const stats = {
-    todayCount: todaySales.length,
-    todayAmount: todaySales.reduce((sum, s) => sum + (s.payable || 0), 0),
-    totalDue: salesList.reduce((sum, s) => sum + (s.presentDue || 0), 0),
-    paidCount: salesList.filter((s) => s.paymentStatus === "paid").length,
-    dueCount: salesList.filter((s) => s.paymentStatus !== "paid").length,
-  };
-
-  // Only offer accounts that actually appear in the data.
-  const accountOptions = [...new Set(salesList.flatMap(paymentAccounts))].sort();
-  // Include the default even when no loaded row carries it, so the filter can
-  // always be switched back to it.
-  const invoiceStatusOptions = [
-    ...new Set(
-      [...salesList.map((s) => s.invoiceStatus), defaultInvoiceStatus].filter(
-        Boolean,
-      ),
-    ),
-  ].sort();
+  // Invoice statuses this page can hold: the ones its invoiceStatus allows,
+  // or all three
+  const allowedStatuses = (invoiceStatusProp || "complete,pending,draft")
+    .split(",")
+    .map((st) => st.trim())
+    .filter(Boolean);
+  const invoiceStatusOptions = [...new Set([...allowedStatuses, defaultInvoiceStatus].filter(Boolean))].sort();
 
   const hasFilters = Boolean(
     search ||
@@ -625,7 +617,7 @@ const SalesHistoryTable = ({
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-3 text-gray-400 group-focus-within:text-accent-500 transition-colors" />
           <input
             aria-label="Search sales"
-            placeholder="Search by invoice number or customer…"
+            placeholder="Search by invoice number or mobile…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-9 pl-8 pr-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-100 outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
@@ -653,9 +645,9 @@ const SalesHistoryTable = ({
         )}
 
         <FilterSelect value={paymentFilter} onChange={setPaymentFilter} label="All Payments">
-          {accountOptions.map((a) => (
-            <option key={a} value={a}>
-              {a}
+          {accounts.map((a) => (
+            <option key={a._id} value={a._id}>
+              {a.name}
             </option>
           ))}
         </FilterSelect>
@@ -692,7 +684,7 @@ const SalesHistoryTable = ({
 
       {hasFilters && (
         <p className="text-xs text-gray-400 mb-2">
-          Showing {filtered.length} of {salesList.length} sales
+          Showing {filtered.length} matching sales{nextCursor ? " (more below)" : ""}
         </p>
       )}
 
@@ -920,6 +912,26 @@ const SalesHistoryTable = ({
           </Table>
         </div>
       </div>
+      )}
+
+      {/* The next page of the server-side list */}
+      {!loading && !isError && nextCursor && (
+        <div className="mt-4 flex justify-center">
+          <Button
+            onClick={() => fetchSales(false)}
+            disabled={loadingMore}
+            className="!bg-accent-500 hover:!bg-accent-600 !text-white !rounded font-semibold px-5 py-2 text-sm"
+          >
+            {loadingMore ? (
+              <span className="flex items-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Loading…
+              </span>
+            ) : (
+              "Load more"
+            )}
+          </Button>
+        </div>
       )}
       <Modal isOpen={showDeleteModal} onClose={closeModal}>
         <div className="p-8">

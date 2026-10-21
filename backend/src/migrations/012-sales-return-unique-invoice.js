@@ -7,6 +7,15 @@ const SalesReturn = require("../models/salesReturn.model");
 module.exports = {
   name: "012-sales-return-unique-invoice",
   up: async () => {
+    // Databases built before this carry a non-unique index under the same name
+    // (from the field's old `index: true`); MongoDB refuses to create the
+    // unique one over it, so it is dropped first.
+    const existing = await SalesReturn.collection.indexes().catch(() => []);
+    const old = existing.find(
+      (i) => i.name === "tenantId_1_invoiceNumber_1" && !i.unique,
+    );
+    if (old) await SalesReturn.collection.dropIndex(old.name);
+
     try {
       const name = await SalesReturn.collection.createIndex(
         { tenantId: 1, invoiceNumber: 1 },

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -22,6 +22,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import LoadMoreButton from "../../common/LoadMoreButton";
 import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 
 // Portal-based Tooltip
@@ -137,22 +138,33 @@ const VariantTable = () => {
     }, 150);
   };
 
-  const { data: rawVariants = [], isLoading, isError, error: variantsError, refetch } = useQuery<Variant[]>({
+  // One page at a time from the server, searched there too (BUG-P2-010)
+  const {
+    data: variantPages,
+    isLoading,
+    isError,
+    error: variantsError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["variants", debouncedSearch],
-    queryFn: async () => {
-      let endpoint = "/variant";
-      if (debouncedSearch) {
-        endpoint = `/search-variant?search=${encodeURIComponent(debouncedSearch.trim())}`;
-      }
-      const { data } = await axiosSecure.get(endpoint);
-      return data?.data?.variants || data?.data || [];
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const { data } = await axiosSecure.get("/variant", {
+        params: { limit: 50, after: pageParam, search: debouncedSearch.trim() || undefined },
+      });
+      return data?.data as { variants: Variant[]; nextCursor: string | null };
     },
+    getNextPageParam: (last) => last?.nextCursor ?? undefined,
     // The list must reflect a create/update as soon as the form navigates
     // back here, so it always refetches on mount rather than serving a
     // cached page. Mutations additionally invalidate ["variants"].
     staleTime: 0,
     refetchOnMount: "always",
   });
+  const rawVariants: Variant[] = variantPages?.pages.flatMap((p) => p?.variants ?? []) ?? [];
 
   const virtualizer = useVirtualizer({
     count: rawVariants.length,
@@ -601,6 +613,7 @@ const VariantTable = () => {
       )}
 
       {/* Delete Confirmation Modal */}
+      <LoadMoreButton hasMore={hasNextPage} loading={isFetchingNextPage} onClick={() => fetchNextPage()} />
       <Modal isOpen={showDeleteModal} onClose={closeModal} className="!w-full !max-w-sm">
         <div className="p-8">
           <div className="flex items-center justify-center size-16 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 mb-5 mx-auto">

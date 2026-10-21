@@ -7,6 +7,8 @@ const byReturnModel = require("../models/byReturnSale.model");
 const orderModel = require("../models/order.model");
 const StockAdjustModel = require("../models/stockadjust.model");
 const createTransactionModel = require("../models/crateTransaction.model");
+const AccountModel = require("../models/account.model");
+const TransactionCategoryModel = require("../models/transitionCategory.model");
 const fundhandoverModel = require("../models/fundHandoverDescription.model");
 const invoiceModel = require("../models/invoice.model");
 const VariantModel = require("../models/variant.model");
@@ -618,32 +620,18 @@ exports.overallStock = asynchandeler(async (req, res) => {
 // get account all
 // ...existing code...
 exports.getAllAccounts = asynchandeler(async (req, res) => {
-  // fetch transactions that have account reference and populate only needed fields
-  const transactions = await createTransactionModel
-    .find({ account: { $exists: true } })
-    .populate("account", "_id name")
-    .select("account -_id");
-
-  if (!transactions.length) {
+  // The accounts the ledger uses: one distinct over the ledger's account index,
+  // then the accounts themselves (BUG-P2-008). Loading every ledger row and
+  // populating its account took one query per row.
+  const accountIds = await createTransactionModel.distinct("account", { account: { $ne: null } });
+  if (!accountIds.length) {
     throw new customError("No accounts found", statusCodes.NOT_FOUND);
   }
 
-  // collect unique accounts using Map (keyed by id)
-  const uniqueAccountsMap = new Map();
-  transactions.forEach((tx) => {
-    const acc = tx.account;
-    if (acc && acc._id) {
-      uniqueAccountsMap.set(acc._id.toString(), {
-        _id: acc._id,
-        name: acc.name,
-      });
-    }
-  });
-
-  // convert to array and sort by name
-  const uniqueAccounts = Array.from(uniqueAccountsMap.values()).sort((a, b) =>
-    (a.name || "").localeCompare(b.name || ""),
-  );
+  const uniqueAccounts = await AccountModel.find({ _id: { $in: accountIds } })
+    .select("_id name")
+    .lean();
+  uniqueAccounts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   apiResponse.sendSuccess(
     res,
@@ -655,11 +643,10 @@ exports.getAllAccounts = asynchandeler(async (req, res) => {
 
 //get transaction category
 exports.getTransactionCategories = asynchandeler(async (req, res) => {
-  const categories = await createTransactionModel
-    .find({ transactionCategory: { $exists: true } })
-    .populate("transactionCategory")
-    .select("transactionCategory -_id ")
-    .sort({ createdAt: 1 });
+  // The categories themselves, in the shape this endpoint always answered
+  // ({ transactionCategory } per entry), one entry per category (BUG-P2-008).
+  // It used to answer one entry per ledger row — a million populated rows.
+  const categories = await TransactionCategoryModel.find().sort({ createdAt: 1 }).lean();
   if (!categories.length) {
     throw new customError(
       "No transaction categories found",
@@ -670,7 +657,7 @@ exports.getTransactionCategories = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "Transaction categories fetched successfully",
-    categories,
+    categories.map((transactionCategory) => ({ transactionCategory })),
   );
 });
 // transaction report
@@ -695,48 +682,48 @@ exports.getTransactionReport = asynchandeler(async (req, res) => {
     filter.transactionCategory = transactionCategory;
   }
 
-  // 🔍 Fetch transactions
-  const transactions = await createTransactionModel
-    .find(filter)
-    .populate("transactionCategory")
-    .populate("account")
-    .sort({ date: -1 });
+  // Paged (BUG-P2-008): every transaction of the range, populated, ran the
+  // API out of memory. The page is read through the date index and populated;
+  // the totals and the count are worked out in the database.
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+  const skip = (page - 1) * limit;
 
-  // 🧮 If no transactions found
-  if (!transactions.length) {
-    return apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "Transaction not found !!",
+  const [transactions, totalsResult, total] = await Promise.all([
+    createTransactionModel
+      .find(filter)
+      .sort({ date: -1, _id: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("transactionCategory")
+      .populate("account"),
+    createTransactionModel.aggregate([
+      { $match: filter },
       {
-        filters: { startDate, endDate, transactionCategory },
-        summary: { cashReceived: 0, cashPayment: 0 },
-        transactions: [],
+        $group: {
+          _id: null,
+          cashReceived: { $sum: { $cond: [{ $eq: [{ $toLower: "$transactionType" }, "cash recived"] }, "$amount", 0] } },
+          cashPayment: { $sum: { $cond: [{ $eq: [{ $toLower: "$transactionType" }, "cash payment"] }, "$amount", 0] } },
+        },
       },
-    );
-  }
+    ]),
+    createTransactionModel.countDocuments(filter),
+  ]);
 
-  // 🧮 Calculate totals
-  let cashReceived = 0;
-  let cashPayment = 0;
+  const summary = {
+    cashReceived: totalsResult[0]?.cashReceived || 0,
+    cashPayment: totalsResult[0]?.cashPayment || 0,
+  };
 
-  transactions.forEach((tx) => {
-    const type = tx.transactionType?.toLowerCase();
-    if (type === "cash recived") cashReceived += tx.amount;
-    else if (type === "cash payment") cashPayment += tx.amount;
-  });
-
-  const summary = { cashReceived, cashPayment };
-
-  //  Send Response
   apiResponse.sendSuccess(
     res,
     statusCodes.OK,
-    "Transaction report fetched successfully",
+    total ? "Transaction report fetched successfully" : "Transaction not found !!",
     {
       filters: { startDate, endDate, transactionCategory },
       summary,
       transactions,
+      pagination: { total, page, limit, hasNextPage: skip + limit < total },
     },
   );
 });
@@ -859,33 +846,12 @@ exports.getCashLedgerReport = asynchandeler(async (req, res) => {
     match.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
 
-  const basePipeline = [
-    { $match: match },
-    {
-      $lookup: {
-        from: "transitioncategories",
-        localField: "transactionCategory",
-        foreignField: "_id",
-        as: "transactionCategory",
-        pipeline: [{ $project: { name: 1 } }],
-      },
-    },
-    { $unwind: { path: "$transactionCategory", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "accounts",
-        localField: "account",
-        foreignField: "_id",
-        as: "account",
-        pipeline: [{ $project: { name: 1 } }],
-      },
-    },
-    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
-  ];
-
-  const [summaryResult, totalResult, transactions] = await Promise.all([
+  // The category and account are joined onto the page only (BUG-P2-008); the
+  // totals and the count need neither, and joining both onto every ledger row
+  // of the range before grouping never finished.
+  const [summaryResult, totalCount, transactions] = await Promise.all([
     createTransactionModel.aggregate([
-      ...basePipeline,
+      { $match: match },
       {
         $group: {
           _id: null,
@@ -894,12 +860,32 @@ exports.getCashLedgerReport = asynchandeler(async (req, res) => {
         },
       },
     ]),
-    createTransactionModel.aggregate([...basePipeline, { $count: "total" }]),
+    createTransactionModel.countDocuments(match),
     createTransactionModel.aggregate([
-      ...basePipeline,
-      { $sort: { date: -1 } },
+      { $match: match },
+      { $sort: { date: -1, _id: -1 } },
       { $skip: skip },
       { $limit: limit },
+      {
+        $lookup: {
+          from: "transitioncategories",
+          localField: "transactionCategory",
+          foreignField: "_id",
+          as: "transactionCategory",
+          pipeline: [{ $project: { name: 1 } }],
+        },
+      },
+      { $unwind: { path: "$transactionCategory", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "accounts",
+          localField: "account",
+          foreignField: "_id",
+          as: "account",
+          pipeline: [{ $project: { name: 1 } }],
+        },
+      },
+      { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
       {
         $addFields: {
           transactionId: { $toString: "$_id" },
@@ -909,7 +895,6 @@ exports.getCashLedgerReport = asynchandeler(async (req, res) => {
   ]);
 
   const totals = summaryResult[0] || { totalCashReceived: 0, totalCashPayment: 0 };
-  const totalCount = totalResult[0]?.total || 0;
   const balance = totals.totalCashReceived - totals.totalCashPayment;
 
   apiResponse.sendSuccess(res, statusCodes.OK, "Cash ledger report fetched successfully", {
@@ -1539,8 +1524,10 @@ exports.getZeroSaleVariantsLast30Days = asynchandeler(async (req, res) => {
     multiVariantOpeningStock: v.multiVariantOpeningStock,
     totalByReturnQuantity: v.totalByReturnQuantity,
     totalSalesReturnQuantity: v.totalSalesReturnQuantity,
-    multipleVariantTotalPurchasedQuantity:
-      v.multipleVariantTotalPurchasedQuantity,
+    // The purchased quantity is kept on the variant by purchases (and their
+    // edits, deletes and returns); a find hook used to recount it from every
+    // purchase on every variant read (BUG-P2-007)
+    multipleVariantTotalPurchasedQuantity: v.purchaseQuantityStock || 0,
   }));
 
   apiResponse.sendSuccess(

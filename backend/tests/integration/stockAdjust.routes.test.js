@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { useIntegrationApp } = require("../setup/integration");
 const { api, expectSuccessEnvelope } = require("../helpers/api");
 const { createUserIn, tokenFor } = require("../helpers/auth");
@@ -7,6 +8,7 @@ const { runForTenant } = require("../../src/tenancy/context");
 const Product = require("../../src/models/product.model");
 const Variant = require("../../src/models/variant.model");
 const StockAdjust = require("../../src/models/stockadjust.model");
+const Subcategory = require("../../src/models/subcategory.model");
 
 describe("stock adjustment routes (/api/v1/stock)", () => {
   const ctx = useIntegrationApp();
@@ -179,6 +181,25 @@ describe("stock adjustment routes (/api/v1/stock)", () => {
       expect(res.body.data).toMatchObject({ total: 2 });
       expect(res.body.data.variants).toHaveLength(1);
       expect(res.body.data.singleProducts).toHaveLength(1);
+    });
+  });
+
+  // BUG-P2-010: the Low Stock page reads the server's paged low stock list
+  describe("POST /stock/low-stock (the Low Stock page)", () => {
+    it("lists items at or below their alert, one page at a time, with their subcategory", async () => {
+      const sub = await inTenant(() => Subcategory.create({ name: "Shirts", category: new mongoose.Types.ObjectId() }));
+      const empty = await f.product.create({ name: "Empty Shirt", stock: 0, variantType: "singleVariant", subcategory: sub._id });
+      const res = await as().post("/stock/low-stock").query({ limit: 10 }).send({}).expect(200);
+      const row = res.body.data.rows.find((r) => r.productName === "Empty Shirt");
+      expect(row).toMatchObject({ stock: 0, variantType: "single", subcategory: "Shirts", subcategoryId: sub._id.toString() });
+      expect(res.body.data.rows.some((r) => r._id.startsWith(product._id.toString()))).toBe(false);
+      expect(res.body.data.pagination).toMatchObject({ page: 1, hasNextPage: false });
+      expect(empty).toBeDefined();
+    });
+
+    it("needs low-stock:view", async () => {
+      const viewer = await createUserIn(tenant, { grants: { "low-stock-report": ["view"] } });
+      await as(viewer).post("/stock/low-stock").send({}).expect(403);
     });
   });
 });

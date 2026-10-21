@@ -106,7 +106,15 @@ describe("Velor migration", () => {
         ["011-mark-system-transaction-categories", "applied"],
         ["012-sales-return-unique-invoice", "applied"],
         ["013-audit-job-id-index", "applied"],
+        ["014-phase2-indexes", "applied"],
+        ["015-backfill-search-words", "applied"],
       ]);
+    });
+
+    // BUG-P2-004 / P2-011: the product searches match name words through an index
+    it("gives existing products the words of their name for the indexed search", async () => {
+      const products = await raw(Product).find({}, { sort: { name: 1 } }).toArray();
+      expect(products.map((p) => p.searchWords)).toEqual([["pant"], ["shirt"]]);
     });
 
     it("gives existing categories CAT serials in creation order", async () => {

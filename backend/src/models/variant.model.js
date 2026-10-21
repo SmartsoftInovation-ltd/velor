@@ -1,7 +1,7 @@
 const { statusCodes } = require("../constant/constant");
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
-const purchaseModel = require("./purchase.model");
+const { searchWordsPlugin } = require("../utils/searchWords.util");
 const slugify = require("slugify");
 const { customError } = require("../lib/CustomError");
 
@@ -187,6 +187,8 @@ variantSchema.index({
 // become { tenantId, <field> }.
 variantSchema.index({ product: 1 });
 variantSchema.index({ product: 1, isActive: 1 });
+// Lists page newest first (BUG-P2-010)
+variantSchema.index({ createdAt: -1, _id: -1 });
 
 const UNIQUE_VARIANT_FIELDS = {
   variantName: "Variant name",
@@ -301,44 +303,6 @@ variantSchema.pre("save", async function (next) {
   }
 });
 
-// find purchase model and return total purchased quantity in
-variantSchema.virtual("multipleVariantTotalPurchasedQuantity");
-
-// Middleware: Optimized post('find') to fix N+1 problem
-variantSchema.post("find", async function (docs, next) {
-  try {
-    if (!docs || docs.length === 0) return next();
-
-    const variantIds = docs.map((doc) => doc._id);
-
-    // Fetch all relevant purchases in one query
-    const purchases = await purchaseModel.find({
-      "allproduct.variant": { $in: variantIds },
-    });
-
-    // Build a map of variantId -> totalQuantity
-    const purchaseMap = {};
-    purchases.forEach((purchase) => {
-      purchase.allproduct.forEach((item) => {
-        if (item.variant) {
-          const key = item.variant.toString();
-          purchaseMap[key] = (purchaseMap[key] || 0) + (item.quantity || 0);
-        }
-      });
-    });
-
-    // Attach computed value to each document
-    docs.forEach((doc) => {
-      doc.multipleVariantTotalPurchasedQuantity =
-        purchaseMap[doc._id.toString()] || 0;
-    });
-
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
 // Keep slug update on findOneAndUpdate
 variantSchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate();
@@ -363,6 +327,12 @@ variantSchema.virtual("totalSalesReturnQuantity").get(function () {
     0,
   );
 });
+// Indexed word-prefix search on the name (BUG-P2-004 / P2-011). Applied before
+// tenantPlugin, which puts tenantId in front of the indexes declared so far.
+variantSchema.plugin(searchWordsPlugin, { field: "variantName" });
+// Scanned codes are matched exactly; every branch of the search's $or needs an index
+variantSchema.index({ qrCode: 1 });
+
 variantSchema.plugin(tenantPlugin);
 module.exports =
   mongoose.models.Variant || mongoose.model("Variant", variantSchema);

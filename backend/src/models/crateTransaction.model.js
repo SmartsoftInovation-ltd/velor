@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
+const { MANUAL_ENTRY_ONLY } = require("../utils/manualEntry.util");
 const Counter = require("./counter.model");
 const { getInvoicePrefix } = require("../integrations/config");
 const crateTransactionSchema = new mongoose.Schema(
@@ -106,6 +107,14 @@ crateTransactionSchema.index({ purchaseReturnReference: 1 });
 crateTransactionSchema.index({ salesReturnReference: 1 });
 
 crateTransactionSchema.index({ account: 1, createdAt: -1 });
+// The transaction list shows manual entries only, newest first: this index
+// holds just those rows, so the list neither scans nor sorts the whole ledger
+// (BUG-P2-008)
+crateTransactionSchema.index({ createdAt: -1, _id: -1 }, { partialFilterExpression: MANUAL_ENTRY_ONLY });
+
+// Phase 2 (BUG-P2-008): the ledger reports filter by date, per account
+crateTransactionSchema.index({ date: -1 });
+crateTransactionSchema.index({ account: 1, date: 1, createdAt: 1 });
 
 // Auto-generate a sequential, never-reused transactionSerialId after first save
 crateTransactionSchema.post("save", async function (doc, next) {

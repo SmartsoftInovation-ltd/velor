@@ -30,6 +30,7 @@ const FundHandoverDescription = require("../models/fundHandoverDescription.model
 const Product = require("../models/product.model");
 const { buildLowStockStages } = require("../utils/lowStock.util");
 const { saleProfitStages, saleLineProfitStages } = require("../utils/saleProfit.util");
+const { nameSearchFilter, idsMatchingAny, escapeRegex } = require("../utils/searchWords.util");
 const {
   getCache,
   setCache,
@@ -2607,6 +2608,16 @@ exports.getLowStockReport = asynchandeler(async (req, res) => {
         { $sort: { rowShortfall: -1, name: 1 } },
         { $skip: skip },
         { $limit: limit },
+        // The page's subcategory names (the Low Stock page groups by them)
+        {
+          $lookup: {
+            from: "subcategories",
+            localField: "subcategory",
+            foreignField: "_id",
+            as: "subcategoryInfo",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
         {
           $project: {
             _id: {
@@ -2617,6 +2628,9 @@ exports.getLowStockReport = asynchandeler(async (req, res) => {
               ],
             },
             productName: { $ifNull: ["$name", "-"] },
+            subcategoryId: "$subcategory",
+            subcategory: { $ifNull: [{ $first: "$subcategoryInfo.name" }, "-"] },
+            variantType: { $cond: [{ $ifNull: ["$stockRows.variantId", false] }, "multi", "single"] },
             variantName: { $ifNull: ["$stockRows.variantName", "-"] },
             barcode: { $ifNull: ["$stockRows.barcode", "-"] },
             color: { $ifNull: ["$stockRows.color", "-"] },
@@ -2753,120 +2767,117 @@ exports.getSalesInvoiceReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const pipeline = [
-    { $match: match },
-    {
-      $lookup: {
-        from: "customers",
-        localField: "customerType.customerId",
-        foreignField: "_id",
-        as: "customerInfo",
-        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+  // Three queries instead of one $facet (BUG-P2-002): the rows page on the
+  // { tenantId, date } index and only that page is joined to customers; the
+  // totals and the per-account summary never need the customer join. The old
+  // pipeline joined customers onto every sale in the range before paging.
+  const discountAmount = { $multiply: ["$total", { $divide: ["$discountPercent", 100] }] };
+  const vatAmount = { $multiply: ["$total", { $divide: ["$vatPercent", 100] }] };
+
+  const [rows, totalsResult, accountSummary] = await Promise.all([
+    Sales.aggregate([
+      { $match: match },
+      { $sort: { date: -1, _id: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customerType.customerId",
+          foreignField: "_id",
+          as: "customerInfo",
+          pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+        },
       },
-    },
-    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $addFields: {
-        discountAmount: { $multiply: ["$total", { $divide: ["$discountPercent", 100] }] },
-        vatAmount: { $multiply: ["$total", { $divide: ["$vatPercent", 100] }] },
+      { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          date: 1,
+          invoiceNumber: 1,
+          salesType: 1,
+          customerName: {
+            $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+          },
+          customerPhone: {
+            $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+          },
+          total: 1,
+          discount: discountAmount,
+          vat: vatAmount,
+          delivery: "$deliveryCost",
+          labour: "$labourCost",
+          payable: 1,
+          paid: 1,
+          due: "$presentDue",
+          paymentStatus: 1,
+        },
       },
-    },
-    {
-      $facet: {
-        rows: [
-          { $sort: { date: -1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              _id: 1,
-              date: 1,
-              invoiceNumber: 1,
-              salesType: 1,
-              customerName: {
-                $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
-              },
-              customerPhone: {
-                $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
-              },
-              total: 1,
-              discount: "$discountAmount",
-              vat: "$vatAmount",
-              delivery: "$deliveryCost",
-              labour: "$labourCost",
-              payable: 1,
-              paid: 1,
-              due: "$presentDue",
-              paymentStatus: 1,
-            },
-          },
-        ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              totalAmount: { $sum: "$total" },
-              totalDiscount: { $sum: "$discountAmount" },
-              totalVat: { $sum: "$vatAmount" },
-              totalDelivery: { $sum: "$deliveryCost" },
-              totalLabour: { $sum: "$labourCost" },
-              totalPayable: { $sum: "$payable" },
-              totalPaid: { $sum: "$paid" },
-              totalDue: { $sum: "$presentDue" },
-            },
-          },
-        ],
-        accountSummary: [
-          {
-            $project: {
-              payments: {
-                $concatArrays: [
-                  {
-                    $cond: [
-                      { $ifNull: ["$paymentMethod.singlePayment.paymentTo", false] },
-                      ["$paymentMethod.singlePayment"],
-                      [],
-                    ],
-                  },
-                  { $ifNull: ["$paymentMethod.multiplePayment", []] },
+    ]),
+    Sales.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalAmount: { $sum: "$total" },
+          totalDiscount: { $sum: discountAmount },
+          totalVat: { $sum: vatAmount },
+          totalDelivery: { $sum: "$deliveryCost" },
+          totalLabour: { $sum: "$labourCost" },
+          totalPayable: { $sum: "$payable" },
+          totalPaid: { $sum: "$paid" },
+          totalDue: { $sum: "$presentDue" },
+        },
+      },
+    ]),
+    Sales.aggregate([
+      { $match: match },
+      {
+        $project: {
+          payments: {
+            $concatArrays: [
+              {
+                $cond: [
+                  { $ifNull: ["$paymentMethod.singlePayment.paymentTo", false] },
+                  ["$paymentMethod.singlePayment"],
+                  [],
                 ],
               },
-            },
+              { $ifNull: ["$paymentMethod.multiplePayment", []] },
+            ],
           },
-          { $unwind: "$payments" },
-          {
-            $group: {
-              _id: "$payments.paymentTo",
-              totalAmount: { $sum: "$payments.amount" },
-            },
-          },
-          {
-            $lookup: {
-              from: "accounts",
-              localField: "_id",
-              foreignField: "_id",
-              as: "account",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
-          {
-            $project: {
-              _id: 0,
-              accountName: { $ifNull: ["$account.name", "Unknown"] },
-              totalAmount: 1,
-            },
-          },
-          { $sort: { totalAmount: -1 } },
-        ],
+        },
       },
-    },
-  ];
+      { $unwind: "$payments" },
+      {
+        $group: {
+          _id: "$payments.paymentTo",
+          totalAmount: { $sum: "$payments.amount" },
+        },
+      },
+      {
+        $lookup: {
+          from: "accounts",
+          localField: "_id",
+          foreignField: "_id",
+          as: "account",
+          pipeline: [{ $project: { name: 1 } }],
+        },
+      },
+      { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          accountName: { $ifNull: ["$account.name", "Unknown"] },
+          totalAmount: 1,
+        },
+      },
+      { $sort: { totalAmount: -1 } },
+    ]),
+  ]);
 
-  const [result] = await Sales.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const totals = result?.totals?.[0] || {
+  const totals = totalsResult?.[0] || {
     count: 0,
     totalAmount: 0,
     totalDiscount: 0,
@@ -2877,7 +2888,6 @@ exports.getSalesInvoiceReport = asynchandeler(async (req, res) => {
     totalPaid: 0,
     totalDue: 0,
   };
-  const accountSummary = result?.accountSummary || [];
   const grandTotal = accountSummary.reduce((sum, a) => sum + a.totalAmount, 0);
 
   const header = await getStoreHeader();
@@ -2919,29 +2929,34 @@ exports.getSalesInvoiceReport = asynchandeler(async (req, res) => {
   );
 });
 
-// @desc Customers that have at least one sale — for the sales report's customer filter dropdown
+// @desc Customers for the sales report's customer filter dropdown, searched
+// as the user types (?search=, at most 50). Read from the customers
+// collection through indexes — the name by word prefix, the mobile by prefix —
+// instead of a distinct over every sale and every customer at once (13 MB on a
+// large shop, BUG-P2-002).
+const PICKER_LIMIT = 50;
 exports.getSalesInvoiceCustomers = asynchandeler(async (req, res) => {
-  const cacheKey = await buildCacheKey(SALES_NS, "report:sales:customers");
-  const cached = await getCache(cacheKey);
-  if (cached) {
-    return apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "Customer list fetched successfully",
-      { customers: cached, fromCache: true },
-    );
+  const search = String(req.query.search || "").trim();
+  const conditions = [];
+  if (search) {
+    const byName = nameSearchFilter(search);
+    if (byName) conditions.push(byName);
+    if (/^\+?\d{2,}$/.test(search)) {
+      conditions.push({ mobileNumber: { $regex: `^${escapeRegex(search)}` } });
+    }
   }
 
-  const customerIds = await Sales.distinct("customerType.customerId", {
-    "customerType.customerId": { $ne: null },
-  });
-
-  const customers = await Customer.find({ _id: { $in: customerIds } })
-    .select("_id fullName mobileNumber")
-    .sort({ fullName: 1 })
-    .lean();
-
-  await setCache(cacheKey, customers, REPORT_CACHE_TTL);
+  const select = "_id fullName mobileNumber";
+  let customers;
+  if (!search) {
+    customers = await Customer.find().sort({ _id: -1 }).limit(PICKER_LIMIT).select(select).lean();
+  } else if (!conditions.length) {
+    customers = [];
+  } else {
+    const ids = await idsMatchingAny(Customer, conditions, PICKER_LIMIT);
+    customers = await Customer.find({ _id: { $in: ids } }).select(select).lean();
+  }
+  customers.sort((a, b) => String(a.fullName || "").localeCompare(String(b.fullName || "")));
 
   apiResponse.sendSuccess(
     res,
@@ -2981,6 +2996,286 @@ exports.getSalesInvoiceSalesmen = asynchandeler(async (req, res) => {
   );
 });
 
+// ---- Line-item reports (BUG-P2-002) -----------------------------------------
+// Reports with one row per sold line (sales-product and its customer /
+// salesman variants) joined products and variants onto every line of the
+// range before paging, and their totals summed per-line prices, so a 2-year
+// range never finished. They page the lines first and join only the page;
+// totals group the lines per item and join each item once.
+
+const ITEM_FIELDS = {
+  name: 1,
+  barCode: 1,
+  category: 1,
+  subcategory: 1,
+  brand: 1,
+  color: 1,
+  size: 1,
+  purchasePrice: 1,
+  wholesalePrice: 1,
+  retailPrice: 1,
+};
+
+// Product / category / subcategory / brand filters, resolved up front to the
+// products and variants they cover, so sale lines are filtered by id on the
+// sale itself instead of after joining every line. null when none is set.
+async function lineFilterIds({ productId, category, subCategory, brand }) {
+  const filter = {};
+  if (productId) {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
+    }
+    filter._id = new mongoose.Types.ObjectId(productId);
+  }
+  castObjectIdFilter(filter, "category", category);
+  castObjectIdFilter(filter, "subcategory", subCategory);
+  castObjectIdFilter(filter, "brand", brand);
+  if (!Object.keys(filter).length) return null;
+
+  const productIds = (await Product.find(filter).select({ _id: 1 }).lean()).map((p) => p._id);
+  const variantIds = productIds.length
+    ? (await Variant.find({ product: { $in: productIds } }).select({ _id: 1 }).lean()).map((v) => v._id)
+    : [];
+  return { productIds, variantIds };
+}
+
+// A customer name / phone search on sales: listed customers are found through
+// their own indexes (name by word prefix, phone by prefix) and the sales
+// matched by customer id; walking customers' names and phones live on the
+// sale. Joining customers onto every sale to search the joined name read the
+// whole range.
+// Listed customers matching a name (word prefix) or phone (prefix), through
+// the customers' indexes
+async function customerIdsForSearch(query) {
+  const conditions = [];
+  const byName = nameSearchFilter(query);
+  if (byName) conditions.push(byName);
+  if (/^\+?\d{2,}$/.test(query)) conditions.push({ mobileNumber: { $regex: `^${escapeRegex(query)}` } });
+  return conditions.length ? idsMatchingAny(Customer, conditions, 1000) : [];
+}
+
+async function customerSearchMatch(query) {
+  const rx = new RegExp(escapeRegex(query), "i");
+  const customerIds = await customerIdsForSearch(query);
+  return {
+    $or: [
+      ...(customerIds.length ? [{ "customerType.customerId": { $in: customerIds } }] : []),
+      { "customerType.walking.customerName": rx },
+      { "customerType.walking.mobileNumber": rx },
+    ],
+  };
+}
+
+// The sale lines of those items: before $unwind it keeps the sales holding
+// one, after it the lines themselves
+const lineIdMatch = (ids) => ({
+  $or: [
+    { "searchItem.productId": { $in: ids.productIds } },
+    { "searchItem.variantId": { $in: ids.variantIds } },
+  ],
+});
+
+// Join a line's product and variant (the variant's parent product too: a
+// variant line may carry no productId) and resolve the effective product
+const itemInfoStages = (productField, variantField) => [
+  {
+    $lookup: {
+      from: "products",
+      localField: productField,
+      foreignField: "_id",
+      as: "productInfo",
+      pipeline: [{ $project: ITEM_FIELDS }],
+    },
+  },
+  { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+  {
+    $lookup: {
+      from: "variants",
+      localField: variantField,
+      foreignField: "_id",
+      as: "variantInfo",
+      pipeline: [
+        { $project: { barCode: 1, color: 1, size: 1, product: 1, purchasePrice: 1, wholesalePrice: 1, retailPrice: 1 } },
+        {
+          $lookup: {
+            from: "products",
+            localField: "product",
+            foreignField: "_id",
+            as: "variantProduct",
+            pipeline: [{ $project: ITEM_FIELDS }],
+          },
+        },
+        { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
+      ],
+    },
+  },
+  { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
+  {
+    // The variant is the more specific record, so its prices win where a
+    // variant was sold; the product is the fallback for non-variant lines.
+    $addFields: {
+      resolvedProduct: { $ifNull: ["$productInfo", "$variantInfo.variantProduct"] },
+    },
+  },
+  {
+    $addFields: {
+      lineBuyPrice: {
+        $ifNull: ["$variantInfo.purchasePrice", { $ifNull: ["$resolvedProduct.purchasePrice", 0] }],
+      },
+      lineWsPrice: {
+        $ifNull: ["$variantInfo.wholesalePrice", { $ifNull: ["$resolvedProduct.wholesalePrice", 0] }],
+      },
+      lineRsPrice: {
+        $ifNull: ["$variantInfo.retailPrice", { $ifNull: ["$resolvedProduct.retailPrice", 0] }],
+      },
+    },
+  },
+];
+
+// Percent-type discounts are not taka values, so only the taka equivalent of
+// each line is accumulated
+const lineDiscountTaka = {
+  $cond: [
+    { $eq: [{ $ifNull: ["$searchItem.discountType", "amount"] }, "percent"] },
+    {
+      $multiply: [
+        { $ifNull: ["$searchItem.subtotal", 0] },
+        { $divide: [{ $ifNull: ["$searchItem.discount", 0] }, 100] },
+      ],
+    },
+    { $ifNull: ["$searchItem.discount", 0] },
+  ],
+};
+
+// Documents by _id, fetched in batches with $in (one indexed query per batch,
+// where a $lookup runs a sub-pipeline per document)
+const PRICE_FIELDS = { product: 1, purchasePrice: 1, wholesalePrice: 1, retailPrice: 1 };
+async function byIdInBatches(Model, ids, fields = PRICE_FIELDS) {
+  const map = new Map();
+  const unique = [...new Set(ids.filter(Boolean).map(String))];
+  for (let i = 0; i < unique.length; i += 20000) {
+    const docs = await Model.find({ _id: { $in: unique.slice(i, i + 20000) } })
+      .select(fields)
+      .lean();
+    for (const doc of docs) map.set(String(doc._id), doc);
+  }
+  return map;
+}
+
+/**
+ * Totals of a line report. Lines are grouped per item in the database, the
+ * items' prices are fetched in batches, and each item's prices count once per
+ * line it was sold on — the same sums as joining every line, without a join
+ * per line or per item. Prices resolve as on the rows: the variant's, else
+ * the product's (the variant's parent when the line has no product).
+ */
+async function lineReportTotals(baseStages) {
+  const items = await Sales.aggregate([
+    ...baseStages,
+    {
+      $group: {
+        _id: { p: "$searchItem.productId", v: "$searchItem.variantId" },
+        count: { $sum: 1 },
+        qty: { $sum: { $ifNull: ["$searchItem.quantity", 0] } },
+        amount: { $sum: { $ifNull: ["$searchItem.subtotal", 0] } },
+        discount: { $sum: lineDiscountTaka },
+      },
+    },
+  ]).allowDiskUse(true);
+
+  const variants = await byIdInBatches(Variant, items.map((i) => i._id.v));
+  const products = await byIdInBatches(Product, [
+    ...items.map((i) => i._id.p),
+    ...[...variants.values()].map((v) => v.product),
+  ]);
+
+  const totals = {
+    count: 0,
+    totalQty: 0,
+    totalBuyPrice: 0,
+    totalWsPrice: 0,
+    totalRsPrice: 0,
+    totalSubTotal: 0,
+    totalDiscount: 0,
+    totalAmount: 0,
+  };
+  for (const item of items) {
+    const variant = item._id.v ? variants.get(String(item._id.v)) : null;
+    const product =
+      (item._id.p && products.get(String(item._id.p))) ||
+      (variant?.product && products.get(String(variant.product))) ||
+      null;
+    const price = (field) => variant?.[field] ?? product?.[field] ?? 0;
+    totals.count += item.count;
+    totals.totalQty += item.qty;
+    totals.totalBuyPrice += item.count * price("purchasePrice");
+    totals.totalWsPrice += item.count * price("wholesalePrice");
+    totals.totalRsPrice += item.count * price("retailPrice");
+    // Retail valuation of what was sold: RS price × quantity
+    totals.totalSubTotal += item.qty * price("retailPrice");
+    totals.totalDiscount += item.discount;
+    totals.totalAmount += item.amount;
+  }
+  return totals;
+}
+
+/**
+ * One page of a line report: the sales in date order through the date index,
+ * unwound, cut to the page, and only then joined to customers and items.
+ */
+const lineReportPageStages = (match, ids, skip, limit) => [
+  { $match: ids ? { ...match, ...lineIdMatch(ids) } : match },
+  { $sort: { date: -1, _id: -1 } },
+  { $unwind: "$searchItem" },
+  ...(ids ? [{ $match: lineIdMatch(ids) }] : []),
+  { $skip: skip },
+  { $limit: limit },
+  {
+    $lookup: {
+      from: "customers",
+      localField: "customerType.customerId",
+      foreignField: "_id",
+      as: "customerInfo",
+      pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+    },
+  },
+  { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+  ...itemInfoStages("searchItem.productId", "searchItem.variantId"),
+  {
+    $project: {
+      _id: 1,
+      date: 1,
+      invoiceNumber: 1,
+      salesType: 1,
+      customerName: {
+        $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
+      },
+      customerPhone: {
+        $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
+      },
+      productName: { $ifNull: ["$resolvedProduct.name", "-"] },
+      barcode: {
+        $ifNull: ["$searchItem.barcode", { $ifNull: ["$variantInfo.barCode", "$resolvedProduct.barCode"] }],
+      },
+      color: {
+        $ifNull: ["$variantInfo.color", { $ifNull: ["$resolvedProduct.color", "$searchItem.color"] }],
+      },
+      size: {
+        $ifNull: ["$variantInfo.size", { $ifNull: ["$resolvedProduct.size", "$searchItem.size"] }],
+      },
+      qty: { $ifNull: ["$searchItem.quantity", 0] },
+      buyPrice: "$lineBuyPrice",
+      wsPrice: "$lineWsPrice",
+      rsPrice: "$lineRsPrice",
+      discount: { $ifNull: ["$searchItem.discount", 0] },
+      // "amount" = flat taka off, "percent" = share of the line. Returned so
+      // the report can render the right unit instead of guessing.
+      discountType: { $ifNull: ["$searchItem.discountType", "amount"] },
+      total: { $ifNull: ["$searchItem.subtotal", 0] },
+    },
+  },
+];
+
 // @desc Sales product report — one row per sold line item (product/variant),
 // date range + optional product/salesType/category/subcategory/brand filters.
 // Prices come from the sale line where recorded (salesRate/discount/subtotal)
@@ -2998,21 +3293,9 @@ exports.getSalesProductReport = asynchandeler(async (req, res) => {
   const match = { date: { $gte: new Date(startDate), $lte: new Date(endDate) } };
   if (salesType && salesType.trim() !== "") match.salesType = salesType.trim();
 
-  // Line-item and product-level filters can only run after the $unwind and the
-  // product $lookup below, so they are collected here and applied as a second
-  // $match rather than being folded into the indexed top-level one.
-  const lineMatch = {};
-  if (productId) {
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
-    }
-    // Matches on the resolved product so a variant line whose own productId
-    // is unset still matches when its parent product is the one selected.
-    lineMatch["resolvedProduct._id"] = new mongoose.Types.ObjectId(productId);
-  }
-  castObjectIdFilter(lineMatch, "resolvedProduct.category", category);
-  castObjectIdFilter(lineMatch, "resolvedProduct.subcategory", subCategory);
-  castObjectIdFilter(lineMatch, "resolvedProduct.brand", brand);
+  // Product-level filters become the ids of the products and variants they
+  // cover (a variant line matches through its parent product too)
+  const ids = await lineFilterIds({ productId, category, subCategory, brand });
 
   const cacheKey = await buildCacheKey(
     SALES_NS,
@@ -3028,217 +3311,15 @@ exports.getSalesProductReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const pipeline = [
-    { $match: match },
-    {
-      $lookup: {
-        from: "customers",
-        localField: "customerType.customerId",
-        foreignField: "_id",
-        as: "customerInfo",
-        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
-      },
-    },
-    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+  const baseStages = [
+    { $match: ids ? { ...match, ...lineIdMatch(ids) } : match },
     { $unwind: "$searchItem" },
-    {
-      $lookup: {
-        from: "products",
-        localField: "searchItem.productId",
-        foreignField: "_id",
-        as: "productInfo",
-        pipeline: [
-          {
-            $project: {
-              name: 1,
-              barCode: 1,
-              category: 1,
-              subcategory: 1,
-              brand: 1,
-              color: 1,
-              size: 1,
-              purchasePrice: 1,
-              wholesalePrice: 1,
-              retailPrice: 1,
-            },
-          },
-        ],
-      },
-    },
-    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "variants",
-        localField: "searchItem.variantId",
-        foreignField: "_id",
-        as: "variantInfo",
-        pipeline: [
-          {
-            $project: {
-              barCode: 1,
-              color: 1,
-              size: 1,
-              product: 1,
-              purchasePrice: 1,
-              wholesalePrice: 1,
-              retailPrice: 1,
-            },
-          },
-          {
-            // A sale line that references a variant may carry no productId of
-            // its own, so the parent product is resolved through the variant
-            // to get its display name.
-            $lookup: {
-              from: "products",
-              localField: "product",
-              foreignField: "_id",
-              as: "variantProduct",
-              pipeline: [
-                {
-                  $project: {
-                    name: 1,
-                    barCode: 1,
-                    category: 1,
-                    subcategory: 1,
-                    brand: 1,
-                    color: 1,
-                    size: 1,
-                    purchasePrice: 1,
-                    wholesalePrice: 1,
-                    retailPrice: 1,
-                  },
-                },
-              ],
-            },
-          },
-          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
-        ],
-      },
-    },
-    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
-    {
-      // A variant line may not carry productId, so the effective product is
-      // the directly-joined one when present, otherwise the variant's parent.
-      // Filters below match against this rather than productInfo, so variant
-      // lines are not silently dropped by a category/brand filter.
-      $addFields: {
-        resolvedProduct: { $ifNull: ["$productInfo", "$variantInfo.variantProduct"] },
-      },
-    },
-    ...(Object.keys(lineMatch).length > 0 ? [{ $match: lineMatch }] : []),
-    {
-      // The variant is the more specific record, so its values win where a
-      // variant was sold; the product is the fallback for non-variant lines.
-      $addFields: {
-        lineBuyPrice: {
-          $ifNull: ["$variantInfo.purchasePrice", { $ifNull: ["$resolvedProduct.purchasePrice", 0] }],
-        },
-        lineWsPrice: {
-          $ifNull: ["$variantInfo.wholesalePrice", { $ifNull: ["$resolvedProduct.wholesalePrice", 0] }],
-        },
-        lineRsPrice: {
-          $ifNull: ["$variantInfo.retailPrice", { $ifNull: ["$resolvedProduct.retailPrice", 0] }],
-        },
-        lineDiscount: { $ifNull: ["$searchItem.discount", 0] },
-        // "amount" = flat taka off, "percent" = share of the line. Returned so
-        // the report can render the right unit instead of guessing.
-        lineDiscountType: { $ifNull: ["$searchItem.discountType", "amount"] },
-        lineTotal: { $ifNull: ["$searchItem.subtotal", 0] },
-        lineQty: { $ifNull: ["$searchItem.quantity", 0] },
-      },
-    },
-    {
-      $facet: {
-        rows: [
-          { $sort: { date: -1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              _id: 1,
-              date: 1,
-              invoiceNumber: 1,
-              salesType: 1,
-              customerName: {
-                $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
-              },
-              customerPhone: {
-                $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
-              },
-              productName: { $ifNull: ["$resolvedProduct.name", "-"] },
-              barcode: {
-                $ifNull: [
-                  "$searchItem.barcode",
-                  { $ifNull: ["$variantInfo.barCode", "$resolvedProduct.barCode"] },
-                ],
-              },
-              color: {
-                $ifNull: [
-                  "$variantInfo.color",
-                  { $ifNull: ["$resolvedProduct.color", "$searchItem.color"] },
-                ],
-              },
-              size: {
-                $ifNull: [
-                  "$variantInfo.size",
-                  { $ifNull: ["$resolvedProduct.size", "$searchItem.size"] },
-                ],
-              },
-              qty: "$lineQty",
-              buyPrice: "$lineBuyPrice",
-              wsPrice: "$lineWsPrice",
-              rsPrice: "$lineRsPrice",
-              discount: "$lineDiscount",
-              discountType: "$lineDiscountType",
-              total: "$lineTotal",
-            },
-          },
-        ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              totalQty: { $sum: "$lineQty" },
-              totalBuyPrice: { $sum: "$lineBuyPrice" },
-              totalWsPrice: { $sum: "$lineWsPrice" },
-              totalRsPrice: { $sum: "$lineRsPrice" },
-              // Percent-type discounts are not taka values, so summing them
-              // with flat amounts would produce a meaningless total. Only the
-              // taka equivalent of each line is accumulated here.
-              totalDiscount: {
-                $sum: {
-                  $cond: [
-                    { $eq: ["$lineDiscountType", "percent"] },
-                    {
-                      $multiply: [
-                        { $ifNull: ["$searchItem.subtotal", 0] },
-                        { $divide: ["$lineDiscount", 100] },
-                      ],
-                    },
-                    "$lineDiscount",
-                  ],
-                },
-              },
-              totalAmount: { $sum: "$lineTotal" },
-            },
-          },
-        ],
-      },
-    },
+    ...(ids ? [{ $match: lineIdMatch(ids) }] : []),
   ];
-
-  const [result] = await Sales.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const totals = result?.totals?.[0] || {
-    count: 0,
-    totalQty: 0,
-    totalBuyPrice: 0,
-    totalWsPrice: 0,
-    totalRsPrice: 0,
-    totalDiscount: 0,
-    totalAmount: 0,
-  };
+  const [rows, totals] = await Promise.all([
+    Sales.aggregate(lineReportPageStages(match, ids, skip, limit)),
+    lineReportTotals(baseStages),
+  ]);
 
   const header = await getStoreHeader();
 
@@ -3328,13 +3409,34 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
   }
 
   // ---- 1. Sold quantity + revenue, grouped per product/variant ----
+  // The lines are grouped per item first and each item is joined to its
+  // product/variant once (BUG-P2-002): joining every sale line of the range
+  // (100k lines for 30 days) before grouping never finished.
   const salesPipeline = [
     { $match: match },
     { $unwind: "$searchItem" },
     {
+      $group: {
+        // Variant is the reporting grain where present — the screenshot shows
+        // colour/size per row, which only a variant carries.
+        _id: { $ifNull: ["$searchItem.variantId", "$searchItem.productId"] },
+        variantId: { $first: "$searchItem.variantId" },
+        productId: { $first: "$searchItem.productId" },
+        lineBarcode: { $first: "$searchItem.barcode" },
+        lineColor: { $first: "$searchItem.color" },
+        lineSize: { $first: "$searchItem.size" },
+        qty: { $sum: { $ifNull: ["$searchItem.quantity", 0] } },
+        salesTotal: { $sum: { $ifNull: ["$searchItem.subtotal", 0] } },
+      },
+    },
+  ];
+
+  // Product/variant details of a grouped row
+  const itemInfoStages = [
+    {
       $lookup: {
         from: "products",
-        localField: "searchItem.productId",
+        localField: "productId",
         foreignField: "_id",
         as: "productInfo",
         pipeline: [
@@ -3346,7 +3448,7 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
     {
       $lookup: {
         from: "variants",
-        localField: "searchItem.variantId",
+        localField: "variantId",
         foreignField: "_id",
         as: "variantInfo",
         pipeline: [
@@ -3375,46 +3477,46 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
       },
     },
     ...(Object.keys(lineMatch).length > 0 ? [{ $match: lineMatch }] : []),
+  ];
+  const rowStages = [
     {
-      $group: {
-        // Variant is the reporting grain where present — the screenshot shows
-        // colour/size per row, which only a variant carries.
-        _id: { $ifNull: ["$searchItem.variantId", "$resolvedProduct._id"] },
-        variantId: { $first: "$searchItem.variantId" },
-        productName: { $first: { $ifNull: ["$resolvedProduct.name", "-"] } },
+      $project: {
+        variantId: 1,
+        qty: 1,
+        salesTotal: 1,
+        productName: { $ifNull: ["$resolvedProduct.name", "-"] },
         barcode: {
-          $first: {
-            $ifNull: [
-              "$searchItem.barcode",
-              { $ifNull: ["$variantInfo.barCode", "$resolvedProduct.barCode"] },
-            ],
-          },
+          $ifNull: ["$lineBarcode", { $ifNull: ["$variantInfo.barCode", "$resolvedProduct.barCode"] }],
         },
         color: {
-          $first: {
-            $ifNull: [
-              "$variantInfo.color",
-              { $ifNull: ["$resolvedProduct.color", "$searchItem.color"] },
-            ],
-          },
+          $ifNull: ["$variantInfo.color", { $ifNull: ["$resolvedProduct.color", "$lineColor"] }],
         },
         size: {
-          $first: {
-            $ifNull: [
-              "$variantInfo.size",
-              { $ifNull: ["$resolvedProduct.size", "$searchItem.size"] },
-            ],
-          },
+          $ifNull: ["$variantInfo.size", { $ifNull: ["$resolvedProduct.size", "$lineSize"] }],
         },
-        qty: { $sum: { $ifNull: ["$searchItem.quantity", 0] } },
-        salesTotal: { $sum: { $ifNull: ["$searchItem.subtotal", 0] } },
       },
     },
-    { $sort: { salesTotal: -1 } },
   ];
 
-  const [soldRows, summaryAgg] = await Promise.all([
-    Sales.aggregate(salesPipeline),
+  // Sorted and paged inside the database: only the page's rows come back,
+  // joined to their product/variant. Pulling every item sold in the period
+  // into Node to count and slice it took 90 round trips. A category /
+  // subcategory / brand filter needs each item's product before paging, so
+  // with one of those set the join runs first.
+  const filtered = Object.keys(lineMatch).length > 0;
+  salesPipeline.push(
+    ...(filtered ? itemInfoStages : []),
+    { $sort: { salesTotal: -1, _id: 1 } },
+    {
+      $facet: {
+        rows: [{ $skip: skip }, { $limit: limit }, ...(filtered ? [] : itemInfoStages), ...rowStages],
+        total: [{ $count: "count" }],
+      },
+    },
+  );
+
+  const [[soldPage], summaryAgg] = await Promise.all([
+    Sales.aggregate(salesPipeline).allowDiskUse(true),
     // ---- 2. Invoice-level totals for the summary block ----
     Sales.aggregate([
       { $match: match },
@@ -3493,41 +3595,57 @@ exports.getSalesSummaryReport = asynchandeler(async (req, res) => {
     ]),
   ]);
 
-  const totalRows = soldRows.length;
-  const pagedRows = soldRows.slice(skip, skip + limit);
+  const totalRows = soldPage?.total?.[0]?.count || 0;
+  const pagedRows = soldPage?.rows || [];
 
   // ---- 3. Weighted average buy price, only for the items on this page ----
   const keyIds = pagedRows.map((r) => r._id).filter(Boolean);
 
+  // Only the purchases holding this page's items are read: one indexed query
+  // per line field (an $or here would not use the indexes). Unwinding every
+  // purchase of the store to find a page's items was a full scan.
+  // Each query keeps only its own kind of line (a variant's, or a product's
+  // with no variant), so a purchase holding both kinds is counted once.
+  const purchasesOf = (field) => [
+    { $match: { date: { $lte: rangeEnd }, [`allproduct.${field}`]: { $in: keyIds } } },
+    { $unwind: "$allproduct" },
+    {
+      $addFields: {
+        costKey: { $ifNull: ["$allproduct.variant", "$allproduct.product"] },
+      },
+    },
+    {
+      $match:
+        field === "variant"
+          ? { "allproduct.variant": { $in: keyIds } }
+          : { "allproduct.variant": null, "allproduct.product": { $in: keyIds } },
+    },
+    {
+      $group: {
+        _id: "$costKey",
+        // subTotal is already purchasePrice × quantity — this is the
+        // weighting, and it is why a plain price average is not used.
+        totalCost: { $sum: { $ifNull: ["$allproduct.subTotal", 0] } },
+        totalQty: { $sum: { $ifNull: ["$allproduct.quantity", 0] } },
+      },
+    },
+    {
+      $project: {
+        avgBuyPrice: {
+          // Guard the divide: no purchase quantity would yield null and
+          // render as an empty cell.
+          $cond: [{ $gt: ["$totalQty", 0] }, { $divide: ["$totalCost", "$totalQty"] }, 0],
+        },
+      },
+    },
+  ];
   const avgCostRows = keyIds.length
-    ? await Purchase.aggregate([
-        { $match: { date: { $lte: rangeEnd } } },
-        { $unwind: "$allproduct" },
-        {
-          $addFields: {
-            costKey: { $ifNull: ["$allproduct.variant", "$allproduct.product"] },
-          },
-        },
-        { $match: { costKey: { $in: keyIds } } },
-        {
-          $group: {
-            _id: "$costKey",
-            // subTotal is already purchasePrice × quantity — this is the
-            // weighting, and it is why a plain price average is not used.
-            totalCost: { $sum: { $ifNull: ["$allproduct.subTotal", 0] } },
-            totalQty: { $sum: { $ifNull: ["$allproduct.quantity", 0] } },
-          },
-        },
-        {
-          $project: {
-            avgBuyPrice: {
-              // Guard the divide: no purchase quantity would yield null and
-              // render as an empty cell.
-              $cond: [{ $gt: ["$totalQty", 0] }, { $divide: ["$totalCost", "$totalQty"] }, 0],
-            },
-          },
-        },
-      ])
+    ? (
+        await Promise.all([
+          Purchase.aggregate(purchasesOf("variant")),
+          Purchase.aggregate(purchasesOf("product")),
+        ])
+      ).flat()
     : [];
 
   const avgCostMap = new Map(avgCostRows.map((r) => [String(r._id), r.avgBuyPrice]));
@@ -5559,15 +5677,9 @@ const ownSalesMatch = (userId) => ({
 // Exchange lines are left out. `searchQuery` matches the invoice number,
 // barcode or the name the line was sold under. `withSalesman` adds each row's
 // salesman name.
-const salesProductLinePipeline = ({ match, searchQuery, skip, limit, withSalesman = false }) => {
+const salesProductLineStages = (searchQuery) => {
   const num = (expr) => ({ $ifNull: [expr, 0] });
-  const cataloguePrice = (field) => ({
-    $ifNull: [`$variantDoc.${field}`, { $ifNull: [`$productDoc.${field}`, 0] }],
-  });
-  const buyPrice = { $ifNull: ["$searchItem.purchasePrice", cataloguePrice("purchasePrice")] };
-
-  const pipeline = [
-    { $match: match },
+  const stages = [
     { $unwind: { path: "$searchItem", includeArrayIndex: "lineIndex" } },
     { $match: { "searchItem.salesStatus": { $ne: "exchange" } } },
     {
@@ -5599,80 +5711,121 @@ const salesProductLinePipeline = ({ match, searchQuery, skip, limit, withSalesma
       },
     },
   ];
-
   if (searchQuery) {
     const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-    pipeline.push({
+    stages.push({
       $match: { $or: [{ invoiceNumber: rx }, { "searchItem.barcode": rx }, { "searchItem.productDescription": rx }] },
     });
   }
+  return stages;
+};
 
-  pipeline.push({
-    $facet: {
-      rows: [
-        { $sort: { date: -1, _id: -1, lineIndex: 1 } },
-        { $skip: skip },
-        { $limit: limit },
-        ...catalogueLookupStages("searchItem.productId", "searchItem.variantId"),
-        ...(withSalesman
-          ? [
-              {
-                $lookup: {
-                  from: "employees",
-                  localField: "salesMen",
-                  foreignField: "_id",
-                  as: "salesman",
-                  pipeline: [{ $project: { fullName: 1 } }],
-                },
-              },
-            ]
-          : []),
-        {
-          $project: {
-            _id: 0,
-            saleId: "$_id",
-            lineIndex: 1,
-            invoiceNumber: 1,
-            date: 1,
-            salesType: 1,
-            ...(withSalesman ? { salesmanName: { $first: "$salesman.fullName" } } : {}),
-            productName: productNameOf("$searchItem.variantId", "$searchItem.productDescription"),
-            barcode: firstFilled("$searchItem.barcode", "$variantDoc.barCode", "$productDoc.barCode"),
-            color: firstFilled("$searchItem.color", "$variantDoc.color", "$productDoc.color"),
-            size: firstFilled("$searchItem.size", "$variantDoc.size", "$productDoc.size"),
-            qty: 1,
-            buyPrice,
-            wsPrice: cataloguePrice("wholesalePrice"),
-            rsPrice: cataloguePrice("retailPrice"),
-            discount: "$unitDiscount",
-            total: "$lineTotal",
-          },
-        },
-      ],
-      // Per-unit prices need the catalogue, so the totals join it too
-      totals: [
-        ...catalogueLookupStages("searchItem.productId", "searchItem.variantId"),
-        {
-          $group: {
-            _id: null,
-            count: { $sum: 1 },
-            totalQty: { $sum: "$qty" },
-            totalBuyPrice: { $sum: buyPrice },
-            totalWsPrice: { $sum: cataloguePrice("wholesalePrice") },
-            totalRsPrice: { $sum: cataloguePrice("retailPrice") },
-            totalDiscount: { $sum: "$unitDiscount" },
-            totalAmount: { $sum: "$lineTotal" },
-          },
-        },
-      ],
-    },
+/**
+ * A page of the line rows and the totals (BUG-P2-002). The rows come from the
+ * sales in date order through the date index, cut to the page and only then
+ * joined to the catalogue. The totals group the lines per item: stamped costs
+ * are summed as they are, and only lines without a stamp, and the list
+ * prices, are priced from the catalogue, fetched in batches. Joining the
+ * catalogue onto every line of the range never finished on a large shop.
+ */
+const runSalesProductLines = async ({ match, searchQuery, skip, limit, withSalesman = false }) => {
+  const cataloguePrice = (field) => ({
+    $ifNull: [`$variantDoc.${field}`, { $ifNull: [`$productDoc.${field}`, 0] }],
   });
+  const buyPrice = { $ifNull: ["$searchItem.purchasePrice", cataloguePrice("purchasePrice")] };
+  const lineStages = salesProductLineStages(searchQuery);
 
-  return pipeline;
+  const rowsPromise = Sales.aggregate([
+    { $match: match },
+    { $sort: { date: -1, _id: -1 } },
+    ...lineStages,
+    { $skip: skip },
+    { $limit: limit },
+    ...catalogueLookupStages("searchItem.productId", "searchItem.variantId"),
+    ...(withSalesman
+      ? [
+          {
+            $lookup: {
+              from: "employees",
+              localField: "salesMen",
+              foreignField: "_id",
+              as: "salesman",
+              pipeline: [{ $project: { fullName: 1 } }],
+            },
+          },
+        ]
+      : []),
+    {
+      $project: {
+        _id: 0,
+        saleId: "$_id",
+        lineIndex: 1,
+        invoiceNumber: 1,
+        date: 1,
+        salesType: 1,
+        ...(withSalesman ? { salesmanName: { $first: "$salesman.fullName" } } : {}),
+        productName: productNameOf("$searchItem.variantId", "$searchItem.productDescription"),
+        barcode: firstFilled("$searchItem.barcode", "$variantDoc.barCode", "$productDoc.barCode"),
+        color: firstFilled("$searchItem.color", "$variantDoc.color", "$productDoc.color"),
+        size: firstFilled("$searchItem.size", "$variantDoc.size", "$productDoc.size"),
+        qty: 1,
+        buyPrice,
+        wsPrice: cataloguePrice("wholesalePrice"),
+        rsPrice: cataloguePrice("retailPrice"),
+        discount: "$unitDiscount",
+        total: "$lineTotal",
+      },
+    },
+  ]);
+
+  const itemsPromise = Sales.aggregate([
+    { $match: match },
+    ...lineStages,
+    {
+      $group: {
+        _id: { p: "$searchItem.productId", v: "$searchItem.variantId" },
+        count: { $sum: 1 },
+        qty: { $sum: "$qty" },
+        discount: { $sum: "$unitDiscount" },
+        amount: { $sum: "$lineTotal" },
+        stampedCost: { $sum: { $ifNull: ["$searchItem.purchasePrice", 0] } },
+        // Lines saved before costs were stamped are priced from the catalogue
+        unstamped: { $sum: { $cond: [{ $eq: [{ $ifNull: ["$searchItem.purchasePrice", null] }, null] }, 1, 0] } },
+      },
+    },
+  ]).allowDiskUse(true);
+
+  const [rows, items] = await Promise.all([rowsPromise, itemsPromise]);
+  const variants = await byIdInBatches(Variant, items.map((i) => i._id.v));
+  const products = await byIdInBatches(Product, items.map((i) => i._id.p));
+
+  const totals = {
+    count: 0,
+    totalQty: 0,
+    totalBuyPrice: 0,
+    totalWsPrice: 0,
+    totalRsPrice: 0,
+    totalDiscount: 0,
+    totalAmount: 0,
+  };
+  for (const item of items) {
+    // As on the rows: the variant's catalogue price, else the line product's
+    const variant = item._id.v ? variants.get(String(item._id.v)) : null;
+    const product = item._id.p ? products.get(String(item._id.p)) : null;
+    const price = (field) => variant?.[field] ?? product?.[field] ?? 0;
+    totals.count += item.count;
+    totals.totalQty += item.qty;
+    totals.totalBuyPrice += item.stampedCost + item.unstamped * price("purchasePrice");
+    totals.totalWsPrice += item.count * price("wholesalePrice");
+    totals.totalRsPrice += item.count * price("retailPrice");
+    totals.totalDiscount += item.discount;
+    totals.totalAmount += item.amount;
+  }
+  return { rows, totals };
 };
 
 // @desc User sales product report — every product line on the sales made by
-// the logged-in user, one row per line (see salesProductLinePipeline for the
+// the logged-in user, one row per line (see runSalesProductLines for the
 // columns). Sales of every invoiceStatus are listed.
 exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
   const { startDate, endDate, salesType, search } = req.body || {};
@@ -5709,19 +5862,7 @@ exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const pipeline = salesProductLinePipeline({ match, searchQuery, skip, limit });
-
-  const [result] = await Sales.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const { _id, ...totals } = result?.totals?.[0] || {
-    count: 0,
-    totalQty: 0,
-    totalBuyPrice: 0,
-    totalWsPrice: 0,
-    totalRsPrice: 0,
-    totalDiscount: 0,
-    totalAmount: 0,
-  };
+  const { rows, totals } = await runSalesProductLines({ match, searchQuery, skip, limit });
 
   const header = await getStoreHeader();
 
@@ -5755,23 +5896,33 @@ exports.getUserSalesProductReport = asynchandeler(async (req, res) => {
 //   vatAmount       (total − percent discount) × vatPercent / 100, the way the
 //                   sales form charges it
 //   paidAmount      cash the shop kept (netPaid; paid − changes on older sales)
-const invoiceBillStages = () => {
+// The customer's name and phone (walking ones are on the sale, listed ones on
+// the customer). Joined only onto the page of rows (BUG-P2-002).
+const invoiceCustomerStages = () => [
+  {
+    $lookup: {
+      from: "customers",
+      localField: "customerType.customerId",
+      foreignField: "_id",
+      as: "customerInfo",
+      pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
+    },
+  },
+  { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+  {
+    $addFields: {
+      resolvedCustomerName: { $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"] },
+      resolvedCustomerPhone: { $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"] },
+    },
+  },
+];
+
+// The bill's money, from the sale's own fields (no join)
+const invoiceMoneyStages = () => {
   const num = (expr) => ({ $ifNull: [expr, 0] });
   return [
     {
-      $lookup: {
-        from: "customers",
-        localField: "customerType.customerId",
-        foreignField: "_id",
-        as: "customerInfo",
-        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
-      },
-    },
-    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
-    {
       $addFields: {
-        resolvedCustomerName: { $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"] },
-        resolvedCustomerPhone: { $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"] },
         percentDiscount: { $divide: [{ $multiply: [num("$total"), num("$discountPercent")] }, 100] },
         returnAmount: num("$return"),
         paidAmount: {
@@ -5793,9 +5944,54 @@ const invoiceBillStages = () => {
   ];
 };
 
+const invoiceBillStages = () => [...invoiceCustomerStages(), ...invoiceMoneyStages()];
+
+// The user / salesman invoice reports' search: the customer's name or phone
+// (through indexes, see customerSearchMatch) or the invoice number
+async function invoiceSearchMatch(searchQuery) {
+  const rx = new RegExp(escapeRegex(searchQuery), "i");
+  const customer = await customerSearchMatch(searchQuery);
+  return { $or: [...customer.$or, { invoiceNumber: rx }] };
+}
+
+/**
+ * Rows and totals of an invoice report: the rows are sorted through the date
+ * index and cut to the page before the customer (and salesman) join; the
+ * totals add up the bill's money with no join. One pipeline joined every
+ * sale of the range to its customer and sorted them all in a $facet.
+ */
+async function runInvoiceBillReport({ match, searchQuery, skip, limit, project, totalsGroup, withSalesman = false }) {
+  const saleMatch = searchQuery ? { ...match, $and: [await invoiceSearchMatch(searchQuery)] } : match;
+  const [rows, totals] = await Promise.all([
+    Sales.aggregate([
+      { $match: saleMatch },
+      { $sort: { date: -1, _id: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      ...invoiceBillStages(),
+      ...(withSalesman
+        ? [
+            {
+              $lookup: {
+                from: "employees",
+                localField: "salesMen",
+                foreignField: "_id",
+                as: "salesman",
+                pipeline: [{ $project: { fullName: 1 } }],
+              },
+            },
+          ]
+        : []),
+      { $project: project },
+    ]),
+    Sales.aggregate([{ $match: saleMatch }, ...invoiceMoneyStages(), { $group: { _id: null, ...totalsGroup } }]),
+  ]);
+  return { rows, totals: totals[0] };
+}
+
 // @desc Salesman sales product report — every product line on the sales of
 // the salesman chosen on the sale (`salesMen`, an employee), one row per line
-// (see salesProductLinePipeline for the columns).
+// (see runSalesProductLines for the columns).
 //
 // `salesMenId` narrows to one salesman; without it every salesman's lines are
 // listed, each row naming its salesman. Sales of every invoiceStatus are listed.
@@ -5832,19 +6028,7 @@ exports.getSalesmanSalesProductReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const pipeline = salesProductLinePipeline({ match, searchQuery, skip, limit, withSalesman: true });
-
-  const [result] = await Sales.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const { _id, ...totals } = result?.totals?.[0] || {
-    count: 0,
-    totalQty: 0,
-    totalBuyPrice: 0,
-    totalWsPrice: 0,
-    totalRsPrice: 0,
-    totalDiscount: 0,
-    totalAmount: 0,
-  };
+  const { rows, totals } = await runSalesProductLines({ match, searchQuery, skip, limit, withSalesman: true });
 
   const header = await getStoreHeader();
 
@@ -5919,73 +6103,44 @@ exports.getSalesmanSalesInvoiceReport = asynchandeler(async (req, res) => {
 
   const num = (expr) => ({ $ifNull: [expr, 0] });
 
-  const pipeline = [{ $match: match }, ...invoiceBillStages()];
-
-  if (searchQuery) {
-    const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-    pipeline.push({
-      $match: { $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }, { invoiceNumber: rx }] },
-    });
-  }
-
-  pipeline.push({
-    $facet: {
-      rows: [
-        { $sort: { date: -1, _id: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $lookup: {
-            from: "employees",
-            localField: "salesMen",
-            foreignField: "_id",
-            as: "salesman",
-            pipeline: [{ $project: { fullName: 1 } }],
-          },
-        },
-        {
-          $project: {
-            _id: 1,
-            date: 1,
-            invoiceNumber: 1,
-            salesType: 1,
-            salesmanName: { $first: "$salesman.fullName" },
-            customerType: "$customerType.type",
-            customerName: "$resolvedCustomerName",
-            customerPhone: "$resolvedCustomerPhone",
-            total: num("$total"),
-            discount: "$discountAmount",
-            vat: "$vatAmount",
-            delivery: num("$deliveryCost"),
-            labour: num("$labourCost"),
-            payable: num("$payable"),
-            paid: "$paidAmount",
-            due: num("$presentDue"),
-          },
-        },
-      ],
-      totals: [
-        {
-          $group: {
-            _id: null,
-            count: { $sum: 1 },
-            totalAmount: { $sum: num("$total") },
-            totalDiscount: { $sum: "$discountAmount" },
-            totalVat: { $sum: "$vatAmount" },
-            totalDelivery: { $sum: num("$deliveryCost") },
-            totalLabour: { $sum: num("$labourCost") },
-            totalPayable: { $sum: num("$payable") },
-            totalPaid: { $sum: "$paidAmount" },
-            totalDue: { $sum: num("$presentDue") },
-          },
-        },
-      ],
+  const { rows, totals: totalsRow } = await runInvoiceBillReport({
+    match,
+    searchQuery,
+    skip,
+    limit,
+    withSalesman: true,
+    project: {
+      _id: 1,
+      date: 1,
+      invoiceNumber: 1,
+      salesType: 1,
+      salesmanName: { $first: "$salesman.fullName" },
+      customerType: "$customerType.type",
+      customerName: "$resolvedCustomerName",
+      customerPhone: "$resolvedCustomerPhone",
+      total: num("$total"),
+      discount: "$discountAmount",
+      vat: "$vatAmount",
+      delivery: num("$deliveryCost"),
+      labour: num("$labourCost"),
+      payable: num("$payable"),
+      paid: "$paidAmount",
+      due: num("$presentDue"),
+    },
+    totalsGroup: {
+      count: { $sum: 1 },
+      totalAmount: { $sum: num("$total") },
+      totalDiscount: { $sum: "$discountAmount" },
+      totalVat: { $sum: "$vatAmount" },
+      totalDelivery: { $sum: num("$deliveryCost") },
+      totalLabour: { $sum: num("$labourCost") },
+      totalPayable: { $sum: num("$payable") },
+      totalPaid: { $sum: "$paidAmount" },
+      totalDue: { $sum: num("$presentDue") },
     },
   });
 
-  const [result] = await Sales.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const { _id, ...totals } = result?.totals?.[0] || {
+  const { _id, ...totals } = totalsRow || {
     count: 0,
     totalAmount: 0,
     totalDiscount: 0,
@@ -6079,65 +6234,44 @@ exports.getUserSalesInvoiceReport = asynchandeler(async (req, res) => {
 
   const num = (expr) => ({ $ifNull: [expr, 0] });
 
-  const pipeline = [{ $match: match }, ...invoiceBillStages()];
-
-  if (searchQuery) {
-    const rx = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-    pipeline.push({
-      $match: { $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }, { invoiceNumber: rx }] },
-    });
-  }
-
-  pipeline.push({
-    $facet: {
-      rows: [
-        { $sort: { date: -1, _id: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            _id: 1,
-            date: 1,
-            invoiceNumber: 1,
-            salesType: 1,
-            customerType: "$customerType.type",
-            customerName: "$resolvedCustomerName",
-            customerPhone: "$resolvedCustomerPhone",
-            total: num("$total"),
-            returned: "$returnAmount",
-            discount: "$discountAmount",
-            vat: "$vatAmount",
-            delivery: num("$deliveryCost"),
-            labour: num("$labourCost"),
-            payable: num("$payable"),
-            paid: "$paidAmount",
-            due: num("$presentDue"),
-          },
-        },
-      ],
-      totals: [
-        {
-          $group: {
-            _id: null,
-            count: { $sum: 1 },
-            totalAmount: { $sum: num("$total") },
-            totalReturned: { $sum: "$returnAmount" },
-            totalDiscount: { $sum: "$discountAmount" },
-            totalVat: { $sum: "$vatAmount" },
-            totalDelivery: { $sum: num("$deliveryCost") },
-            totalLabour: { $sum: num("$labourCost") },
-            totalPayable: { $sum: num("$payable") },
-            totalPaid: { $sum: "$paidAmount" },
-            totalDue: { $sum: num("$presentDue") },
-          },
-        },
-      ],
+  const { rows, totals: totalsRow } = await runInvoiceBillReport({
+    match,
+    searchQuery,
+    skip,
+    limit,
+    project: {
+      _id: 1,
+      date: 1,
+      invoiceNumber: 1,
+      salesType: 1,
+      customerType: "$customerType.type",
+      customerName: "$resolvedCustomerName",
+      customerPhone: "$resolvedCustomerPhone",
+      total: num("$total"),
+      returned: "$returnAmount",
+      discount: "$discountAmount",
+      vat: "$vatAmount",
+      delivery: num("$deliveryCost"),
+      labour: num("$labourCost"),
+      payable: num("$payable"),
+      paid: "$paidAmount",
+      due: num("$presentDue"),
+    },
+    totalsGroup: {
+      count: { $sum: 1 },
+      totalAmount: { $sum: num("$total") },
+      totalReturned: { $sum: "$returnAmount" },
+      totalDiscount: { $sum: "$discountAmount" },
+      totalVat: { $sum: "$vatAmount" },
+      totalDelivery: { $sum: num("$deliveryCost") },
+      totalLabour: { $sum: num("$labourCost") },
+      totalPayable: { $sum: num("$payable") },
+      totalPaid: { $sum: "$paidAmount" },
+      totalDue: { $sum: num("$presentDue") },
     },
   });
 
-  const [result] = await Sales.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const { _id, ...totals } = result?.totals?.[0] || {
+  const { _id, ...totals } = totalsRow || {
     count: 0,
     totalAmount: 0,
     totalReturned: 0,
@@ -6997,21 +7131,9 @@ exports.getCustomerSalesProductReport = asynchandeler(async (req, res) => {
 
   const nameQuery = typeof customerName === "string" ? customerName.trim() : "";
 
-  // Product-level filters can only run after the $unwind and the product
-  // $lookup below, so they are collected here and applied as a second $match
-  // rather than being folded into the indexed top-level one.
-  const lineMatch = {};
-  if (productId) {
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
-    }
-    // Matches on the resolved product so a variant line whose own productId is
-    // unset still matches when its parent product is the one selected.
-    lineMatch["resolvedProduct._id"] = new mongoose.Types.ObjectId(productId);
-  }
-  castObjectIdFilter(lineMatch, "resolvedProduct.category", category);
-  castObjectIdFilter(lineMatch, "resolvedProduct.subcategory", subCategory);
-  castObjectIdFilter(lineMatch, "resolvedProduct.brand", brand);
+  // Product-level filters become the ids of the products and variants they
+  // cover (a variant line matches through its parent product too)
+  const ids = await lineFilterIds({ productId, category, subCategory, brand });
 
   const cacheKey = await buildCacheKey(
     SALES_NS,
@@ -7027,258 +7149,100 @@ exports.getCustomerSalesProductReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const pipeline = [
-    { $match: match },
-    {
-      $lookup: {
-        from: "customers",
-        localField: "customerType.customerId",
-        foreignField: "_id",
-        as: "customerInfo",
-        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
-      },
-    },
-    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $addFields: {
-        resolvedCustomerName: {
-          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
-        },
-        resolvedCustomerPhone: {
-          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
-        },
-      },
-    },
-  ];
+  // BUG-P2-002: the sales are matched (customer search included) without
+  // joining anything, the rows are paged before they are joined, the line
+  // totals group per item and the invoice totals group the sales themselves.
+  const saleMatch = {
+    ...match,
+    ...(ids ? lineIdMatch(ids) : {}),
+  };
+  if (nameQuery) saleMatch.$and = [...(saleMatch.$and || []), await customerSearchMatch(nameQuery)];
+  const lineStages = [{ $unwind: "$searchItem" }, ...(ids ? [{ $match: lineIdMatch(ids) }] : [])];
 
-  // Name/phone search runs after the lookup because a listed customer's name
-  // lives on the joined document, not on the sale itself.
-  if (nameQuery) {
-    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const rx = new RegExp(escaped, "i");
-    pipeline.push({
-      $match: {
-        $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }],
-      },
-    });
-  }
-
-  pipeline.push(
-    // Invoice-level money is captured BEFORE the $unwind, while there is still
-    // exactly one document per sale. After the unwind these fields repeat on
-    // every line of the invoice and can no longer be summed.
-    {
-      $addFields: {
-        invoiceDiscountAmount: {
-          $add: [
-            { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
-            { $ifNull: ["$lessTaka", 0] },
-          ],
+  const [rows, lineTotals, invoiceTotalsResult] = await Promise.all([
+    Sales.aggregate([
+      { $match: saleMatch },
+      { $sort: { date: -1, _id: -1 } },
+      ...lineStages,
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customerType.customerId",
+          foreignField: "_id",
+          as: "customerInfo",
+          pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
         },
       },
-    },
-    { $unwind: "$searchItem" },
-    {
-      $lookup: {
-        from: "products",
-        localField: "searchItem.productId",
-        foreignField: "_id",
-        as: "productInfo",
-        pipeline: [
-          {
-            $project: {
-              name: 1,
-              barCode: 1,
-              color: 1,
-              size: 1,
-              category: 1,
-              subcategory: 1,
-              brand: 1,
-              wholesalePrice: 1,
-              retailPrice: 1,
-            },
+      { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
+      ...itemInfoStages("searchItem.productId", "searchItem.variantId"),
+      {
+        $project: {
+          _id: 1,
+          date: 1,
+          invoiceNumber: 1,
+          salesType: 1,
+          paymentStatus: 1,
+          customerName: { $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"] },
+          customerPhone: { $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"] },
+          productName: { $ifNull: ["$resolvedProduct.name", "-"] },
+          barcode: {
+            $ifNull: ["$searchItem.barcode", { $ifNull: ["$variantInfo.barCode", "$resolvedProduct.barCode"] }],
           },
-        ],
+          color: {
+            $ifNull: ["$variantInfo.color", { $ifNull: ["$resolvedProduct.color", "$searchItem.color"] }],
+          },
+          size: {
+            $ifNull: ["$variantInfo.size", { $ifNull: ["$resolvedProduct.size", "$searchItem.size"] }],
+          },
+          qty: { $ifNull: ["$searchItem.quantity", 0] },
+          wsPrice: "$lineWsPrice",
+          rsPrice: "$lineRsPrice",
+          // SUB. TOTAL per the sheet: RS price x qty, regardless of sales type.
+          subTotal: { $multiply: ["$lineRsPrice", { $ifNull: ["$searchItem.quantity", 0] }] },
+          // The real transacted line value, net of any per-line discount.
+          // Kept distinct from subTotal, which is a retail valuation.
+          soldSubtotal: { $ifNull: ["$searchItem.subtotal", 0] },
+        },
       },
-    },
-    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "variants",
-        localField: "searchItem.variantId",
-        foreignField: "_id",
-        as: "variantInfo",
-        pipeline: [
-          {
-            $project: {
-              barCode: 1,
-              color: 1,
-              size: 1,
-              product: 1,
-              wholesalePrice: 1,
-              retailPrice: 1,
-            },
-          },
-          {
-            // A sale line referencing a variant may carry no productId of its
-            // own, so the parent product is resolved through the variant to
-            // get its display name.
-            $lookup: {
-              from: "products",
-              localField: "product",
-              foreignField: "_id",
-              as: "variantProduct",
-              pipeline: [
-                {
-                  $project: {
-                    name: 1,
-                    barCode: 1,
-                    color: 1,
-                    size: 1,
-                    category: 1,
-                    subcategory: 1,
-                    brand: 1,
-                    wholesalePrice: 1,
-                    retailPrice: 1,
-                  },
-                },
+    ]),
+    lineReportTotals([{ $match: saleMatch }, ...lineStages]),
+    // Invoice-level money, once per invoice. With a product filter only the
+    // invoices holding a matching line count, as before.
+    Sales.aggregate([
+      { $match: saleMatch },
+      {
+        $group: {
+          _id: null,
+          invoiceCount: { $sum: 1 },
+          totalDiscount: {
+            $sum: {
+              $add: [
+                { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
+                { $ifNull: ["$lessTaka", 0] },
               ],
             },
           },
-          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
-        ],
-      },
-    },
-    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
-    {
-      // A variant line may not carry productId, so the effective product is the
-      // directly-joined one when present, otherwise the variant's parent.
-      // Filters match against this rather than productInfo, so variant lines
-      // are not silently dropped by a category/brand filter.
-      $addFields: {
-        resolvedProduct: { $ifNull: ["$productInfo", "$variantInfo.variantProduct"] },
-      },
-    },
-    ...(Object.keys(lineMatch).length > 0 ? [{ $match: lineMatch }] : []),
-    {
-      // The variant is the more specific record, so its prices win where a
-      // variant was sold; the product is the fallback for non-variant lines.
-      $addFields: {
-        lineQty: { $ifNull: ["$searchItem.quantity", 0] },
-        lineWsPrice: {
-          $ifNull: ["$variantInfo.wholesalePrice", { $ifNull: ["$resolvedProduct.wholesalePrice", 0] }],
-        },
-        lineRsPrice: {
-          $ifNull: ["$variantInfo.retailPrice", { $ifNull: ["$resolvedProduct.retailPrice", 0] }],
+          totalDelivery: { $sum: "$deliveryCost" },
+          totalLabour: { $sum: "$labourCost" },
+          totalPayable: { $sum: "$payable" },
+          totalPaid: { $sum: "$paid" },
+          totalDue: { $sum: "$presentDue" },
         },
       },
-    },
-    {
-      // SUB. TOTAL per the sheet: RS price x qty, regardless of sales type.
-      $addFields: {
-        lineSubTotal: { $multiply: ["$lineRsPrice", "$lineQty"] },
-      },
-    },
-    {
-      $facet: {
-        rows: [
-          { $sort: { date: -1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              _id: 1,
-              date: 1,
-              invoiceNumber: 1,
-              salesType: 1,
-              paymentStatus: 1,
-              customerName: "$resolvedCustomerName",
-              customerPhone: "$resolvedCustomerPhone",
-              productName: { $ifNull: ["$resolvedProduct.name", "-"] },
-              barcode: {
-                $ifNull: [
-                  "$searchItem.barcode",
-                  { $ifNull: ["$variantInfo.barCode", "$resolvedProduct.barCode"] },
-                ],
-              },
-              color: {
-                $ifNull: [
-                  "$variantInfo.color",
-                  { $ifNull: ["$resolvedProduct.color", "$searchItem.color"] },
-                ],
-              },
-              size: {
-                $ifNull: [
-                  "$variantInfo.size",
-                  { $ifNull: ["$resolvedProduct.size", "$searchItem.size"] },
-                ],
-              },
-              qty: "$lineQty",
-              wsPrice: "$lineWsPrice",
-              rsPrice: "$lineRsPrice",
-              subTotal: "$lineSubTotal",
-              // The real transacted line value, net of any per-line discount.
-              // Kept distinct from subTotal, which is a retail valuation.
-              soldSubtotal: { $ifNull: ["$searchItem.subtotal", 0] },
-            },
-          },
-        ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              totalQty: { $sum: "$lineQty" },
-              totalWsPrice: { $sum: "$lineWsPrice" },
-              totalRsPrice: { $sum: "$lineRsPrice" },
-              totalSubTotal: { $sum: "$lineSubTotal" },
-              totalSoldSubtotal: { $sum: { $ifNull: ["$searchItem.subtotal", 0] } },
-            },
-          },
-        ],
-        // Invoice-level money, de-duplicated: group back to one document per
-        // invoice first, then sum. Without the first $group each value would
-        // be counted once per line on its invoice.
-        invoiceTotals: [
-          {
-            $group: {
-              _id: "$_id",
-              discount: { $first: "$invoiceDiscountAmount" },
-              delivery: { $first: "$deliveryCost" },
-              labour: { $first: "$labourCost" },
-              payable: { $first: "$payable" },
-              paid: { $first: "$paid" },
-              due: { $first: "$presentDue" },
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              invoiceCount: { $sum: 1 },
-              totalDiscount: { $sum: "$discount" },
-              totalDelivery: { $sum: "$delivery" },
-              totalLabour: { $sum: "$labour" },
-              totalPayable: { $sum: "$payable" },
-              totalPaid: { $sum: "$paid" },
-              totalDue: { $sum: "$due" },
-            },
-          },
-        ],
-      },
-    },
-  );
+    ]),
+  ]);
 
-  const [result] = await Sales.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const totals = result?.totals?.[0] || {
-    count: 0,
-    totalQty: 0,
-    totalWsPrice: 0,
-    totalRsPrice: 0,
-    totalSubTotal: 0,
-    totalSoldSubtotal: 0,
+  const totals = {
+    count: lineTotals.count,
+    totalQty: lineTotals.totalQty,
+    totalWsPrice: lineTotals.totalWsPrice,
+    totalRsPrice: lineTotals.totalRsPrice,
+    totalSubTotal: lineTotals.totalSubTotal,
+    totalSoldSubtotal: lineTotals.totalAmount,
   };
-  const invoiceTotals = result?.invoiceTotals?.[0] || {
+  const invoiceTotals = invoiceTotalsResult?.[0] || {
     invoiceCount: 0,
     totalDiscount: 0,
     totalDelivery: 0,
@@ -7397,16 +7361,9 @@ exports.getCustomerSalesSummaryReport = asynchandeler(async (req, res) => {
   const priceField = isWholesale ? "wholesalePrice" : "retailPrice";
   const priceLabel = isWholesale ? "Wholesale Price" : "Retail Price";
 
-  const lineMatch = {};
-  if (productId) {
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      throw new customError("Invalid productId", statusCodes.BAD_REQUEST);
-    }
-    lineMatch["resolvedProduct._id"] = new mongoose.Types.ObjectId(productId);
-  }
-  castObjectIdFilter(lineMatch, "resolvedProduct.category", category);
-  castObjectIdFilter(lineMatch, "resolvedProduct.subcategory", subCategory);
-  castObjectIdFilter(lineMatch, "resolvedProduct.brand", brand);
+  // Product-level filters become the ids of the products and variants they
+  // cover (a variant line matches through its parent product too)
+  const ids = await lineFilterIds({ productId, category, subCategory, brand });
 
   const cacheKey = await buildCacheKey(
     SALES_NS,
@@ -7422,252 +7379,88 @@ exports.getCustomerSalesSummaryReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const pipeline = [
-    { $match: match },
-    {
-      $lookup: {
-        from: "customers",
-        localField: "customerType.customerId",
-        foreignField: "_id",
-        as: "customerInfo",
-        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
-      },
-    },
-    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $addFields: {
-        resolvedCustomerName: {
-          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
-        },
-        resolvedCustomerPhone: {
-          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
-        },
-      },
-    },
-  ];
+  // BUG-P2-002: no join per sale or per line. The lines are grouped per item
+  // in the database, the items' names and prices are fetched in batches, and
+  // the items fold into one row per product here; the invoice totals group
+  // the sales themselves. Searching the customer name finds listed customers
+  // through their index instead of joining every sale to its customer.
+  const customerMatch = nameQuery ? await customerSearchMatch(nameQuery) : null;
+  const invoiceMatch = customerMatch ? { ...match, $and: [customerMatch] } : { ...match };
+  const lineSaleMatch = ids ? { ...invoiceMatch, ...lineIdMatch(ids) } : invoiceMatch;
 
-  if (nameQuery) {
-    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const rx = new RegExp(escaped, "i");
-    pipeline.push({
-      $match: {
-        $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }],
-      },
-    });
-  }
-
-  pipeline.push(
-    // Invoice-level money is captured BEFORE the $unwind, while there is still
-    // exactly one document per sale.
-    {
-      $addFields: {
-        invoiceDiscountAmount: {
-          $add: [
-            { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
-            { $ifNull: ["$lessTaka", 0] },
-          ],
+  const [items, invoiceAggs] = await Promise.all([
+    Sales.aggregate([
+      { $match: lineSaleMatch },
+      { $unwind: "$searchItem" },
+      ...(ids ? [{ $match: lineIdMatch(ids) }] : []),
+      {
+        $group: {
+          _id: { p: "$searchItem.productId", v: "$searchItem.variantId" },
+          qty: { $sum: { $ifNull: ["$searchItem.quantity", 0] } },
         },
       },
-    },
-    { $unwind: "$searchItem" },
-    {
-      $lookup: {
-        from: "products",
-        localField: "searchItem.productId",
-        foreignField: "_id",
-        as: "productInfo",
-        pipeline: [
-          {
-            $project: {
-              name: 1,
-              category: 1,
-              subcategory: 1,
-              brand: 1,
-              purchasePrice: 1,
-              wholesalePrice: 1,
-              retailPrice: 1,
-            },
-          },
-        ],
-      },
-    },
-    { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "variants",
-        localField: "searchItem.variantId",
-        foreignField: "_id",
-        as: "variantInfo",
-        pipeline: [
-          {
-            $project: {
-              product: 1,
-              purchasePrice: 1,
-              wholesalePrice: 1,
-              retailPrice: 1,
-            },
-          },
-          {
-            $lookup: {
-              from: "products",
-              localField: "product",
-              foreignField: "_id",
-              as: "variantProduct",
-              pipeline: [
-                {
-                  $project: {
-                    name: 1,
-                    category: 1,
-                    subcategory: 1,
-                    brand: 1,
-                    purchasePrice: 1,
-                    wholesalePrice: 1,
-                    retailPrice: 1,
-                  },
-                },
+    ]).allowDiskUse(true),
+    Sales.aggregate([
+      { $match: invoiceMatch },
+      {
+        $group: {
+          _id: null,
+          invoiceCount: { $sum: 1 },
+          totalDiscount: {
+            $sum: {
+              $add: [
+                { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
+                { $ifNull: ["$lessTaka", 0] },
               ],
             },
           },
-          { $unwind: { path: "$variantProduct", preserveNullAndEmptyArrays: true } },
-        ],
-      },
-    },
-    { $unwind: { path: "$variantInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $addFields: {
-        resolvedProduct: { $ifNull: ["$productInfo", "$variantInfo.variantProduct"] },
-      },
-    },
-    ...(Object.keys(lineMatch).length > 0 ? [{ $match: lineMatch }] : []),
-    {
-      $addFields: {
-        lineQty: { $ifNull: ["$searchItem.quantity", 0] },
-        linePrice: {
-          $ifNull: [
-            `$variantInfo.${priceField}`,
-            { $ifNull: [`$resolvedProduct.${priceField}`, 0] },
-          ],
+          totalDelivery: { $sum: { $ifNull: ["$deliveryCost", 0] } },
+          totalLabour: { $sum: { $ifNull: ["$labourCost", 0] } },
+          totalPayable: { $sum: { $ifNull: ["$payable", 0] } },
+          totalPaid: { $sum: { $ifNull: ["$paid", 0] } },
+          totalDue: { $sum: { $ifNull: ["$presentDue", 0] } },
         },
       },
-    },
-    {
-      // One row per product. Lines for the same product across several
-      // invoices collapse here, which is what makes this a summary rather
-      // than the line-item product report.
-      //
-      // The unit price is taken as the LAST price seen for the product rather
-      // than summed: it is a per-unit figure, so adding it across lines would
-      // be meaningless. Row TOTAL is still the true sum of price x qty for
-      // each contributing line, so a product whose price changed mid-range
-      // keeps an accurate total even though one unit price is displayed.
-      $group: {
-        _id: { $ifNull: ["$resolvedProduct._id", "$searchItem.productId"] },
-        productName: { $last: { $ifNull: ["$resolvedProduct.name", "-"] } },
-        qty: { $sum: "$lineQty" },
-        salesPrice: { $last: "$linePrice" },
-        total: { $sum: { $multiply: ["$linePrice", "$lineQty"] } },
-      },
-    },
-    {
-      $facet: {
-        rows: [
-          { $sort: { total: -1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              _id: 1,
-              productName: 1,
-              qty: 1,
-              salesPrice: 1,
-              total: 1,
-            },
-          },
-        ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              // Distinct products, which is what the rows now are.
-              count: { $sum: 1 },
-              totalQty: { $sum: "$qty" },
-              // Column-wise sum of the displayed unit prices, per the sheet.
-              // Deliberately NOT a weighted average price.
-              totalSalesPrice: { $sum: "$salesPrice" },
-              totalAmount: { $sum: "$total" },
-            },
-          },
-        ],
-      },
-    },
-  );
-
-  // Invoice-level money cannot be read off the grouped-by-product pipeline
-  // above, so it is computed by its own aggregation over the same filters.
-  const invoiceMatch = { ...match };
-  const invoicePipeline = [
-    { $match: invoiceMatch },
-    {
-      $lookup: {
-        from: "customers",
-        localField: "customerType.customerId",
-        foreignField: "_id",
-        as: "customerInfo",
-        pipeline: [{ $project: { fullName: 1, mobileNumber: 1 } }],
-      },
-    },
-    { $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true } },
-    {
-      $addFields: {
-        resolvedCustomerName: {
-          $ifNull: ["$customerType.walking.customerName", "$customerInfo.fullName"],
-        },
-        resolvedCustomerPhone: {
-          $ifNull: ["$customerType.walking.mobileNumber", "$customerInfo.mobileNumber"],
-        },
-      },
-    },
-  ];
-  if (nameQuery) {
-    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const rx = new RegExp(escaped, "i");
-    invoicePipeline.push({
-      $match: { $or: [{ resolvedCustomerName: rx }, { resolvedCustomerPhone: rx }] },
-    });
-  }
-  invoicePipeline.push({
-    $group: {
-      _id: null,
-      invoiceCount: { $sum: 1 },
-      totalDiscount: {
-        $sum: {
-          $add: [
-            { $multiply: ["$total", { $divide: [{ $ifNull: ["$discountPercent", 0] }, 100] }] },
-            { $ifNull: ["$lessTaka", 0] },
-          ],
-        },
-      },
-      totalDelivery: { $sum: { $ifNull: ["$deliveryCost", 0] } },
-      totalLabour: { $sum: { $ifNull: ["$labourCost", 0] } },
-      totalPayable: { $sum: { $ifNull: ["$payable", 0] } },
-      totalPaid: { $sum: { $ifNull: ["$paid", 0] } },
-      totalDue: { $sum: { $ifNull: ["$presentDue", 0] } },
-    },
-  });
-
-  const [[result], [invoiceAgg]] = await Promise.all([
-    Sales.aggregate(pipeline),
-    Sales.aggregate(invoicePipeline),
+    ]),
   ]);
 
-  const rows = result?.rows || [];
-  const totals = result?.totals?.[0] || {
-    count: 0,
-    totalQty: 0,
-    totalSalesPrice: 0,
-    totalAmount: 0,
-  };
-  const invoiceTotals = invoiceAgg || {
+  const itemFields = { ...PRICE_FIELDS, name: 1 };
+  const variants = await byIdInBatches(Variant, items.map((i) => i._id.v), itemFields);
+  const products = await byIdInBatches(
+    Product,
+    [...items.map((i) => i._id.p), ...[...variants.values()].map((v) => v.product)],
+    itemFields,
+  );
+
+  // One row per product: the variant's price where a variant was sold, else
+  // the product's, from the price list the sales type bills from
+  const byProduct = new Map();
+  for (const item of items) {
+    const variant = item._id.v ? variants.get(String(item._id.v)) : null;
+    const product =
+      (item._id.p && products.get(String(item._id.p))) ||
+      (variant?.product && products.get(String(variant.product))) ||
+      null;
+    const price = variant?.[priceField] ?? product?.[priceField] ?? 0;
+    const key = String(product?._id ?? item._id.p);
+    const row = byProduct.get(key) || { _id: product?._id ?? item._id.p ?? null, productName: product?.name ?? "-", qty: 0, salesPrice: 0, total: 0 };
+    row.qty += item.qty;
+    row.salesPrice = price;
+    row.total += price * item.qty;
+    byProduct.set(key, row);
+  }
+  const allRows = [...byProduct.values()].sort((a, b) => b.total - a.total);
+  const rows = allRows.slice(skip, skip + limit);
+  const totals = allRows.reduce(
+    (sum, r) => ({
+      count: sum.count + 1,
+      totalQty: sum.totalQty + r.qty,
+      totalSalesPrice: sum.totalSalesPrice + r.salesPrice,
+      totalAmount: sum.totalAmount + r.total,
+    }),
+    { count: 0, totalQty: 0, totalSalesPrice: 0, totalAmount: 0 },
+  );
+  const invoiceTotals = invoiceAggs[0] || {
     invoiceCount: 0,
     totalDiscount: 0,
     totalDelivery: 0,
@@ -9174,50 +8967,63 @@ exports.getCustomerPaymentReport = asynchandeler(async (req, res) => {
     );
   }
 
-  // Normalise the due-payment side. `lessAmount` and `cashBack` are distinct
-  // columns on the sheet, so they are kept apart rather than summed.
-  const duePaymentStages = [
-    { $match: baseMatch },
-    {
-      $project: {
-        _id: 1,
-        date: 1,
-        customer: 1,
-        paymentMode: 1,
-        trxId: { $ifNull: ["$paymentId", ""] },
-        paid: { $ifNull: ["$paidAmount", 0] },
-        less: { $ifNull: ["$lessAmount", 0] },
-        cashBack: { $ifNull: ["$cashBack", 0] },
-        remarks: { $ifNull: ["$remarks", ""] },
-        sourceCategory: "Customer Payment Received",
-      },
+  // BUG-P2-009: nothing is joined before the rows are cut to the page. The
+  // name search finds the customers through their index first; the category
+  // comes from the payment's own fields; each side of the union gives only its
+  // newest skip + limit payments (date index) before the merge; the totals and
+  // the two dropdowns group without any join.
+  if (nameQuery) {
+    const ids = await customerIdsForSearch(nameQuery);
+    baseMatch.customer = baseMatch.customer
+      ? { $in: ids.filter((id) => id.equals(baseMatch.customer)) }
+      : { $in: ids };
+  }
+
+  // Normalise each side. `lessAmount` and `cashBack` are distinct columns on
+  // the sheet, so they are kept apart rather than summed. The advance model
+  // names its cash-back field `advanceCashBack` and has no less column at all,
+  // so `less` is pinned to 0 to keep the union's row shape identical.
+  const sideProject = (advance) => ({
+    _id: 1,
+    date: 1,
+    customer: 1,
+    paymentMode: 1,
+    trxId: { $ifNull: ["$paymentId", ""] },
+    paid: { $ifNull: ["$paidAmount", 0] },
+    less: advance ? { $literal: 0 } : { $ifNull: ["$lessAmount", 0] },
+    cashBack: advance ? { $ifNull: ["$advanceCashBack", 0] } : { $ifNull: ["$cashBack", 0] },
+    remarks: { $ifNull: ["$remarks", ""] },
+    // A row that carries cash back is reported under its own category
+    // regardless of which model produced it.
+    paymentCategory: {
+      $cond: [
+        { $gt: [advance ? { $ifNull: ["$advanceCashBack", 0] } : { $ifNull: ["$cashBack", 0] }, 0] },
+        "Return Cash Back",
+        advance ? "Customer Advance Payment" : "Customer Payment Received",
+      ],
     },
+  });
+
+  // One side's payments, normalised and filtered; `extra` runs before the
+  // union (e.g. the per-side page)
+  const side = (advance, { match = baseMatch, withCategory = true, extra = [] } = {}) => [
+    { $match: match },
+    ...extra.filter((st) => st.$sort),
+    { $project: sideProject(advance) },
+    ...(withCategory && categoryFilter ? [{ $match: { paymentCategory: categoryFilter } }] : []),
+    ...extra.filter((st) => !st.$sort),
+  ];
+  const union = (opts) => [
+    ...side(false, opts),
+    { $unionWith: { coll: "customeradvancepaymentreciveds", pipeline: side(true, opts) } },
   ];
 
-  // The advance model names its cash-back field `advanceCashBack` and has no
-  // less column at all, so `less` is pinned to 0 to keep the union's row shape
-  // identical on both sides.
-  const advancePaymentStages = [
-    { $match: baseMatch },
-    {
-      $project: {
-        _id: 1,
-        date: 1,
-        customer: 1,
-        paymentMode: 1,
-        trxId: { $ifNull: ["$paymentId", ""] },
-        paid: { $ifNull: ["$paidAmount", 0] },
-        less: { $literal: 0 },
-        cashBack: { $ifNull: ["$advanceCashBack", 0] },
-        remarks: { $ifNull: ["$remarks", ""] },
-        sourceCategory: "Customer Advance Payment",
-      },
-    },
-  ];
-
-  // Stages shared by the row pipeline and the filter-option passes: join the
-  // customer and account, then derive the displayed category.
-  const enrichStages = [
+  const newestFirst = { $sort: { date: -1, _id: -1 } };
+  const rowsPipeline = [
+    ...union({ extra: [newestFirst, { $limit: skip + limit }] }),
+    newestFirst,
+    { $skip: skip },
+    { $limit: limit },
     {
       $lookup: {
         from: "customers",
@@ -9239,82 +9045,31 @@ exports.getCustomerPaymentReport = asynchandeler(async (req, res) => {
     },
     { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
     {
-      $addFields: {
-        // A row that carries cash back is reported under its own category
-        // regardless of which model produced it.
-        paymentCategory: {
-          $cond: [{ $gt: ["$cashBack", 0] }, "Return Cash Back", "$sourceCategory"],
-        },
+      $project: {
+        _id: 1,
+        date: 1,
+        trxId: 1,
+        customerName: { $ifNull: ["$customerInfo.fullName", "-"] },
+        customerPhone: { $ifNull: ["$customerInfo.mobileNumber", ""] },
+        paymentCategory: 1,
+        paymentMethod: { $ifNull: ["$account.name", "-"] },
+        paid: 1,
+        less: 1,
+        cashBack: 1,
+        remarks: 1,
       },
     },
   ];
 
-  // Name/mobile search runs after the lookup because the customer's name lives
-  // on the joined document, not on the payment record.
-  const nameFilterStages = [];
-  if (nameQuery) {
-    const escaped = nameQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const rx = new RegExp(escaped, "i");
-    nameFilterStages.push({
-      $match: {
-        $or: [
-          { "customerInfo.fullName": rx },
-          { "customerInfo.mobileNumber": rx },
-        ],
-      },
-    });
-  }
-
-  const categoryFilterStages = categoryFilter
-    ? [{ $match: { paymentCategory: categoryFilter } }]
-    : [];
-
-  const unionStage = {
-    $unionWith: {
-      coll: "customeradvancepaymentreciveds",
-      pipeline: advancePaymentStages,
-    },
-  };
-
-  const pipeline = [
-    ...duePaymentStages,
-    unionStage,
-    ...enrichStages,
-    ...nameFilterStages,
-    ...categoryFilterStages,
+  const totalsPipeline = [
+    ...union(),
     {
-      $facet: {
-        rows: [
-          { $sort: { date: -1, _id: -1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              _id: 1,
-              date: 1,
-              trxId: 1,
-              customerName: { $ifNull: ["$customerInfo.fullName", "-"] },
-              customerPhone: { $ifNull: ["$customerInfo.mobileNumber", ""] },
-              paymentCategory: 1,
-              paymentMethod: { $ifNull: ["$account.name", "-"] },
-              paid: 1,
-              less: 1,
-              cashBack: 1,
-              remarks: 1,
-            },
-          },
-        ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              totalPaid: { $sum: "$paid" },
-              totalLess: { $sum: "$less" },
-              totalCashBack: { $sum: "$cashBack" },
-            },
-          },
-        ],
+      $group: {
+        _id: null,
+        count: { $sum: 1 },
+        totalPaid: { $sum: "$paid" },
+        totalLess: { $sum: "$less" },
+        totalCashBack: { $sum: "$cashBack" },
       },
     },
   ];
@@ -9324,52 +9079,35 @@ exports.getCustomerPaymentReport = asynchandeler(async (req, res) => {
   // the add-account permission, which a report-only user need not hold.
   //
   // Each runs as its own pass with every filter EXCEPT its own: folding them
-  // into the main $facet would narrow each list by its own filter, so picking
+  // into the main query would narrow each list by its own filter, so picking
   // one value would leave that dropdown showing only that value.
-  const buildOptionPipeline = (excludeKey) => {
-    const optionMatch = { ...baseMatch };
-    if (excludeKey === "paymentMode") delete optionMatch.paymentMode;
-
-    const dueSide = [
-      { $match: optionMatch },
-      { $project: duePaymentStages[1].$project },
-    ];
-    const advanceSide = [
-      { $match: optionMatch },
-      { $project: advancePaymentStages[1].$project },
-    ];
-
-    return [
-      ...dueSide,
-      {
-        $unionWith: {
-          coll: "customeradvancepaymentreciveds",
-          pipeline: advanceSide,
-        },
-      },
-      ...enrichStages,
-      ...nameFilterStages,
-      ...(excludeKey === "category" ? [] : categoryFilterStages),
-    ];
-  };
-
+  const methodMatch = { ...baseMatch };
+  delete methodMatch.paymentMode;
   const methodPipeline = [
-    ...buildOptionPipeline("paymentMode"),
+    ...union({ match: methodMatch }),
     {
       $group: {
         _id: "$paymentMode",
-        name: { $first: { $ifNull: ["$account.name", "-"] } },
         count: { $sum: 1 },
         totalPaid: { $sum: "$paid" },
       },
     },
     { $match: { _id: { $ne: null } } },
-    { $project: { _id: 0, id: "$_id", name: 1, count: 1, totalPaid: 1 } },
+    {
+      $lookup: {
+        from: "accounts",
+        localField: "_id",
+        foreignField: "_id",
+        as: "account",
+        pipeline: [{ $project: { name: 1 } }],
+      },
+    },
+    { $project: { _id: 0, id: "$_id", name: { $ifNull: [{ $first: "$account.name" }, "-"] }, count: 1, totalPaid: 1 } },
     { $sort: { name: 1 } },
   ];
 
   const categoryPipeline = [
-    ...buildOptionPipeline("category"),
+    ...union({ withCategory: false }),
     {
       $group: {
         _id: "$paymentCategory",
@@ -9382,14 +9120,14 @@ exports.getCustomerPaymentReport = asynchandeler(async (req, res) => {
     { $sort: { name: 1 } },
   ];
 
-  const [[result], methods, categories] = await Promise.all([
-    CustomerPaymentRecived.aggregate(pipeline),
+  const [rows, totalsResult, methods, categories] = await Promise.all([
+    CustomerPaymentRecived.aggregate(rowsPipeline),
+    CustomerPaymentRecived.aggregate(totalsPipeline),
     CustomerPaymentRecived.aggregate(methodPipeline),
     CustomerPaymentRecived.aggregate(categoryPipeline),
   ]);
 
-  const rows = result?.rows || [];
-  const totals = result?.totals?.[0] || {
+  const totals = totalsResult[0] || {
     count: 0,
     totalPaid: 0,
     totalLess: 0,
@@ -9560,6 +9298,7 @@ exports.getCustomerBalanceSummaryReport = asynchandeler(async (req, res) => {
 
   // Only completed sales count toward a balance — a draft or pending invoice
   // has not been billed to the customer yet.
+  const rangeMatch = rangeStart && rangeEnd ? { date: { $gte: rangeStart, $lte: rangeEnd } } : {};
   const salesConditions = [
     { $eq: ["$customerType.customerId", "$$cid"] },
     { $eq: ["$invoiceStatus", "complete"] },
@@ -9569,8 +9308,14 @@ exports.getCustomerBalanceSummaryReport = asynchandeler(async (req, res) => {
     salesConditions.push({ $lte: ["$date", rangeEnd] });
   }
 
-  const buildStages = () => [
+  // BUG-P2-009: the customers are sorted by name and cut to the page first;
+  // only the page's customers are looked up in sales. Looking up every
+  // customer's sales before paging never finished on a large shop.
+  const rowsPipeline = [
     { $match: match },
+    { $sort: { fullName: 1, _id: 1 } },
+    { $skip: skip },
+    { $limit: limit },
     {
       $lookup: {
         from: "customertypes",
@@ -9612,66 +9357,76 @@ exports.getCustomerBalanceSummaryReport = asynchandeler(async (req, res) => {
       },
     },
     {
-      $addFields: {
-        totalBalance: {
-          $subtract: [
-            { $add: ["$openingBalance", "$totalSales"] },
-            "$totalPaid",
-          ],
+      $project: {
+        _id: 1,
+        serialId: { $ifNull: ["$customSerialId", ""] },
+        customerName: { $ifNull: ["$fullName", "-"] },
+        customerPhone: { $ifNull: ["$mobileNumber", ""] },
+        customerType: { $ifNull: ["$typeInfo.customerType", "-"] },
+        creditLimit: 1,
+        openingBalance: 1,
+        totalSales: 1,
+        totalPaid: 1,
+        totalBalance: { $subtract: [{ $add: ["$openingBalance", "$totalSales"] }, "$totalPaid"] },
+      },
+    },
+  ];
+
+  // Sales and paid over every customer on the sheet, summed on sales: those
+  // of the filtered customers, or with no filter all listed customers' sales
+  // less those of inactive and deleted customers (who are not on the sheet)
+  const saleSums = (customerMatch) =>
+    Sales.aggregate([
+      { $match: { invoiceStatus: "complete", ...rangeMatch, "customerType.customerId": customerMatch } },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: { $ifNull: ["$payable", 0] } },
+          totalPaid: { $sum: { $ifNull: ["$netPaid", 0] } },
         },
       },
-    },
-  ];
+    ]).then((r) => r[0] || { totalSales: 0, totalPaid: 0 });
+  const sumSales = async () => {
+    if (match._id || match.customerType || match.$or) {
+      const ids = await Customer.distinct("_id", match);
+      return ids.length ? saleSums({ $in: ids }) : { totalSales: 0, totalPaid: 0 };
+    }
+    const excluded = await Customer.distinct("_id", {
+      $or: [{ isActive: false }, { deletedAt: { $ne: null } }],
+    });
+    const [all, ofExcluded] = await Promise.all([
+      saleSums({ $ne: null }),
+      excluded.length ? saleSums({ $in: excluded }) : { totalSales: 0, totalPaid: 0 },
+    ]);
+    return {
+      totalSales: all.totalSales - ofExcluded.totalSales,
+      totalPaid: all.totalPaid - ofExcluded.totalPaid,
+    };
+  };
 
-  const pipeline = [
-    ...buildStages(),
-    {
-      $facet: {
-        rows: [
-          { $sort: { fullName: 1, _id: 1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              _id: 1,
-              serialId: { $ifNull: ["$customSerialId", ""] },
-              customerName: { $ifNull: ["$fullName", "-"] },
-              customerPhone: { $ifNull: ["$mobileNumber", ""] },
-              customerType: { $ifNull: ["$typeInfo.customerType", "-"] },
-              creditLimit: 1,
-              openingBalance: 1,
-              totalSales: 1,
-              totalPaid: 1,
-              totalBalance: 1,
-            },
-          },
-        ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              totalCreditLimit: { $sum: "$creditLimit" },
-              totalOpeningBalance: { $sum: "$openingBalance" },
-              totalSales: { $sum: "$totalSales" },
-              totalPaid: { $sum: "$totalPaid" },
-              totalBalance: { $sum: "$totalBalance" },
-            },
-          },
-        ],
+  const [rows, customerTotals, sales] = await Promise.all([
+    Customer.aggregate(rowsPipeline),
+    Customer.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalCreditLimit: { $sum: { $ifNull: ["$dueLimit", 0] } },
+          totalOpeningBalance: { $sum: { $ifNull: ["$openingDues", 0] } },
+        },
       },
-    },
-  ];
-
-  const [result] = await Customer.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const totals = result?.totals?.[0] || {
-    count: 0,
-    totalCreditLimit: 0,
-    totalOpeningBalance: 0,
-    totalSales: 0,
-    totalPaid: 0,
-    totalBalance: 0,
+    ]),
+    sumSales(),
+  ]);
+  const opening = customerTotals[0] || { count: 0, totalCreditLimit: 0, totalOpeningBalance: 0 };
+  const totals = {
+    count: opening.count,
+    totalCreditLimit: opening.totalCreditLimit,
+    totalOpeningBalance: opening.totalOpeningBalance,
+    totalSales: sales.totalSales,
+    totalPaid: sales.totalPaid,
+    totalBalance: opening.totalOpeningBalance + sales.totalSales - sales.totalPaid,
   };
 
   const header = await getStoreHeader();
@@ -9809,11 +9564,6 @@ exports.getCustomerLedgerReport = asynchandeler(async (req, res) => {
     );
   }
 
-  const inRange = (dateExpr) =>
-    rangeStart
-      ? [{ $gte: [dateExpr, rangeStart] }, { $lte: [dateExpr, rangeEnd] }]
-      : [];
-
   // Every branch projects the same row shape. `sortKey` pins the opening
   // balance to the top of the statement: it is the balance carried in, so it
   // must precede every transaction regardless of the date it was recorded on.
@@ -9853,17 +9603,17 @@ exports.getCustomerLedgerReport = asynchandeler(async (req, res) => {
     ),
   ];
 
+  // Plain predicates rather than $expr, so each source reads its
+  // { tenantId, customer…, date } index (BUG-P2-009)
+  const dateRange = rangeStart ? { date: { $gte: rangeStart, $lte: rangeEnd } } : {};
+
   // --- 2. Sales invoices --------------------------------------------------
   const salesPipeline = [
     {
       $match: {
-        $expr: {
-          $and: [
-            { $eq: ["$customerType.customerId", custId] },
-            { $eq: ["$invoiceStatus", "complete"] },
-            ...inRange("$date"),
-          ],
-        },
+        "customerType.customerId": custId,
+        invoiceStatus: "complete",
+        ...dateRange,
       },
     },
     rowShape(
@@ -9879,14 +9629,10 @@ exports.getCustomerLedgerReport = asynchandeler(async (req, res) => {
   const paymentPipeline = [
     {
       $match: {
-        $expr: {
-          $and: [
-            { $eq: ["$customer", custId] },
-            { $ne: ["$isActive", false] },
-            { $eq: ["$deletedAt", null] },
-            ...inRange("$date"),
-          ],
-        },
+        customer: custId,
+        isActive: { $ne: false },
+        deletedAt: null,
+        ...dateRange,
       },
     },
     rowShape(
@@ -9902,14 +9648,10 @@ exports.getCustomerLedgerReport = asynchandeler(async (req, res) => {
   const advancePipeline = [
     {
       $match: {
-        $expr: {
-          $and: [
-            { $eq: ["$customer", custId] },
-            { $ne: ["$isActive", false] },
-            { $eq: ["$deletedAt", null] },
-            ...inRange("$date"),
-          ],
-        },
+        customer: custId,
+        isActive: { $ne: false },
+        deletedAt: null,
+        ...dateRange,
       },
     },
     rowShape(
@@ -9923,20 +9665,12 @@ exports.getCustomerLedgerReport = asynchandeler(async (req, res) => {
 
   // --- 5. Sales returns ---------------------------------------------------
   // SalesReturn stores no customer of its own; it reaches one only through the
-  // sale it reverses, so the customer filter has to run after that $lookup.
+  // sale it reverses. The customer's sales are found first, and only their
+  // returns read (the invoiceNumber index), instead of joining every return of
+  // the range to its sale.
+  const customerSaleIds = await Sales.distinct("_id", { "customerType.customerId": custId });
   const returnPipeline = [
-    ...(rangeStart ? [{ $match: { $expr: { $and: inRange("$date") } } }] : []),
-    {
-      $lookup: {
-        from: "sales",
-        localField: "invoiceNumber",
-        foreignField: "_id",
-        as: "sale",
-        pipeline: [{ $project: { "customerType.customerId": 1 } }],
-      },
-    },
-    { $unwind: { path: "$sale", preserveNullAndEmptyArrays: false } },
-    { $match: { "sale.customerType.customerId": custId } },
+    { $match: { invoiceNumber: { $in: customerSaleIds }, ...dateRange } },
     rowShape(
       { $ifNull: ["$returnId", "N/A"] },
       { $literal: "Sales Return" },
@@ -10142,8 +9876,15 @@ exports.getCustomerDueListReport = asynchandeler(async (req, res) => {
       ? [{ $gte: [field, rangeStart] }, { $lte: [field, rangeEnd] }]
       : [];
 
-  const pipeline = [
+  // BUG-P2-009: the customers are sorted and cut to the page first, and only
+  // the page's customers are looked up in sales and payments; the totals
+  // count straight from customers and sales. Looking up every customer's
+  // sales and payments before paging never finished on a large shop.
+  const rowsPipeline = [
     { $match: match },
+    { $sort: { openingDues: -1, fullName: 1, _id: 1 } },
+    { $skip: skip },
+    { $limit: limit },
     {
       $lookup: {
         from: "customertypes",
@@ -10212,57 +9953,69 @@ exports.getCustomerDueListReport = asynchandeler(async (req, res) => {
     },
     { $unwind: { path: "$payAgg", preserveNullAndEmptyArrays: true } },
     {
-      $addFields: {
+      $project: {
+        _id: 1,
+        serialId: { $ifNull: ["$customSerialId", ""] },
+        customerName: { $ifNull: ["$fullName", "-"] },
+        customerPhone: { $ifNull: ["$mobileNumber", ""] },
+        customerType: { $ifNull: ["$typeInfo.customerType", "-"] },
         creditLimit: { $ifNull: ["$dueLimit", 0] },
-        totalDues: { $ifNull: ["$openingDues", 0] },
         dueInvoices: { $ifNull: ["$salesAgg.dueInvoices", 0] },
+        totalDues: { $ifNull: ["$openingDues", 0] },
         lastSalesDate: "$salesAgg.lastSalesDate",
         lastPayDate: "$payAgg.lastPayDate",
       },
     },
-    {
-      $facet: {
-        rows: [
-          { $sort: { totalDues: -1, fullName: 1, _id: 1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              _id: 1,
-              serialId: { $ifNull: ["$customSerialId", ""] },
-              customerName: { $ifNull: ["$fullName", "-"] },
-              customerPhone: { $ifNull: ["$mobileNumber", ""] },
-              customerType: { $ifNull: ["$typeInfo.customerType", "-"] },
-              creditLimit: 1,
-              dueInvoices: 1,
-              totalDues: 1,
-              lastSalesDate: 1,
-              lastPayDate: 1,
-            },
-          },
-        ],
-        totals: [
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              totalCreditLimit: { $sum: "$creditLimit" },
-              totalDueInvoices: { $sum: "$dueInvoices" },
-              totalDues: { $sum: "$totalDues" },
-            },
-          },
-        ],
-      },
-    },
   ];
 
-  const [result] = await Customer.aggregate(pipeline);
-  const rows = result?.rows || [];
-  const totals = result?.totals?.[0] || {
-    count: 0,
-    totalCreditLimit: 0,
-    totalDueInvoices: 0,
-    totalDues: 0,
+  // The due invoices of the listed customers, counted on sales: those of the
+  // filtered customers, or with no filter all of them less those of inactive
+  // and deleted customers (who are not on the sheet)
+  const dueSaleMatch = {
+    invoiceStatus: "complete",
+    paymentStatus: "due",
+    ...(rangeStart ? { date: { $gte: rangeStart, $lte: rangeEnd } } : {}),
+  };
+  const countDueInvoices = async () => {
+    const filtered = Boolean(match._id || match.customerType || match.$or);
+    if (filtered) {
+      const ids = await Customer.distinct("_id", match);
+      return ids.length
+        ? Sales.countDocuments({ ...dueSaleMatch, "customerType.customerId": { $in: ids } })
+        : 0;
+    }
+    const excluded = await Customer.distinct("_id", {
+      $or: [{ isActive: false }, { deletedAt: { $ne: null } }],
+    });
+    const [all, ofExcluded] = await Promise.all([
+      Sales.countDocuments({ ...dueSaleMatch, "customerType.customerId": { $ne: null } }),
+      excluded.length
+        ? Sales.countDocuments({ ...dueSaleMatch, "customerType.customerId": { $in: excluded } })
+        : 0,
+    ]);
+    return all - ofExcluded;
+  };
+
+  const [rows, customerTotals, totalDueInvoices] = await Promise.all([
+    Customer.aggregate(rowsPipeline),
+    Customer.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalCreditLimit: { $sum: { $ifNull: ["$dueLimit", 0] } },
+          totalDues: { $sum: { $ifNull: ["$openingDues", 0] } },
+        },
+      },
+    ]),
+    countDueInvoices(),
+  ]);
+  const totals = {
+    count: customerTotals[0]?.count || 0,
+    totalCreditLimit: customerTotals[0]?.totalCreditLimit || 0,
+    totalDueInvoices,
+    totalDues: customerTotals[0]?.totalDues || 0,
   };
 
   const header = await getStoreHeader();

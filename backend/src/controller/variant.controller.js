@@ -3,6 +3,8 @@ const { apiResponse } = require("../utils/apiResponse");
 const variant = require("../models/variant.model");
 const product = require("../models/product.model");
 const { customError } = require("../lib/CustomError");
+const { nameSearchFilter, idsMatchingAny } = require("../utils/searchWords.util");
+const { listPage, afterCursor, pageResult, NEWEST_FIRST, MAX_LIMIT } = require("../utils/listPage.util");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const {
   validateVariant,
@@ -213,43 +215,60 @@ exports.createVariant = asynchandeler(async (req, res) => {
 });
 
 // @desc get all variants
+// One page of variants (BUG-P2-010), newest first. ?search= finds a word of
+// the variant name (prefix) or a barcode / sku (prefix) through indexes;
+// ?after= is the previous page's cursor; ?page= numbers pages for pickers.
+const pagedVariants = async (req, base, populateProduct) => {
+  const paging = listPage(req.query);
+  const query = { ...base };
+  const search = String(req.query.q || req.query.search || "").trim();
+  if (search) {
+    const conditions = [
+      { barCode: { $regex: `^${escapeRegex(search)}` } },
+      { sku: { $regex: `^${escapeRegex(search)}` } },
+    ];
+    const byName = nameSearchFilter(search);
+    if (byName) conditions.unshift(byName);
+    query._id = { $in: await idsMatchingAny(variant, conditions, MAX_LIMIT) };
+  }
+  const rows = await variant
+    .find({ ...query, ...afterCursor(paging.cursor) })
+    .sort(NEWEST_FIRST)
+    .skip(paging.skip)
+    .limit(paging.limit + 1)
+    .populate(populateProduct)
+    .populate("byReturn salesReturn")
+    .select("-updatedAt")
+    .lean();
+  const { items, ...pageInfo } = pageResult(rows, paging);
+  return { variants: items, ...pageInfo };
+};
+
 exports.getAllVariants = asynchandeler(async (req, res, next) => {
-  const cacheKey = await buildCacheKey(NS, "all");
+  // One page at a time (BUG-P2-010): every variant with its product populated
+  // ran the API out of memory on a large shop
+  const cacheKey = await buildCacheKey(NS, `all:${JSON.stringify(req.query)}`);
   const cached = await getCache(cacheKey);
   if (cached) {
     return apiResponse.sendSuccess(
       res,
       statusCodes.OK,
       "Variants fetched successfully",
-      { variants: cached, fromCache: true },
+      { ...cached, fromCache: true },
     );
   }
 
-  const variants = await variant
-    .find()
-    .populate({
-      path: "product",
-      populate: ["category", "brand", "subcategory", "discount"],
-    })
-    .populate("byReturn salesReturn")
-    .select("-updatedAt")
-    .sort({ createdAt: -1 })
-    .lean();
-
-  if (!variants || variants.length === 0) {
-    return apiResponse.sendSuccess(res, statusCodes.OK, "No variants found", {
-      variants: [],
-      fromCache: false,
-    });
-  }
-
-  await setCache(cacheKey, variants, CACHE_TTL_LIST);
+  const payload = await pagedVariants(req, {}, {
+    path: "product",
+    populate: ["category", "brand", "subcategory", "discount"],
+  });
+  await setCache(cacheKey, payload, CACHE_TTL_LIST);
 
   return apiResponse.sendSuccess(
     res,
     statusCodes.OK,
-    "Variants fetched successfully",
-    { variants, fromCache: false },
+    payload.variants.length ? "Variants fetched successfully" : "No variants found",
+    { ...payload, fromCache: false },
   );
 });
 
@@ -272,7 +291,7 @@ exports.searchVariants = asynchandeler(async (req, res) => {
 
   const cacheKey = await buildCacheKey(
     NS,
-    `search:${search.toLowerCase()}:isActive:${isActive}`,
+    `search:${search.toLowerCase()}:isActive:${isActive}:${req.query.page || ""}:${req.query.limit || ""}:${req.query.after || ""}`,
   );
   const cached = await getCache(cacheKey);
   if (cached) {
@@ -280,39 +299,24 @@ exports.searchVariants = asynchandeler(async (req, res) => {
       res,
       statusCodes.OK,
       "Variants search results",
-      { variants: cached, fromCache: true },
+      { ...cached, fromCache: true },
     );
   }
 
-  const safeSearch = escapeRegex(search);
-  const searchRegex = new RegExp(safeSearch, "i");
-  const filter = {
-    $or: [{ variantName: searchRegex }, { barCode: searchRegex }],
-  };
-
-  if (isActive !== null) {
-    filter.isActive = isActive;
-  }
-
-  const variants = await variant
-    .find(filter)
-    .populate({
-      path: "product",
-      select:
-        "name category brand subcategory discount barCode sku stock retailPrice wholesalePrice purchasePrice slug",
-    })
-    .populate("byReturn salesReturn")
-    .select("-updatedAt")
-    .sort({ createdAt: -1 })
-    .lean();
-
-  await setCache(cacheKey, variants, 60 * 5);
+  // Indexed: a word of the name by its beginning, a barcode / sku by its
+  // beginning; one page (BUG-P2-010). A "contains" regex read every variant.
+  const payload = await pagedVariants(req, isActive !== null ? { isActive } : {}, {
+    path: "product",
+    select:
+      "name category brand subcategory discount barCode sku stock retailPrice wholesalePrice purchasePrice slug",
+  });
+  await setCache(cacheKey, payload, 60 * 5);
 
   return apiResponse.sendSuccess(
     res,
     statusCodes.OK,
-    variants.length ? "Variants search results" : "No variants found",
-    { variants, fromCache: false },
+    payload.variants.length ? "Variants search results" : "No variants found",
+    { ...payload, fromCache: false },
   );
 });
 

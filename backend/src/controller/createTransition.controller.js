@@ -45,21 +45,11 @@ const moveAccount = async (accountId, change, session) => {
   return account;
 };
 
-// Sales, sales returns, purchases and customer/supplier payments all write into
-// this same collection, each tagging its row with the reference field that lets
-// the originating record reverse it later. The transaction list is the ledger
-// for entries typed by hand on /add-transaction, so it filters those auto-
-// generated rows out — they are already reported on the dashboard and in each
-// module's own list. Account balances still count every row.
-const MANUAL_ENTRY_ONLY = {
-  saleReference: { $eq: null },
-  supplierPaymentReference: { $eq: null },
-  customerPaymentReference: { $eq: null },
-  customerAdvancePaymentReference: { $eq: null },
-  purchaseReference: { $eq: null },
-  salesReturnReference: { $eq: null },
-  purchaseReturnReference: { $eq: null },
-};
+// The transaction list is the ledger for entries typed by hand on
+// /add-transaction, so it filters the auto-generated rows out — they are
+// already reported on the dashboard and in each module's own list. Account
+// balances still count every row.
+const { MANUAL_ENTRY_ONLY } = require("../utils/manualEntry.util");
 
 // Exported so a test can pin it against the schema: a reference field added to
 // the model but not to this filter silently leaks that module's rows here.
@@ -139,9 +129,10 @@ exports.getAllTransaction = asynchandeler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const [rawTransactions, total] = await Promise.all([
+    // Read through the partial index that holds only manual entries
     CreateTransaction.find(MANUAL_ENTRY_ONLY)
       .populate("account transactionCategory")
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .skip(skip)
       .limit(limit),
     CreateTransaction.countDocuments(MANUAL_ENTRY_ONLY),

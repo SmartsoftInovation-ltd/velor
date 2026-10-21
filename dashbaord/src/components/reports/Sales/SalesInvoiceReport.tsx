@@ -245,13 +245,26 @@ const SalesInvoiceReport = () => {
   }, []);
 
 
+  // Customers are searched on the server as the user types (a large shop has
+  // hundreds of thousands); the one picked is kept so its name stays shown
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState("");
+  const [pickedCustomer, setPickedCustomer] = useState<PersonOption | null>(null);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedCustomerSearch(customerSearch.trim()), 300);
+    return () => clearTimeout(handler);
+  }, [customerSearch]);
+
   const { data: customers } = useQuery({
-    queryKey: ["sales-report-customers"],
+    queryKey: ["sales-report-customers", debouncedCustomerSearch],
     queryFn: async () => {
-      const { data } = await axiosSecure.get("/report/sales/customers");
+      const { data } = await axiosSecure.get("/report/sales/customers", {
+        params: { search: debouncedCustomerSearch || undefined },
+      });
       return (data.data.customers || []) as PersonOption[];
     },
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   const { data: salesmen } = useQuery({
@@ -266,12 +279,15 @@ const SalesInvoiceReport = () => {
   const customerOptions = useMemo(
     () => [
       { value: "", label: "All Customers" },
-      ...(customers ?? []).map((c) => ({
+      ...[
+        ...(pickedCustomer && !(customers ?? []).some((c) => c._id === pickedCustomer._id) ? [pickedCustomer] : []),
+        ...(customers ?? []),
+      ].map((c) => ({
         value: c._id,
         label: c.mobileNumber ? `${c.fullName} — ${c.mobileNumber}` : c.fullName,
       })),
     ],
-    [customers],
+    [customers, pickedCustomer],
   );
 
   const salesmenOptions = useMemo(
@@ -301,7 +317,7 @@ const SalesInvoiceReport = () => {
 
   const filterChips: string[] = [];
   if (customerId) {
-    const c = customers?.find((x) => x._id === customerId);
+    const c = pickedCustomer?._id === customerId ? pickedCustomer : customers?.find((x) => x._id === customerId);
     filterChips.push(c ? c.fullName : "Customer");
   }
   if (salesMenId) {
@@ -1062,10 +1078,12 @@ const SalesInvoiceReport = () => {
               value={customerId}
               onChange={(v) => {
                 setCustomerId(v);
+                setPickedCustomer(customers?.find((c) => c._id === v) ?? (v ? pickedCustomer : null));
                 setPage(1);
               }}
+              onSearchChange={setCustomerSearch}
               placeholder="All Customers"
-              searchPlaceholder="Search customer..."
+              searchPlaceholder="Search name or mobile..."
             />
           </div>
 

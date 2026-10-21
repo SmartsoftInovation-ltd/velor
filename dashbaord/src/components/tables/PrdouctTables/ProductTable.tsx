@@ -21,6 +21,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import LoadMoreButton from "../../common/LoadMoreButton";
 import { showApiError } from "../../../utils/apiError";
 
 
@@ -85,6 +86,10 @@ interface ProductTableProps {
   fetchProducts: (query?: string) => void;
   searchTerm: string;
   setSearchTerm: (value: string) => void;
+  // The list arrives in pages from the server
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export default function ProductTable({
@@ -92,6 +97,9 @@ export default function ProductTable({
   fetchProducts,
   searchTerm,
   setSearchTerm,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }: ProductTableProps) {
   const queryClient = useQueryClient();
   const canAdd    = usePermission("product", "add");
@@ -528,6 +536,7 @@ export default function ProductTable({
       </div>
       )}
 
+      {onLoadMore && <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={onLoadMore} />}
       <Modal isOpen={showDeleteModal} onClose={closeModal} className="!w-full !max-w-sm">
         <div className="p-8">
           <div className="flex items-center justify-center size-16 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 mb-5 mx-auto">

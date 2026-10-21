@@ -183,7 +183,22 @@ const domainVerifyLimiter = rateLimit({
 
 const resetRateLimitCounters = () => stores.forEach((store) => store.resetAll());
 
+// Product search is public (the storefront calls it without a token), so it
+// is capped per caller: generous for search-as-you-type, too low to keep the
+// catalogue busy on purpose. Signed-in staff are counted per account.
+const searchLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `search:${req.user?._id || clientIp(req)}`,
+  handler: tooMany("Too many searches. Please wait a moment and try again."),
+});
+
 module.exports = {
+  searchLimiter,
   reportLimiter,
   domainVerifyLimiter,
   platformLoginLimiter,

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
+const { searchWordsPlugin } = require("../utils/searchWords.util");
 const { default: slugify } = require("slugify");
 const { customError } = require("../lib/CustomError");
 
@@ -196,6 +197,8 @@ productSchema.index({
   "seo.focusKeyword": "text",
 });
 productSchema.index({ isActive: 1, createdAt: -1 });
+// Lists page newest first (BUG-P2-010)
+productSchema.index({ createdAt: -1, _id: -1 });
 productSchema.index({ category: 1, isActive: 1 });
 productSchema.index({ totalSales: -1 });
 productSchema.index({ retailPrice: 1 });
@@ -298,6 +301,12 @@ productSchema.virtual("sizeWiseStock").get(function () {
 // EVERY find() call has been REMOVED — it caused N+1 queries on every list/get
 // request. To compute purchase totals, use a dedicated endpoint or aggregation
 // only when explicitly needed.
+
+// Indexed word-prefix search on the name (BUG-P2-004 / P2-011). Applied before
+// tenantPlugin, which puts tenantId in front of the indexes declared so far.
+productSchema.plugin(searchWordsPlugin, { field: "name" });
+// Scanned codes are matched exactly; every branch of the search's $or needs an index
+productSchema.index({ qrCode: 1 });
 
 productSchema.plugin(tenantPlugin);
 const Product =

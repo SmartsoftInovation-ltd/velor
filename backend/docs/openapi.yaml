@@ -6008,6 +6008,19 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/sales/get-sales-stats":
+    get:
+      operationId: "get__sales_get_sales_stats"
+      tags: ["sales"]
+      summary: "The sales list's stat cards (today's count and amount, paid/due counts, total due) for a salesType / invoiceStatus"
+      security: [{ staffBearer: [] }]
+      x-permission: "retail-sales:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   "/sales/get-sales-products":
     get:
       operationId: "get__sales_get_sales_products"
@@ -6654,6 +6667,21 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/stock/low-stock":
+    post:
+      operationId: "post__stock_low_stock"
+      tags: ["stock"]
+      summary: "The Low Stock page's rows, paged (?page=, ?limit=), filtered by subCategory and search in the body"
+      security: [{ staffBearer: [] }]
+      x-permission: "low-stock:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   "/stock/stock-adjust/category/{category}":
     get:
       operationId: "get__stock_stock_adjust_category_category_"

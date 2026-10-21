@@ -6,6 +6,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import toast from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import useRemoteLookup from "../../../hooks/useRemoteLookup";
 import PageMeta from "../../common/PageMeta";
 import SearchableSelect from "../../form/SearchableSelect";
 import NiceSelect from "../../form/NiceSelect";
@@ -277,14 +278,10 @@ const CustomerSalesProductReport = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: products } = useQuery({
-    queryKey: ["customer-sales-product-report-products"],
-    queryFn: async () => {
-      const { data } = await axiosSecure.get("/product/getproduct");
-      return (data.data.products || data.data.product || []) as LookupOption[];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  // Searched on the server as the user types: the product list answers one
+  // page, so the whole catalogue is never loaded into the browser (BUG-P2-010)
+  const productLookup = useRemoteLookup<LookupOption>("customer-sales-product-report-products", "/product/getproduct", (body) => body?.data?.products as LookupOption[] | undefined);
+  const products = productLookup.items;
 
   const { data: categories } = useQuery({
     queryKey: ["customer-sales-product-report-categories"],
@@ -1208,7 +1205,9 @@ const CustomerSalesProductReport = () => {
             <SearchableSelect
               options={productOptions}
               value={productId}
+              onSearchChange={productLookup.onSearchChange}
               onChange={(v) => {
+                productLookup.remember(v);
                 setProductId(v);
                 setPage(1);
               }}

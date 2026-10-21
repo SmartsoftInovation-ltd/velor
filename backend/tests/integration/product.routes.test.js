@@ -154,6 +154,20 @@ describe("product and variant routes", () => {
       expect(visitor.body.data.products).toEqual([]);
     });
 
+    // BUG-P2-010: one page at a time, newest first; a cursor walks on; search by word / code prefix
+    it("GET /product/getproduct pages (limit, cursor, cap) and searches", async () => {
+      for (let i = 0; i < 3; i += 1) await f.product.create({ name: `Paged Item ${i}` });
+      const first = await as().get("/product/getproduct").query({ limit: 2 }).expect(200);
+      expect(first.body.data).toMatchObject({ page: 1, limit: 2, hasNextPage: true });
+      expect(first.body.data.products).toHaveLength(2);
+      const second = await as().get("/product/getproduct").query({ limit: 2, after: first.body.data.nextCursor }).expect(200);
+      const seen = [...first.body.data.products, ...second.body.data.products].map((p) => p._id);
+      expect(new Set(seen).size).toBe(seen.length);
+      expect((await as().get("/product/getproduct").query({ limit: 5000 }).expect(200)).body.data.limit).toBe(100);
+      const found = await as().get("/product/getproduct").query({ search: "page" }).expect(200);
+      expect(found.body.data.products.map((p) => p.name).sort()).toEqual(["Paged Item 0", "Paged Item 1", "Paged Item 2"]);
+    });
+
     it("GET /product/getproduct filters by category and price, caches, and the cache is shared safely between audiences", async () => {
       await f.product.create({ name: "Cheap Sock", retailPrice: 50 });
       const byCat = await anonymous().get("/product/getproduct").query({ category: category._id.toString() }).expect(200);

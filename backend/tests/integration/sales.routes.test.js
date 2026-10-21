@@ -317,23 +317,24 @@ describe("sales routes (/api/v1/sales)", () => {
       await create(sale({ invoiceStatus: "draft", salesType: "wholesale" })).expect(201);
     };
 
-    it("lists every sale of the store, newest first, as a flat array", async () => {
+    // BUG-P2-005: the list is always paged — there is no "everything" answer
+    it("lists the store's sales newest first, one page at a time", async () => {
       await seed();
       const other = await tenantFactory.create({ slug: "othershop" });
-      await runForTenant(other._id, () => Sales.collection.insertOne({ tenantId: other._id, invoiceNumber: "X-1", customerType: { type: "walking" } }));
+      await runForTenant(other._id, () => Sales.collection.insertOne({ tenantId: other._id, invoiceNumber: "X-1", customerType: { type: "walking" }, createdAt: new Date() }));
       const res = await as().get("/sales/get-sales").expect(200);
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.map((s) => s.invoiceNumber)).toEqual(["INV-INV-03", "INV-INV-02", "INV-INV-01"]);
+      expect(res.body.data).toMatchObject({ page: 1, limit: 50, hasNextPage: false, nextCursor: null });
+      expect(res.body.data.sales.map((s) => s.invoiceNumber)).toEqual(["INV-INV-03", "INV-INV-02", "INV-INV-01"]);
     });
 
     it("filters by salesType and invoiceStatus, single or comma-separated", async () => {
       await seed();
       const byType = await as().get("/sales/get-sales").query({ salesType: "wholesale" }).expect(200);
-      expect(byType.body.data.map((s) => s.salesType)).toEqual(["wholesale"]);
+      expect(byType.body.data.sales.map((s) => s.salesType)).toEqual(["wholesale"]);
       const byStatuses = await as().get("/sales/get-sales").query({ invoiceStatus: "complete,pending" }).expect(200);
-      expect(byStatuses.body.data.map((s) => s.invoiceStatus).sort()).toEqual(["complete", "pending"]);
+      expect(byStatuses.body.data.sales.map((s) => s.invoiceStatus).sort()).toEqual(["complete", "pending"]);
       const none = await as().get("/sales/get-sales").query({ salesType: "wholesaleorder" }).expect(200);
-      expect(none.body.data).toEqual([]);
+      expect(none.body.data.sales).toEqual([]);
     });
 
     it("finds one invoice by number, 404 when there is none", async () => {
@@ -343,10 +344,12 @@ describe("sales routes (/api/v1/sales)", () => {
       await as().get("/sales/get-sales").query({ invoiceNumber: "INV-INV-99" }).expect(404);
     });
 
-    it("paginates: first, last and empty pages, limit capped at 100, bad page numbers clamped", async () => {
+    // BUG-P2-006: no per-page count of every sale; limit + 1 tells whether there is more
+    it("pages by number: first, last and empty pages, limit capped at 100, bad page numbers clamped", async () => {
       await seed();
       const first = await as().get("/sales/get-sales").query({ page: 1, limit: 2 }).expect(200);
-      expect(first.body.data).toMatchObject({ total: 3, page: 1, limit: 2, hasNextPage: true });
+      expect(first.body.data).toMatchObject({ page: 1, limit: 2, hasNextPage: true });
+      expect(first.body.data).not.toHaveProperty("total");
       expect(first.body.data.sales).toHaveLength(2);
       const last = await as().get("/sales/get-sales").query({ page: 2, limit: 2 }).expect(200);
       expect(last.body.data).toMatchObject({ hasNextPage: false });
@@ -357,43 +360,54 @@ describe("sales routes (/api/v1/sales)", () => {
       expect(capped.body.data.limit).toBe(100);
       const clamped = await as().get("/sales/get-sales").query({ page: -3, limit: "abc" }).expect(200);
       expect(clamped.body.data).toMatchObject({ page: 1, limit: 50 });
+      // Deep page numbers are refused: the cursor pages at the same cost everywhere
+      const deep = await as().get("/sales/get-sales").query({ page: 202, limit: 50 }).expect(400);
+      expect(deep.body.code).toBe("USE_CURSOR");
     });
 
-    it("searches invoice numbers literally (regex characters are escaped)", async () => {
+    it("pages by cursor (keyset): each page continues after the last row of the one before", async () => {
       await seed();
-      const hit = await as().get("/sales/get-sales").query({ search: "inv-02" }).expect(200);
+      const first = await as().get("/sales/get-sales").query({ limit: 2 }).expect(200);
+      expect(first.body.data.nextCursor).toEqual(expect.any(String));
+      const second = await as().get("/sales/get-sales").query({ limit: 2, after: first.body.data.nextCursor }).expect(200);
+      expect(second.body.data).toMatchObject({ hasNextPage: false, nextCursor: null });
+      const all = [...first.body.data.sales, ...second.body.data.sales].map((s) => s.invoiceNumber);
+      expect(all).toEqual(["INV-INV-03", "INV-INV-02", "INV-INV-01"]);
+      await as().get("/sales/get-sales").query({ after: "garbage" }).expect(400);
+    });
+
+    it("searches invoice numbers by prefix (any case) or sequence number, literally", async () => {
+      await seed();
+      const hit = await as().get("/sales/get-sales").query({ search: "inv-inv-02" }).expect(200);
       expect(hit.body.data.sales.map((s) => s.invoiceNumber)).toEqual(["INV-INV-02"]);
+      const bySequence = await as().get("/sales/get-sales").query({ search: "3" }).expect(200);
+      expect(bySequence.body.data.sales.map((s) => s.invoiceNumber)).toEqual(["INV-INV-03"]);
       const regex = await as().get("/sales/get-sales").query({ search: ".*" }).expect(200);
       expect(regex.body.data.sales).toEqual([]);
     });
 
-    it("serves the list from cache and refreshes it after a write through the API", async () => {
-      await create(sale()).expect(201);
-      const first = await as().get("/sales/get-sales").expect(200);
-      expect(first.body.data).toHaveLength(1);
-      expect((await testRedis().keys(`t:${tenant._id}:sales:v*:all`)).length).toBe(1);
-      const ttl = await testRedis().ttl((await testRedis().keys(`t:${tenant._id}:sales:v*:all`))[0]);
-      expect(ttl).toBeGreaterThan(0);
-      expect(ttl).toBeLessThanOrEqual(300);
-
-      // Written behind the API's back: the cached copy is still served
-      await inTenant(() => Sales.collection.insertOne({ tenantId: tenant._id, invoiceNumber: "RAW-1", customerType: { type: "walking" }, createdAt: new Date() }));
-      const cached = await as().get("/sales/get-sales").expect(200);
-      expect(cached.body.data).toHaveLength(1);
-
-      // A write through the API bumps the namespace: fresh data
-      await create(sale()).expect(201);
-      const fresh = await as().get("/sales/get-sales").expect(200);
-      expect(fresh.body.data).toHaveLength(3);
+    it("filters by payment status and by the account paid into", async () => {
+      await create(sale({ paymentStatus: "paid" })).expect(201);
+      const due = await f.customer.create();
+      await create(sale({ customerType: { type: "listed", customerId: due._id.toString() }, paid: 0, paymentStatus: "due", paymentMethod: {} })).expect(201);
+      const paid = await as().get("/sales/get-sales").query({ paymentStatus: "paid" }).expect(200);
+      expect(paid.body.data.sales.map((s) => s.invoiceNumber)).toEqual(["INV-INV-01"]);
+      const intoTill = await as().get("/sales/get-sales").query({ paymentTo: account._id.toString() }).expect(200);
+      expect(intoTill.body.data.sales.map((s) => s.invoiceNumber)).toEqual(["INV-INV-01"]);
     });
 
-    it("does not serve one store's cached list to another", async () => {
+    it("answers the list's stat cards on the server", async () => {
+      await create(sale({ paymentStatus: "paid" })).expect(201);
+      const due = await f.customer.create();
+      await create(sale({ customerType: { type: "listed", customerId: due._id.toString() }, paid: 400, presentDue: 600, paymentStatus: "partial", paymentMethod: { singlePayment: { amount: 400, paymentTo: account._id.toString() } } })).expect(201);
+      const res = await as().get("/sales/get-sales-stats").expect(200);
+      expect(res.body.data).toMatchObject({ todayCount: 2, todayAmount: 2000, paidCount: 1, dueCount: 1, totalDue: 600 });
+    });
+
+    it("never caches a whole-shop list", async () => {
       await create(sale()).expect(201);
       await as().get("/sales/get-sales").expect(200);
-      const other = await tenantFactory.create({ slug: "othershop" });
-      const otherOwner = await createUserIn(other, { owner: true });
-      const res = await api(ctx.server, { token: tokenFor(otherOwner), tenant: "othershop" }).get("/sales/get-sales").expect(200);
-      expect(res.body.data).toEqual([]);
+      expect(await testRedis().keys(`t:${tenant._id}:sales:v*:all*`)).toEqual([]);
     });
 
     it("lets a sale-order-only user read the list, but not create a direct sale", async () => {
@@ -450,12 +464,25 @@ describe("sales routes (/api/v1/sales)", () => {
     });
 
     it("caps the result count at 50, and a blank query is a 400", async () => {
-      await f.product.createList(55);
+      for (let i = 0; i < 55; i += 1) await f.product.create({ name: `Shirt ${i}` });
       await as().get("/sales/get-sales-products").query({ q: "   ", limit: 500 }).expect(400);
-      const hit = await as().get("/sales/get-sales-products").query({ q: "e", limit: 500 }).expect(200);
+      const hit = await as().get("/sales/get-sales-products").query({ q: "sh", limit: 500 }).expect(200);
       expect(hit.body.data).toHaveLength(50);
-      const small = await as().get("/sales/get-sales-products").query({ q: "e", limit: 3 }).expect(200);
+      const small = await as().get("/sales/get-sales-products").query({ q: "sh", limit: 3 }).expect(200);
       expect(small.body.data).toHaveLength(3);
+    });
+
+    // BUG-P2-004: names are searched through the index by word prefix, from 2 characters
+    it("matches any word of a name by its beginning, and needs 2 characters for a name", async () => {
+      const named = await f.product.create({ name: "Cotton Shirt Large" });
+      const byWordPrefix = await as().get("/sales/get-sales-products").query({ q: "shi" }).expect(200);
+      expect(byWordPrefix.body.data.map((r) => String(r._id))).toContain(named._id.toString());
+      const bothWords = await as().get("/sales/get-sales-products").query({ q: "lar cot" }).expect(200);
+      expect(bothWords.body.data.map((r) => String(r._id))).toEqual([named._id.toString()]);
+      const inside = await as().get("/sales/get-sales-products").query({ q: "hirt" }).expect(200);
+      expect(inside.body.data).toEqual([]);
+      const oneLetter = await as().get("/sales/get-sales-products").query({ q: "s" }).expect(200);
+      expect(oneLetter.body.data).toEqual([]);
     });
 
     // BUG-016: a non-numeric or zero limit reaches $limit and the driver rejects it

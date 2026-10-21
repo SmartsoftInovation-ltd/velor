@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   FaSync, FaTimes, FaExclamationTriangle,
@@ -11,37 +11,32 @@ import toast from "react-hot-toast";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
+import LoadMoreButton from "../../common/LoadMoreButton";
 
 // ---------- Types ----------
 
-interface Variant {
+// A row of the server's low stock list (POST /stock/low-stock)
+interface ServerRow {
   _id: string;
-  variantName?: string;
-  sku?: string;
-  barCode?: string;
-  size?: string | string[];
-  color?: string | string[];
-  purchasePrice?: number;
-  retailPrice?: number;
-  wholesalePrice?: number;
-  stockVariant?: number;
-  alertQuantity?: number;
+  productName: string;
+  variantName: string;
+  variantType: "single" | "multi";
+  subcategory: string;
+  subcategoryId?: string;
+  barcode: string;
+  color: string;
+  size: string;
+  buyRate: number;
+  retailPrice: number;
+  wsPrice: number;
+  stock: number;
+  alertQty: number;
 }
 
-interface Product {
-  _id: string;
-  name: string;
-  variantType: "singleVariant" | "multipleVariant";
-  variant?: Variant[];
-  subcategory?: { _id: string; name: string };
-  barCode?: string;
-  size?: string | string[];
-  color?: string | string[];
-  purchasePrice?: number;
-  retailPrice?: number;
-  wholesalePrice?: number;
-  alertQuantity?: number;
-  stock?: number;
+interface LowStockPage {
+  rows: ServerRow[];
+  totals: { count: number; totalStock: number };
+  pagination: { page: number; hasNextPage: boolean };
 }
 
 interface LowStockRow {
@@ -65,64 +60,22 @@ interface CategoryOption { id: string; name: string }
 
 // ---------- Helpers ----------
 
-const strVal = (v: string | string[] | undefined): string => {
-  if (!v) return "-";
-  return Array.isArray(v) ? v.join(", ") || "-" : v.trim() || "-";
-};
-
-const flattenLowStock = (products: Product[]): LowStockRow[] => {
-  const rows: LowStockRow[] = [];
-
-  for (const p of products) {
-    if (p.variantType === "multipleVariant" && p.variant?.length) {
-      for (const v of p.variant) {
-        const stock = v.stockVariant ?? 0;
-        const alert = v.alertQuantity ?? p.alertQuantity ?? 0;
-        if (stock <= alert) {
-          rows.push({
-            key:           `m-${p._id}-${v._id}`,
-            barcode:       p.barCode || v.barCode || v.sku || "-",
-            subcategory:   p.subcategory?.name    || "-",
-            subcategoryId: p.subcategory?._id     || "",
-            productName:   p.name,
-            variant:       v.variantName || "-",
-            variantType:   "multi",
-            color:         strVal(v.color),
-            size:          strVal(v.size),
-            buyRate:       v.purchasePrice  ?? p.purchasePrice  ?? "-",
-            retailPrice:   v.retailPrice    ?? p.retailPrice    ?? "-",
-            wholesalePrice: p.wholesalePrice ?? "-",
-            stock,
-            alertQty:      alert,
-          });
-        }
-      }
-    } else if (p.variantType === "singleVariant") {
-      const stock = p.stock ?? 0;
-      const alert = p.alertQuantity ?? 0;
-      if (stock <= alert) {
-        rows.push({
-          key:           `s-${p._id}`,
-          barcode:       p.barCode || "-",
-          subcategory:   p.subcategory?.name || "-",
-          subcategoryId: p.subcategory?._id  || "",
-          productName:   p.name,
-          variant:       "Single",
-          variantType:   "single",
-          color:         strVal(p.color),
-          size:          strVal(p.size),
-          buyRate:       p.purchasePrice  ?? "-",
-          retailPrice:   p.retailPrice    ?? "-",
-          wholesalePrice: p.wholesalePrice ?? "-",
-          stock,
-          alertQty:      alert,
-        });
-      }
-    }
-  }
-
-  return rows;
-};
+const toRow = (r: ServerRow): LowStockRow => ({
+  key: r._id,
+  barcode: r.barcode || "-",
+  subcategory: r.subcategory || "-",
+  subcategoryId: r.subcategoryId || "",
+  productName: r.productName,
+  variant: r.variantType === "multi" ? r.variantName || "-" : "Single",
+  variantType: r.variantType,
+  color: r.color || "-",
+  size: r.size || "-",
+  buyRate: r.buyRate ?? "-",
+  retailPrice: r.retailPrice ?? "-",
+  wholesalePrice: r.wsPrice ?? "-",
+  stock: r.stock,
+  alertQty: r.alertQty,
+});
 
 // ---------- Category dropdown ----------
 
@@ -195,7 +148,6 @@ const LowStockList = () => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
-  const [rows, setRows]             = useState<LowStockRow[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   const [search, setSearch]           = useState("");
@@ -231,51 +183,58 @@ const LowStockList = () => {
     }, 150);
   };
 
-  // ── Fetch with cache ──────────────────────────────────────────────────────
-  const { data, isFetching: isLoading, isError, refetch } = useQuery({
-    queryKey: ["low-stock"] as const,
-    queryFn: async (): Promise<LowStockRow[]> => {
-      const res = await axiosSecure.get("/product/getproduct");
-      const products = (res.data.data?.products ?? res.data.data ?? []) as Product[];
-      return flattenLowStock(products);
+  // ── Fetch: the server's low stock list, one page at a time ──────────────
+  // Filtered and searched on the server; the whole catalogue is never loaded
+  // into the browser (BUG-P2-010)
+  const {
+    data,
+    isFetching: isLoading,
+    isError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["low-stock", debSearch, categoryId] as const,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }): Promise<LowStockPage> => {
+      const res = await axiosSecure.post(
+        "/stock/low-stock",
+        { search: debSearch.trim() || undefined, subCategory: categoryId || undefined },
+        { params: { page: pageParam, limit: 100 } },
+      );
+      return res.data.data as LowStockPage;
     },
+    getNextPageParam: (last) => (last?.pagination?.hasNextPage ? last.pagination.page + 1 : undefined),
     staleTime: 5 * 60 * 1000,
   });
 
-  const allRows: LowStockRow[] = data ?? [];
+  const rows: LowStockRow[] = data?.pages.flatMap((page) => (page?.rows ?? []).map(toRow)) ?? [];
+  const totals = data?.pages[0]?.totals;
 
-  useEffect(() => { if (isError) toast.error("Failed to fetch products"); }, [isError]);
+  useEffect(() => { if (isError) toast.error("Failed to fetch low stock"); }, [isError]);
 
-  // Build categories from data
+  // Subcategory filter options: the shop's subcategories
   useEffect(() => {
-    if (!allRows.length) return;
+    axiosSecure
+      .get("/subcategories")
+      .then((res) => {
+        const list = res.data?.data?.subCategories ?? res.data?.data?.subcategories ?? res.data?.data ?? [];
+        setCategories(Array.isArray(list) ? list.map((c: { _id: string; name: string }) => ({ id: c._id, name: c.name })) : []);
+      })
+      .catch(() => setCategories([]));
+  }, []);
+
+  // Back to the top when the filter changes
+  useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-    const catMap = new Map<string, string>();
-    for (const r of allRows) { if (r.subcategoryId) catMap.set(r.subcategoryId, r.subcategory); }
-    setCategories(Array.from(catMap.entries()).map(([id, name]) => ({ id, name })));
-  }, [allRows]);
+  }, [debSearch, categoryId]);
 
   // ── Debounce search 400 ms ─────────────────────────────────────────────────
   useEffect(() => {
     const t = setTimeout(() => setDebSearch(search), 400);
     return () => clearTimeout(t);
   }, [search]);
-
-  // ── Filter ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let r = allRows;
-    if (categoryId) r = r.filter((x) => x.subcategoryId === categoryId);
-    if (debSearch) {
-      const lq = debSearch.toLowerCase();
-      r = r.filter((x) =>
-        x.productName.toLowerCase().includes(lq) ||
-        x.barcode.toLowerCase().includes(lq) ||
-        x.subcategory.toLowerCase().includes(lq) ||
-        x.variant.toLowerCase().includes(lq)
-      );
-    }
-    setRows(r);
-  }, [debSearch, categoryId, allRows]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["low-stock"] });
@@ -296,7 +255,9 @@ const LowStockList = () => {
     ? totalVH - (virtualItems[virtualItems.length - 1]?.end ?? 0)
     : 0;
 
-  const totalStock  = rows.reduce((s, r) => s + r.stock, 0);
+  // The whole list's figures, from the server (not only the loaded pages)
+  const lowCount    = totals?.count ?? rows.length;
+  const totalStock  = totals?.totalStock ?? rows.reduce((s, r) => s + r.stock, 0);
   const hasFilter   = !!(search || categoryId);
   const clearAll    = () => { setSearch(""); setCategoryId(""); };
 
@@ -311,7 +272,7 @@ const LowStockList = () => {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400">Low Stock Items</p>
-            <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{rows.length.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{lowCount.toLocaleString()}</p>
           </div>
         </div>
         <div className="flex items-center gap-4 rounded-2xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-6 py-4">
@@ -544,6 +505,8 @@ const LowStockList = () => {
         )}
       </div>
       )}
+
+      <LoadMoreButton hasMore={hasNextPage} loading={isFetchingNextPage} onClick={() => fetchNextPage()} />
     </div>
   );
 };

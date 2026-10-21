@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import useRemoteLookup from "../../hooks/useRemoteLookup";
 import DatePicker from "../form/date-picker";
 import Label from "../form/Label";
 import SearchableSelect from "../form/SearchableSelect";
@@ -69,8 +70,6 @@ const CreateDiscountForm = () => {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [subCategories, setSubCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [variantProducts, setVariantProducts] = useState<any[]>([]);
 
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -81,6 +80,25 @@ const CreateDiscountForm = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Products and variant products are searched on the server as the user
+  // types: the product lists answer one page (BUG-P2-010). A product discount
+  // takes single-variant products, a variant discount multi-variant ones.
+  type Named = { _id: string; name: string };
+  const productLookup = useRemoteLookup<Named>(
+    "discount-products",
+    "/product/getproduct",
+    (body) => body?.data?.products as Named[] | undefined,
+    { params: { variantType: "singleVariant" }, enabled: formData.discountPlan === "product" },
+  );
+  const variantLookup = useRemoteLookup<Named>(
+    "discount-variant-products",
+    "/product/multiplevarinatproduct",
+    (body) => body?.data?.products as Named[] | undefined,
+    { enabled: formData.discountPlan === "variant" },
+  );
+  const itemLookup =
+    formData.discountPlan === "product" ? productLookup : formData.discountPlan === "variant" ? variantLookup : null;
 
   // Persist form data (except the image, which can't survive a reload) so a
   // refresh doesn't wipe out an in-progress draft.
@@ -130,17 +148,6 @@ const CreateDiscountForm = () => {
       } else if (value === "subCategory") {
         const res = await axiosSecure.get("/subcategories");
         setSubCategories(res.data.data.subCategories || res.data.data || []);
-      } else if (value === "product") {
-        const res = await axiosSecure.get("/product/getproduct");
-        const all = res.data?.data?.products || res.data?.data || [];
-        setProducts(
-          (Array.isArray(all) ? all : []).filter(
-            (p: any) => p.variantType === "singleVariant",
-          ),
-        );
-      } else if (value === "variant") {
-        const res = await axiosSecure.get("/product/multiplevarinatproduct");
-        setVariantProducts(res.data.data?.products || []);
       }
     } catch {
       // options simply stay empty
@@ -270,8 +277,8 @@ const CreateDiscountForm = () => {
       : formData.discountPlan === "subCategory"
         ? subCategories.map((s: any) => ({ label: s.name, value: s._id }))
         : formData.discountPlan === "product"
-          ? products.map((p: any) => ({ label: p.name, value: p._id }))
-          : variantProducts.map((p: any) => ({ label: p.name, value: p._id }));
+          ? productLookup.items.map((p) => ({ label: p.name, value: p._id }))
+          : variantLookup.items.map((p) => ({ label: p.name, value: p._id }));
 
   const itemLabel =
     formData.discountPlan === "category"
@@ -339,7 +346,9 @@ const CreateDiscountForm = () => {
                   <SearchableSelect
                     options={itemOptions}
                     value={selectedItemId}
+                    onSearchChange={itemLookup?.onSearchChange}
                     onChange={(value) => {
+                      itemLookup?.remember(value);
                       setSelectedItemId(value);
                       if (value)
                         setErrors((prev) => ({ ...prev, selectedItemId: "" }));

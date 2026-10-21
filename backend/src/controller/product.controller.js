@@ -5,6 +5,11 @@ const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
 const { forAudience, isStaff } = require("../utils/publicProduct");
+const { nameSearchFilter, idsMatchingAny } = require("../utils/searchWords.util");
+const { listPage, afterCursor, pageResult, NEWEST_FIRST, MAX_LIMIT } = require("../utils/listPage.util");
+
+// Rows each branch of the product search returns (products, then variants)
+const SEARCH_LIMIT = 50;
 const {
   validateProduct,
   validateProductUpdate,
@@ -85,12 +90,6 @@ const generateBarcode = () => {
 /**
  * Collect every Cloudinary publicId from a product (thumbnail + gallery + ogImage).
  */
-// The main listing serves the dashboard and the storefront from one cache.
-// Staff see every product (they re-activate from it); shoppers and visitors
-// see only active ones.
-const listedFor = (req, products) =>
-  isStaff(req) ? products : products.filter((p) => p.isActive !== false);
-
 const collectProductPublicIds = (product) => {
   const ids = [];
   if (product.thumbnail?.publicId) ids.push(product.thumbnail.publicId);
@@ -109,6 +108,40 @@ const parseBoolean = (value) => {
     if (normalized === "false") return false;
   }
   return null;
+};
+
+/**
+ * One page of products (BUG-P2-010), newest first. ?search= finds a word of
+ * the name (prefix) or a barcode / sku (prefix) through indexes; ?after= is
+ * the cursor of the previous page; ?page= numbers pages for the pickers.
+ */
+const pagedProducts = async (req, base, { select, populate = true } = {}) => {
+  const paging = listPage(req.query);
+  const query = { ...base };
+  const search = String(req.query.search || req.query.q || "").trim();
+  if (search) {
+    const conditions = [
+      { barCode: { $regex: `^${escapeRegex(search)}` } },
+      { sku: { $regex: `^${escapeRegex(search)}` } },
+    ];
+    const byName = nameSearchFilter(search);
+    if (byName) conditions.unshift(byName);
+    query._id = { $in: await idsMatchingAny(Product, conditions, MAX_LIMIT) };
+  }
+
+  let find = Product.find({ ...query, ...afterCursor(paging.cursor) })
+    .sort(NEWEST_FIRST)
+    .skip(paging.skip)
+    .limit(paging.limit + 1);
+  if (select) find = find.select(select);
+  if (populate) {
+    find = find
+      .populate("category brand discount")
+      .populate({ path: "subcategory", populate: "discount" })
+      .populate({ path: "variant" });
+  }
+  const { items, ...pageInfo } = pageResult(await find.lean(), paging);
+  return { products: items, ...pageInfo };
 };
 
 // ─── controller class ─────────────────────────────────────────────────────────
@@ -277,23 +310,36 @@ class ProductController {
 
   // ─── READ — all (with filters + caching) ───────────────────────────────────
   getAllProducts = asynchandeler(async (req, res) => {
-    const cacheKey = await buildCacheKey(NS, `all:${stableSuffix(req.query)}`);
+    // One page at a time (BUG-P2-010): the whole catalogue with its populates
+    // ran the API out of memory on a large shop. ?search= finds products by a
+    // word of the name (prefix) or a barcode / sku (prefix), through indexes.
+    const staff = isStaff(req);
+    const cacheKey = await buildCacheKey(
+      NS,
+      `all:${staff ? "staff" : "public"}:${stableSuffix(req.query)}`,
+    );
     const cached = await getCache(cacheKey);
     if (cached) {
       return apiResponse.sendSuccess(
         res,
         statusCodes.OK,
         "Products fetched successfully",
-        { products: forAudience(req, listedFor(req, cached)), fromCache: true },
+        { ...cached, products: forAudience(req, cached.products), fromCache: true },
       );
     }
 
-    const { category, subcategory, brand, minPrice, maxPrice } = req.query;
+    const { category, subcategory, brand, minPrice, maxPrice, variantType } = req.query;
 
     const query = {};
     if (category) query.category = category;
     if (subcategory) query.subcategory = subcategory;
     if (brand) query.brand = brand;
+    // A picker that only takes one kind (e.g. a product discount: single-variant)
+    if (variantType === "singleVariant" || variantType === "multipleVariant") query.variantType = variantType;
+    // The main listing serves the dashboard and the storefront: staff see every
+    // product (they re-activate from it); shoppers and visitors see only active
+    // ones. Filtered in the query so a page is never short.
+    if (!staff) query.isActive = { $ne: false };
 
     // Push price filter to the DB instead of in-memory filter
     if (minPrice || maxPrice) {
@@ -303,31 +349,14 @@ class ProductController {
       query.retailPrice = priceCond;
     }
 
-    const products = await Product.find(query)
-      .populate("category brand discount")
-      .populate({ path: "subcategory", populate: "discount" })
-      .populate({
-        path: "variant",
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    if (!products.length) {
-      return apiResponse.sendSuccess(
-        res,
-        statusCodes.OK,
-        "Products fetched successfully",
-        { products: [], fromCache: false },
-      );
-    }
-
-    await setCache(cacheKey, products, CACHE_TTL_LIST);
+    const payload = await pagedProducts(req, query);
+    await setCache(cacheKey, payload, CACHE_TTL_LIST);
 
     return apiResponse.sendSuccess(
       res,
       statusCodes.OK,
       "Products fetched successfully",
-      { products: forAudience(req, listedFor(req, products)), fromCache: false },
+      { ...payload, products: forAudience(req, payload.products), fromCache: false },
     );
   });
 
@@ -797,15 +826,9 @@ class ProductController {
 
   // ─── SINGLE-VARIANT PRODUCTS (paginated, for barcode print) ────────────────
   getAllSingleVariantProducts = asynchandeler(async (req, res) => {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
-    const search = (req.query.search || req.query.q || "").trim();
-    const skip = (page - 1) * limit;
-
-    const cacheKey = await buildCacheKey(
-      NS,
-      `single-variant:p${page}:l${limit}:s${search}`,
-    );
+    // Searched through indexes (the old "contains" regex was neither escaped
+    // nor indexable) and paged without counting every match (BUG-P2-010)
+    const cacheKey = await buildCacheKey(NS, `single-variant:${stableSuffix(req.query)}`);
     const cached = await getCache(cacheKey);
     if (cached) {
       return apiResponse.sendSuccess(
@@ -816,98 +839,50 @@ class ProductController {
       );
     }
 
-    const query = { variantType: "singleVariant" };
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { barCode: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const [products, total] = await Promise.all([
-      Product.find(query)
-        .select(
-          "name slug sku barCode thumbnail retailPrice wholesalePrice size color stock isActive",
-        )
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Product.countDocuments(query),
-    ]);
-
-    if (!products.length) {
-      return apiResponse.sendSuccess(
-        res,
-        statusCodes.OK,
-        "Single variant products not found",
-        {
-          products: [],
-          total: 0,
-          page,
-          limit,
-          hasNextPage: false,
-          fromCache: false,
-        },
-      );
-    }
-
-    const payload = {
-      products,
-      total,
-      page,
-      limit,
-      hasNextPage: page * limit < total,
-    };
-
+    const payload = await pagedProducts(
+      req,
+      { variantType: "singleVariant" },
+      {
+        select: "name slug sku barCode thumbnail retailPrice wholesalePrice size color stock isActive createdAt",
+        populate: false,
+      },
+    );
     await setCache(cacheKey, payload, CACHE_TTL_LIST);
 
     return apiResponse.sendSuccess(
       res,
       statusCodes.OK,
-      "Single variant products fetched successfully",
+      payload.products.length
+        ? "Single variant products fetched successfully"
+        : "Single variant products not found",
       { ...payload, fromCache: false },
     );
   });
 
   // ─── MULTIPLE-VARIANT PRODUCTS ─────────────────────────────────────────────
   getAllMultipleVariantProducts = asynchandeler(async (req, res) => {
-    const cacheKey = await buildCacheKey(NS, "multiple-variants");
+    // Paged and searchable like the main list (BUG-P2-010)
+    const cacheKey = await buildCacheKey(NS, `multiple-variants:${stableSuffix(req.query)}`);
     const cached = await getCache(cacheKey);
     if (cached) {
       return apiResponse.sendSuccess(
         res,
         statusCodes.OK,
         "Multiple variant products fetched successfully",
-        { products: cached, fromCache: true },
+        { ...cached, fromCache: true },
       );
     }
 
-    const products = await Product.find({ variantType: "multipleVariant" })
-      .populate("category subcategory brand variant discount")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    if (!products.length) {
-      return apiResponse.sendSuccess(
-        res,
-        statusCodes.OK,
-        "Multiple variant products not found",
-        {
-          products: [],
-          fromCache: false,
-        },
-      );
-    }
-
-    await setCache(cacheKey, products, CACHE_TTL_LIST);
+    const payload = await pagedProducts(req, { variantType: "multipleVariant" });
+    await setCache(cacheKey, payload, CACHE_TTL_LIST);
 
     return apiResponse.sendSuccess(
       res,
       statusCodes.OK,
-      "Multiple variant products fetched successfully",
-      { products: products, fromCache: false },
+      payload.products.length
+        ? "Multiple variant products fetched successfully"
+        : "Multiple variant products not found",
+      { ...payload, fromCache: false },
     );
   });
 
@@ -1196,59 +1171,45 @@ class ProductController {
       );
     }
 
-    const productMatchConditions = [];
-    const variantMatchConditions = [];
+    // Every condition goes through an index and is matched before anything is
+    // joined (BUG-P2-011): the name by the beginning of its words
+    // (searchWords), codes and slugs by their beginning. The search used to
+    // join variants, discounts and subcategories onto the whole catalogue and
+    // filter afterwards — 20 s a search, on a route anyone can call.
+    const prefix = (value) => ({ $regex: `^${escapeRegex(value)}` });
+    const conditions = [];
     if (name) {
-      const safe = escapeRegex(name);
-      productMatchConditions.push(
-        { name: { $regex: safe, $options: "i" } },
-        { slug: { $regex: safe, $options: "i" } },
-        { sku: { $regex: safe, $options: "i" } },
-        { barCode: { $regex: safe, $options: "i" } },
-        { "variant.variantName": { $regex: safe, $options: "i" } },
-      );
-      variantMatchConditions.push(
-        { variantName: { $regex: safe, $options: "i" } },
-        { slug: { $regex: safe, $options: "i" } },
-        { sku: { $regex: safe, $options: "i" } },
-        { barCode: { $regex: safe, $options: "i" } },
-        { "product.name": { $regex: safe, $options: "i" } },
+      const byName = nameSearchFilter(name);
+      if (byName) conditions.push(byName);
+    }
+    if (barCode) conditions.push({ barCode: prefix(barCode) });
+    if (sku) conditions.push({ sku: prefix(sku) });
+    if (slug) conditions.push({ slug: prefix(slug.toLowerCase()) });
+
+    if (!conditions.length) {
+      return apiResponse.sendSuccess(
+        res,
+        statusCodes.OK,
+        "No products found matching search criteria",
+        { products: [], fromCache: false },
       );
     }
-    if (barCode) {
-      const safe = escapeRegex(barCode);
-      productMatchConditions.push({
-        barCode: { $regex: safe, $options: "i" },
-      });
-      variantMatchConditions.push(
-        { barCode: { $regex: safe, $options: "i" } },
-        { "product.barCode": { $regex: safe, $options: "i" } },
-      );
-    }
-    if (sku) {
-      const safe = escapeRegex(sku);
-      productMatchConditions.push({ sku: { $regex: safe, $options: "i" } });
-      variantMatchConditions.push(
-        { sku: { $regex: safe, $options: "i" } },
-        { "product.sku": { $regex: safe, $options: "i" } },
-      );
-    }
-    if (slug) {
-      const safe = escapeRegex(slug);
-      productMatchConditions.push({ slug: { $regex: safe, $options: "i" } });
-      variantMatchConditions.push(
-        { slug: { $regex: safe, $options: "i" } },
-        { "product.slug": { $regex: safe, $options: "i" } },
-      );
-    }
+    // Each condition its own indexed query; only the ids found are joined
+    const [productIds, variantIds] = await Promise.all([
+      idsMatchingAny(Product, conditions, SEARCH_LIMIT),
+      idsMatchingAny(Variant, conditions, SEARCH_LIMIT),
+    ]);
+    const hide = { $project: { searchWords: 0 } };
 
     const [productMatches, variantMatches] = await Promise.all([
       Product.aggregate([
+        { $match: { _id: { $in: productIds } } },
         {
           $lookup: {
             from: "variants",
             localField: "variant",
             foreignField: "_id",
+            pipeline: [hide],
             as: "variant",
           },
         },
@@ -1276,15 +1237,17 @@ class ProductController {
             preserveNullAndEmptyArrays: true,
           },
         },
-        { $match: { $or: productMatchConditions } },
+        hide,
         { $addFields: { resultType: "product" } },
       ]),
       Variant.aggregate([
+        { $match: { _id: { $in: variantIds } } },
         {
           $lookup: {
             from: "products",
             localField: "product",
             foreignField: "_id",
+            pipeline: [hide],
             as: "product",
           },
         },
@@ -1318,7 +1281,7 @@ class ProductController {
             preserveNullAndEmptyArrays: true,
           },
         },
-        { $match: { $or: variantMatchConditions } },
+        hide,
         { $addFields: { resultType: "variant" } },
       ]),
     ]);

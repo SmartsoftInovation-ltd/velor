@@ -215,6 +215,9 @@ purchaseSchema.index({ date: -1 });
 purchaseSchema.index({ supplierId: 1, date: -1 });
 // Supplier purchase invoice report — status filter within a date range
 purchaseSchema.index({ paymentStatus: 1, date: -1 });
+// Phase 2: reports price a page of items from the purchases that hold them
+purchaseSchema.index({ "allproduct.product": 1, date: -1 });
+purchaseSchema.index({ "allproduct.variant": 1, date: -1 });
 
 // Auto-generate a sequential, never-reused serial after first save
 purchaseSchema.post("save", async function (doc, next) {
