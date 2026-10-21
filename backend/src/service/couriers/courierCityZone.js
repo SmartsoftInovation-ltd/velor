@@ -1,119 +1,59 @@
-const { customError } = require("../../lib/CustomError");
 const axios = require("axios");
+const { customError } = require("../../lib/CustomError");
+const PathaoAuth = require("./PathaoAuth");
 
+/**
+ * Pathao's city / zone / area lists, read with the store's own Pathao account
+ * (the same config and token store order booking uses). There are no built-in
+ * credentials: a store without Pathao configured is refused before this is
+ * built (getCourierConfig answers COURIER_NOT_CONFIGURED).
+ */
 class CityZone {
-  constructor() {
-    this.baseURL = "https://courier-api-sandbox.pathao.com/aladdin/api/v1";
-    this.client_id = "7N1aMJQbWm";
-    this.client_secret = "wRcaibZkUdSNz2EI9ZyuXLlNrnAv0TdPUPXMnD39";
-    this.username = "test@pathao.com";
-    this.password = "lovePathao";
+  /**
+   * @param {object} merchant - courier config from getCourierConfig("pathao")
+   */
+  constructor(merchant) {
+    this.baseURL = `${merchant.baseURL || "https://courier-api-sandbox.pathao.com"}/aladdin/api/v1`;
+    this.auth = new PathaoAuth(merchant);
   }
 
-  async issueToken() {
+  async get(path, what) {
+    const token = await this.auth.getValidToken();
     try {
-      const payload = {
-        client_id: this.client_id,
-        client_secret: this.client_secret,
-        grant_type: "password",
-        username: this.username,
-        password: this.password,
-      };
-
-      const response = await axios.post(`${this.baseURL}/issue-token`, payload);
-      const { access_token, refresh_token, expires_in } = response.data;
-      this.access_token = access_token;
-      this.refresh_token = refresh_token;
-      this.access_token_expiry = Date.now() + expires_in * 1000;
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      throw new customError("Failed to issue Pathao token", 500);
-    }
-  }
-
-  async refreshToken() {
-    try {
-      const payload = {
-        client_id: this.client_id,
-        client_secret: this.client_secret,
-        grant_type: "refresh_token",
-        refresh_token: this.refresh_token,
-      };
-
-      const response = await axios.post(`${this.baseURL}/issue-token`, payload);
-
-      const { access_token, refresh_token, expires_in } = response.data;
-      this.access_token = access_token;
-      this.refresh_token = refresh_token;
-      this.access_token_expiry = Date.now() + expires_in * 1000;
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      throw new customError("Failed to refresh Pathao token", 500);
-    }
-  }
-
-  async ensureToken() {
-    if (!this.access_token) {
-      await this.issueToken();
-    } else if (Date.now() >= this.access_token_expiry) {
-      await this.refreshToken();
-    }
-  }
-
-  async getCities() {
-    try {
-      await this.ensureToken();
-      console.log("Access Token:", this.access_token); // Debug log
-
-      const response = await axios.get(`${this.baseURL}/city-list`, {
+      const response = await axios.get(`${this.baseURL}${path}`, {
         headers: {
-          Authorization: `Bearer ${this.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json; charset=UTF-8",
         },
       });
-
       return response.data;
     } catch (err) {
-      console.error(err.response?.data || err);
-      throw new customError("Failed to fetch cities", 500);
+      const status = err.response?.status;
+      console.error(`Pathao ${what} error:`, err.response?.data || err.message);
+      // Pathao refusing the request (e.g. an unknown city) is the caller's
+      // error; Pathao failing or unreachable is a bad gateway, not our 500
+      if (status >= 400 && status < 500) {
+        throw new customError(
+          err.response?.data?.message || `Pathao could not find the ${what}`,
+          status,
+        );
+      }
+      throw new customError(`Pathao did not answer the ${what} request`, 502);
     }
   }
 
-  async getZones(cityId = 1) {
-    try {
-      await this.ensureToken();
+  getCities() {
+    return this.get("/city-list", "city list");
+  }
 
-      const response = await axios.get(
-        `${this.baseURL}/cities/${cityId}/zone-list`,
-        {
-          headers: { Authorization: `Bearer ${this.access_token}` },
-        }
-      );
-
-      return response.data;
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      throw new customError("Failed to fetch zones", 500);
-    }
+  getZones(cityId) {
+    return this.get(`/cities/${encodeURIComponent(cityId)}/zone-list`, "zone list");
   }
 
   // areas can be fetched from zones api
-  async getAreas(zone_id) {
-    try {
-      await this.ensureToken();
-
-      const response = await axios.get(
-        `${this.baseURL}/zones/${zone_id}/area-list`,
-        {
-          headers: { Authorization: `Bearer ${this.access_token}` },
-        }
-      );
-
-      return response.data.data;
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      throw new customError("Failed to area zones", 500);
-    }
+  async getAreas(zoneId) {
+    const body = await this.get(`/zones/${encodeURIComponent(zoneId)}/area-list`, "area list");
+    return body?.data;
   }
 }
 

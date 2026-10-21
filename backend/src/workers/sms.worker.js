@@ -41,8 +41,11 @@ const processSmsJob = async (job) => {
 
       await SmsLog.updateOne({ _id: logId }, { $set: { status: "processing" } });
 
-      let sentCount = 0;
-      let failedCount = 0;
+      // A job can run more than once (a retry after a crash, a stalled job).
+      // Recipients the log already marks "sent" were texted by an earlier run
+      // and are skipped, so nobody is texted (or billed) twice.
+      const before = await SmsLog.findById(logId).select("recipients.status").lean();
+      const alreadySent = (idx) => before?.recipients?.[idx]?.status === "sent";
 
       // Send to all recipients in parallel batches of 10.
       // Recipients are matched back to the log by their array index so that
@@ -54,6 +57,7 @@ const processSmsJob = async (job) => {
         await Promise.all(
           batch.map(async (recipient, offset) => {
             const idx = typeof recipient.index === "number" ? recipient.index : i + offset;
+            if (alreadySent(idx)) return;
             try {
               await sendSMS(recipient.phone, message);
               await SmsLog.updateOne(
@@ -63,10 +67,8 @@ const processSmsJob = async (job) => {
                     [`recipients.${idx}.status`]: "sent",
                     [`recipients.${idx}.error`]: "",
                   },
-                  $inc: { sentCount: 1 },
                 },
               );
-              sentCount++;
             } catch (err) {
               await SmsLog.updateOne(
                 { _id: logId },
@@ -75,14 +77,20 @@ const processSmsJob = async (job) => {
                     [`recipients.${idx}.status`]: "failed",
                     [`recipients.${idx}.error`]: err.message || "Send failed",
                   },
-                  $inc: { failedCount: 1 },
                 },
               );
-              failedCount++;
             }
           }),
         );
       }
+
+      // The totals are counted from the per-recipient statuses, so every run,
+      // first or repeated, ends with the same figures
+      const after = await SmsLog.findById(logId).select("recipients.status").lean();
+      const statusOf = (idx) => after?.recipients?.[idx]?.status;
+      const indexes = recipients.map((r, i) => (typeof r.index === "number" ? r.index : i));
+      const sentCount = indexes.filter((idx) => statusOf(idx) === "sent").length;
+      const failedCount = indexes.filter((idx) => statusOf(idx) === "failed").length;
 
       const finalStatus =
         failedCount === 0

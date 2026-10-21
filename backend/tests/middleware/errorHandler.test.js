@@ -96,7 +96,8 @@ describe("globalErrorHandeler", () => {
   it("answers an unexpected error with a generic 500 and no internals", () => {
     const res = handle(new TypeError("Cannot read properties of undefined (reading 'secret')"));
     expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ status: "error", message: "Something went wrong , please try agin later !!" });
+    // Same envelope as every other error (BUG-075)
+    expect(res.body).toEqual({ statusCode: 500, message: "Something went wrong , please try agin later !!" });
   });
 
   it.each(["production", "test", "staging"])("never returns a stack trace when NODE_ENV is %s", (env) => {
@@ -106,7 +107,7 @@ describe("globalErrorHandeler", () => {
 
   // BUG-063: nodeEnv() defaults an unset NODE_ENV to "development", so a
   // deployment that forgets to set it returns stack traces to every client
-  test.failing("never returns a stack trace when NODE_ENV is not set at all [BUG-063]", () => {
+  it("never returns a stack trace when NODE_ENV is not set at all [BUG-063]", () => {
     const res = handle(new customError("x", 400), "UNSET");
     expect(JSON.stringify(res.body)).not.toMatch(/errorStack/);
   });

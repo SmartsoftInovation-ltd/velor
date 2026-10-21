@@ -70,11 +70,20 @@ exports.getPathaoOrderShortInfo = asynchandeler(async (req, res) => {
   apiResponse.sendSuccess(res, 200, "Order info fetched", orderInfo);
 });
 
+// The store's own Pathao account for the city/zone/area lookups
+const pathaoLookups = async () => {
+  const merchant = await getCourierConfig("pathao");
+  if (!merchant) {
+    throw new customError("Pathao courier is not configured", 422, "COURIER_NOT_CONFIGURED");
+  }
+  return new cityZoneService(merchant);
+};
+
 //@desc Get available cities
 //@route GET /api/v1/courier/pathao/cities
 
 exports.getPathaoCities = asynchandeler(async (req, res) => {
-  const cityZone = new cityZoneService();
+  const cityZone = await pathaoLookups();
   const cities = await cityZone.getCities();
   apiResponse.sendSuccess(res, 200, "Cities fetched successfully", cities);
 });
@@ -85,7 +94,7 @@ exports.getPathaoZonesByCity = asynchandeler(async (req, res) => {
   const { cityId } = req.params;
   if (!cityId) throw new customError("City ID is required", 400);
 
-  const cityZone = new cityZoneService();
+  const cityZone = await pathaoLookups();
   const zones = await cityZone.getZones(cityId);
   apiResponse.sendSuccess(res, 200, "Zones fetched successfully", zones);
 });
@@ -95,7 +104,7 @@ exports.getPathaoZonesByCity = asynchandeler(async (req, res) => {
 exports.getPathaoAreasByZone = asynchandeler(async (req, res) => {
   const { zoneId } = req.params;
   if (!zoneId) throw new customError("Zone ID is required", 400);
-  const cityZone = new cityZoneService();
+  const cityZone = await pathaoLookups();
   const areas = await cityZone.getAreas(zoneId);
   apiResponse.sendSuccess(res, 200, "Areas fetched successfully", areas);
 });

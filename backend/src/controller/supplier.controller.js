@@ -10,6 +10,7 @@ const CrateTransaction = require("../models/crateTransaction.model");
 const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { inTransaction } = require("../utils/transaction.util");
 const {
   supplierDTO,
   supplierListDTO,
@@ -20,8 +21,8 @@ const { bumpNsVersion } = require("@/utils/cache.util");
 
 // Supplier payments are always money going out, filed under one fixed
 // system category (see utils/systemCategory.util.js).
-const getSupplierPaymentCategory = () =>
-  getSystemCategory(SYSTEM_CATEGORIES.SUPPLIER_PAYMENT);
+const getSupplierPaymentCategory = (session) =>
+  getSystemCategory(SYSTEM_CATEGORIES.SUPPLIER_PAYMENT, session);
 
 // Net amount actually leaving the account = paid - less/discount.
 const netPaymentAmount = (paidAmount, lessAmount) =>
@@ -29,46 +30,52 @@ const netPaymentAmount = (paidAmount, lessAmount) =>
 
 // Subtract the net amount from the chosen account and record a matching
 // "cash payment" transaction (tagged with supplierPaymentReference).
-const applySupplierPayment = async (paymentDoc) => {
+// `session` is optional: create and delete run in a transaction.
+const applySupplierPayment = async (paymentDoc, session) => {
   const net = netPaymentAmount(paymentDoc.paidAmount, paymentDoc.lessAmount);
   if (net <= 0 || !paymentDoc.paymentMode) return;
 
-  const category = await getSupplierPaymentCategory();
+  const category = await getSupplierPaymentCategory(session);
 
   const updatedAccount = await Account.findByIdAndUpdate(
     paymentDoc.paymentMode,
     { $inc: { balance: -net } },
-    { new: true },
+    { new: true, session },
   );
   if (!updatedAccount) {
     throw new customError("Payment account not found", statusCodes.NOT_FOUND);
   }
 
-  await CrateTransaction.create({
-    date: paymentDoc.date || new Date(),
-    transactionCategory: category._id,
-    account: paymentDoc.paymentMode,
-    transactionDescription: `Supplier payment — ${paymentDoc.supplierPaymentSerialId || paymentDoc._id}`,
-    transactionType: "cash payment",
-    amount: net,
-    balanceAfter: updatedAccount.balance,
-    supplierPaymentReference: paymentDoc._id,
-  });
+  await CrateTransaction.create(
+    [
+      {
+        date: paymentDoc.date || new Date(),
+        transactionCategory: category._id,
+        account: paymentDoc.paymentMode,
+        transactionDescription: `Supplier payment — ${paymentDoc.supplierPaymentSerialId || paymentDoc._id}`,
+        transactionType: "cash payment",
+        amount: net,
+        balanceAfter: updatedAccount.balance,
+        supplierPaymentReference: paymentDoc._id,
+      },
+    ],
+    { session },
+  );
 
   await bumpNsVersion("account");
 };
 
 // Undo whatever this supplier payment subtracted from an account — add the
 // net amount back and delete the audit record(s) tied to this payment.
-const reverseSupplierPayment = async (paymentId) => {
-  const transactions = await CrateTransaction.find({ supplierPaymentReference: paymentId });
+const reverseSupplierPayment = async (paymentId, session) => {
+  const transactions = await CrateTransaction.find({ supplierPaymentReference: paymentId }).session(session ?? null);
   if (!transactions.length) return;
 
   for (const t of transactions) {
-    await Account.findByIdAndUpdate(t.account, { $inc: { balance: t.amount } });
+    await Account.findByIdAndUpdate(t.account, { $inc: { balance: t.amount } }, { session });
   }
 
-  await CrateTransaction.deleteMany({ supplierPaymentReference: paymentId });
+  await CrateTransaction.deleteMany({ supplierPaymentReference: paymentId }, { session });
   await bumpNsVersion("account");
 };
 
@@ -274,47 +281,47 @@ exports.createSupplierDuePayment = asynchandeler(async (req, res) => {
     );
   }
 
-  // Find supplier by supplierId (phone number)
-  const supplier = await SupplierModel.findOne({
-    supplierId,
-    isActive: true,
+  // One transaction: the due, the payment record and the account move
+  // together, so a failure (e.g. an unknown account) leaves nothing behind
+  const { supplier, paymentDoc } = await inTransaction(async (session) => {
+    // Find supplier by supplierId (phone number)
+    const supplier = await SupplierModel.findOne({
+      supplierId,
+      isActive: true,
+    }).session(session);
+    if (!supplier) {
+      throw new customError("Supplier not found", statusCodes.NOT_FOUND);
+    }
+
+    const currentDue = Number(supplier.openingDues || 0);
+
+    if (totalReduce > currentDue) {
+      throw new customError(
+        `Payment of ৳${totalReduce} exceeds current due of ৳${currentDue}`,
+        statusCodes.BAD_REQUEST,
+      );
+    }
+
+    // Deduct from supplier opening dues
+    supplier.openingDues = currentDue - totalReduce;
+    await supplier.save({ session });
+
+    // Create a new payment record for every transaction
+    const paymentDoc = new SupplierDuePayment({
+      supplierId,
+      date: date || new Date(),
+      paidAmount: paid,
+      lessAmount: less,
+      paymentMode,
+      remarks: remarks || "",
+      remainingDue: supplier.openingDues,
+    });
+    await paymentDoc.save({ session });
+
+    // Net (paid - less) leaves the selected account's balance.
+    await applySupplierPayment(paymentDoc, session);
+    return { supplier, paymentDoc };
   });
-  if (!supplier) {
-    return apiResponse.sendError(
-      res,
-      statusCodes.NOT_FOUND,
-      "Supplier not found",
-    );
-  }
-
-  const currentDue = Number(supplier.openingDues || 0);
-
-  if (totalReduce > currentDue) {
-    return apiResponse.sendError(
-      res,
-      statusCodes.BAD_REQUEST,
-      `Payment of ৳${totalReduce} exceeds current due of ৳${currentDue}`,
-    );
-  }
-
-  // Deduct from supplier opening dues
-  supplier.openingDues = currentDue - totalReduce;
-  await supplier.save();
-
-  // Create a new payment record for every transaction
-  const paymentDoc = new SupplierDuePayment({
-    supplierId,
-    date: date || new Date(),
-    paidAmount: paid,
-    lessAmount: less,
-    paymentMode,
-    remarks: remarks || "",
-    remainingDue: supplier.openingDues,
-  });
-  await paymentDoc.save();
-
-  // Net (paid - less) leaves the selected account's balance.
-  await applySupplierPayment(paymentDoc);
 
   apiResponse.sendSuccess(
     res,
@@ -614,18 +621,34 @@ exports.softDeleteSupplierDuePayment = asynchandeler(async (req, res) => {
 
 // hard delete supplier due payment
 exports.deleteSupplierDuePayment = asynchandeler(async (req, res) => {
-  const payment = await SupplierDuePayment.findOneAndDelete({
-    _id: req.params.supplierId,
+  const payment = await inTransaction(async (session) => {
+    const payment = await SupplierDuePayment.findOneAndDelete(
+      { _id: req.params.supplierId },
+      { session },
+    );
+    if (!payment) return null;
+
+    // The payment took paid + less off the supplier's due; all of it goes back
+    const totalReduce = Number(payment.paidAmount || 0) + Number(payment.lessAmount || 0);
+    if (totalReduce > 0) {
+      await SupplierModel.updateOne(
+        { supplierId: payment.supplierId },
+        { $inc: { openingDues: totalReduce } },
+        { session },
+      );
+    }
+
+    // Give the net amount back to the account this payment had subtracted from.
+    await reverseSupplierPayment(payment._id, session);
+    return payment;
   });
+
   if (!payment)
     return apiResponse.sendError(
       res,
       statusCodes.NOT_FOUND,
       "Supplier due payment not found",
     );
-
-  // Give the net amount back to the account this payment had subtracted from.
-  await reverseSupplierPayment(payment._id);
 
   apiResponse.sendSuccess(
     res,

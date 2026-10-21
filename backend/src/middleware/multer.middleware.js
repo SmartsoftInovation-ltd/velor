@@ -72,102 +72,48 @@ const upload = multer({
 });
 
 /**
- * Middleware wrapper for single file upload with clean error handling
+ * One error shape for every upload wrapper. Multer's own errors (file too
+ * large, unexpected field) and the file-type rejection are the client's (400);
+ * the type rejection already carried statusCode 400, but the wrappers re-raised
+ * every error as a 500. Anything else is a genuine server error.
  */
-const singleFileUpload = (fieldName) => (req, res, next) => {
-  const uploader = upload.single(fieldName);
+const uploadError = (err) => {
+  if (err instanceof multer.MulterError) {
+    return new customError(
+      "Multer error: " + (err.message || "File upload error"),
+      statusCodes.BAD_REQUEST,
+    );
+  }
+  return new customError(
+    err.message || "File upload error",
+    err.statusCode || statusCodes.SERVER_ERROR,
+  );
+};
 
+const withUploadErrors = (uploader) => (req, res, next) =>
   uploader(req, res, keepTenant(function (err) {
-    if (err instanceof multer.MulterError) {
-      console.log("multer error", "Multer error: " + err || "Multer error");
-      return next(
-        new customError(
-          "Multer error: " + err || "Multer error",
-          statusCodes.SERVER_ERROR,
-        ),
-      );
-    } else if (err) {
-      console.log("Multer error: " + err);
-      return next(
-        new customError(err || "Multer error", statusCodes.SERVER_ERROR),
-      );
+    if (err) {
+      console.error("File upload error:", err);
+      return next(uploadError(err));
     }
     guardUploads(req, next);
   }));
-};
+
+/**
+ * Middleware wrapper for single file upload with clean error handling
+ */
+const singleFileUpload = (fieldName) => withUploadErrors(upload.single(fieldName));
 
 /**
  * Middleware wrapper for multiple file upload with clean error handling
  */
-const multipleFileUpload =
-  (fieldName, maxCount = 1) =>
-  (req, res, next) => {
-    const uploader = upload.array(fieldName, maxCount);
-
-    uploader(req, res, keepTenant(function (err) {
-      if (err instanceof multer.MulterError) {
-        // Handle Multer-specific errors
-        console.error("Multer multiple error:", err);
-
-        return res.status(400).json({
-          success: false,
-          message: "Multer error: " + (err.message || "File upload error"),
-        });
-      } else if (err) {
-        // Handle other errors
-        console.error("File upload error:", err);
-        return res.status(500).json({
-          success: false,
-          message: err.message || "Internal Server Error",
-        });
-      }
-      guardUploads(req, next);
-    }));
-  };
+const multipleFileUpload = (fieldName, maxCount = 1) =>
+  withUploadErrors(upload.array(fieldName, maxCount));
 
 // make a another funtion using upload.fields to upload multiple files with different field names
-const multipleFileUploadWithFields = (fields) => (req, res, next) => {
-  const uploader = upload.fields(fields);
-  uploader(req, res, keepTenant(function (err) {
-    console.log("multer error from multipleFileUploadWithFields", err);
-    if (err instanceof multer.MulterError) {
-      return next(
-        new customError(
-          "Multer error: " + err || "Multer error",
-          statusCodes.SERVER_ERROR,
-        ),
-      );
-    } else if (err) {
-      console.log("multer error from multipleFileUploadWithFields", err);
-      return next(
-        new customError(err || "Multer error", statusCodes.SERVER_ERROR),
-      );
-    }
-    guardUploads(req, next);
-  }));
-};
-const anyFileUpload = () => (req, res, next) => {
-  const uploader = upload.any();
+const multipleFileUploadWithFields = (fields) => withUploadErrors(upload.fields(fields));
 
-  uploader(req, res, keepTenant(function (err) {
-    if (err instanceof multer.MulterError) {
-      return next(
-        new customError(
-          "Multer error: " + (err.message || "File upload error"),
-          statusCodes.BAD_REQUEST,
-        ),
-      );
-    } else if (err) {
-      return next(
-        new customError(
-          err.message || "Internal Server Error",
-          statusCodes.SERVER_ERROR,
-        ),
-      );
-    }
-    guardUploads(req, next);
-  }));
-};
+const anyFileUpload = () => withUploadErrors(upload.any());
 
 // Export the middleware functions
 

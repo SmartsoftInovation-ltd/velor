@@ -39,8 +39,18 @@ const processEmailJob = async (job) => {
     // Nothing to send — treat as a no-op success so the job doesn't retry.
     return { skipped: true, reason: "no recipient" };
   }
-  const messageId = await sendEmail(to, subject, html);
-  return { to, messageId: messageId || null };
+  // An SMTP failure throws, so the queue's attempts and backoff retry it and
+  // a mail that never went out ends "failed" (it used to "complete" as null).
+  // A store with email turned off is not a failure: nothing will ever send.
+  try {
+    const messageId = await sendEmail(to, subject, html, { throwOnError: true });
+    return { to, messageId: messageId || null };
+  } catch (error) {
+    if (error?.code === "EMAIL_NOT_CONFIGURED") {
+      return { skipped: true, reason: "email not configured" };
+    }
+    throw error;
+  }
 };
 
 function startEmailWorker(options = {}) {

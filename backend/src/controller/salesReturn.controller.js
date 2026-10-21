@@ -1,4 +1,3 @@
-const mongoose = require("mongoose");
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
@@ -9,6 +8,12 @@ const Sales = require("../models/sales.model");
 const { customerModel } = require("../models/customer.model");
 const CrateTransaction = require("../models/crateTransaction.model");
 const { validateSalesReturn } = require("../validation/salesReturn.validation");
+const {
+  takeRefundFromAccount,
+  giveRefundBack,
+  deleteRefundTransactions,
+} = require("../utils/refundLedger.util");
+const { inTransaction } = require("../utils/transaction.util");
 const { statusCodes } = require("../constant/constant");
 const {
   getCache,
@@ -49,6 +54,7 @@ async function recordReturnTransaction({ sale, returnDoc, refundMethod, session 
     ? "listed customer"
     : (customerType?.walking?.customerName || "walking customer");
 
+  const balanceAfter = await takeRefundFromAccount(refundMethod, returnDoc.totalReturnAmount, session);
   const [transaction] = await CrateTransaction.create(
     [
       {
@@ -58,6 +64,8 @@ async function recordReturnTransaction({ sale, returnDoc, refundMethod, session 
         voucherNumber: sale?.invoiceNumber || "",
         transactionType: "cash payment",
         amount: returnDoc.totalReturnAmount,
+        balanceAfter,
+        balanceApplied: true,
         // Marks the row as auto-generated so the manual transaction list skips it.
         salesReturnReference: returnDoc._id,
       },
@@ -66,6 +74,65 @@ async function recordReturnTransaction({ sale, returnDoc, refundMethod, session 
   );
   return transaction;
 }
+
+// Only a completed sale took its goods off the shelf. A pending or draft sale
+// never deducted stock, so a return against it would add stock that never left.
+const assertSaleReturnable = (sale) => {
+  if (sale.invoiceStatus !== "complete") {
+    throw new customError(
+      "Only a completed sale can be returned",
+      statusCodes.BAD_REQUEST,
+    );
+  }
+};
+
+// The same line lookup create, update and delete use to flip salesStatus
+const findSaleLine = (sale, item) =>
+  sale.searchItem.find((si) =>
+    item.variant
+      ? si.variantId?.toString() === item.variant.toString()
+      : si.productId?.toString() === item.product.toString(),
+  );
+
+// Add (sign 1) or take back (sign -1) a return's units on products and
+// variants. Taking back is refused when the returned units are no longer on
+// the shelf (sold again since): `min: 0` does not apply to an $inc, so a bare
+// decrement drove stock negative.
+const moveReturnStock = async (allproduct, sign, session) => {
+  for (const item of allproduct) {
+    const quantity = sign * item.quantity;
+    const [Model, id, field] = item.variant
+      ? [Variant, item.variant, "stockVariant"]
+      : [Product, item.product, "stock"];
+    if (!id) continue;
+    const filter = sign < 0 ? { _id: id, [field]: { $gte: item.quantity } } : { _id: id };
+    const result = await Model.updateOne(
+      filter,
+      { $inc: { [field]: quantity, salesReturnStock: quantity } },
+      { session },
+    );
+    if (sign < 0 && result.matchedCount === 0 && (await Model.exists({ _id: id }).session(session))) {
+      throw new customError(
+        "The returned units are no longer in stock (sold again since), so the return cannot be undone",
+        statusCodes.BAD_REQUEST,
+      );
+    }
+  }
+};
+
+const bumpReturnCaches = async () => {
+  await bumpNsVersion(NS);
+  // Also bump product cache — this endpoint mutates stock/stockVariant and
+  // salesReturnStock on Product/Variant, which /product/* endpoints cache.
+  await bumpNsVersion("product");
+  // The sales reports (sales summary, sales history) cache under the "sales"
+  // namespace and read returns back out of this collection for their
+  // RETURN (-) line. Without this bump a return raised after a report was
+  // first viewed keeps showing 0 until the entry expires.
+  await bumpNsVersion("sales");
+  // The refund account's balance moved
+  await bumpNsVersion("account");
+};
 
 // @desc create a new sales return
 // Invoice-level deductions carried into a return.
@@ -77,7 +144,8 @@ async function recordReturnTransaction({ sale, returnDoc, refundMethod, session 
 // "return" once returned, but it was still sold when the less was given, so
 // the per-unit share must not grow as items come back. Unit prices come from
 // the sale itself, not the request, so the refund cannot be inflated, and are
-// net of the line's own discount.
+// net of the line's own discount. An item the sale never contained, or more
+// units than it sold, is refused (400).
 // What the customer paid for one unit of a line: its salesRate less the line's
 // own discount (taka off each unit, or a percent). Refunding the bare
 // salesRate would hand back more than a discounted item was sold for.
@@ -97,14 +165,31 @@ function computeReturnAmounts(sale, allproduct) {
   const round2 = (n) => Math.round(n * 100) / 100;
   let gross = 0;
   let units = 0;
+  // Units of each product/variant asked back so far, so two request rows for
+  // the same item cannot together exceed what was sold
+  const requested = new Map();
   const items = allproduct.map((item) => {
-    const line = lines.find((si) =>
+    const key = item.variant ? `v:${item.variant}` : `p:${item.product}`;
+    const matching = lines.filter((si) =>
       item.variant
         ? si.variantId?.toString() === item.variant.toString()
         : si.productId?.toString() === String(item.product),
     );
-    const unitPrice = line ? netUnitPrice(line) : Number(item.unitPrice) || 0;
+    // Only what the invoice sold can come back, and only at the invoice's price
+    if (matching.length === 0) {
+      throw new customError("This product is not on the sale", statusCodes.BAD_REQUEST);
+    }
     const quantity = Number(item.quantity) || 0;
+    const sold = matching.reduce((sum, si) => sum + (Number(si.quantity) || 0), 0);
+    const total = (requested.get(key) || 0) + quantity;
+    if (total > sold) {
+      throw new customError(
+        `Cannot return ${total} units: the sale sold ${sold}`,
+        statusCodes.BAD_REQUEST,
+      );
+    }
+    requested.set(key, total);
+    const unitPrice = netUnitPrice(matching[0]);
     gross += unitPrice * quantity;
     units += quantity;
     return { ...item, unitPrice, subtotal: round2(unitPrice * quantity) };
@@ -125,62 +210,36 @@ function computeReturnAmounts(sale, allproduct) {
 exports.computeReturnAmounts = computeReturnAmounts;
 
 exports.createSalesReturn = asynchandeler(async (req, res) => {
-  const data = await validateSalesReturn(req);
-  
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const body = await validateSalesReturn(req);
 
-  try {
+  const returnDoc = await inTransaction(async (session) => {
+    // A fresh copy per attempt: a retried transaction must start from the request
+    const data = { ...body };
+
     // The refund is worked out here from the sale, not taken from the form.
-    const saleForAmounts = await Sales.findById(data.invoiceNumber).session(session);
-    if (!saleForAmounts) {
-      throw new customError("Original Sale not found", statusCodes.NOT_FOUND);
-    }
-    Object.assign(data, computeReturnAmounts(saleForAmounts, data.allproduct));
-
-    const salesReturn = await SalesReturn.create([data], { session });
-    let returnDoc = salesReturn[0];
-
-    // Populate the newly created document to verify immediately
-    returnDoc = await SalesReturn.findById(returnDoc._id)
-      .populate({
-        path: "invoiceNumber",
-        select: "-paymentMethod -searchItem",
-      })
-      .populate("refundMethod")
-      .populate("allproduct.product")
-      .populate("allproduct.variant")
-      .session(session);
-
-    // 1. Restock products and variants & Update Sales searchItem status
     const originalSale = await Sales.findById(data.invoiceNumber).session(session);
     if (!originalSale) {
       throw new customError("Original Sale not found", statusCodes.NOT_FOUND);
     }
+    assertSaleReturnable(originalSale);
+    Object.assign(data, computeReturnAmounts(originalSale, data.allproduct));
 
+    const [created] = await SalesReturn.create([data], { session }).catch((error) => {
+      // The unique index caught a parallel return for the same invoice
+      if (error?.code === 11000) {
+        throw new customError(
+          "A sales return already exists for this invoice",
+          statusCodes.BAD_REQUEST,
+        );
+      }
+      throw error;
+    });
+
+    // 1. Restock products and variants & flag the returned lines
+    await moveReturnStock(data.allproduct, 1, session);
     for (const item of data.allproduct) {
-      // 1a. Stock Update
-      if (item.variant) {
-        await Variant.findByIdAndUpdate(
-          item.variant,
-          { $inc: { stockVariant: item.quantity, salesReturnStock: item.quantity } },
-          { session }
-        );
-      } else if (item.product) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          { $inc: { stock: item.quantity, salesReturnStock: item.quantity } },
-          { session }
-        );
-      }
-
-      // 1b. Update searchItem status in Sales
-      const targetItem = originalSale.searchItem.find(si => 
-        (item.variant ? si.variantId?.toString() === item.variant.toString() : si.productId?.toString() === item.product.toString())
-      );
-      if (targetItem) {
-        targetItem.salesStatus = "return";
-      }
+      const targetItem = findSaleLine(originalSale, item);
+      if (targetItem) targetItem.salesStatus = "return";
     }
 
     // 2. Update original Sales record (increment return field + searchItem status)
@@ -195,46 +254,40 @@ exports.createSalesReturn = asynchandeler(async (req, res) => {
     );
 
     // 4. Record the refund as a transaction either way, and link it back.
-    // returnDoc, not `data`: `data` is the request body and has no _id, so the
+    // `created`, not `data`: `data` is the request body and has no _id, so the
     // refund row was saved with an empty salesReturnReference and then showed
     // up on /transaction-list as if it had been typed by hand.
     const transaction = await recordReturnTransaction({
       sale: originalSale,
-      returnDoc,
+      returnDoc: created,
       refundMethod: data.refundMethod,
       session,
     });
-    returnDoc.transaction = transaction._id;
     await SalesReturn.findByIdAndUpdate(
-      returnDoc._id,
+      created._id,
       { transaction: transaction._id },
       { session },
     );
 
-    await session.commitTransaction();
-    session.endSession();
+    return SalesReturn.findById(created._id)
+      .populate({
+        path: "invoiceNumber",
+        select: "-paymentMethod -searchItem",
+      })
+      .populate("refundMethod")
+      .populate("allproduct.product")
+      .populate("allproduct.variant")
+      .session(session);
+  });
 
-    await bumpNsVersion(NS);
-    // Also bump product cache — this endpoint mutates stock/stockVariant and
-    // salesReturnStock on Product/Variant, which /product/* endpoints cache.
-    await bumpNsVersion("product");
-    // The sales reports (sales summary, sales history) cache under the "sales"
-    // namespace and read returns back out of this collection for their
-    // RETURN (-) line. Without this bump a return raised after a report was
-    // first viewed keeps showing 0 until the entry expires.
-    await bumpNsVersion("sales");
+  await bumpReturnCaches();
 
-    apiResponse.sendSuccess(
-      res,
-      statusCodes.CREATED,
-      "Sales Return created successfully",
-      returnDoc
-    );
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.CREATED,
+    "Sales Return created successfully",
+    returnDoc
+  );
 });
 
 //@desc get all sales return
@@ -323,147 +376,92 @@ exports.getSingleSalesReturn = asynchandeler(async (req, res) => {
 exports.deleteSalesReturn = asynchandeler(async (req, res) => {
   const { id } = req.params;
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
+  await inTransaction(async (session) => {
     const salesReturn = await SalesReturn.findById(id).session(session);
     if (!salesReturn) {
       throw new customError("Sales Return not found", statusCodes.NOT_FOUND);
     }
 
     const originalSale = await Sales.findById(salesReturn.invoiceNumber).session(session);
-    
-    // 1. Rollback Restock & Reset Sales searchItem status
-    for (const item of salesReturn.allproduct) {
-      // 1a. Decrease stock
-      if (item.variant) {
-        await Variant.findByIdAndUpdate(
-          item.variant,
-          { $inc: { stockVariant: -item.quantity, salesReturnStock: -item.quantity } },
-          { session }
-        );
-      } else if (item.product) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          { $inc: { stock: -item.quantity, salesReturnStock: -item.quantity } },
-          { session }
-        );
-      }
 
-      // 1b. Reset status to "sale"
-      if (originalSale) {
-        const targetItem = originalSale.searchItem.find(si => 
-          (item.variant ? si.variantId?.toString() === item.variant.toString() : si.productId?.toString() === item.product.toString())
-        );
-        if (targetItem) {
-          targetItem.salesStatus = "sale";
-        }
-      }
-    }
-
-    // 2. Rollback Sales record (decrement return field)
+    // 1. Take the restock back & reset the lines to "sale"
+    await moveReturnStock(salesReturn.allproduct, -1, session);
     if (originalSale) {
+      for (const item of salesReturn.allproduct) {
+        const targetItem = findSaleLine(originalSale, item);
+        if (targetItem) targetItem.salesStatus = "sale";
+      }
+
+      // 2. Rollback Sales record (decrement return field)
       originalSale.return = Math.max(0, (originalSale.return || 0) - salesReturn.totalReturnAmount);
       await originalSale.save({ session });
-    }
 
-    // 3. Rollback listed customer's opening dues and remove the refund transaction.
-    if (originalSale) {
+      // 3. Rollback listed customer's opening dues
       await revertCustomerDuesForReturn(
         originalSale.customerType,
         salesReturn.totalReturnAmount,
         session,
       );
     }
+
+    // 4. Remove the refund transaction, putting the refund back on its account
     if (salesReturn.transaction) {
-      await CrateTransaction.findByIdAndDelete(salesReturn.transaction, { session });
+      await deleteRefundTransactions([salesReturn.transaction], session);
     }
 
     await SalesReturn.findByIdAndDelete(id).session(session);
+  });
 
-    await session.commitTransaction();
-    session.endSession();
+  await bumpReturnCaches();
 
-    await bumpNsVersion(NS);
-    // Also bump product cache — this endpoint mutates stock/stockVariant and
-    // salesReturnStock on Product/Variant, which /product/* endpoints cache.
-    await bumpNsVersion("product");
-    // The sales reports (sales summary, sales history) cache under the "sales"
-    // namespace and read returns back out of this collection for their
-    // RETURN (-) line. Without this bump a return raised after a report was
-    // first viewed keeps showing 0 until the entry expires.
-    await bumpNsVersion("sales");
-
-    apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "Sales Return deleted successfully",
-      null
-    );
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Sales Return deleted successfully",
+    null
+  );
 });
 
 // @desc update sales return
 exports.updateSalesReturn = asynchandeler(async (req, res) => {
   const { id } = req.params;
-  const data = await validateSalesReturn(req);
+  const body = await validateSalesReturn(req);
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const updatedReturn = await inTransaction(async (session) => {
+    const data = { ...body };
 
-  try {
     const existingReturn = await SalesReturn.findById(id).session(session);
     if (!existingReturn) {
       throw new customError("Sales Return not found", statusCodes.NOT_FOUND);
     }
 
     const oldSale = await Sales.findById(existingReturn.invoiceNumber).session(session);
-    const newSale = await Sales.findById(data.invoiceNumber).session(session);
+    // Normally the invoice does not change: then old and new are one document.
+    // Loading it twice and saving both copies failed with a VersionError.
+    const sameSale = oldSale && oldSale._id.toString() === String(data.invoiceNumber);
+    const newSale = sameSale
+      ? oldSale
+      : await Sales.findById(data.invoiceNumber).session(session);
     if (!newSale) {
       throw new customError("Original Sale not found", statusCodes.NOT_FOUND);
     }
+    assertSaleReturnable(newSale);
     Object.assign(data, computeReturnAmounts(newSale, data.allproduct));
 
+    // The new return's units are added before the old ones are taken back,
+    // so an edit that keeps units on the shelf passes the stock guard even
+    // when the product's stock is at 0
+    await moveReturnStock(data.allproduct, 1, session);
+
     // --- STEP 1: REVERT OLD STATE ---
-
-    // 1a. Revert old stock
-    for (const item of existingReturn.allproduct) {
-      if (item.variant) {
-        await Variant.findByIdAndUpdate(
-          item.variant,
-          { $inc: { stockVariant: -item.quantity, salesReturnStock: -item.quantity } },
-          { session }
-        );
-      } else if (item.product) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          { $inc: { stock: -item.quantity, salesReturnStock: -item.quantity } },
-          { session }
-        );
-      }
-
-      // 1b. Reset old salesStatus
-      if (oldSale) {
-        const targetItem = oldSale.searchItem.find(si => 
-          (item.variant ? si.variantId?.toString() === item.variant.toString() : si.productId?.toString() === item.product.toString())
-        );
+    await moveReturnStock(existingReturn.allproduct, -1, session);
+    if (oldSale) {
+      for (const item of existingReturn.allproduct) {
+        const targetItem = findSaleLine(oldSale, item);
         if (targetItem) targetItem.salesStatus = "sale";
       }
-    }
-
-    // 1c. Revert old Sales return amount
-    if (oldSale) {
       oldSale.return = Math.max(0, (oldSale.return || 0) - existingReturn.totalReturnAmount);
-      await oldSale.save({ session });
-    }
-
-    // 1d. Revert old listed customer's opening dues
-    if (oldSale) {
+      if (!sameSale) await oldSale.save({ session });
       await revertCustomerDuesForReturn(
         oldSale.customerType,
         existingReturn.totalReturnAmount,
@@ -472,63 +470,42 @@ exports.updateSalesReturn = asynchandeler(async (req, res) => {
     }
 
     // --- STEP 2: APPLY NEW STATE ---
-
-    // 2a. Apply new stock
     for (const item of data.allproduct) {
-      if (item.variant) {
-        await Variant.findByIdAndUpdate(
-          item.variant,
-          { $inc: { stockVariant: item.quantity, salesReturnStock: item.quantity } },
-          { session }
-        );
-      } else if (item.product) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          { $inc: { stock: item.quantity, salesReturnStock: item.quantity } },
-          { session }
-        );
-      }
-
-      // 2b. Set new salesStatus
-      if (newSale) {
-        const targetItem = newSale.searchItem.find(si => 
-          (item.variant ? si.variantId?.toString() === item.variant.toString() : si.productId?.toString() === item.product.toString())
-        );
-        if (targetItem) targetItem.salesStatus = "return";
-      }
+      const targetItem = findSaleLine(newSale, item);
+      if (targetItem) targetItem.salesStatus = "return";
     }
+    newSale.return = (newSale.return || 0) + data.totalReturnAmount;
+    await newSale.save({ session });
+    await applyCustomerDuesForReturn(
+      newSale.customerType,
+      data.totalReturnAmount,
+      session,
+    );
 
-    // 2c. Apply new Sales return amount
-    if (newSale) {
-      newSale.return = (newSale.return || 0) + data.totalReturnAmount;
-      await newSale.save({ session });
-    }
-
-    // 2d. Apply new listed customer's opening dues
-    if (newSale) {
-      await applyCustomerDuesForReturn(
-        newSale.customerType,
-        data.totalReturnAmount,
-        session,
-      );
-    }
-
-    // 2e. Update (or create) the linked refund transaction to match the new state
+    // 2e. Replace the refund transaction: the old refund goes back on its
+    // account, the new one comes out of the (possibly different) refund account
     let transactionId = existingReturn.transaction;
-    if (transactionId) {
-      const isListed = newSale?.customerType?.type === "listed";
+    const oldTransaction = transactionId
+      ? await CrateTransaction.findById(transactionId).session(session)
+      : null;
+    if (oldTransaction) {
+      await giveRefundBack(oldTransaction, session);
+      const isListed = newSale.customerType?.type === "listed";
       const customerLabel = isListed
         ? "listed customer"
-        : (newSale?.customerType?.walking?.customerName || "walking customer");
+        : (newSale.customerType?.walking?.customerName || "walking customer");
+      const balanceAfter = await takeRefundFromAccount(data.refundMethod, data.totalReturnAmount, session);
       await CrateTransaction.findByIdAndUpdate(
         transactionId,
         {
           date: data.date || new Date(),
           account: data.refundMethod,
-          transactionDescription: `Sales return refund — invoice ${newSale?.invoiceNumber || ""} (${customerLabel})`.trim(),
-          voucherNumber: newSale?.invoiceNumber || "",
+          transactionDescription: `Sales return refund — invoice ${newSale.invoiceNumber || ""} (${customerLabel})`.trim(),
+          voucherNumber: newSale.invoiceNumber || "",
           transactionType: "cash payment",
           amount: data.totalReturnAmount,
+          balanceAfter,
+          balanceApplied: true,
           // Backfills the tag on rows created before it existed.
           salesReturnReference: id,
         },
@@ -545,34 +522,19 @@ exports.updateSalesReturn = asynchandeler(async (req, res) => {
     }
 
     // 3. Update the return document
-    const updatedReturn = await SalesReturn.findByIdAndUpdate(
+    return SalesReturn.findByIdAndUpdate(
       id,
       { $set: { ...data, transaction: transactionId } },
       { new: true, session }
     );
+  });
 
-    await session.commitTransaction();
-    session.endSession();
+  await bumpReturnCaches();
 
-    await bumpNsVersion(NS);
-    // Also bump product cache — this endpoint mutates stock/stockVariant and
-    // salesReturnStock on Product/Variant, which /product/* endpoints cache.
-    await bumpNsVersion("product");
-    // The sales reports (sales summary, sales history) cache under the "sales"
-    // namespace and read returns back out of this collection for their
-    // RETURN (-) line. Without this bump a return raised after a report was
-    // first viewed keeps showing 0 until the entry expires.
-    await bumpNsVersion("sales");
-
-    apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      "Sales Return updated successfully",
-      updatedReturn
-    );
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
+  apiResponse.sendSuccess(
+    res,
+    statusCodes.OK,
+    "Sales Return updated successfully",
+    updatedReturn
+  );
 });

@@ -67,6 +67,12 @@ auditLogSchema.index({ "entity.type": 1, createdAt: -1 });
 // Backstop only: the nightly purge job (jobs/purgeAuditLogs.job.js) already
 // keeps 30 days; this TTL catches anything it ever misses
 auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 });
+// The audit worker writes each job's entry once, looked up by its job id.
+// Partial: entries written before jobId existed are left out.
+auditLogSchema.index(
+  { tenantId: 1, jobId: 1 },
+  { unique: true, partialFilterExpression: { jobId: { $type: "string" } } },
+);
 
 // Audit logs are write-only — block mutation even from app code
 auditLogSchema.pre(

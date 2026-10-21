@@ -334,7 +334,7 @@ const CustomerPaymentReceiveTable = ({
                 <button
                   type="button"
                   onClick={() =>
-                    navigate(`/customer-payment-receive-edit/${payment.customer._id}`)
+                    navigate(`/customer-payment-receive-edit/${payment._id}`)
                   }
                   className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
                   aria-label="Edit payment"
@@ -518,7 +518,7 @@ const CustomerPaymentReceiveTable = ({
                           type="button"
                           onClick={() =>
                             navigate(
-                              `/customer-payment-receive-edit/${payment.customer._id}`,
+                              `/customer-payment-receive-edit/${payment._id}`,
                             )
                           }
                           className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"

@@ -46,7 +46,7 @@ const processAuditJob = async (job) => {
       // behind it to catch the mistake.
       if (!tenantId) throw new Error(`Audit job ${job.id} has no tenantId`);
 
-      await auditLogModel.collection.insertOne({
+      const doc = {
         ...entry,
         tenantId: toObjectId(tenantId),
         createdAt: entry.createdAt ? new Date(entry.createdAt) : new Date(),
@@ -56,8 +56,21 @@ const processAuditJob = async (job) => {
         ...(entry.entity?.id && {
           entity: { ...entry.entity, id: toObjectId(entry.entity.id) },
         }),
-      });
-      return { logged: true };
+      };
+
+      // Keyed by the job: a job that runs twice (a retry after the write but
+      // before the ack, a stalled job re-run) finds its entry and writes nothing
+      if (job.id === undefined || job.id === null) {
+        await auditLogModel.collection.insertOne(doc);
+        return { logged: true };
+      }
+      const jobId = String(job.id);
+      const result = await auditLogModel.collection.updateOne(
+        { tenantId: doc.tenantId, jobId },
+        { $setOnInsert: { ...doc, jobId } },
+        { upsert: true },
+      );
+      return { logged: result.upsertedCount === 1 };
 };
 
 function startAuditWorker(options = {}) {

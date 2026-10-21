@@ -205,7 +205,7 @@ describe("route matrix", () => {
   });
 
   describe("strict tenancy: a request naming an unknown store gets 404", () => {
-    const open = routes.filter((r) => r.auth === "public" && r.method === "GET");
+    const open = routes.filter((r) => ["public", "optional"].includes(r.auth) && r.method === "GET");
     it.each(open.map((r) => [label(r), r]))("%s", async (_name, route) => {
       const res = await call(route, { tenant: "no-such-store" });
       expect(res.status).toBe(404);

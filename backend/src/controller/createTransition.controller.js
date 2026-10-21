@@ -6,12 +6,44 @@ const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { statusCodes } = require("../constant/constant");
 const { bumpNsVersion } = require("@/utils/cache.util");
+const { inTransaction } = require("../utils/transaction.util");
 
 const ACCOUNT_NS = "account";
 
 // cash recived = (+), cash payment = (-)
 const balanceDelta = (transactionType, amount) =>
   transactionType === "cash recived" ? amount : -amount;
+
+// The direction comes from transactionType, so the amount must be a positive
+// number: a negative one inverted it (a "cash payment" raised the balance).
+const positiveAmount = (value) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new customError("Amount must be a number greater than 0", statusCodes.BAD_REQUEST);
+  }
+  return amount;
+};
+
+// A manual transaction's own fields: the only ones create and edit write
+const TRANSACTION_FIELDS = [
+  "date",
+  "transactionCategory",
+  "account",
+  "transactionDescription",
+  "voucherNumber",
+  "transactionType",
+  "amount",
+];
+
+const moveAccount = async (accountId, change, session) => {
+  const account = await Account.findByIdAndUpdate(
+    accountId,
+    { $inc: { balance: change } },
+    { new: true, session },
+  );
+  if (!account) throw new customError("Account not found", statusCodes.NOT_FOUND);
+  return account;
+};
 
 // Sales, sales returns, purchases and customer/supplier payments all write into
 // this same collection, each tagging its row with the reference field that lets
@@ -66,28 +98,29 @@ exports.createTransaction = asynchandeler(async (req, res) => {
     );
   }
 
-  const updatedAccount = await Account.findByIdAndUpdate(
-    account,
-    { $inc: { balance: balanceDelta(transactionType, amount) } },
-    { new: true },
-  );
-  if (!updatedAccount) {
-    throw new customError("Account not found", statusCodes.NOT_FOUND);
-  }
+  const value = positiveAmount(amount);
 
-  const transaction = await CreateTransaction.create({
-    date,
-    transactionCategory,
-    account,
-    transactionDescription,
-    voucherNumber,
-    transactionType,
-    amount,
-    balanceAfter: updatedAccount.balance,
+  // The balance and the row are written in one transaction: a row that fails
+  // validation (a bad date, say) no longer leaves the money moved
+  const transaction = await inTransaction(async (session) => {
+    const updatedAccount = await moveAccount(account, balanceDelta(transactionType, value), session);
+    const [created] = await CreateTransaction.create(
+      [
+        {
+          date,
+          transactionCategory,
+          account,
+          transactionDescription,
+          voucherNumber,
+          transactionType,
+          amount: value,
+          balanceAfter: updatedAccount.balance,
+        },
+      ],
+      { session },
+    );
+    return created;
   });
-  if (!transaction) {
-    throw new customError("Transaction not created", statusCodes.BAD_REQUEST);
-  }
 
   await bumpNsVersion(ACCOUNT_NS);
 
@@ -156,17 +189,22 @@ exports.deleteTransaction = asynchandeler(async (req, res) => {
   // purchase or payment that created it and is reversed from there, so deleting
   // it here would leave that record pointing at a transaction that no longer
   // exists.
-  const transaction = await CreateTransaction.findOneAndDelete({
-    _id: id,
-    ...MANUAL_ENTRY_ONLY,
-  });
-  if (!transaction) {
-    throw new customError("Transaction not found", statusCodes.NOT_FOUND);
-  }
+  const transaction = await inTransaction(async (session) => {
+    const deleted = await CreateTransaction.findOneAndDelete(
+      { _id: id, ...MANUAL_ENTRY_ONLY },
+      { session },
+    );
+    if (!deleted) {
+      throw new customError("Transaction not found", statusCodes.NOT_FOUND);
+    }
 
-  // reverse this transaction's effect on the account balance
-  await Account.findByIdAndUpdate(transaction.account, {
-    $inc: { balance: -balanceDelta(transaction.transactionType, transaction.amount) },
+    // reverse this transaction's effect on the account balance
+    await Account.findByIdAndUpdate(
+      deleted.account,
+      { $inc: { balance: -balanceDelta(deleted.transactionType, deleted.amount) } },
+      { session },
+    );
+    return deleted;
   });
   await bumpNsVersion(ACCOUNT_NS);
 
@@ -192,7 +230,7 @@ exports.updateTransaction = asynchandeler(async (req, res) => {
 
   const account = req.body.account || existing.account;
   const transactionType = req.body.transactionType || existing.transactionType;
-  const amount = req.body.amount ?? existing.amount;
+  const amount = positiveAmount(req.body.amount ?? existing.amount);
   const transactionCategory = req.body.transactionCategory || existing.transactionCategory;
 
   const category = await TransactionCategory.findById(transactionCategory);
@@ -206,24 +244,27 @@ exports.updateTransaction = asynchandeler(async (req, res) => {
     );
   }
 
-  // reverse old effect on the old account, apply new effect on the new account
-  await Account.findByIdAndUpdate(existing.account, {
-    $inc: { balance: -balanceDelta(existing.transactionType, existing.amount) },
-  });
-  const updatedAccount = await Account.findByIdAndUpdate(
-    account,
-    { $inc: { balance: balanceDelta(transactionType, amount) } },
-    { new: true },
+  // Only the transaction's own fields; the body is never spread in (it could
+  // set a module reference and turn a manual row into an auto-generated one)
+  const changes = Object.fromEntries(
+    TRANSACTION_FIELDS.filter((field) => req.body[field] !== undefined).map((field) => [field, req.body[field]]),
   );
-  if (!updatedAccount) {
-    throw new customError("Account not found", statusCodes.NOT_FOUND);
-  }
 
-  const transaction = await CreateTransaction.findOneAndUpdate(
-    { _id: id },
-    { ...req.body, balanceAfter: updatedAccount.balance },
-    { new: true },
-  );
+  const transaction = await inTransaction(async (session) => {
+    // reverse old effect on the old account, apply new effect on the new account
+    await Account.findByIdAndUpdate(
+      existing.account,
+      { $inc: { balance: -balanceDelta(existing.transactionType, existing.amount) } },
+      { session },
+    );
+    const updatedAccount = await moveAccount(account, balanceDelta(transactionType, amount), session);
+
+    return CreateTransaction.findOneAndUpdate(
+      { _id: id },
+      { ...changes, amount, balanceAfter: updatedAccount.balance },
+      { new: true, runValidators: true, session },
+    );
+  });
 
   await bumpNsVersion(ACCOUNT_NS);
 

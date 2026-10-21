@@ -3,6 +3,7 @@ const Order = require("../models/order.model");
 const DeliveryCharge = require("../models/delivery.model");
 const Product = require("../models/product.model");
 const Coupon = require("../models/coupon.model");
+const { claimCouponUse, releaseCouponUse } = require("../utils/coupon.util");
 // Import the new Invoice model
 const Invoice = require("../models/invoice.model");
 const { apiResponse } = require("../utils/apiResponse");
@@ -229,6 +230,7 @@ exports.createOrder = asynchandeler(async (req, res) => {
   const invoiceId = `${general.invoicePrefix}-${uuidv4().slice(0, 8).toUpperCase()}`;
 
   let order = null;
+  let couponClaimed = false;
   try {
     order = await Order.create({
       user: userId || null,
@@ -307,8 +309,11 @@ exports.createOrder = asynchandeler(async (req, res) => {
       }
     }
 
+    // The usage limit is re-checked in the same update that counts the use,
+    // so parallel orders cannot all pass the earlier read
     if (coupon) {
-      await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
+      await claimCouponUse(coupon._id);
+      couponClaimed = true;
     }
 
     // Step 8: Create the Invoice Document
@@ -457,12 +462,9 @@ exports.createOrder = asynchandeler(async (req, res) => {
       await Promise.all(stockUpdatePromises);
       console.log("Stock rolled back due to error.");
 
-      // Rollback coupon usage
-      if (coupon) {
-        await Coupon.updateOne(
-          { _id: coupon._id },
-          { $inc: { usedCount: -1 } },
-        );
+      // Rollback coupon usage, only if this order took one
+      if (couponClaimed) {
+        await releaseCouponUse(coupon._id);
         console.log("Coupon usage rolled back due to error.");
       }
 
@@ -521,8 +523,9 @@ exports.updateOrder = asynchandeler(async (req, res) => {
     throw new customError("Order not found", statusCodes.NOT_FOUND);
   }
 
-  // if orderStatus is Cancelled then rollback stock
-  if (orderStatus === "Cancelled" || orderStatus === "Delivered") {
+  // A cancelled order's goods go back on the shelf. A delivered order's goods
+  // left with the customer, so its stock stays as it is.
+  if (orderStatus === "Cancelled") {
     const stockUpdatePromises = [];
 
     for (const item of singleOrder.items) {

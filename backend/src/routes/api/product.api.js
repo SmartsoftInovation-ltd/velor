@@ -75,16 +75,16 @@ _.route("/all-single-variant-products").get(
   Product.getAllSingleVariantProducts
 );
 
-_.route("/newarrival").get(Product.getNewArrivalProducts);
+_.route("/newarrival").get(optionalAuth, Product.getNewArrivalProducts);
 
-_.route("/price-range").get(Product.getProductsByPriceRange);
+_.route("/price-range").get(optionalAuth, Product.getProductsByPriceRange);
 
-_.route("/related-products").post(Product.getRelatedProducts);
+_.route("/related-products").post(optionalAuth, Product.getRelatedProducts);
 
-_.route("/discount-products").get(Product.getDiscountProducts);
+_.route("/discount-products").get(optionalAuth, Product.getDiscountProducts);
 
-_.route("/best-selling-products").get(Product.getBestSellingProducts);
+_.route("/best-selling-products").get(optionalAuth, Product.getBestSellingProducts);
 
-_.route("/search-product").get(Product.getNameWiseSearch);
+_.route("/search-product").get(optionalAuth, Product.getNameWiseSearch);
 
 module.exports = _;

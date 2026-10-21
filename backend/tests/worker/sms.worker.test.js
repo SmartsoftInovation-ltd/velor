@@ -111,7 +111,7 @@ describe("SMS worker (queue: due-sms)", () => {
 
   // BUG-061: a re-run job (retry after a crash, a stalled job) sends again to
   // recipients its log already marks "sent" — customers get duplicate SMS
-  test.failing("processing the same job twice does not text a recipient twice [BUG-061]", async () => {
+  it("processing the same job twice does not text a recipient twice [BUG-061]", async () => {
     let calls = 0;
     nock(GATEWAY).post("/api/smsapi").times(2).reply(200, () => {
       calls += 1;

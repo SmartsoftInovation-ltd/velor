@@ -4,6 +4,11 @@ const { statusCodes } = require("../constant/constant");
 
 // Collect every action the user holds for one module slug, union'd across
 // their roles and their direct user-level grants (most permissive wins).
+// A permission the platform deactivated grants nothing, the same rule getMe
+// and rbac.effectiveActions apply (the dashboard already hid it).
+const grantsModule = (p, module) =>
+  p.permission?.slug === module && p.permission.isActive !== false;
+
 const actionsForModule = (user, moduleName) => {
   const module = moduleName?.toString()?.toLowerCase();
   const effectiveActions = new Set();
@@ -11,14 +16,14 @@ const actionsForModule = (user, moduleName) => {
   for (const role of user.roles || []) {
     if (!role.isActive) continue;
     for (const p of role.permissions || []) {
-      if (p.permission?.slug === module) {
+      if (grantsModule(p, module)) {
         (p.actions || []).forEach((a) => effectiveActions.add(a));
       }
     }
   }
 
   for (const p of user.permissions || []) {
-    if (p.permission?.slug === module) {
+    if (grantsModule(p, module)) {
       (p.actions || []).forEach((a) => effectiveActions.add(a));
     }
   }

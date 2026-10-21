@@ -45,7 +45,7 @@ describe("courier routes (/courier)", () => {
 
     // BUG-004: CityZone ignores the store's settings and always calls Pathao's
     // sandbox with credentials written into the source
-    test.failing("calls the store's own Pathao account, not the sandbox [BUG-004]", async () => {
+    it("calls the store's own Pathao account, not the sandbox [BUG-004]", async () => {
       const tenantCall = nock(TENANT_PATHAO).post(/issue-token/).reply(200, { access_token: "t", refresh_token: "r", expires_in: 3600 })
         .get(/city-list/).reply(200, { data: { data: [{ city_id: 1, city_name: "Dhaka" }] } });
       const sandbox = nock(SANDBOX_PATHAO).post(/issue-token/).reply(200, { access_token: "t", expires_in: 3600 }).get(/city-list/).reply(200, {});
@@ -54,7 +54,7 @@ describe("courier routes (/courier)", () => {
       expect(tenantCall.isDone()).toBe(true);
     });
 
-    test.failing("an upstream 404 for an unknown city is a client error, not a 500 [BUG-004]", async () => {
+    it("an upstream 404 for an unknown city is a client error, not a 500 [BUG-004]", async () => {
       nock(SANDBOX_PATHAO).post(/issue-token/).reply(200, { access_token: "t", expires_in: 3600 }).get(/zone-list/).reply(404, { message: "not found" });
       nock(TENANT_PATHAO).post(/issue-token/).reply(200, { access_token: "t", expires_in: 3600 }).get(/zone-list/).reply(404, { message: "not found" });
       const res = await as().get("/courier/zone/999999");

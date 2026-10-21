@@ -13,81 +13,81 @@ error code on an edge case).
 **74 bugs** — Critical 5, High 26, Medium 26, Low 17.
 
 | Severity | Id | Summary | Test |
-|---|---|---|---|
+|---|---|---|---| 
 | Critical | BUG-012 | ~~Admin password change stores the password in plain text~~ **Fixed** | `integration/auth.routes.test.js` |
-| Critical | BUG-018 | A sales return can take back more units than were sold | `integration/salesReturn.routes.test.js` |
-| Critical | BUG-019 | A product that is not on the sale is refunded at the client's price | `integration/salesReturn.routes.test.js` |
-| Critical | BUG-046 | Marking an order "Delivered" puts its stock back | `integration/commerce.routes.test.js` |
-| Critical | BUG-065 | Prototype pollution through bracketed form-field names | `unit/utils.test.js` |
-| High | BUG-008 | Delete-user and the permission endpoints return the password hash | `integration/auth.routes.test.js` |
-| High | BUG-009 | `POST /auth/add-user` lets a user manager grant any permission | `integration/auth.routes.test.js` |
-| High | BUG-010 | Login by email fails when another account has no phone | `integration/auth.routes.test.js` |
-| High | BUG-011 | Login accepts query operators in email/phone | `integration/auth.routes.test.js` |
+| Critical | BUG-018 | ~~A sales return can take back more units than were sold~~ **Fixed** | `integration/salesReturn.routes.test.js` |
+| Critical | BUG-019 | ~~A product that is not on the sale is refunded at the client's price~~ **Fixed** | `integration/salesReturn.routes.test.js` |
+| Critical | BUG-046 | ~~Marking an order "Delivered" puts its stock back~~ **Fixed** | `integration/commerce.routes.test.js` |
+| Critical | BUG-065 | ~~Prototype pollution through bracketed form-field names~~ **Fixed** | `unit/utils.test.js` |
+| High | BUG-008 | ~~Delete-user and the permission endpoints return the password hash~~ **Fixed** | `integration/auth.routes.test.js` |
+| High | BUG-009 | ~~`POST /auth/add-user` lets a user manager grant any permission~~ **Fixed** | `integration/auth.routes.test.js` |
+| High | BUG-010 | ~~Login by email fails when another account has no phone~~ **Fixed** | `integration/auth.routes.test.js` |
+| High | BUG-011 | ~~Login accepts query operators in email/phone~~ **Fixed** | `integration/auth.routes.test.js` |
 | High | BUG-014 | A sale overwrites the customer's due with the client's `balance` | `integration/sales.routes.test.js` |
-| High | BUG-020 | A return against a pending/draft sale adds stock that never left | `integration/salesReturn.routes.test.js` |
-| High | BUG-021 | A sales-return refund never leaves the refund account | `integration/salesReturn.routes.test.js` |
-| High | BUG-024 | Editing a sales return always fails with 500 | `integration/salesReturn.routes.test.js` |
-| High | BUG-025 | Concurrent purchases / returns fail with 500 on write conflicts | `integration/purchase.routes.test.js` |
-| High | BUG-026 | A purchase quantity sent as a string corrupts stock | `integration/purchase.routes.test.js` |
-| High | BUG-033 | Parallel stock adjustments lose updates | `integration/stockAdjust.routes.test.js` |
-| High | BUG-035 | Public product endpoints publish every product's cost price | `integration/product.routes.test.js` |
-| High | BUG-043 | A checkout that sells out half-way loses stock | `integration/commerce.routes.test.js` |
-| High | BUG-044 | A coupon's usage limit is not enforced under concurrency | `integration/commerce.routes.test.js` |
+| High | BUG-020 | ~~A return against a pending/draft sale adds stock that never left~~ **Fixed** | `integration/salesReturn.routes.test.js` |
+| High | BUG-021 | ~~A sales-return refund never leaves the refund account~~ **Fixed** | `integration/salesReturn.routes.test.js` |
+| High | BUG-024 | ~~Editing a sales return always fails with 500~~ **Fixed** | `integration/salesReturn.routes.test.js` |
+| High | BUG-025 | ~~Concurrent purchases / returns fail with 500 on write conflicts~~ **Fixed** | `integration/purchase.routes.test.js` |
+| High | BUG-026 | ~~A purchase quantity sent as a string corrupts stock~~ **Fixed** | `integration/purchase.routes.test.js` |
+| High | BUG-033 | ~~Parallel stock adjustments lose updates~~ **Fixed** | `integration/stockAdjust.routes.test.js` |
+| High | BUG-035 | ~~Public product endpoints publish every product's cost price~~ **Fixed** | `integration/product.routes.test.js` |
+| High | BUG-043 | ~~A checkout that sells out half-way loses stock~~ **Fixed** | `integration/commerce.routes.test.js` |
+| High | BUG-044 | ~~A coupon's usage limit is not enforced under concurrency~~ **Fixed** | `integration/commerce.routes.test.js` |
 | High | BUG-045 | Staff "create order" always fails | `integration/commerce.routes.test.js` |
 | High | BUG-047 | Order status changes have no transition rules | `integration/commerce.routes.test.js` |
 | High | BUG-048 | SSLCommerz IPN never checks the paid amount | `integration/commerce.routes.test.js` |
-| High | BUG-052 | Deleting a customer payment does not restore the due | `integration/customer.routes.test.js` |
-| High | BUG-058 | A money transfer never moves money | `integration/finance.routes.test.js` |
-| High | BUG-067 | A new sale may carry "return" lines that add stock | `integration/salesIntegrity.test.js` |
-| High | BUG-068 | Editing a sale after a return moves stock by twice the quantity | `integration/salesIntegrity.test.js` |
-| High | BUG-069 | Sale edits are mass-assigned (`$set: req.body`) | `integration/salesIntegrity.test.js` |
-| High | BUG-070 | Changing the advance used on a sale is never applied, but deleting credits it back | `integration/salesIntegrity.test.js` |
-| High | BUG-071 | A signed-in shopper sees cost prices on the catalogue | `integration/salesIntegrity.test.js` |
-| High | BUG-072 | Supplier payments: not transactional, and delete keeps the due cut | `integration/salesIntegrity.test.js` |
+| High | BUG-052 | ~~Deleting a customer payment does not restore the due~~ **Fixed** | `integration/customer.routes.test.js` |
+| High | BUG-058 | ~~A money transfer never moves money~~ **Fixed** | `integration/finance.routes.test.js` |
+| High | BUG-067 | ~~A new sale may carry "return" lines that add stock~~ **Fixed** | `integration/salesIntegrity.test.js` |
+| High | BUG-068 | ~~Editing a sale after a return moves stock by twice the quantity~~ **Fixed** | `integration/salesIntegrity.test.js` |
+| High | BUG-069 | ~~Sale edits are mass-assigned (`$set: req.body`)~~ **Fixed** | `integration/salesIntegrity.test.js` |
+| High | BUG-070 | ~~Changing the advance used on a sale is never applied, but deleting credits it back~~ **Fixed** | `integration/salesIntegrity.test.js` |
+| High | BUG-071 | ~~A signed-in shopper sees cost prices on the catalogue~~ **Fixed** | `integration/salesIntegrity.test.js` |
+| High | BUG-072 | ~~Supplier payments: not transactional, and delete keeps the due cut~~ **Fixed** | `integration/salesIntegrity.test.js` |
 | High | BUG-073 | Every Steadfast booking fails after Steadfast accepts it | `integration/courier.test.js` |
 | Medium | BUG-001 | Joi validation errors answer 500 instead of 400 | `contract/routeMatrix.test.js` |
 | Medium | BUG-002 | Department/section create: `customError` arguments swapped | `contract/routeMatrix.test.js` |
-| Medium | BUG-004 | Pathao city/zone/area lookups use hard-coded sandbox credentials | `integration/courier.test.js` |
-| Medium | BUG-006 | Changing your password leaves existing sessions valid | `integration/auth.routes.test.js` |
-| Medium | BUG-007 | User list and lookup expose reset and verification tokens | `integration/auth.routes.test.js` |
-| Medium | BUG-017 | Sale-form product search cannot find a product by one word of its name | `integration/sales.routes.test.js` |
-| Medium | BUG-022 | Deleting a sales return can drive stock negative | `integration/salesReturn.routes.test.js` |
-| Medium | BUG-023 | "One return per invoice" has no unique index behind it | `integration/salesReturn.routes.test.js` |
-| Medium | BUG-027 | The supplier's due grows by the client's `dueamount` | `integration/purchase.routes.test.js` |
-| Medium | BUG-030 | Deleting or editing a purchase can drive stock negative | `integration/purchase.routes.test.js` |
-| Medium | BUG-031 | A failed stock adjustment still leaves an adjustment record | `integration/stockAdjust.routes.test.js` |
-| Medium | BUG-032 | Stock adjustment quantities are not validated | `integration/stockAdjust.routes.test.js` |
-| Medium | BUG-036 | Deactivated products stay in the storefront's main listing | `integration/product.routes.test.js` |
-| Medium | BUG-038 | Deleting a product leaves its variants behind | `integration/product.routes.test.js` |
+| Medium | BUG-004 | ~~Pathao city/zone/area lookups use hard-coded sandbox credentials~~ **Fixed** | `integration/courier.test.js` |
+| Medium | BUG-006 | ~~Changing your password leaves existing sessions valid~~ **Fixed** | `integration/auth.routes.test.js` |
+| Medium | BUG-007 | ~~User list and lookup expose reset and verification tokens~~ **Fixed** | `integration/auth.routes.test.js` |
+| Medium | BUG-017 | ~~Sale-form product search cannot find a product by one word of its name~~ **Fixed** | `integration/sales.routes.test.js` |
+| Medium | BUG-022 | ~~Deleting a sales return can drive stock negative~~ **Fixed** | `integration/salesReturn.routes.test.js` |
+| Medium | BUG-023 | ~~"One return per invoice" has no unique index behind it~~ **Fixed** | `integration/salesReturn.routes.test.js` |
+| Medium | BUG-027 | ~~The supplier's due grows by the client's `dueamount`~~ **Fixed** | `integration/purchase.routes.test.js` |
+| Medium | BUG-030 | ~~Deleting or editing a purchase can drive stock negative~~ **Fixed** | `integration/purchase.routes.test.js` |
+| Medium | BUG-031 | ~~A failed stock adjustment still leaves an adjustment record~~ **Fixed** | `integration/stockAdjust.routes.test.js` |
+| Medium | BUG-032 | ~~Stock adjustment quantities are not validated~~ **Fixed** | `integration/stockAdjust.routes.test.js` |
+| Medium | BUG-036 | ~~Deactivated products stay in the storefront's main listing~~ **Fixed** | `integration/product.routes.test.js` |
+| Medium | BUG-038 | ~~Deleting a product leaves its variants behind~~ **Fixed** | `integration/product.routes.test.js` |
 | Medium | BUG-041 | Cart quantities sent as strings are concatenated | `integration/commerce.routes.test.js` |
 | Medium | BUG-042 | Shoppers cannot merge their cart or use the wishlist | `integration/commerce.routes.test.js` |
 | Medium | BUG-049 | Payment fail/cancel callbacks overwrite paid orders; statuses outside the enum | `integration/commerce.routes.test.js` |
 | Medium | BUG-050 | Profit double-counts returned units when a product is on two lines | `integration/profitRules.test.js` |
-| Medium | BUG-053 | Editing a customer payment always edits that customer's first payment | `integration/customer.routes.test.js` |
-| Medium | BUG-054 | A sale only sees the customer's first advance payment | `integration/customer.routes.test.js` |
-| Medium | BUG-055 | The customer's due limit is never enforced by the API | `integration/customer.routes.test.js` |
-| Medium | BUG-056 | An account's balance can be edited directly | `integration/finance.routes.test.js` |
-| Medium | BUG-057 | Manual transactions move money before they are saved, and accept negative amounts | `integration/finance.routes.test.js` |
-| Medium | BUG-061 | A re-run SMS job texts recipients a second time | `worker/sms.worker.test.js` |
-| Medium | BUG-062 | Failed emails are never retried | `worker/email.worker.test.js` |
-| Medium | BUG-064 | A deactivated permission still grants access | `middleware/permissions.test.js` |
-| Low | BUG-003 | Deleting an unknown merchant answers 500 | `contract/routeMatrix.test.js` |
-| Low | BUG-005 | `validate()` calls `next()` twice on invalid input | `middleware/requestPipeline.test.js` |
-| Low | BUG-013 | Creating a sale with short stock answers 500 | `integration/sales.routes.test.js` |
-| Low | BUG-016 | Product search for the sale form answers 500 for a bad `limit` | `integration/sales.routes.test.js` |
-| Low | BUG-028 | Purchase search puts the raw query into `$regex` | `integration/purchase.routes.test.js` |
-| Low | BUG-029 | Editing a purchase without `allproduct` answers 500 | `integration/purchase.routes.test.js` |
-| Low | BUG-034 | Uploading a file that is not an image answers 500 | `integration/product.routes.test.js` |
-| Low | BUG-037 | Unknown product, variant or product image answers 200 | `integration/product.routes.test.js` |
-| Low | BUG-039 | Variant create accepts sales counters from the client | `integration/product.routes.test.js` |
-| Low | BUG-040 | Coupon create/update accept `usedCount` from the client | `integration/commerce.routes.test.js` |
-| Low | BUG-051 | Customer search puts the raw query into `$regex` | `integration/customer.routes.test.js` |
-| Low | BUG-059 | The money-transfer date is dropped | `integration/finance.routes.test.js` |
-| Low | BUG-060 | Audit jobs are not idempotent | `worker/audit.worker.test.js` |
-| Low | BUG-063 | An unset NODE_ENV returns stack traces to clients | `middleware/errorHandler.test.js` |
-| Low | BUG-066 | Cache namespace version can move backwards | `unit/cacheAndCost.test.js` |
+| Medium | BUG-053 | ~~Editing a customer payment always edits that customer's first payment~~ **Fixed** | `integration/customer.routes.test.js` |
+| Medium | BUG-054 | ~~A sale only sees the customer's first advance payment~~ **Fixed** | `integration/customer.routes.test.js` |
+| Medium | BUG-055 | ~~The customer's due limit is never enforced by the API~~ **Fixed** | `integration/customer.routes.test.js` |
+| Medium | BUG-056 | ~~An account's balance can be edited directly~~ **Fixed** | `integration/finance.routes.test.js` |
+| Medium | BUG-057 | ~~Manual transactions move money before they are saved, and accept negative amounts~~ **Fixed** | `integration/finance.routes.test.js` |
+| Medium | BUG-061 | ~~A re-run SMS job texts recipients a second time~~ **Fixed** | `worker/sms.worker.test.js` |
+| Medium | BUG-062 | ~~Failed emails are never retried~~ **Fixed** | `worker/email.worker.test.js` |
+| Medium | BUG-064 | ~~A deactivated permission still grants access~~ **Fixed** | `middleware/permissions.test.js` |
+| Low | BUG-003 | ~~Deleting an unknown merchant answers 500~~ **Fixed** | `contract/routeMatrix.test.js` |
+| Low | BUG-005 | ~~`validate()` calls `next()` twice on invalid input~~ **Fixed** | `middleware/requestPipeline.test.js` |
+| Low | BUG-013 | ~~Creating a sale with short stock answers 500~~ **Fixed** | `integration/sales.routes.test.js` |
+| Low | BUG-016 | ~~Product search for the sale form answers 500 for a bad `limit`~~ **Fixed** | `integration/sales.routes.test.js` |
+| Low | BUG-028 | ~~Purchase search puts the raw query into `$regex`~~ **Fixed** | `integration/purchase.routes.test.js` |
+| Low | BUG-029 | ~~Editing a purchase without `allproduct` answers 500~~ **Fixed** | `integration/purchase.routes.test.js` |
+| Low | BUG-034 | ~~Uploading a file that is not an image answers 500~~ **Fixed** | `integration/product.routes.test.js` |
+| Low | BUG-037 | ~~Unknown product, variant or product image answers 200~~ **Fixed** | `integration/product.routes.test.js` |
+| Low | BUG-039 | ~~Variant create accepts sales counters from the client~~ **Fixed** | `integration/product.routes.test.js` |
+| Low | BUG-040 | ~~Coupon create/update accept `usedCount` from the client~~ **Fixed** | `integration/commerce.routes.test.js` |
+| Low | BUG-051 | ~~Customer search puts the raw query into `$regex`~~ **Fixed** | `integration/customer.routes.test.js` |
+| Low | BUG-059 | ~~The money-transfer date is dropped~~ **Fixed** | `integration/finance.routes.test.js` |
+| Low | BUG-060 | ~~Audit jobs are not idempotent~~ **Fixed** | `worker/audit.worker.test.js` |
+| Low | BUG-063 | ~~An unset NODE_ENV returns stack traces to clients~~ **Fixed** | `middleware/errorHandler.test.js` |
+| Low | BUG-066 | ~~Cache namespace version can move backwards~~ **Fixed** | `unit/cacheAndCost.test.js` |
 | Low | BUG-074 | The IPN success answer swaps message and data | `integration/commerce.routes.test.js` |
-| Low | BUG-075 | Internal errors answer in a different envelope | `contract/envelope.test.js` |
+| Low | BUG-075 | ~~Internal errors answer in a different envelope~~ **Fixed** | `contract/envelope.test.js` |
 
 ## Details
 
@@ -118,6 +118,8 @@ error code on an edge case).
 - **Steps:** `DELETE /api/v1/merchant/delete-merchant/<unknown ObjectId>`.
 - **Expected:** 404. **Actual:** 500 "Failed to delete merchant".
 - **Tests:** `tests/contract/routeMatrix.test.js`.
+- **Fixed:** an unknown merchant answers 404 "Merchant not found"; the
+  `knownFailures.js` entry is removed.
 
 ### BUG-004 — Pathao city/zone/area lookups use hard-coded sandbox credentials (Medium)
 
@@ -130,6 +132,10 @@ error code on an edge case).
 - **Expected:** the tenant's configured Pathao account (422 when not
   configured), upstream 4xx mapped to a client error.
 - **Tests:** `tests/integration/courier.test.js`.
+- **Fixed:** `CityZone` takes the store's Pathao config (`getCourierConfig`,
+  422 `COURIER_NOT_CONFIGURED` when there is none) and its token store via
+  `PathaoAuth`; the hard-coded sandbox credentials are gone. An upstream 4xx is
+  passed on with its status, a failing or unreachable Pathao answers 502.
 
 ### BUG-006 — Changing your password leaves existing sessions valid (Medium)
 
@@ -142,6 +148,9 @@ error code on an edge case).
   `POST /auth/change-password`; call `GET /auth/getme` with A.
 - **Expected:** 401. **Actual:** 200.
 - **Tests:** `tests/integration/auth.routes.test.js` "ends sessions opened with the old password".
+- **Fixed:** `changePassword` also bumps `tokenVersion`, so every access token
+  issued before the change is refused. The dashboard already signs out after
+  the change.
 
 ### BUG-007 — User list and lookup expose reset and verification tokens (Medium)
 
@@ -153,6 +162,10 @@ error code on an edge case).
   verification token is returned in clear; it can verify the address without
   access to the mailbox.
 - **Tests:** `tests/integration/auth.routes.test.js` "never expose secrets".
+- **Fixed:** the three endpoints exclude `SECRET_FIELDS_SELECT` (password,
+  refresh token, reset and verification tokens and expiries, token version).
+  `getUserAddedByAdmin` caches under a new key, so entries cached with the
+  tokens are never served again.
 
 ### BUG-008 — Delete-user and the permission endpoints return the password hash (High)
 
@@ -161,6 +174,9 @@ error code on an edge case).
 - **Expected:** a projection without secrets. **Actual:** bcrypt hash,
   refresh token and reset token of the target account are in the response.
 - **Tests:** `tests/integration/auth.routes.test.js` (two `[BUG-008]` cases).
+- **Fixed:** the three endpoints answer with the user stripped of the
+  password hash, refresh token, reset and email-verification state and token
+  version (`withoutSecrets` in `user.controller.js`).
 
 ### BUG-009 — `POST /auth/add-user` lets a user manager grant any permission (High)
 
@@ -174,6 +190,9 @@ error code on an edge case).
   holds `create-role` — privilege escalation inside the store, bypassing the
   grant rules `rbac.assertCanGrantPermissions` enforces everywhere else.
 - **Tests:** `tests/integration/auth.routes.test.js` "cannot grant direct permissions".
+- **Fixed:** `addUser` creates the account from the form's own fields only
+  (`name`, `email`, `password`, `phone`, `discountLimit`, `isActive`); any other
+  key in the body is ignored. Roles still go through `assertCanAssignRole`.
 
 ### BUG-010 — Login by email fails when another account has no phone (High)
 
@@ -189,6 +208,10 @@ error code on an edge case).
   first phoneless account (often the provisioned owner) — sign-in then only
   needs that account's password, not its identifier.
 - **Tests:** `tests/integration/auth.routes.test.js` "[BUG-010]".
+- **Fixed:** sign-in and the lookups query exactly one field — the email if
+  one is given, otherwise the phone (`signInIdentifier` in
+  `src/utils/signInIdentifier.util.js`). The register duplicate check leaves
+  out a missing phone.
 
 ### BUG-011 — Login accepts query operators in email/phone (High)
 
@@ -200,6 +223,10 @@ error code on an edge case).
   whose password matches — the attacker never names the account. With
   `email: { "$gt": "" }` the handler crashes (500).
 - **Tests:** `tests/integration/auth.routes.test.js` "[BUG-011]".
+- **Fixed:** `signInIdentifier` refuses a non-string email or phone with 400
+  before any query, and login refuses a missing identifier or a non-string
+  password. Staff login, storefront login, `getUserbyEmailOrPhone` and
+  `isSuperAdmin` all use it.
 
 ### BUG-012 — Admin password change stores the password in plain text (Critical)
 
@@ -223,6 +250,7 @@ error code on an edge case).
 - **Steps:** `POST /sales/create-sales` (invoiceStatus complete) for more units than in stock.
 - **Expected:** 400 (or 409). **Actual:** 500; the transaction is correctly rolled back.
 - **Tests:** `tests/integration/sales.routes.test.js` "[BUG-013]".
+- **Fixed:** short stock on create answers 400, as on update.
 
 ### BUG-014 — A sale overwrites the customer's due with the client's `balance` (High)
 
@@ -247,6 +275,8 @@ error code on an edge case).
 - **Steps:** `GET /sales/get-sales-products?q=abc&limit=abc` (or `0`, `-5`).
 - **Expected:** clamped (or 400). **Actual:** 500.
 - **Tests:** `tests/integration/sales.routes.test.js` "[BUG-016]".
+- **Fixed:** `limit` is clamped to 1–50; a non-number, 0 or negative value
+  falls back to 20.
 
 ### BUG-017 — Sale-form product search cannot find a product by one word of its name (Medium)
 
@@ -256,6 +286,9 @@ error code on an edge case).
 - **Steps:** product "Cotton Shirt Large"; search `q=Shirt`.
 - **Expected:** the product. **Actual:** no results (two words, "cotton shirt", work).
 - **Tests:** `tests/integration/sales.routes.test.js` "[BUG-017]".
+- **Fixed:** a single code-like word is matched exactly against
+  sku/barCode/qrCode/slug **and** by substring against the product or variant
+  name. An exact code still scores 100 and sorts first.
 
 ### BUG-018 — A sales return can take back more units than were sold (Critical)
 
@@ -266,6 +299,10 @@ error code on an edge case).
 - **Expected:** 400. **Actual:** 201 — stock +50, refund 50 × the unit price
   posted as a cash payment, the listed customer's due reduced by the same.
 - **Tests:** `tests/integration/salesReturn.routes.test.js` "[BUG-018]".
+- **Fixed:** `computeReturnAmounts` adds up the units asked back per product
+  or variant (over every request row) and refuses with 400 when that exceeds
+  the units the invoice sold of it. One return per invoice, so the sold
+  quantity is the cap on create and on edit.
 
 ### BUG-019 — A product that is not on the sale is refunded at the client's price (Critical)
 
@@ -274,6 +311,8 @@ error code on an edge case).
 - **Steps:** return a product the invoice never contained with `unitPrice: 75000`.
 - **Expected:** 400. **Actual:** 201, refund 75000, stock of that product +1.
 - **Tests:** `tests/integration/salesReturn.routes.test.js` "[BUG-019]".
+- **Fixed:** `computeReturnAmounts` refuses (400) an item that matches no
+  line of the sale; the request's `unitPrice` is never used.
 
 ### BUG-020 — A return against a pending/draft sale adds stock that never left (High)
 
@@ -281,6 +320,8 @@ error code on an edge case).
   `invoiceStatus`; pending and draft sales never deducted stock.
 - **Expected:** 400 for a sale that is not complete. **Actual:** 201, stock inflated.
 - **Tests:** `tests/integration/salesReturn.routes.test.js` "[BUG-020]".
+- **Fixed:** create and edit refuse (400) a return against a sale whose
+  `invoiceStatus` is not `complete`.
 
 ### BUG-021 — A sales-return refund never leaves the refund account (High)
 
@@ -292,6 +333,11 @@ error code on an edge case).
   same holds for `updateSalesReturn` and `deleteSalesReturn`, and for the
   refund rows `deleteSales` cascades away.
 - **Tests:** `tests/integration/salesReturn.routes.test.js` "[BUG-021]".
+- **Fixed:** the refund now comes out of the refund account's balance
+  (`takeRefundFromAccount` in `src/utils/refundLedger.util.js`) and is stamped
+  `balanceApplied` on the transaction. Edit gives the old refund back and takes
+  the new one; deleting the return or its sale puts the refund back. Refund rows
+  saved before the fix carry no stamp, so removing them leaves the balance alone.
 
 ### BUG-022 — Deleting a sales return can drive stock negative (Medium)
 
@@ -301,6 +347,10 @@ error code on an edge case).
 - **Steps:** return 1 unit, sell the stock down to 0, delete the return.
 - **Expected:** refused, or stock floored. **Actual:** stock −1.
 - **Tests:** `tests/integration/salesReturn.routes.test.js` "[BUG-022]".
+- **Fixed:** taking a return's units back is a guarded `$inc` (`$gte` the
+  quantity); when they have been sold again since, delete and edit answer 400.
+  Edit adds the new units before taking the old ones back, so an edit that
+  keeps them passes even at stock 0.
 
 ### BUG-023 — "One return per invoice" has no unique index behind it (Medium)
 
@@ -310,6 +360,11 @@ error code on an edge case).
   (two refunds, double restock) for one invoice. The race is timing-dependent;
   the test asserts the missing index deterministically.
 - **Tests:** `tests/integration/salesReturn.routes.test.js` "[BUG-023]".
+- **Fixed:** unique index `{ tenantId, invoiceNumber }` on SalesReturn
+  (migration `012-sales-return-unique-invoice` builds it where autoIndex is
+  off and lists any existing duplicates instead of failing). The pre-save check
+  reads inside the transaction, and a duplicate-key error answers 400 "A sales
+  return already exists for this invoice".
 
 ### BUG-024 — Editing a sales return always fails with 500 (High)
 
@@ -319,6 +374,8 @@ error code on an edge case).
 - **Steps:** `PUT /sales-return/update-salesreturn/:id` with any valid body.
 - **Expected:** 200. **Actual:** 500, transaction rolled back.
 - **Tests:** `tests/integration/salesReturn.routes.test.js` "[BUG-024]".
+- **Fixed:** when the invoice does not change, old and new sale are the same
+  document and it is saved once.
 
 ### BUG-025 — Concurrent purchases / returns fail with 500 on write conflicts (High)
 
@@ -334,6 +391,11 @@ error code on an edge case).
   returns answer 500 at random.
 - **Tests:** `tests/integration/purchase.routes.test.js` and
   `tests/integration/salesReturn.routes.test.js` "[BUG-025]".
+- **Fixed:** sales-return create/edit/delete run in `inTransaction`
+  (`session.withTransaction`, which retries). Purchase, purchase-return and
+  size-chart handlers are wrapped in `retryTransientErrors`, which reruns the
+  handler on a `TransientTransactionError` (both in `src/utils/transaction.util.js`).
+  Customer and employee already used `withTransaction`.
 
 ### BUG-026 — A purchase quantity sent as a string corrupts stock (High)
 
@@ -342,6 +404,9 @@ error code on an edge case).
 - **Steps:** stock 10; purchase with `quantity: "5"`.
 - **Expected:** 15. **Actual:** `10 + "5"` = `"105"`, saved as 105.
 - **Tests:** `tests/integration/purchase.routes.test.js` "[BUG-026]".
+- **Fixed:** `purchaseLineNumbers` turns quantity and prices into numbers on
+  create and edit; a non-number, negative or (for quantity) fractional value is
+  refused with 400.
 
 ### BUG-027 — The supplier's due grows by the client's `dueamount` (Medium)
 
@@ -351,6 +416,10 @@ error code on an edge case).
 - **Steps:** purchase payable 2250, paid 2250, `dueamount: 9999`.
 - **Expected:** supplier due unchanged. **Actual:** +9999.
 - **Tests:** `tests/integration/purchase.routes.test.js` "[BUG-027]".
+- **Fixed:** `purchaseTotals` works out `payable` (lines + commission +
+  shipping, as the form does) and `dueamount` (payable − paid) on the server for
+  create and edit; the request's `payable` and `dueamount` are ignored. Paid is
+  checked against the server's payable.
 
 ### BUG-028 — Purchase search puts the raw query into `$regex` (Low)
 
@@ -359,6 +428,7 @@ error code on an edge case).
   `?invoiceNumber=.*` matches every purchase.
 - **Expected:** literal match. (Sales search escapes the same input.)
 - **Tests:** `tests/integration/purchase.routes.test.js` "[BUG-028]".
+- **Fixed:** the invoice number is regex-escaped before it reaches `$regex`.
 
 ### BUG-029 — Editing a purchase without `allproduct` answers 500 (Low)
 
@@ -366,6 +436,8 @@ error code on an edge case).
   reverting the old stock (the transaction is rolled back).
 - **Expected:** 400. **Actual:** 500 (TypeError).
 - **Tests:** `tests/integration/purchase.routes.test.js` "[BUG-029]".
+- **Fixed:** an edit without `allproduct` (or with an empty list) answers 400
+  before anything is touched.
 
 ### BUG-030 — Deleting or editing a purchase can drive stock negative (Medium)
 
@@ -374,6 +446,9 @@ error code on an edge case).
 - **Steps:** buy 5 (stock 15), sell down to 1, delete the purchase.
 - **Expected:** refused (or floored). **Actual:** stock −4.
 - **Tests:** `tests/integration/purchase.routes.test.js` "[BUG-030]".
+- **Fixed:** `takeBackPurchasedStock` uses a guarded `$inc`; when the bought
+  units have been sold, delete and edit answer 400. Edit adds the new lines
+  before taking the old ones back.
 
 ### BUG-031 — A failed stock adjustment still leaves an adjustment record (Medium)
 
@@ -385,6 +460,9 @@ error code on an edge case).
 - **Expected:** nothing recorded. **Actual:** the adjustment row exists and is
   listed in the stock-adjustment history and reports, though stock never moved.
 - **Tests:** `tests/integration/stockAdjust.routes.test.js` "[BUG-031]".
+- **Fixed:** create, edit and delete each run in one transaction, with the
+  stock moved before the record is written. An unknown product answers 404 and
+  a decrease below 0 answers 400, leaving nothing behind.
 
 ### BUG-032 — Stock adjustment quantities are not validated (Medium)
 
@@ -393,6 +471,8 @@ error code on an edge case).
   fails and leaves an orphan row, see BUG-031); a negative `increaseQuantity`
   silently decreases stock and the "plus" total.
 - **Tests:** `tests/integration/stockAdjust.routes.test.js` "[BUG-032]".
+- **Fixed:** `adjustQuantity` accepts whole numbers of 0 or more (missing
+  counts as 0) on create and edit; anything else is 400.
 
 ### BUG-033 — Parallel stock adjustments lose updates (High)
 
@@ -401,6 +481,8 @@ error code on an edge case).
 - **Steps:** 20 parallel `+1` adjustments on a product with stock 10.
 - **Expected:** 30. **Actual:** less (each request saved the stock it read).
 - **Tests:** `tests/integration/stockAdjust.routes.test.js` "[BUG-033]".
+- **Fixed:** create, edit and delete move stock and the adjustment counters in
+  one atomic pipeline update (`applyAdjustment`); the counters still floor at 0.
 
 ### BUG-034 — Uploading a file that is not an image answers 500 (Low)
 
@@ -411,6 +493,10 @@ error code on an edge case).
 - **Steps:** `POST /product/createproduct` with `thumbnail` = a `.gif`.
 - **Expected:** 400 "Only image files … are allowed". **Actual:** 500.
 - **Tests:** `tests/integration/product.routes.test.js` "[BUG-034]".
+- **Fixed:** one `uploadError` converter for every upload wrapper: Multer's
+  own errors and the file-type rejection answer 400, anything else 500.
+  `multipleFileUpload` goes through the error handler too, instead of its own
+  JSON shape.
 
 ### BUG-035 — Public product endpoints publish every product's cost price (High)
 
@@ -424,6 +510,11 @@ error code on an edge case).
 - **Expected:** no `purchasePrice`. **Actual:** the shop's cost of every
   product (and of every variant, populated) is in the response.
 - **Tests:** `tests/integration/product.routes.test.js` "[BUG-035]" (5 cases).
+- **Fixed:** the six endpoints pass their result through `forAudience()` and
+  take `optionalAuth`, so signed-in staff (the dashboard's product search)
+  still get the cost. `stripOne` now also cleans a variant row's nested
+  `product` and the price-range `variantdocs`, and the margin fields are
+  private too, since a margin and the retail price give the cost away.
 
 ### BUG-036 — Deactivated products stay in the storefront's main listing (Medium)
 
@@ -431,6 +522,9 @@ error code on an edge case).
   `isActive` filter; new-arrival and related-products do filter it.
 - **Expected:** a deactivated product is not listed to shoppers. **Actual:** listed.
 - **Tests:** `tests/integration/product.routes.test.js` "[BUG-036]".
+- **Fixed:** `getAllProducts` lists only active products to visitors and
+  shoppers (`listedFor`); staff still get every product, since the dashboard
+  re-activates from that list. The cache stays shared.
 
 ### BUG-037 — Unknown product, variant or product image answers 200 (Low)
 
@@ -439,6 +533,9 @@ error code on an edge case).
   answer `200 { product: null }` / `"… not found"` instead of 404 (the
   dashboard cannot tell a miss from a hit by status).
 - **Tests:** `tests/integration/product.routes.test.js` "[BUG-037]".
+- **Fixed:** those product and variant endpoints and `getCategoryBySlug`
+  answer 404. Category activate/deactivate answers 404 for an unknown slug and
+  still 200 when it is simply already in that state.
 
 ### BUG-038 — Deleting a product leaves its variants behind (Medium)
 
@@ -446,6 +543,8 @@ error code on an edge case).
   pointing at a missing product and still come up in the sale-form search,
   stock lists and variant reports.
 - **Tests:** `tests/integration/product.routes.test.js` "[BUG-038]".
+- **Fixed:** deleting a product deletes its variants (by `product` and by the
+  product's `variant` list) and queues their images for deletion too.
 
 ### BUG-039 — Variant create accepts sales counters from the client (Low)
 
@@ -454,6 +553,9 @@ error code on an edge case).
   `salesReturnStock`, `purchaseQuantityStock`… can be set on create (product
   create strips unknown fields correctly).
 - **Tests:** `tests/integration/product.routes.test.js` "[BUG-039]".
+- **Fixed:** `createVariant` drops the server's counters (`posSold`,
+  `webSold`, `totalSales`, `purchaseReturnStock`, `salesReturnStock`,
+  `purchaseQuantityStock`, `stockAdjustmentPlus/Minus`) from the validated data.
 
 ### BUG-040 — Coupon create/update accept `usedCount` from the client (Low)
 
@@ -464,6 +566,9 @@ error code on an edge case).
   `validateCoupon` calls `next(err)` and returns `undefined`, so the controller
   keeps running on `undefined` and the error handler is invoked twice.
 - **Tests:** `tests/integration/commerce.routes.test.js` "[BUG-040]".
+- **Fixed:** the coupon schema strips unknown keys, so only its own fields
+  (never `usedCount`) reach the model. `validateCoupon` throws a 400 instead of
+  calling `next()` and returning `undefined`.
 
 ### BUG-041 — Cart quantities sent as strings are concatenated (Medium)
 
@@ -490,6 +595,9 @@ error code on an edge case).
 - **Steps:** stock 5, a cart with two lines of 3 units of the same product.
 - **Expected:** 409 and stock 5. **Actual:** 409 and stock 2 — 3 units vanish.
 - **Tests:** `tests/integration/commerce.routes.test.js` "[BUG-043]".
+- **Fixed:** storefront and POS checkout keep a list of the lines already
+  taken; on any failure they are put back, the order is deleted and the coupon
+  use is released.
 
 ### BUG-044 — A coupon's usage limit is not enforced under concurrency (High)
 
@@ -500,6 +608,9 @@ error code on an edge case).
 - **Expected:** at most 1 order carries it. **Actual:** several (4 in the run
   recorded), `usedCount` ends above `usageLimit`.
 - **Tests:** `tests/integration/commerce.routes.test.js` "[BUG-044]".
+- **Fixed:** `claimCouponUse` (`src/utils/coupon.util.js`) counts the use
+  with the usage limit re-checked in the same atomic update, before the order is
+  written; storefront, POS and staff orders use it. A failed order releases it.
 
 ### BUG-045 — Staff "create order" always fails (High)
 
@@ -519,6 +630,7 @@ error code on an edge case).
 - **Expected:** stock unchanged (the goods left). **Actual:** stock +2 for every
   delivered order — inventory is overstated by everything ever delivered.
 - **Tests:** `tests/integration/commerce.routes.test.js` "[BUG-046]".
+- **Fixed:** only "Cancelled" puts the stock back; "Delivered" leaves it as is.
 
 ### BUG-047 — Order status changes have no transition rules (High)
 
@@ -567,6 +679,7 @@ error code on an edge case).
 - **Where:** `customer.controller.js` `getAllCustomers` (`q`).
 - **Steps:** `GET /customer/get-customers?q=(` → 500; `?q=.*` lists everyone.
 - **Tests:** `tests/integration/customer.routes.test.js` "[BUG-051]".
+- **Fixed:** the search term is regex-escaped.
 
 ### BUG-052 — Deleting a customer payment does not restore the due (High)
 
@@ -577,6 +690,8 @@ error code on an edge case).
 - **Expected:** due 1000. **Actual:** due 600 — the money left the account but
   the customer is still credited with having paid it.
 - **Tests:** `tests/integration/customer.routes.test.js` "[BUG-052]".
+- **Fixed:** delete runs in one transaction that removes the payment, adds
+  paid + less + cashBack back to `openingDues` and reverses the account.
 
 ### BUG-053 — Editing a customer payment always edits that customer's first payment (Medium)
 
@@ -585,6 +700,11 @@ error code on an edge case).
 - **Problem:** a customer with several payments cannot have the 2nd or later
   one corrected; the request cannot name a payment (its id answers 404).
 - **Tests:** `tests/integration/customer.routes.test.js` "[BUG-053]".
+- **Fixed:** the route takes the payment's `_id` and edits exactly that
+  payment (a customer id still works and names the customer's latest payment,
+  the one the old edit page showed). Only `paymentMode`, `remarks`, `date` and
+  `referenceInvoice` are taken from the body besides the amounts. GET accepts
+  `?id=`; the dashboard list and edit page now pass the payment's own id.
 
 ### BUG-054 — A sale only sees the customer's first advance payment (Medium)
 
@@ -594,6 +714,11 @@ error code on an edge case).
 - **Steps:** two advances of 500; a sale adjusting 800 of advance.
 - **Expected:** 201. **Actual:** 400 "Insufficient advance balance. Available: 500".
 - **Tests:** `tests/integration/customer.routes.test.js` "[BUG-054]".
+- **Fixed:** a sale checks the customer's whole advance (the sum of
+  `paidAmount` over their advance records) and takes from the records oldest
+  first, then rebuilds each record's running `balance`, so the newest record's
+  balance (what the sale form shows) is what is left. Giving advance back goes
+  onto the oldest record the same way.
 
 ### BUG-055 — The customer's due limit is never enforced by the API (Medium)
 
@@ -602,6 +727,10 @@ error code on an edge case).
   limit is re-checked server-side "because a client can be bypassed"; the
   credit limit is not).
 - **Tests:** `tests/integration/customer.routes.test.js` "[BUG-055]".
+- **Fixed:** create and edit refuse (400 `DUE_LIMIT_EXCEEDED`) a sale that
+  would take a listed customer with a `dueLimit` over it. The sale's due is
+  payable − net paid − advance used; an edit counts only what it adds. A
+  `dueLimit` of 0 means no limit.
 
 ### BUG-056 — An account's balance can be edited directly (Medium)
 
@@ -611,6 +740,8 @@ error code on an edge case).
   balance with no transaction behind it; the stored balance and the ledger
   diverge, and the change is not audited.
 - **Tests:** `tests/integration/finance.routes.test.js` "[BUG-056]".
+- **Fixed:** `updateAccount` writes only `name` and `isActive`; a `balance`
+  (or any other field) in the request is ignored.
 
 ### BUG-057 — Manual transactions move money before they are saved, and accept negative amounts (Medium)
 
@@ -620,6 +751,10 @@ error code on an edge case).
   has already moved by the amount. `amount: -500` on a "cash payment"
   raises the balance.
 - **Tests:** `tests/integration/finance.routes.test.js` "[BUG-057]" (2 cases).
+- **Fixed:** create, edit and delete each run in one transaction, so a row
+  that fails to save leaves the balance untouched. The amount must be a number
+  greater than 0 (the direction comes from `transactionType`). Edit writes only
+  the transaction's own fields instead of spreading the body.
 
 ### BUG-058 — A money transfer never moves money (High)
 
@@ -629,12 +764,22 @@ error code on an edge case).
   the dashboard and every ledger report ignore transfers. Accounts are not
   checked to exist, and a transfer to the same account is accepted.
 - **Tests:** `tests/integration/finance.routes.test.js` "[BUG-058]" (2 cases).
+- **Fixed:** create takes the amount out of `fromAccount` and puts it into
+  `toAccount` in one transaction (404 for an unknown account, 400 for the same
+  account twice or an amount of 0 or less). Edit undoes the old transfer and
+  applies the new one, writing only the transfer's own fields; delete undoes
+  it. Transfers saved before the fix never moved money and carry no
+  `balanceApplied` stamp, so editing or deleting them does not undo anything.
+  The `MoneyTransfer` row is the ledger record; no CrateTransaction rows are
+  written, so income/expense reports do not count a transfer as a payment.
 
 ### BUG-059 — The money-transfer date is dropped (Low)
 
 - **Where:** the controller writes `date`; the schema field is `Date`
   (capital D), so strict mode discards the value the user picked.
 - **Tests:** `tests/integration/finance.routes.test.js` "[BUG-059]".
+- **Fixed:** create and edit store the date in the schema's `Date` field (the
+  dashboard sends and reads `Date`); `date` is accepted too.
 
 ### BUG-060 — Audit jobs are not idempotent (Low)
 
@@ -642,6 +787,9 @@ error code on an edge case).
   job id is not used as a key. A job that runs twice (retry after the write
   but before the ack, a stalled job re-run) writes the entry twice.
 - **Tests:** `tests/worker/audit.worker.test.js` "[BUG-060]".
+- **Fixed:** the processor upserts keyed by `{ tenantId, jobId }` with
+  `$setOnInsert`, so a re-run writes nothing. A unique partial index on those
+  fields backs the lookup (migration `013-audit-job-id-index`).
 
 ### BUG-061 — A re-run SMS job texts recipients a second time (Medium)
 
@@ -651,6 +799,9 @@ error code on an edge case).
   "sent" (and pays for it), and `sentCount` is `$inc`ed again before being
   overwritten.
 - **Tests:** `tests/worker/sms.worker.test.js` "[BUG-061]".
+- **Fixed:** the worker reads the log first and skips recipients already
+  marked "sent"; `sentCount` / `failedCount` are counted from the
+  per-recipient statuses at the end instead of `$inc`ed per run.
 
 ### BUG-062 — Failed emails are never retried (Medium)
 
@@ -659,6 +810,9 @@ error code on an edge case).
   does not pass it, so a failed send "completes" and the queue's 3 attempts
   with backoff never run. The invoice email is silently lost.
 - **Tests:** `tests/worker/email.worker.test.js` "[BUG-062]".
+- **Fixed:** the worker calls `sendEmail` with `throwOnError`, so an SMTP
+  failure fails the job and the queue's attempts and backoff retry it. A store
+  with email turned off (`EMAIL_NOT_CONFIGURED`) completes as skipped.
 
 ### BUG-005 — `validate()` calls `next()` twice on invalid input (Low)
 
@@ -668,6 +822,7 @@ error code on an edge case).
   route), but the second `next()` re-enters routing after the response was
   sent; with other route layouts this becomes "headers already sent".
 - **Tests:** `tests/middleware/requestPipeline.test.js` "[BUG-005]".
+- **Fixed:** `return next(error)`.
 
 ### BUG-063 — An unset NODE_ENV returns stack traces to clients (Low)
 
@@ -676,6 +831,10 @@ error code on an edge case).
   handler's comment says an unrecognised NODE_ENV must never leak stack
   traces; a missing one does.
 - **Tests:** `tests/middleware/errorHandler.test.js` "[BUG-063]".
+- **Fixed:** `isDevelopment()` is true only for an explicitly set
+  development NODE_ENV, so an unset one gets the safe behaviour (no stack
+  traces, no localhost CORS, combined request logs). `nodeEnv()` keeps its
+  default because it names the queue prefix.
 
 ### BUG-064 — A deactivated permission still grants access (Medium)
 
@@ -684,6 +843,8 @@ error code on an edge case).
   The platform's "deactivate permission" therefore hides the permission in
   the dashboard but every API route keeps honouring it.
 - **Tests:** `tests/middleware/permissions.test.js` "[BUG-064]".
+- **Fixed:** `actionsForModule` ignores a permission whose `isActive` is
+  false, for role and direct grants alike.
 
 ### BUG-065 — Prototype pollution through bracketed form-field names (Critical)
 
@@ -697,6 +858,9 @@ error code on an edge case).
   polluted `isActive`, `roles` or `status` default changes authorization and
   validation outcomes anywhere an own property is missing).
 - **Tests:** `tests/unit/utils.test.js` "[BUG-065]" (2 key shapes).
+- **Fixed:** `expandBracketKeys` drops any key with a `__proto__`,
+  `constructor` or `prototype` segment, so nothing is written outside the
+  result object.
 
 ### BUG-066 — Cache namespace version can move backwards (Low)
 
@@ -706,6 +870,8 @@ error code on an edge case).
   entries written at versions 3…25 become reachable again once later bumps
   pass those numbers — stale lists are served.
 - **Tests:** `tests/unit/cacheAndCost.test.js` "[BUG-066]".
+- **Fixed:** a first bump that lands on 1 does a second `INCR` instead of a
+  `SET` to 2, so the version only ever moves forward.
 
 ### BUG-067 — A new sale may carry "return" lines that add stock (High)
 
@@ -714,6 +880,8 @@ error code on an edge case).
 - **Problem:** a cashier can put stock back (and lower `posSold`) on any
   product without a sales return, refund or audit trail behind it.
 - **Tests:** `tests/integration/salesIntegrity.test.js` "[BUG-067]".
+- **Fixed:** the create schema accepts only `salesStatus: "sale"` lines (400
+  otherwise). Returns go through `/sales-return`.
 
 ### BUG-068 — Editing a sale after a return moves stock by twice the quantity (High)
 
@@ -724,6 +892,10 @@ error code on an edge case).
   re-sending the line.
 - **Expected:** stock 9. **Actual:** 5.
 - **Tests:** `tests/integration/salesIntegrity.test.js` "[BUG-068]".
+- **Fixed:** an edit no longer trusts the client's `salesStatus`. A line a
+  SalesReturn explains counts as sold on both sides of the diff (the rule
+  `deleteSales` already used) and keeps its "return" flag; every other
+  resubmitted line is a sale.
 
 ### BUG-069 — Sale edits are mass-assigned (`$set: req.body`) (High)
 
@@ -732,6 +904,10 @@ error code on an edge case).
 - **Problem:** an edit can set the refund total (`return`, which profit
   subtracts), the due, the invoice number, or any unknown field.
 - **Tests:** `tests/integration/salesIntegrity.test.js` "[BUG-069]".
+- **Fixed:** the edit writes only `EDITABLE_SALE_FIELDS` (what the sale forms
+  send, plus the server-set `netPaid` and `discountGivenBy`). `return`,
+  `invoiceNumber`, `createdBy` and unknown keys are dropped. `presentDue`,
+  `previousDue` and `balance` are still taken from the form (see BUG-014).
 
 ### BUG-070 — Changing the advance used on a sale is never applied, but deleting credits it back (High)
 
@@ -740,6 +916,10 @@ error code on an edge case).
 - **Steps:** advance 1000; sale using 0; edit to 800; delete the sale.
 - **Expected:** advance 1000. **Actual:** 1800 — 800 of advance created from nothing.
 - **Tests:** `tests/integration/salesIntegrity.test.js` "[BUG-070]".
+- **Fixed:** an edit applies the change of `customerAdvancePaymentAdjust` to
+  the customer's advance (taking more, refused when the advance is short, or
+  giving back the difference; a change of customer gives the old one back and
+  takes from the new one).
 
 ### BUG-071 — A signed-in shopper sees cost prices on the catalogue (High)
 
@@ -748,6 +928,9 @@ error code on an edge case).
   shows `purchasePrice` to every logged-in customer (see also BUG-035 for
   anonymous visitors on the other endpoints).
 - **Tests:** `tests/integration/salesIntegrity.test.js` "[BUG-071]".
+- **Fixed:** `optionalAuth` loads the user's `roles`, and `forAudience()`
+  keeps the cost figures only for a user holding a role (staff). A shopper gets
+  the visitor view.
 
 ### BUG-072 — Supplier payments: not transactional, and delete keeps the due cut (High)
 
@@ -756,6 +939,9 @@ error code on an edge case).
   (404) leaving both; `deleteSupplierDuePayment` refunds the account but never
   restores `supplier.openingDues`.
 - **Tests:** `tests/integration/salesIntegrity.test.js` "[BUG-072]" (2 cases).
+- **Fixed:** create and delete each run in one transaction (an unknown
+  account now leaves the due and the payment untouched); delete adds
+  paid + less back to the supplier's `openingDues`.
 
 ### BUG-073 — Every Steadfast booking fails after Steadfast accepts it (High)
 
@@ -783,6 +969,9 @@ error code on an edge case).
   Three error shapes in one API; clients must special-case each.
 - **Tests:** `tests/contract/envelope.test.js` (routes that reach a 500 are
   listed in `knownFailures.js` `ENVELOPE_DEVIATIONS`).
+- **Fixed:** a non-operational error answers `{ statusCode, message }`, the
+  same envelope as every other error. `ENVELOPE_DEVIATIONS` now lists only the
+  two employee routes, whose empty body comes from BUG-002.
 
 <!-- PHASE2:START -->
 

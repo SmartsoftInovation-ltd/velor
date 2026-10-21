@@ -156,7 +156,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
 
     // BUG-018: nothing caps the returned quantity at what was sold (less what
     // came back already) — stock and the refund grow without limit
-    test.failing("refuses to take back more units than the sale sold [BUG-018]", async () => {
+    it("refuses to take back more units than the sale sold [BUG-018]", async () => {
       const sale = await makeSale({ quantity: 2 });
       const res = await createReturn(returnBody(sale, { allproduct: [{ product: product._id.toString(), quantity: 50, unitPrice: 1000, subtotal: 50000 }] }));
       expect(res.status).toBe(400);
@@ -174,7 +174,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
 
     // BUG-019: a product that is not on the sale is refunded at the unitPrice
     // the client sends
-    test.failing("refuses to refund a product that was not on the sale [BUG-019]", async () => {
+    it("refuses to refund a product that was not on the sale [BUG-019]", async () => {
       const sale = await makeSale();
       const stranger = await f.product.create({ stock: 0 });
       const res = await createReturn(
@@ -184,7 +184,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
     });
 
     // BUG-020: a pending/draft sale never took stock, yet its return adds stock
-    test.failing("refuses a return against a sale that never left the shop (pending) [BUG-020]", async () => {
+    it("refuses a return against a sale that never left the shop (pending) [BUG-020]", async () => {
       const sale = await makeSale({ invoiceStatus: "pending" });
       const res = await createReturn(returnBody(sale));
       expect(res.status).toBe(400);
@@ -193,7 +193,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
 
     // BUG-021: the refund is written as a "cash payment" transaction but the
     // refund account's balance is never reduced (every other module $incs it)
-    test.failing("takes the refund out of the refund account's balance [BUG-021]", async () => {
+    it("takes the refund out of the refund account's balance [BUG-021]", async () => {
       const sale = await makeSale();
       await createReturn(returnBody(sale)).expect(201);
       const account = await inTenant(() => Account.findById(refundAccount._id).lean());
@@ -212,7 +212,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
 
     // BUG-025: the transaction is started by hand (startTransaction) with no
     // retry, so a write conflict between parallel requests surfaces as a 500
-    test.failing("parallel returns are refused cleanly (4xx), never with a 500 [BUG-025]", async () => {
+    it("parallel returns are refused cleanly (4xx), never with a 500 [BUG-025]", async () => {
       const statuses = [];
       for (let round = 0; round < 3; round += 1) {
         const sale = await makeSale({ quantity: 1 });
@@ -226,7 +226,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
     // outside the transaction and with no unique index behind it, so parallel
     // requests can all pass it (the race is timing-dependent; the missing
     // index is what makes it possible, and is asserted here deterministically)
-    test.failing("one return per invoice is enforced by a unique index [BUG-023]", async () => {
+    it("one return per invoice is enforced by a unique index [BUG-023]", async () => {
       await SalesReturn.init();
       const indexes = await SalesReturn.collection.indexes();
       const unique = indexes.find((i) => i.unique && i.key.invoiceNumber === 1);
@@ -296,7 +296,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
 
     // BUG-022: the restock is taken back with a bare $inc, so stock goes
     // negative when the returned units were sold again in the meantime
-    test.failing("never drives stock below zero [BUG-022]", async () => {
+    it("never drives stock below zero [BUG-022]", async () => {
       const sale = await makeSale({ quantity: 2 });
       const created = (await createReturn(returnBody(sale)).expect(201)).body.data;
       await inTenant(() => Product.updateOne({ _id: product._id }, { stock: 0 }));
@@ -309,7 +309,7 @@ describe("sales return routes (/api/v1/sales-return)", () => {
   describe("PUT /sales-return/update-salesreturn/:id", () => {
     // BUG-024: the old and the new sale are the same document loaded twice; the
     // second save() hits a VersionError, so every edit answers 500
-    test.failing("replaces the return: old effect reverted, new one applied, one transaction kept [BUG-024]", async () => {
+    it("replaces the return: old effect reverted, new one applied, one transaction kept [BUG-024]", async () => {
       const sale = await makeSale({ quantity: 3 });
       const created = (await createReturn(returnBody(sale)).expect(201)).body.data;
       expect((await productNow()).stock).toBe(8);

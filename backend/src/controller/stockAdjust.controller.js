@@ -7,6 +7,7 @@ const StockAdjust = require("../models/stockadjust.model");
 const { statusCodes } = require("../constant/constant");
 const { getCache, setCache, bumpNsVersion, buildCacheKey } = require("@/utils/cache.util");
 const { logAudit } = require("@/service/audit.service");
+const { inTransaction } = require("@/utils/transaction.util");
 
 const NS = "stock";
 const CACHE_TTL = 60 * 30; // 30 minutes
@@ -16,6 +17,58 @@ const safeGet  = async (key) =>           { try { return key ? await getCache(ke
 const safeSet  = async (key, val, ttl) => { try { if (key) await setCache(key, val, ttl); } catch {} };
 const safeKey  = async (ns, suffix) =>    { try { return await buildCacheKey(ns, suffix); } catch { return null; } };
 const safeBump = async (ns) =>            { try { await bumpNsVersion(ns);                } catch {} };
+
+/**
+ * Move a product's or variant's stock and its adjustment counters in one
+ * atomic update. Reading the document, adding in JS and saving it back let
+ * parallel adjustments overwrite each other (20 × +1 added less than 20).
+ * The counters never go below 0, as before. A change that would take the
+ * stock below 0 does not match, and is refused.
+ */
+const applyAdjustment = (Model, id, stockField, { stock = 0, plus = 0, minus = 0 }, session) => {
+  const counter = (field, change) => ({
+    $max: [0, { $add: [{ $ifNull: [`$${field}`, 0] }, change] }],
+  });
+  const filter = stock < 0 ? { _id: id, [stockField]: { $gte: -stock } } : { _id: id };
+  return Model.findOneAndUpdate(
+    filter,
+    [
+      {
+        $set: {
+          [stockField]: { $add: [{ $ifNull: [`$${stockField}`, 0] }, stock] },
+          stockAdjustmentPlus: counter("stockAdjustmentPlus", plus),
+          stockAdjustmentMinus: counter("stockAdjustmentMinus", minus),
+        },
+      },
+    ],
+    { session },
+  );
+};
+
+const adjustStock = async (Model, id, field, label, change, session) => {
+  if (await applyAdjustment(Model, id, field, change, session)) return;
+  if (await Model.exists({ _id: id }).session(session)) {
+    throw new customError(
+      `${label} stock cannot go below 0`,
+      statusCodes.BAD_REQUEST,
+    );
+  }
+  throw new customError(`${label} not found`, statusCodes.NOT_FOUND);
+};
+
+const adjustProduct = (id, change, session) => adjustStock(Product, id, "stock", "Product", change, session);
+const adjustVariant = (id, change, session) => adjustStock(Variant, id, "stockVariant", "Variant", change, session);
+
+// An adjustment quantity: a whole number of 0 or more; missing counts as 0.
+// A negative increase silently decreased stock and the "plus" total.
+const adjustQuantity = (value, name) => {
+  if (value === undefined || value === null || value === "") return 0;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    throw new customError(`${name} must be a whole number of 0 or more`, statusCodes.BAD_REQUEST);
+  }
+  return n;
+};
 
 //@desc create stock adjust
 //@route POST /api/stock-adjust
@@ -44,36 +97,31 @@ exports.createStockAdjust = asynchandeler(async (req, res) => {
     );
   }
 
-  const stockAdjust = await StockAdjust.create({
-    productId: productId || null,
-    variantId: variantId || null,
-    adjustReason,
-    increaseQuantity,
-    decreaseQuantity,
-    date,
+  const plus = adjustQuantity(increaseQuantity, "increaseQuantity");
+  const minus = adjustQuantity(decreaseQuantity, "decreaseQuantity");
+  const change = { stock: plus - minus, plus, minus };
+
+  // The stock moves first and the record is written in the same transaction,
+  // so an unknown product or a decrease below 0 leaves no adjustment behind
+  const stockAdjust = await inTransaction(async (session) => {
+    if (productId) await adjustProduct(productId, change, session);
+    if (variantId) await adjustVariant(variantId, change, session);
+    const [created] = await StockAdjust.create(
+      [
+        {
+          productId: productId || null,
+          variantId: variantId || null,
+          adjustReason,
+          // Stored as edit stores them: an unused side is null
+          increaseQuantity: plus || null,
+          decreaseQuantity: minus || null,
+          date,
+        },
+      ],
+      { session },
+    );
+    return created;
   });
-  //   update product stock
-  if (productId) {
-    const product = await Product.findById(productId);
-    if (!product) {
-      throw new customError("Product not found", statusCodes.NOT_FOUND);
-    }
-    product.stock += increaseQuantity - decreaseQuantity;
-    product.stockAdjustmentPlus = (product.stockAdjustmentPlus || 0) + (increaseQuantity || 0);
-    product.stockAdjustmentMinus = (product.stockAdjustmentMinus || 0) + (decreaseQuantity || 0);
-    await product.save();
-  }
-  //    update variant stock
-  if (variantId) {
-    const variant = await Variant.findById(variantId);
-    if (!variant) {
-      throw new customError("Variant not found", statusCodes.NOT_FOUND);
-    }
-    variant.stockVariant += increaseQuantity - decreaseQuantity;
-    variant.stockAdjustmentPlus = (variant.stockAdjustmentPlus || 0) + (increaseQuantity || 0);
-    variant.stockAdjustmentMinus = (variant.stockAdjustmentMinus || 0) + (decreaseQuantity || 0);
-    await variant.save();
-  }
 
   await safeBump(NS);
   await safeBump("product");
@@ -342,28 +390,14 @@ exports.deleteStockAdjustById = asynchandeler(async (req, res) => {
   // Reverse the stock change on the source document before deleting
   const { productId, variantId, decreaseQuantity, increaseQuantity } =
     stockAdjust;
-  if (productId) {
-    const product = await Product.findById(productId);
-    if (!product) {
-      throw new customError("Product not found", statusCodes.NOT_FOUND);
-    }
-    product.stock -= (increaseQuantity || 0) - (decreaseQuantity || 0);
-    product.stockAdjustmentPlus = Math.max(0, (product.stockAdjustmentPlus || 0) - (increaseQuantity || 0));
-    product.stockAdjustmentMinus = Math.max(0, (product.stockAdjustmentMinus || 0) - (decreaseQuantity || 0));
-    await product.save();
-  }
-  if (variantId) {
-    const variant = await Variant.findById(variantId);
-    if (!variant) {
-      throw new customError("Variant not found", statusCodes.NOT_FOUND);
-    }
-    variant.stockVariant -= (increaseQuantity || 0) - (decreaseQuantity || 0);
-    variant.stockAdjustmentPlus = Math.max(0, (variant.stockAdjustmentPlus || 0) - (increaseQuantity || 0));
-    variant.stockAdjustmentMinus = Math.max(0, (variant.stockAdjustmentMinus || 0) - (decreaseQuantity || 0));
-    await variant.save();
-  }
-
-  await StockAdjust.findByIdAndDelete(id);
+  const plus = increaseQuantity || 0;
+  const minus = decreaseQuantity || 0;
+  const reverse = { stock: minus - plus, plus: -plus, minus: -minus };
+  await inTransaction(async (session) => {
+    if (productId) await adjustProduct(productId, reverse, session);
+    if (variantId) await adjustVariant(variantId, reverse, session);
+    await StockAdjust.findByIdAndDelete(id, { session });
+  });
   await safeBump(NS);
   await safeBump("product");
 
@@ -434,40 +468,29 @@ exports.updateStockAdjustById = asynchandeler(async (req, res) => {
   const oldDec = existing.decreaseQuantity || 0;
   const oldDelta = oldInc - oldDec;
 
-  const resolvedInc = newInc != null ? Number(newInc) : oldInc;
-  const resolvedDec = newDec != null ? Number(newDec) : oldDec;
+  const resolvedInc = newInc != null ? adjustQuantity(newInc, "increaseQuantity") : oldInc;
+  const resolvedDec = newDec != null ? adjustQuantity(newDec, "decreaseQuantity") : oldDec;
   const newDelta = resolvedInc - resolvedDec;
 
   const stockDiff = newDelta - oldDelta; // net change to apply on top of existing
   const incDiff = resolvedInc - oldInc; // change to apply to stockAdjustmentPlus
   const decDiff = resolvedDec - oldDec; // change to apply to stockAdjustmentMinus
 
-  // Adjust stock on the affected document
-  if (stockDiff !== 0 || incDiff !== 0 || decDiff !== 0) {
-    if (existing.productId) {
-      const product = await Product.findById(existing.productId);
-      if (!product) throw new customError("Product not found", statusCodes.NOT_FOUND);
-      product.stock += stockDiff;
-      product.stockAdjustmentPlus = Math.max(0, (product.stockAdjustmentPlus || 0) + incDiff);
-      product.stockAdjustmentMinus = Math.max(0, (product.stockAdjustmentMinus || 0) + decDiff);
-      await product.save();
-    }
-    if (existing.variantId) {
-      const variant = await Variant.findById(existing.variantId);
-      if (!variant) throw new customError("Variant not found", statusCodes.NOT_FOUND);
-      variant.stockVariant += stockDiff;
-      variant.stockAdjustmentPlus = Math.max(0, (variant.stockAdjustmentPlus || 0) + incDiff);
-      variant.stockAdjustmentMinus = Math.max(0, (variant.stockAdjustmentMinus || 0) + decDiff);
-      await variant.save();
-    }
-  }
-
   const beforeAdjust = existing.toObject();
   existing.increaseQuantity = resolvedInc || null;
   existing.decreaseQuantity = resolvedDec || null;
   if (adjustReason !== undefined) existing.adjustReason = adjustReason;
   if (date !== undefined) existing.date = date;
-  await existing.save();
+
+  // The stock and the record change together
+  await inTransaction(async (session) => {
+    if (stockDiff !== 0 || incDiff !== 0 || decDiff !== 0) {
+      const change = { stock: stockDiff, plus: incDiff, minus: decDiff };
+      if (existing.productId) await adjustProduct(existing.productId, change, session);
+      if (existing.variantId) await adjustVariant(existing.variantId, change, session);
+    }
+    await existing.save({ session });
+  });
 
   await safeBump(NS);
   await safeBump("product");

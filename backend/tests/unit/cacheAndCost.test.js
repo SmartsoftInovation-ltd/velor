@@ -75,7 +75,7 @@ describe("cache.util (tenant-scoped Redis cache)", () => {
   // BUG-066: bumpOne() turns the very first INCR (result 1) into 2 with a
   // separate SET; when other bumps land in between, that SET drags the version
   // back down to 2 and keys cached at the higher versions become live again
-  test.failing("concurrent bumps never move the version backwards [BUG-066]", async () => {
+  it("concurrent bumps never move the version backwards [BUG-066]", async () => {
     await runForTenant(tenantA, () => Promise.all(Array.from({ length: 25 }, () => cacheUtil.bumpNsVersion("load"))));
     // first bump goes 1→2, so 25 bumps land on 26
     expect(await runForTenant(tenantA, () => cacheUtil.getNsVersion("load"))).toBe(26);

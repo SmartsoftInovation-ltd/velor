@@ -56,7 +56,7 @@ describe("finance routes: accounts, transactions, categories, money transfer, fu
 
     // BUG-056: update spreads req.body into the account, so its balance can be
     // set to any figure without a transaction behind it
-    test.failing("an account update cannot set the balance directly [BUG-056]", async () => {
+    it("an account update cannot set the balance directly [BUG-056]", async () => {
       const account = await f.account.create({ name: "Vault", balance: 1000 });
       await as().put(`/account/update-account/${account.slug}`).send({ name: "Vault", balance: 999999 }).expect(200);
       expect(await balanceOf(account)).toBe(1000);
@@ -94,7 +94,7 @@ describe("finance routes: accounts, transactions, categories, money transfer, fu
 
     // BUG-057: the balance is $inc'd before the transaction row is written,
     // with no session: a row that then fails validation leaves the money moved
-    test.failing("a transaction that fails to save leaves the balance untouched [BUG-057]", async () => {
+    it("a transaction that fails to save leaves the balance untouched [BUG-057]", async () => {
       const account = await f.account.create({ balance: 1000 });
       const pay = await category("cash payment");
       const res = await as()
@@ -105,7 +105,7 @@ describe("finance routes: accounts, transactions, categories, money transfer, fu
     });
 
     // BUG-057 (same root): a negative amount is accepted and inverts the transaction's direction
-    test.failing("refuses a negative amount [BUG-057]", async () => {
+    it("refuses a negative amount [BUG-057]", async () => {
       const account = await f.account.create({ balance: 1000 });
       const pay = await category("cash payment");
       const res = await as()
@@ -220,7 +220,7 @@ describe("finance routes: accounts, transactions, categories, money transfer, fu
 
     // BUG-058: a transfer is only a record — neither account's balance moves,
     // and nothing is written to the ledger, so balances and reports ignore it
-    test.failing("moves the amount from one account to the other [BUG-058]", async () => {
+    it("moves the amount from one account to the other [BUG-058]", async () => {
       const a = await f.account.create({ balance: 1000 });
       const b = await f.account.create({ balance: 0 });
       await transfer(a, b).expect(201);
@@ -228,7 +228,7 @@ describe("finance routes: accounts, transactions, categories, money transfer, fu
       expect(await balanceOf(b)).toBe(400);
     });
 
-    test.failing("refuses a transfer to the same account or from an unknown one [BUG-058]", async () => {
+    it("refuses a transfer to the same account or from an unknown one [BUG-058]", async () => {
       const a = await f.account.create({ balance: 1000 });
       await transfer(a, a).expect(400);
       await transfer({ _id: "0123456789abcdef01234567" }, a).expect(404);
@@ -236,7 +236,7 @@ describe("finance routes: accounts, transactions, categories, money transfer, fu
 
     // BUG-059: the controller sends `date`, the schema field is `Date`, so the
     // transfer date the user picked is silently dropped
-    test.failing("keeps the transfer date [BUG-059]", async () => {
+    it("keeps the transfer date [BUG-059]", async () => {
       const a = await f.account.create();
       const b = await f.account.create();
       const created = (await transfer(a, b, { date: "2026-03-15" }).expect(201)).body.data;

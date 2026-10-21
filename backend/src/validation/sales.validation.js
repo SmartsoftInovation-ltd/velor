@@ -102,9 +102,21 @@ const createSalesSchema = Joi.object({
 
   customerType: customerTypeSchema.required(),
 
-  searchItem: Joi.array().items(searchItemSchema).min(1).required().messages({
-    "array.min": "At least 1 item is required",
-  }),
+  // A new sale only sells. A "return" line would add stock with no sales
+  // return, refund or audit behind it; returns go through /sales-return.
+  searchItem: Joi.array()
+    .items(
+      searchItemSchema.keys({
+        salesStatus: Joi.string().valid("sale").default("sale").messages({
+          "any.only": "A new sale can only carry sale lines; use a sales return to take items back",
+        }),
+      }),
+    )
+    .min(1)
+    .required()
+    .messages({
+      "array.min": "At least 1 item is required",
+    }),
 
   // Optional; null means the sale has no salesman
   salesMen: objectId.optional().allow(null),

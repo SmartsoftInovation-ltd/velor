@@ -57,7 +57,7 @@ describe("staff auth routes (/api/v1/auth)", () => {
 
     // BUG-010: login looks up { $or: [{ email }, { phone: undefined }] }; the
     // missing identifier matches every account without that field
-    test.failing("signs in the account the email names when the store has several staff [BUG-010]", async () => {
+    it("signs in the account the email names when the store has several staff [BUG-010]", async () => {
       // A second account whose phone field is absent sits first in the collection
       await createUserIn(tenant, { email: "first@authshop.com", phone: undefined, raw: true });
       const second = await createUserIn(tenant, { email: "second@authshop.com", password: "Second-Pass1" });
@@ -88,7 +88,7 @@ describe("staff auth routes (/api/v1/auth)", () => {
     // BUG-011: email/phone go into the query unchecked — an operator object is
     // accepted (phone: { $ne: null } signs in as the first account whose password
     // matches, no identifier needed) or crashes the handler (500)
-    test.failing.each([
+    it.each([
       ["a query operator as the email", { email: { $gt: "" }, password: PASSWORD }],
       ["a query operator as the phone", { phone: { $ne: null }, password: PASSWORD }],
     ])("refuses %s without signing anyone in [BUG-011]", (_name, body) => refusesWithoutSession(body));
@@ -175,7 +175,7 @@ describe("staff auth routes (/api/v1/auth)", () => {
     });
 
     // BUG-006: the password changes but access tokens issued before it stay valid
-    test.failing("ends sessions opened with the old password [BUG-006]", async () => {
+    it("ends sessions opened with the old password [BUG-006]", async () => {
       const oldToken = tokenFor(owner);
       await client(oldToken).post("/auth/change-password").send({ oldPassword: PASSWORD, newPassword: "New-Pass-99" }).expect(200);
       await client(oldToken).get("/auth/getme").expect(401);
@@ -341,7 +341,7 @@ describe("staff auth routes (/api/v1/auth)", () => {
     });
 
     // BUG-007: list and lookup endpoints return reset / verification tokens
-    test.failing("GET /auth/getallusers and /getuserbyemailorphone never expose secrets [BUG-007]", async () => {
+    it("GET /auth/getallusers and /getuserbyemailorphone never expose secrets [BUG-007]", async () => {
       const list = await client(managerToken).get("/auth/getallusers").expect(200);
       expectNoSecrets(list.body);
       const one = await client(managerToken).get("/auth/getuserbyemailorphone").query({ email: "staff@authshop.com" }).expect(200);
@@ -357,7 +357,7 @@ describe("staff auth routes (/api/v1/auth)", () => {
     });
 
     // BUG-008: delete-user answers with the deleted user's full document, password hash included
-    test.failing("DELETE /auth/delete-user/:id does not return the password hash [BUG-008]", async () => {
+    it("DELETE /auth/delete-user/:id does not return the password hash [BUG-008]", async () => {
       const res = await client(managerToken).delete(`/auth/delete-user/${staff._id}`).expect(200);
       expectNoSecrets(res.body);
     });
@@ -460,7 +460,7 @@ describe("staff auth routes (/api/v1/auth)", () => {
 
     // BUG-009: add-user spreads the validated body into User.create (allowUnknown),
     // so a user manager can create an account holding permissions they do not have
-    test.failing("POST /auth/add-user cannot grant direct permissions the creator does not hold [BUG-009]", async () => {
+    it("POST /auth/add-user cannot grant direct permissions the creator does not hold [BUG-009]", async () => {
       const createRole = await ensurePermissionSlug("create-role");
       const res = await client(managerToken)
         .post("/auth/add-user")
@@ -490,7 +490,7 @@ describe("staff auth routes (/api/v1/auth)", () => {
     });
 
     // BUG-008 (same leak): the permission endpoints answer with the full user document
-    test.failing("PUT /auth/add-user-permission does not return the password hash [BUG-008]", async () => {
+    it("PUT /auth/add-user-permission does not return the password hash [BUG-008]", async () => {
       const permission = await ensurePermissionSlug("product");
       const res = await client(tokenFor(owner)).put("/auth/add-user-permission").send({ userId: staff._id, permissionId: permission._id, actions: ["view"] }).expect(200);
       expectNoSecrets(res.body);

@@ -15,6 +15,7 @@ const {
 const Account = require("../models/account.model");
 const CrateTransaction = require("../models/crateTransaction.model");
 const SalesReturn = require("../models/salesReturn.model");
+const { deleteRefundTransactions } = require("../utils/refundLedger.util");
 const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 const StoreInformation = require("../models/storeInformation.model");
 const { smsQueue } = require("../queues/sms.queue");
@@ -354,6 +355,154 @@ const enqueueSalesNotifications = async (createdSale) => {
 
 // @desc create a new sales
 // @desc create a new sales (transaction safe + background notifications)
+// What a sale leaves the customer owing: the bill less what was paid (net of
+// change) and the advance used
+const saleDue = (sale) =>
+  Math.max(
+    0,
+    toPaisa(
+      (Number(sale.payable) || 0) -
+        (Number(sale.netPaid ?? sale.paid) || 0) -
+        (Number(sale.customerAdvancePaymentAdjust) || 0),
+    ),
+  );
+
+/**
+ * A listed customer's due limit (credit limit). The form shows it, but a
+ * client can be bypassed, so it is checked here like the discount limit.
+ * 0 means no limit. Only a sale that adds due is checked: `addedDue` is the
+ * due this sale (or this edit) puts on top of what the customer owes now.
+ */
+const enforceDueLimit = async (session, customerId, addedDue) => {
+  if (!customerId || addedDue <= 0) return;
+  const customer = await customerModel.findById(customerId).session(session);
+  const limit = Number(customer?.dueLimit || 0);
+  if (!limit) return;
+  const projected = toPaisa(Number(customer.openingDues || 0) + addedDue);
+  if (projected > limit) {
+    throw new customError(
+      `This sale would take the customer's due to ${projected}, over their due limit of ${limit}`,
+      statusCodes.BAD_REQUEST,
+      "DUE_LIMIT_EXCEEDED",
+    );
+  }
+};
+
+// A customer's advance is spread over one record per advance payment. Each
+// record's paidAmount is what is left of that payment (sales take from it,
+// deleted sales give back to it), so their sum is the advance still available,
+// and each record's `balance` is the running sum up to it: the newest record's
+// balance is what the sale form shows as available.
+const advanceRecords = (session, customerId) =>
+  customerAdvancePaymentModel
+    .find({ customer: customerId })
+    .sort({ createdAt: 1, _id: 1 })
+    .session(session);
+
+const saveRunningBalances = async (session, records) => {
+  let running = 0;
+  for (const record of records) {
+    running += Number(record.paidAmount || 0);
+    record.balance = running;
+    if (record.isModified()) await record.save({ session });
+  }
+};
+
+// Take `amount` of a customer's advance for a sale, oldest payment first.
+// Fails when the whole advance does not cover it. (Reading only the first
+// record refused a sale that the customer's later advances did cover.)
+const takeCustomerAdvance = async (session, customerId, amount) => {
+  const records = await advanceRecords(session, customerId);
+  const available = records.reduce((sum, r) => sum + Number(r.paidAmount || 0), 0);
+  if (available < amount) {
+    throw new customError(
+      `Insufficient advance balance. Available: ${available}`,
+      statusCodes.BAD_REQUEST,
+    );
+  }
+
+  let left = amount;
+  for (const record of records) {
+    if (left <= 0) break;
+    const take = Math.min(Number(record.paidAmount || 0), left);
+    if (take <= 0) continue;
+    record.paidAmount = Number(record.paidAmount || 0) - take;
+    // Reset rule: a fully used payment keeps no cash-back either
+    if (record.paidAmount === 0) record.advanceCashBack = 0;
+    left -= take;
+  }
+  await saveRunningBalances(session, records);
+};
+
+// Give back advance a sale had used (sale deleted, or its advance lowered).
+// It goes onto the oldest payment, where a sale takes from first.
+const giveCustomerAdvance = async (session, customerId, amount) => {
+  const records = await advanceRecords(session, customerId);
+  if (!records.length) {
+    // Every payment record was deleted since: recreate one, as before
+    await customerAdvancePaymentModel.findOneAndUpdate(
+      { customer: customerId },
+      { $inc: { paidAmount: amount, balance: amount } },
+      { session, upsert: true },
+    );
+    return;
+  }
+  records[0].paidAmount = Number(records[0].paidAmount || 0) + amount;
+  await saveRunningBalances(session, records);
+};
+
+// The fields an edit may change: what the sale forms send, plus the ones the
+// server works out itself above. `return` (the refund total, owned by sales
+// returns), `invoiceNumber`, `createdBy` and any unknown key are never written
+// from the request.
+const EDITABLE_SALE_FIELDS = [
+  "date",
+  "deliveryDate",
+  "customerType",
+  "searchItem",
+  "salesMen",
+  "invoiceStatus",
+  "remark",
+  "sendSms",
+  "total",
+  "discountPercent",
+  "vatPercent",
+  "deliveryCost",
+  "labourCost",
+  "lessTaka",
+  "customerAdvancePaymentAdjust",
+  "payable",
+  "paid",
+  "changes",
+  "netPaid",
+  "presentDue",
+  "previousDue",
+  "balance",
+  "paymentMethod",
+  "paymentStatus",
+  "salesType",
+  "discountGivenBy",
+];
+
+const pickEditableSaleFields = (body) =>
+  Object.fromEntries(
+    EDITABLE_SALE_FIELDS.filter((field) => body[field] !== undefined).map((field) => [field, body[field]]),
+  );
+
+// Ids of the products/variants a sale's SalesReturns took units of
+const returnedKeys = (returns) => {
+  const keys = new Set();
+  for (const ret of returns) {
+    for (const line of ret.allproduct || []) {
+      const key = String(line.variant || line.product || "");
+      if (key) keys.add(key);
+    }
+  }
+  return keys;
+};
+
+const lineKey = (it) => String(it?.variantId || it?.productId || "");
+
 exports.createSales = asynchandeler(async (req, res) => {
   // Enforce the seller's discount limit and stamp who is accountable for it.
   enforceDiscountLimit(req.user, req.body);
@@ -369,6 +518,9 @@ exports.createSales = asynchandeler(async (req, res) => {
 
   try {
     await session.withTransaction(async () => {
+      if (req.body.customerType?.type === "listed") {
+        await enforceDueLimit(session, req.body.customerType.customerId, saleDue(req.body));
+      }
       req.body.searchItem = await stampPurchasePrices(req.body.searchItem, session);
 
       // Create sales (must be inside txn)
@@ -445,7 +597,8 @@ exports.createSales = asynchandeler(async (req, res) => {
         if (result.matchedCount !== productOps.length) {
           throw new customError(
             "Stock not enough for some items",
-            statusCodes.SERVER_ERROR,
+            // A business rule, not an internal error: same 400 as update-sales
+            statusCodes.BAD_REQUEST,
           );
         }
       }
@@ -455,7 +608,8 @@ exports.createSales = asynchandeler(async (req, res) => {
         if (result.matchedCount !== variantOps.length) {
           throw new customError(
             "Stock not enough for some items",
-            statusCodes.SERVER_ERROR,
+            // A business rule, not an internal error: same 400 as update-sales
+            statusCodes.BAD_REQUEST,
           );
         }
       }
@@ -475,27 +629,7 @@ exports.createSales = asynchandeler(async (req, res) => {
       // Adjust customer advance payment if applicable
       const advanceAdjust = Number(req.body.customerAdvancePaymentAdjust || 0);
       if (advanceAdjust > 0 && createdSale.customerType?.customerId) {
-        const advanceDoc = await customerAdvancePaymentModel
-          .findOne({ customer: createdSale.customerType.customerId })
-          .session(session);
-        if (!advanceDoc || advanceDoc.balance < advanceAdjust) {
-          throw new customError(
-            `Insufficient advance balance. Available: ${advanceDoc?.balance || 0}`,
-            statusCodes.BAD_REQUEST,
-          );
-        }
-
-        // Reduce paidAmount and update balance
-        advanceDoc.paidAmount -= advanceAdjust;
-        advanceDoc.balance -= advanceAdjust;
-
-        // Reset rule: if balance becomes 0, reset paidAmount and advanceCashBack
-        if (advanceDoc.balance === 0) {
-          advanceDoc.paidAmount = 0;
-          advanceDoc.advanceCashBack = 0;
-        }
-
-        await advanceDoc.save({ session });
+        await takeCustomerAdvance(session, createdSale.customerType.customerId, advanceAdjust);
       }
     });
 
@@ -749,7 +883,10 @@ exports.searchProductsAndVariants = async (req, res) => {
 
   try {
     const q = String(req.query.q || "").trim();
-    const limit = Math.min(Number(req.query.limit || 20), 50);
+    // 1–50; anything else (not a number, 0, negative) falls back to 20.
+    // A NaN or non-positive value reached $limit and the driver answered 500.
+    const requestedLimit = Math.floor(Number(req.query.limit));
+    const limit = requestedLimit > 0 ? Math.min(requestedLimit, 50) : 20;
 
     if (!q) {
       return apiResponse.sendError(
@@ -759,6 +896,9 @@ exports.searchProductsAndVariants = async (req, res) => {
       );
     }
 
+    // A single word could be a scanned code or one word of a name ("Shirt"),
+    // so it is tried as both: codes match exactly (and score higher, so a scan
+    // still lands first), the name by substring.
     const isLikelyCode = /^[0-9A-Za-z\-_.]{4,}$/.test(q);
     const qRegex = new RegExp(escapeRegex(q), "i");
 
@@ -769,6 +909,7 @@ exports.searchProductsAndVariants = async (req, res) => {
             { barCode: q },
             { qrCode: q },
             { slug: q.toLowerCase?.() || q },
+            { name: qRegex },
           ],
         }
       : {
@@ -787,6 +928,7 @@ exports.searchProductsAndVariants = async (req, res) => {
             { barCode: q },
             { qrCode: q },
             { slug: q.toLowerCase?.() || q },
+            { variantName: qRegex },
           ],
         }
       : {
@@ -1006,6 +1148,34 @@ exports.updateSales = asynchandeler(async (req, res) => {
       // The sale stays with whoever made it; an edit cannot reassign it.
       delete req.body.createdBy;
 
+      // Due limit: only what the edit adds on top of the sale's current due
+      // counts, since the customer's due already includes that.
+      const editedSale = { ...oldSale, ...pickEditableSaleFields(req.body) };
+      if (editedSale.customerType?.type === "listed") {
+        const sameCustomer =
+          String(editedSale.customerType.customerId) === String(oldSale.customerType?.customerId);
+        const addedDue = saleDue(editedSale) - (sameCustomer ? saleDue(oldSale) : 0);
+        await enforceDueLimit(session, editedSale.customerType.customerId, addedDue);
+      }
+
+      // A sales return flips the whole line to "return", yet the line was
+      // still sold: its stock left at the sale and came back through the
+      // SalesReturn. Only a "return" line with no SalesReturn behind it (saved
+      // before new sales were refused such lines) ever added stock.
+      const returned = returnedKeys(
+        await SalesReturn.find({ invoiceNumber: saleId }).session(session).lean(),
+      );
+
+      // The client's salesStatus is not trusted: an edit only sells. A line
+      // keeps its "return" flag when a SalesReturn explains it, so profit and
+      // the return form still see it as returned.
+      if (req.body.searchItem) {
+        req.body.searchItem = req.body.searchItem.map((it) => ({
+          ...it,
+          salesStatus: returned.has(lineKey(it)) ? "return" : "sale",
+        }));
+      }
+
       // 2) Decide NEW state (if field not sent, keep old)
       const newInvoiceStatus = req.body.invoiceStatus ?? oldSale.invoiceStatus;
       const newItems = req.body.searchItem ?? oldSale.searchItem ?? [];
@@ -1018,8 +1188,9 @@ exports.updateSales = asynchandeler(async (req, res) => {
       const effectQty = (it) => {
         const qty = Number(it?.quantity || 0);
         if (qty <= 0) return 0;
-        // sale -> reduce (-), return -> increase (+)
-        return (it.salesStatus === "return" ? +1 : -1) * qty;
+        // sold -> reduce (-); an unexplained return line -> increase (+)
+        const isReturnLine = it.salesStatus === "return" && !returned.has(lineKey(it));
+        return (isReturnLine ? +1 : -1) * qty;
       };
 
       const addToMap = (map, id, val) => {
@@ -1141,7 +1312,7 @@ exports.updateSales = asynchandeler(async (req, res) => {
       // and $set will only change what they sent.
       updatedSale = await salesModel.findByIdAndUpdate(
         saleId,
-        { $set: req.body },
+        { $set: pickEditableSaleFields(req.body) },
         { new: true, session, runValidators: true },
       );
 
@@ -1172,6 +1343,21 @@ exports.updateSales = asynchandeler(async (req, res) => {
           { openingDues: updatedSale.balance || 0 },
           { session },
         );
+      }
+
+      // 8) Apply a change of the advance used. Delete gives the stored figure
+      // back, so it must always be what was really taken from the advance.
+      const oldAdvance = Number(oldSale.customerAdvancePaymentAdjust || 0);
+      const newAdvance = Number(updatedSale.customerAdvancePaymentAdjust || 0);
+      const oldCustomer = oldSale.customerType?.customerId?.toString() || null;
+      const newCustomer = updatedSale.customerType?.customerId?.toString() || null;
+      if (oldCustomer && oldCustomer === newCustomer) {
+        const change = newAdvance - oldAdvance;
+        if (change > 0) await takeCustomerAdvance(session, newCustomer, change);
+        if (change < 0) await giveCustomerAdvance(session, newCustomer, -change);
+      } else {
+        if (oldCustomer && oldAdvance > 0) await giveCustomerAdvance(session, oldCustomer, oldAdvance);
+        if (newCustomer && newAdvance > 0) await takeCustomerAdvance(session, newCustomer, newAdvance);
       }
     });
 
@@ -1390,16 +1576,14 @@ exports.deleteSales = asynchandeler(async (req, res) => {
       // own stock revert above (see returnedQtyByKey).
       if (relatedReturns.length > 0) {
         // Each return may have minted a refund transaction; remove those too so
-        // the account ledger does not keep a refund for a sale that is gone.
+        // the account ledger does not keep a refund for a sale that is gone,
+        // and put the refunds back on their accounts.
         const refundTxnIds = relatedReturns
           .map((r) => r.transaction)
           .filter(Boolean);
 
         if (refundTxnIds.length > 0) {
-          await CrateTransaction.deleteMany(
-            { _id: { $in: refundTxnIds } },
-            { session },
-          );
+          await deleteRefundTransactions(refundTxnIds, session);
         }
 
         await SalesReturn.deleteMany({ invoiceNumber: saleId }, { session });
@@ -1422,16 +1606,7 @@ exports.deleteSales = asynchandeler(async (req, res) => {
       // 7️ Restore customer advance payment if applicable
       const advanceAdjust = Number(sale.customerAdvancePaymentAdjust || 0);
       if (advanceAdjust > 0 && sale.customerType?.customerId) {
-        await customerAdvancePaymentModel.findOneAndUpdate(
-          { customer: sale.customerType.customerId },
-          {
-            $inc: {
-              paidAmount: advanceAdjust,
-              balance: advanceAdjust,
-            },
-          },
-          { session, upsert: true },
-        );
+        await giveCustomerAdvance(session, sale.customerType.customerId, advanceAdjust);
       }
     });
 

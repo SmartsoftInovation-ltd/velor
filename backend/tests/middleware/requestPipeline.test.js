@@ -71,7 +71,7 @@ describe("request pipeline middleware", () => {
     // BUG-005: after next(error) it falls through and calls next() again; the
     // controller is not re-run (Express has moved on) but the double call is a
     // defect that surfaces as "headers already sent" with other routers
-    test.failing("calls next exactly once when validation fails [BUG-005]", () => {
+    it("calls next exactly once when validation fails [BUG-005]", () => {
       const next = jest.fn();
       validate(schema)({ body: {} }, {}, next);
       expect(next).toHaveBeenCalledTimes(1);

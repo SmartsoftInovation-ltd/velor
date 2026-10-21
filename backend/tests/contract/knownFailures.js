@@ -12,21 +12,15 @@ const KNOWN = {
   // BUG-002: customError(statusCode, message) arguments swapped
   "POST /api/v1/employee/create-employee-department|empty body": "BUG-002",
   "POST /api/v1/employee/create-employee-section|empty body": "BUG-002",
-  // BUG-003: deleting an unknown merchant answers 500
-  "DELETE /api/v1/merchant/delete-merchant/:id|unknown ObjectId": "BUG-003",
 };
 
 module.exports = { KNOWN };
 
 // Routes whose answer does not match the documented envelopes (see
-// tests/contract/envelope.test.js); filled in from the first run.
-// A non-operational error is answered { status: "error", message } without a
-// statusCode; these routes only reach it because of the bug named.
+// tests/contract/envelope.test.js), with the bug that explains each. Since
+// BUG-075 a 500 answers { statusCode, message } like every error; these two
+// answer an empty body because customError's arguments are swapped.
 module.exports.ENVELOPE_DEVIATIONS = {
-  "POST /api/v1/categories": "BUG-001",
-  "POST /api/v1/brand": "BUG-001",
-  "POST /api/v1/product/createproduct": "BUG-001",
-  "PUT /api/v1/product/updateproductinfo/:slug": "BUG-001",
   "POST /api/v1/employee/create-employee-department": "BUG-002",
   "POST /api/v1/employee/create-employee-section": "BUG-002",
 };

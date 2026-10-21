@@ -88,10 +88,7 @@ exports.deleteMerchantById = asynchandeler(async (req, res) => {
   const { id } = req.params;
   const deletedMerchant = await Merchant.findByIdAndDelete(id);
   if (!deletedMerchant) {
-    throw new customError(
-      "Failed to delete merchant",
-      statusCodes.SERVER_ERROR,
-    );
+    throw new customError("Merchant not found", statusCodes.NOT_FOUND);
   }
 
   apiResponse.sendSuccess(

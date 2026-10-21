@@ -33,7 +33,7 @@ describe("expandBracketKeys (multipart field names → nested objects)", () => {
   // into Object.prototype and writes there — prototype pollution of the whole
   // server process (every tenant), reachable by any staff member who can
   // create a product, variant or employee
-  test.failing.each([["__proto__[pollutedA]"], ["constructor[prototype][pollutedA]"]])(
+  it.each([["__proto__[pollutedA]"], ["constructor[prototype][pollutedA]"]])(
     "never writes outside the result object (%s) [BUG-065]",
     (key) => {
       try {
@@ -57,8 +57,10 @@ describe("publicProduct.forAudience", () => {
     expect(doc.purchasePrice).toBe(400); // the input is not mutated
   });
 
-  it("keeps everything for a signed-in caller, and handles arrays and non-objects", () => {
-    expect(forAudience({ user: { _id: 1 } }, doc)).toBe(doc);
+  it("keeps everything for signed-in staff, and handles arrays and non-objects", () => {
+    expect(forAudience({ user: { _id: 1, roles: ["role-id"] } }, doc)).toBe(doc);
+    // A signed-in shopper holds no role: same view as an anonymous visitor
+    expect(forAudience({ user: { _id: 2, roles: [] } }, doc)).not.toHaveProperty("purchasePrice");
     expect(forAudience({}, [doc, doc]).every((d) => d.purchasePrice === undefined)).toBe(true);
     expect(stripOne(null)).toBeNull();
     expect(stripOne({ variant: { purchasePrice: 1 } }).variant).toEqual({});

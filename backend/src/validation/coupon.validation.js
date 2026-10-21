@@ -62,21 +62,21 @@ const couponSchema = joi
       "array.base": "Applicable variants must be an array of IDs.",
     }),
   })
-  .options({ abortEarly: false, allowUnknown: true });
+  // Only the fields above reach the coupon: `usedCount` (and anything else)
+  // is the server's, and an edit could reset a used-up coupon to 0 uses
+  .options({ abortEarly: false, stripUnknown: true });
 
-exports.validateCoupon = async (req, res, next) => {
+// Throws on invalid input. It used to call next(error) and return undefined,
+// so the controller ran on undefined and the error handler ran twice.
+exports.validateCoupon = async (req) => {
   try {
-    const value = await couponSchema.validateAsync(req.body);
-    return value;
+    return await couponSchema.validateAsync(req.body);
   } catch (error) {
-    console.log(
-      "Validation error " + error?.details?.map((err) => err.message),
-    );
-    return next(
-      new customError(
-        "Validation error " + error.details.map((err) => err.message),
-        statusCodes.BAD_REQUEST,
-      ),
+    if (!error.details) throw error;
+    console.log("Validation error " + error.details.map((err) => err.message));
+    throw new customError(
+      "Validation error " + error.details.map((err) => err.message),
+      statusCodes.BAD_REQUEST,
     );
   }
 };

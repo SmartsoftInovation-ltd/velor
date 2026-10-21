@@ -155,7 +155,7 @@ describe("sales routes (/api/v1/sales)", () => {
     });
 
     // BUG-013: a business rule failure answered as an internal error
-    test.failing("answers short stock with a 4xx, as update-sales does [BUG-013]", async () => {
+    it("answers short stock with a 4xx, as update-sales does [BUG-013]", async () => {
       const res = await create(sale({ searchItem: [line({ quantity: 11 })], payable: 11000, paid: 11000 }));
       expect(res.status).toBe(400);
     });
@@ -415,7 +415,7 @@ describe("sales routes (/api/v1/sales)", () => {
 
     // BUG-017: any single word of 4+ letters/digits is taken for a barcode and
     // matched exactly against sku/barcode/qr/slug, so "Shirt" finds nothing
-    test.failing("finds a product by a single word of its name [BUG-017]", async () => {
+    it("finds a product by a single word of its name [BUG-017]", async () => {
       const named = await f.product.create({ name: "Cotton Shirt Large" });
       const res = await as().get("/sales/get-sales-products").query({ q: "Shirt" }).expect(200);
       expect(res.body.data.map((r) => String(r._id))).toContain(named._id.toString());
@@ -459,7 +459,7 @@ describe("sales routes (/api/v1/sales)", () => {
     });
 
     // BUG-016: a non-numeric or zero limit reaches $limit and the driver rejects it
-    test.failing.each(["abc", "0", "-5"])("limit=%s is a client error or clamped, not a 500 [BUG-016]", async (limit) => {
+    it.each(["abc", "0", "-5"])("limit=%s is a client error or clamped, not a 500 [BUG-016]", async (limit) => {
       const res = await as().get("/sales/get-sales-products").query({ q: "SKU", limit });
       expect(res.status).toBeLessThan(500);
     });

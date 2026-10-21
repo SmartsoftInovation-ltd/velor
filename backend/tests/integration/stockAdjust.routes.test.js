@@ -68,37 +68,33 @@ describe("stock adjustment routes (/api/v1/stock)", () => {
 
     // BUG-031: the adjustment row is written before the product is checked
     // (no transaction), so failures leave an adjustment that was never applied
-    test.failing("leaves no adjustment record behind when the product does not exist [BUG-031]", async () => {
+    it("leaves no adjustment record behind when the product does not exist [BUG-031]", async () => {
       await adjust({ productId: "0123456789abcdef01234567", increaseQuantity: 1 }).expect(404);
       expect(await inTenant(() => StockAdjust.countDocuments())).toBe(0);
     });
 
-    test.failing("refuses a decrease below zero without recording it [BUG-031]", async () => {
+    it("refuses a decrease below zero without recording it [BUG-031]", async () => {
       const res = await adjust({ decreaseQuantity: 50 });
       expect(res.status).toBe(400);
       expect((await productNow()).stock).toBe(10);
       expect(await inTenant(() => StockAdjust.countDocuments())).toBe(0);
     });
 
-    // BUG-032: quantities are not validated — a missing field makes the stock NaN,
-    // a negative increase silently decreases
-    test.failing.each([
-      ["only increaseQuantity sent", { increaseQuantity: 2, decreaseQuantity: undefined }],
-      ["a negative increase", { increaseQuantity: -4 }],
-    ])("validates the quantities: %s [BUG-032]", async (name, body) => {
-      const res = await adjust(body);
-      if (name === "only increaseQuantity sent") {
-        expect(res.status).toBe(201);
-        expect((await productNow()).stock).toBe(12);
-      } else {
-        expect(res.status).toBe(400);
-        expect((await productNow()).stock).toBe(10);
-        expect(await inTenant(() => StockAdjust.countDocuments())).toBe(0);
-      }
+    it("treats a missing quantity as 0 (only increaseQuantity sent)", async () => {
+      await adjust({ increaseQuantity: 2, decreaseQuantity: undefined }).expect(201);
+      expect((await productNow()).stock).toBe(12);
+    });
+
+    // BUG-032: quantities are not validated — a negative increase silently decreases
+    it("validates the quantities: a negative increase [BUG-032]", async () => {
+      const res = await adjust({ increaseQuantity: -4 });
+      expect(res.status).toBe(400);
+      expect((await productNow()).stock).toBe(10);
+      expect(await inTenant(() => StockAdjust.countDocuments())).toBe(0);
     });
 
     // BUG-033: read-modify-write (findById, +=, save) — parallel adjustments lose updates
-    test.failing("20 parallel +1 adjustments add 20 [BUG-033]", async () => {
+    it("20 parallel +1 adjustments add 20 [BUG-033]", async () => {
       const results = await Promise.all(Array.from({ length: 20 }, () => adjust({ increaseQuantity: 1 })));
       expect(results.every((r) => r.status === 201)).toBe(true);
       expect((await productNow()).stock).toBe(30);

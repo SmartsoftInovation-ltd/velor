@@ -1577,15 +1577,15 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
-  "/customer/update-customer-payment-recived/{customer}":
+  "/customer/update-customer-payment-recived/{id}":
     put:
-      operationId: "put__customer_update_customer_payment_recived_customer_"
+      operationId: "put__customer_update_customer_payment_recived_id_"
       tags: ["customer"]
       security: [{ staffBearer: [] }]
       x-permission: "customer-payment:edit"
       parameters:
         - $ref: "#/components/parameters/Tenant"
-        - { name: "customer", in: path, required: true, schema: { type: string } }
+        - { name: "id", in: path, required: true, description: "The payment's _id (a customer id is still accepted and names that customer's latest payment)", schema: { type: string } }
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:

@@ -95,7 +95,7 @@ describe("audit worker (queue: audit-log)", () => {
   // BUG-060: the processor is a bare insertOne — a job that runs twice (a
   // retry after the insert succeeded but before the ack, a stalled job) writes
   // the audit entry twice
-  test.failing("processing the same job twice records the event once [BUG-060]", async () => {
+  it("processing the same job twice records the event once [BUG-060]", async () => {
     const job = { id: "same-job", data: { ...event(), tenantId: tenantId.toString() } };
     await processAuditJob(job);
     await processAuditJob(job);

@@ -3,6 +3,7 @@ const Order = require("../models/order.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
+const { signInIdentifier } = require("../utils/signInIdentifier.util");
 const { statusCodes, PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE } = require("../constant/constant");
 const { getTenantId } = require("../tenancy/context");
 
@@ -82,15 +83,14 @@ exports.register = asynchandeler(async (req, res) => {
 exports.login = asynchandeler(async (req, res) => {
   requireStore();
 
-  const email = req.body.email?.trim().toLowerCase();
-  const phone = req.body.phone?.trim();
+  const identifier = signInIdentifier(req.body);
   const { password } = req.body;
 
-  if (!password || (!email && !phone)) {
+  if (!identifier || typeof password !== "string" || !password) {
     throw new customError("Email or phone and password are required", statusCodes.BAD_REQUEST);
   }
 
-  const user = await User.findOne({ $or: [...(email ? [{ email }] : []), ...(phone ? [{ phone }] : [])] })
+  const user = await User.findOne(identifier)
     .populate("roles")
     .select("+password");
 

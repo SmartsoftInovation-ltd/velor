@@ -93,7 +93,7 @@ describe("commerce: coupons, cart, checkout, orders, payments", () => {
     });
 
     // BUG-040: allowUnknown lets the client write usedCount (reset a used-up coupon, or pre-burn one)
-    test.failing("ignores usedCount sent on create [BUG-040]", async () => {
+    it("ignores usedCount sent on create [BUG-040]", async () => {
       await staff().post("/coupon/create").send(couponBody({ usageLimit: 5, usedCount: 5 })).expect(201);
       expect((await inTenant(() => Coupon.findOne({ slug: "save10" }).lean())).usedCount).toBe(0);
     });
@@ -253,7 +253,7 @@ describe("commerce: coupons, cart, checkout, orders, payments", () => {
 
     // BUG-043: on a sold-out line the order is deleted but the lines already
     // decremented are not put back — the stock is lost
-    test.failing("gives back the stock of lines already taken when a later line sells out [BUG-043]", async () => {
+    it("gives back the stock of lines already taken when a later line sells out [BUG-043]", async () => {
       await inTenant(() => Product.updateOne({ _id: product._id }, { stock: 5 }));
       await putInCart("split2", [{ product: product._id, quantity: 3 }, { product: product._id, quantity: 3 }]);
       await checkout("split2");
@@ -262,7 +262,7 @@ describe("commerce: coupons, cart, checkout, orders, payments", () => {
 
     // BUG-044: the usage limit is checked, the order is written, and only then
     // is usedCount incremented — parallel checkouts all pass the check
-    test.failing("a coupon limited to 1 use is used at most once under parallel checkouts [BUG-044]", async () => {
+    it("a coupon limited to 1 use is used at most once under parallel checkouts [BUG-044]", async () => {
       await f.coupon.factory.limited(1).create({ code: "ONCE" });
       for (let i = 0; i < 10; i += 1) await putInCart(`p${i}`, [{ product: product._id, quantity: 1 }]);
       const results = await Promise.all(Array.from({ length: 10 }, (_, i) => checkout(`p${i}`, { couponCode: "ONCE" })));
@@ -297,7 +297,7 @@ describe("commerce: coupons, cart, checkout, orders, payments", () => {
     });
 
     // BUG-011 (storefront too): a query operator in the sign-in identifier crashes it
-    test.failing("POST /shop/auth/login answers 400 to an operator object as the email [BUG-011]", async () => {
+    it("POST /shop/auth/login answers 400 to an operator object as the email [BUG-011]", async () => {
       const res = await api(ctx.server, { tenant: "webshop" }).post("/shop/auth/login").send({ email: { $gt: "" }, password: "x" });
       expect(res.status).toBe(400);
     });
@@ -349,7 +349,7 @@ describe("commerce: coupons, cart, checkout, orders, payments", () => {
 
     // BUG-046: "Delivered" runs the same stock rollback as "Cancelled", so every
     // delivered order puts its goods back on the shelf
-    test.failing("marking an order Delivered does not put its stock back [BUG-046]", async () => {
+    it("marking an order Delivered does not put its stock back [BUG-046]", async () => {
       const order = await seedOrder();
       await staff().put(`/order/order-update/${order._id}`).send({ orderStatus: "Delivered" }).expect(200);
       expect((await productNow()).stock).toBe(10);

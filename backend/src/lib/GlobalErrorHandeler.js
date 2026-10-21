@@ -9,8 +9,10 @@ const productionError = (error, res) => {
       ...(typeof error.code === "string" ? { code: error.code } : {}),
     });
   } else {
+    // The same error envelope as every other error ({ statusCode, message }),
+    // with nothing internal in it
     return res.status(error.statusCode).json({
-      status: "error",
+      statusCode: error.statusCode,
       message: "Something went wrong , please try agin later !!",
     });
   }

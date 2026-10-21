@@ -1,6 +1,7 @@
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { inTransaction } = require("../utils/transaction.util");
 const {
   customerModel,
   customerPaymentRecived,
@@ -154,6 +155,10 @@ const reverseCustomerAdvancePayment = async (session, paymentId) => {
   await CrateTransaction.deleteMany({ customerAdvancePaymentReference: paymentId }).session(session);
   await bumpNsVersion("account");
 };
+
+// Search terms are matched literally: "(" made $regex throw (500) and ".*"
+// matched every row
+const escapeRegex = (str = "") => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // @desc crate CustomerType document
 // @route POST /api/customers/create-customertype
@@ -381,8 +386,8 @@ exports.getAllCustomers = asynchandeler(async (req, res) => {
   if (q && q.trim()) {
     const search = q.trim();
     query.$or = [
-      { fullName: { $regex: search, $options: "i" } },
-      { mobileNumber: { $regex: search, $options: "i" } },
+      { fullName: { $regex: escapeRegex(search), $options: "i" } },
+      { mobileNumber: { $regex: escapeRegex(search), $options: "i" } },
     ];
   }
 
@@ -688,20 +693,22 @@ exports.createCustomerPaymentRecived = asynchandeler(async (req, res) => {
 // @query ?slug=rahim-ahmed
 // @query ?name=rahim
 exports.getCustomerPaymentReviced = asynchandeler(async (req, res) => {
-  const { customer, paymentId } = req.query;
+  const { customer, paymentId, id } = req.query;
 
   const cacheKey = await buildCacheKey(
     NS_CUSTOMER_PAYMENT,
-    paymentId
-      ? `paymentId:${paymentId}`
-      : customer
-        ? `customer:${customer}`
-        : "all",
+    id
+      ? `id:${id}`
+      : paymentId
+        ? `paymentId:${paymentId}`
+        : customer
+          ? `customer:${customer}`
+          : "all",
   );
   const cached = await getCache(cacheKey);
   if (cached) {
     const dataKey =
-      paymentId || customer ? "customerPayment" : "customerPayments";
+      id || paymentId || customer ? "customerPayment" : "customerPayments";
     return apiResponse.sendSuccess(
       res,
       statusCodes.OK,
@@ -710,10 +717,13 @@ exports.getCustomerPaymentReviced = asynchandeler(async (req, res) => {
     );
   }
 
-  // Get single by paymentId (e.g. CPR-SI-01)
-  if (paymentId) {
+  // Get single by _id (the edit page) or by paymentId (e.g. CPR-SI-01)
+  if (id || paymentId) {
+    if (id && !mongoose.isValidObjectId(id)) {
+      return apiResponse.sendError(res, statusCodes.NOT_FOUND, "Customer payment not found");
+    }
     const doc = await customerPaymentRecived
-      .findOne({ paymentId })
+      .findOne(id ? { _id: id } : { paymentId })
       .populate("customer paymentMode");
 
     if (!doc) {
@@ -800,15 +810,24 @@ exports.updateCustomerPaymentRecived = asynchandeler(async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
-    const { customer } = req.params;
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      throw new customError("Customer payment not found", statusCodes.NOT_FOUND);
+    }
 
     let updatedDoc;
 
     await session.withTransaction(async () => {
-      // 1) existing payment doc read (inside txn)
-      const existing = await customerPaymentRecived
-        .findOne({ customer })
-        .session(session);
+      // 1) existing payment doc read (inside txn). The id names the payment;
+      // a customer id (older dashboards) names that customer's latest one,
+      // the payment the old edit page showed. Keying by customer alone always
+      // edited the customer's first payment, whatever was on screen.
+      const existing =
+        (await customerPaymentRecived.findById(id).session(session)) ||
+        (await customerPaymentRecived
+          .findOne({ customer: id })
+          .sort({ createdAt: -1 })
+          .session(session));
 
       if (!existing) {
         throw new customError(
@@ -816,6 +835,7 @@ exports.updateCustomerPaymentRecived = asynchandeler(async (req, res) => {
           statusCodes.NOT_FOUND,
         );
       }
+      const customer = existing.customer;
 
       // 2) customer read
       const customerDoc = await customerModel
@@ -861,11 +881,17 @@ exports.updateCustomerPaymentRecived = asynchandeler(async (req, res) => {
       const newRemainingDue = currentDue - delta;
 
       // 4) update payment doc (set exact values)
-      updatedDoc = await customerPaymentRecived.findOneAndUpdate(
-        { customer },
+      // Only the payment's own editable fields; the body is never spread in
+      const details = Object.fromEntries(
+        ["paymentMode", "remarks", "date", "referenceInvoice"]
+          .filter((field) => req.body[field] !== undefined)
+          .map((field) => [field, req.body[field]]),
+      );
+      updatedDoc = await customerPaymentRecived.findByIdAndUpdate(
+        existing._id,
         {
           $set: {
-            ...req.body, // paymentMode, remarks, date, referenceInvoice etc.
+            ...details,
             paidAmount: newPaid,
             lessAmount: newLess,
             cashBack: newCashBack,
@@ -908,7 +934,31 @@ exports.updateCustomerPaymentRecived = asynchandeler(async (req, res) => {
 //@param slug
 exports.deleteCustomerPaymentRecived = asynchandeler(async (req, res) => {
   const { id } = req.params;
-  const paymentRecived = await customerPaymentRecived.findByIdAndDelete(id);
+
+  // One transaction: the payment, the customer's due and the account move
+  // together or not at all
+  const paymentRecived = await inTransaction(async (session) => {
+    const payment = await customerPaymentRecived.findByIdAndDelete(id, { session });
+    if (!payment) return null;
+
+    // The payment took paid + less + cashBack off the due; all of it goes back
+    const totalReduce =
+      Number(payment.paidAmount || 0) +
+      Number(payment.lessAmount || 0) +
+      Number(payment.cashBack || 0);
+    if (totalReduce > 0) {
+      await customerModel.findByIdAndUpdate(
+        payment.customer,
+        { $inc: { openingDues: totalReduce } },
+        { session },
+      );
+    }
+
+    // Give the net amount back out of the account this payment had added to.
+    await reverseCustomerPayment(session, payment._id);
+    return payment;
+  });
+
   if (!paymentRecived) {
     return apiResponse.sendError(
       res,
@@ -916,9 +966,6 @@ exports.deleteCustomerPaymentRecived = asynchandeler(async (req, res) => {
       "Customer payment not found",
     );
   }
-
-  // Give the net amount back out of the account this payment had added to.
-  await reverseCustomerPayment(undefined, paymentRecived._id);
 
   // Invalidate cache
   await bumpNsVersion(NS_CUSTOMER_PAYMENT);

@@ -3,6 +3,7 @@ const Order = require("../models/order.model");
 const Product = require("../models/product.model");
 const Variant = require("../models/variant.model");
 const Coupon = require("../models/coupon.model");
+const { claimCouponUse, releaseCouponUse } = require("../utils/coupon.util");
 const DeliveryCharge = require("../models/delivery.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
@@ -163,46 +164,67 @@ exports.createPosOrder = asynchandeler(async (req, res) => {
   const general = await getGeneralConfig();
   const invoiceId = `${general.invoicePrefix}-${uuidv4().slice(0, 8).toUpperCase()}`;
 
-  const order = await Order.create({
-    user: null, // a walk-in customer has no account
-    guestId: null,
-    items,
-    shippingInfo,
-    totalAmount: subtotal,
-    discountAmount,
-    finalAmount,
-    deliveryCharge: delivery?._id,
-    coupon: coupon?._id,
-    paymentMethod,
-    paymentStatus: "Pending",
-    orderStatus: "Pending",
-    invoiceId,
-    totalQuantity,
-    channel: "pos",
-    orderFrom: sourceName,
-    placedBy: req.user?._id ?? null,
-  });
-
-  /**
-   * Stock comes down with the quantity re-checked in the filter, so a counter
-   * sale and a web sale racing for the last unit cannot both succeed.
-   */
-  for (const item of items) {
-    const [model, id, field] = item.variant
-      ? [Variant, item.variant._id, "stockVariant"]
-      : [Product, item.product._id, "stock"];
-
-    const updated = await model.findOneAndUpdate(
-      { _id: id, [field]: { $gte: item.quantity } },
-      { $inc: { [field]: -item.quantity, totalSales: item.quantity } },
-    );
-    if (!updated) {
-      await Order.deleteOne({ _id: order._id });
-      throw new customError("Stock ran out while the order was being saved", statusCodes.CONFLICT);
+  const taken = [];
+  let couponClaimed = false;
+  let order = null;
+  try {
+    // Claimed atomically before the order exists, so the usage limit holds
+    // under parallel orders (see claimCouponUse)
+    if (coupon) {
+      await claimCouponUse(coupon._id);
+      couponClaimed = true;
     }
-  }
 
-  if (coupon) await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
+    order = await Order.create({
+      user: null, // a walk-in customer has no account
+      guestId: null,
+      items,
+      shippingInfo,
+      totalAmount: subtotal,
+      discountAmount,
+      finalAmount,
+      deliveryCharge: delivery?._id,
+      coupon: coupon?._id,
+      paymentMethod,
+      paymentStatus: "Pending",
+      orderStatus: "Pending",
+      invoiceId,
+      totalQuantity,
+      channel: "pos",
+      orderFrom: sourceName,
+      placedBy: req.user?._id ?? null,
+    });
+
+    /**
+     * Stock comes down with the quantity re-checked in the filter, so a counter
+     * sale and a web sale racing for the last unit cannot both succeed.
+     */
+    for (const item of items) {
+      const [model, id, field] = item.variant
+        ? [Variant, item.variant._id, "stockVariant"]
+        : [Product, item.product._id, "stock"];
+
+      const updated = await model.findOneAndUpdate(
+        { _id: id, [field]: { $gte: item.quantity } },
+        { $inc: { [field]: -item.quantity, totalSales: item.quantity } },
+      );
+      if (!updated) {
+        throw new customError("Stock ran out while the order was being saved", statusCodes.CONFLICT);
+      }
+      taken.push({ model, id, field, quantity: item.quantity });
+    }
+  } catch (error) {
+    // Undo what a failed order already took: stock, the order, the coupon use
+    for (const line of taken) {
+      await line.model.updateOne(
+        { _id: line.id },
+        { $inc: { [line.field]: line.quantity, totalSales: -line.quantity } },
+      );
+    }
+    if (order) await Order.deleteOne({ _id: order._id });
+    if (couponClaimed) await releaseCouponUse(coupon._id);
+    throw error;
+  }
 
   emitToTenant(getTenantId(), "orderPlaced", { invoiceId: order.invoiceId, finalAmount });
 

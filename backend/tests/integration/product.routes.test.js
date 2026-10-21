@@ -104,7 +104,7 @@ describe("product and variant routes", () => {
 
     // BUG-034: multer's file-type rejection (statusCode 400) is rewrapped as a
     // customError with status 500 by the upload wrappers
-    test.failing("400 for a non-image upload [BUG-034]", async () => {
+    it("400 for a non-image upload [BUG-034]", async () => {
       await enableCloudinary(tenant);
       const res = await as().post("/product/createproduct").field("name", "X").attach("thumbnail", Buffer.from("GIF89a"), "anim.gif");
       expect(res.status).toBeGreaterThanOrEqual(400);
@@ -133,7 +133,7 @@ describe("product and variant routes", () => {
     });
 
     // BUG-035: these public endpoints return the raw documents, cost price included
-    test.failing.each([
+    it.each([
       ["GET", "/product/newarrival", undefined],
       ["GET", "/product/price-range?minPrice=0&maxPrice=5000", undefined],
       ["POST", "/product/related-products", "category"],
@@ -148,7 +148,7 @@ describe("product and variant routes", () => {
     });
 
     // BUG-036: deactivated products stay in the storefront's main listing
-    test.failing("GET /product/getproduct hides deactivated products from anonymous visitors [BUG-036]", async () => {
+    it("GET /product/getproduct hides deactivated products from anonymous visitors [BUG-036]", async () => {
       await as().put(`/product/product-status/${product.slug}`).send({ isActive: false }).expect(200);
       const visitor = await anonymous().get("/product/getproduct").expect(200);
       expect(visitor.body.data.products).toEqual([]);
@@ -169,7 +169,7 @@ describe("product and variant routes", () => {
     });
 
     // BUG-037: a missing product is answered 200 with `product: null`
-    test.failing("GET /product/getproduct/:slug answers 404 for an unknown slug [BUG-037]", async () => {
+    it("GET /product/getproduct/:slug answers 404 for an unknown slug [BUG-037]", async () => {
       await anonymous().get("/product/getproduct/no-such-product").expect(404);
     });
 
@@ -248,7 +248,7 @@ describe("product and variant routes", () => {
     });
 
     // BUG-038: deleting a product leaves its variants behind, still sellable
-    test.failing("DELETE /product/deleteproduct/:slug also removes its variants [BUG-038]", async () => {
+    it("DELETE /product/deleteproduct/:slug also removes its variants [BUG-038]", async () => {
       const variant = await f.variant.create({ product: product._id });
       await inTenant(() => Product.updateOne({ _id: product._id }, { $push: { variant: variant._id } }));
       await as().delete(`/product/deleteproduct/${product.slug}`).expect(200);
@@ -313,7 +313,7 @@ describe("product and variant routes", () => {
     });
 
     // BUG-065: a bracketed field name reaches Object.prototype of the server process
-    test.failing("POST /variant cannot pollute Object.prototype through a field name [BUG-065]", async () => {
+    it("POST /variant cannot pollute Object.prototype through a field name [BUG-065]", async () => {
       try {
         await as().post("/variant").send({ "__proto__[apiPolluted]": "yes", variants: [variantPayload()] });
         expect({}.apiPolluted).toBeUndefined();
@@ -323,7 +323,7 @@ describe("product and variant routes", () => {
     });
 
     // BUG-039: allowUnknown + spread lets the client set sales counters on create
-    test.failing("POST /variant ignores sales counters sent by the client [BUG-039]", async () => {
+    it("POST /variant ignores sales counters sent by the client [BUG-039]", async () => {
       await as().post("/variant").send({ variants: [variantPayload({ posSold: 40, totalSales: 99, salesReturnStock: 5 })] }).expect(201);
       const v = await inTenant(() => Variant.findOne({ variantName: "Polo Red M" }).lean());
       expect(v).toMatchObject({ posSold: 0, totalSales: 0, salesReturnStock: 0 });

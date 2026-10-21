@@ -9,6 +9,7 @@ const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategor
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { retryTransientErrors } = require("../utils/transaction.util");
 const { statusCodes } = require("../constant/constant");
 const {
   getCache,
@@ -91,7 +92,71 @@ const reversePurchasePayment = async (session, purchaseId) => {
   await bumpNsVersion("account");
 };
 
-exports.createPurchase = asynchandeler(async (req, res) => {
+// The line's figures as numbers. A form or client may post them as strings,
+// and `stock + "5"` concatenated: stock 10 became "105", saved as 105.
+const purchaseLineNumbers = (item) => {
+  const number = (field) => {
+    const value = item[field];
+    if (value === undefined || value === null || value === "") return undefined;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) {
+      throw new customError(`${field} must be a number of 0 or more`, statusCodes.BAD_REQUEST);
+    }
+    return n;
+  };
+  const quantity = number("quantity");
+  if (quantity !== undefined && !Number.isInteger(quantity)) {
+    throw new customError("quantity must be a whole number", statusCodes.BAD_REQUEST);
+  }
+  return {
+    purchasePrice: number("purchasePrice"),
+    retailPrice: number("retailPrice"),
+    wholesalePrice: number("wholesalePrice"),
+    quantity,
+  };
+};
+
+// What a purchase owes, worked out on the server the way the purchase form
+// does: the lines it priced plus commission and shipping, less what was paid.
+// The request's `payable` and `dueamount` are never used — `dueamount: 9999`
+// once went straight onto the supplier's due.
+const purchaseTotals = ({ subTotal, commission, shipping, paid }) => {
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const payable = round2(subTotal + (Number(commission) || 0) + (Number(shipping) || 0));
+  assertPaidWithinPayable(paid, payable);
+  return { payable, dueamount: round2(payable - (Number(paid) || 0)) };
+};
+
+// Take a purchase's units back off the shelf (delete, or the old side of an
+// edit). Refused when they have been sold since: `min: 0` does not apply to
+// an $inc, so a bare decrement drove stock negative.
+const takeBackPurchasedStock = async (allproduct, session) => {
+  for (const { product, variant, quantity } of allproduct) {
+    for (const [Model, id, field] of [
+      [Product, product, "stock"],
+      [Variant, variant, "stockVariant"],
+    ]) {
+      if (!id) continue;
+      const result = await Model.updateOne(
+        { _id: id, [field]: { $gte: quantity } },
+        { $inc: { [field]: -quantity, purchaseQuantityStock: -quantity } },
+        { session },
+      );
+      if (result.matchedCount === 0 && (await Model.exists({ _id: id }).session(session))) {
+        throw new customError(
+          "Some of the purchased units have already been sold, so the purchase cannot be undone",
+          statusCodes.BAD_REQUEST,
+        );
+      }
+    }
+  }
+};
+
+// Search terms are matched literally: "(" made $regex throw (500) and ".*"
+// matched every row
+const escapeRegex = (str = "") => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+exports.createPurchase = asynchandeler(retryTransientErrors(async (req, res) => {
   const {
     invoiceNumber,
     supplierId,
@@ -103,12 +168,8 @@ exports.createPurchase = asynchandeler(async (req, res) => {
     category,
     subCategory,
     brand,
-    dueamount,
-    payable,
     date,
   } = req.body;
-
-  assertPaidWithinPayable(paid, payable);
 
   if (!allproduct || !Array.isArray(allproduct) || allproduct.length === 0) {
     throw new customError(
@@ -125,16 +186,8 @@ exports.createPurchase = asynchandeler(async (req, res) => {
     const purchaseProducts = [];
 
     for (const item of allproduct) {
-      const {
-        product,
-        variant,
-        purchasePrice,
-        retailPrice,
-        wholesalePrice,
-        quantity,
-        size,
-        color,
-      } = item;
+      const { product, variant, size, color } = item;
+      const { purchasePrice, retailPrice, wholesalePrice, quantity } = purchaseLineNumbers(item);
 
       if (!purchasePrice || !retailPrice || !quantity) continue;
 
@@ -188,8 +241,7 @@ exports.createPurchase = asynchandeler(async (req, res) => {
       }
     }
 
-    // const payable = subTotal + shipping + commission;
-    // const dueamount = payable - paid;
+    const { payable, dueamount } = purchaseTotals({ subTotal, commission, shipping, paid });
 
     if (supplierId && dueamount !== 0) {
       const supplier =
@@ -246,7 +298,7 @@ exports.createPurchase = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // get all purchases
 exports.getAllPurchases = asynchandeler(async (req, res) => {
@@ -331,7 +383,7 @@ exports.getSinglePurchase = asynchandeler(async (req, res) => {
 });
 
 // update purchase
-exports.updatePurchase = asynchandeler(async (req, res) => {
+exports.updatePurchase = asynchandeler(retryTransientErrors(async (req, res) => {
   const { id } = req.params;
   const {
     invoiceNumber,
@@ -344,12 +396,16 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     category,
     subCategory,
     brand,
-    dueamount,
-    payable,
     date,
   } = req.body;
 
-  if (payable !== undefined) assertPaidWithinPayable(paid, payable);
+  // An edit replaces the purchase's lines, so it must send them
+  if (!Array.isArray(allproduct) || allproduct.length === 0) {
+    throw new customError(
+      "At least one product or variant is required",
+      statusCodes.BAD_REQUEST,
+    );
+  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -358,21 +414,6 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     const existingPurchase = await Purchase.findById(id).session(session);
     if (!existingPurchase) {
       throw new customError("Purchase not found", statusCodes.NOT_FOUND);
-    }
-
-    // Revert Old Stock using $inc for efficiency and atomicity
-    for (const item of existingPurchase.allproduct) {
-      const { product, variant, quantity } = item;
-      if (product) {
-        await Product.findByIdAndUpdate(product, {
-          $inc: { stock: -quantity, purchaseQuantityStock: -quantity },
-        }).session(session);
-      }
-      if (variant) {
-        await Variant.findByIdAndUpdate(variant, {
-          $inc: { stockVariant: -quantity, purchaseQuantityStock: -quantity },
-        }).session(session);
-      }
     }
 
     // Revert Old Payment (give back what the old paid amount subtracted)
@@ -397,16 +438,8 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     const updatedProducts = [];
 
     for (const item of allproduct) {
-      const {
-        product,
-        variant,
-        purchasePrice,
-        retailPrice,
-        wholesalePrice,
-        quantity,
-        size,
-        color,
-      } = item;
+      const { product, variant, size, color } = item;
+      const { purchasePrice, retailPrice, wholesalePrice, quantity } = purchaseLineNumbers(item);
 
       if (!purchasePrice || !retailPrice || !quantity) continue;
 
@@ -456,8 +489,11 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
       }
     }
 
-    // const payable = subTotal + shipping + commission;
-    // const dueamount = payable - paid;
+    // The old lines come off after the new ones went on, so an edit that
+    // keeps the units passes the stock guard even when they are partly sold
+    await takeBackPurchasedStock(existingPurchase.allproduct, session);
+
+    const { payable, dueamount } = purchaseTotals({ subTotal, commission, shipping, paid });
 
     // Apply New Supplier Dues
     if (supplierId && dueamount !== 0) {
@@ -481,9 +517,9 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     existingPurchase.subTotal = subTotal;
     existingPurchase.commission = commission;
     existingPurchase.shipping = shipping;
-    existingPurchase.payable = payable ?? existingPurchase.payable;
+    existingPurchase.payable = payable;
     existingPurchase.paid = paid;
-    existingPurchase.dueamount = dueamount ?? existingPurchase.dueamount;
+    existingPurchase.dueamount = dueamount;
     existingPurchase.date = date || existingPurchase.date;
 
     await existingPurchase.save({ session });
@@ -510,10 +546,10 @@ exports.updatePurchase = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // delete purchase
-exports.deletePurchase = asynchandeler(async (req, res) => {
+exports.deletePurchase = asynchandeler(retryTransientErrors(async (req, res) => {
   const { id } = req.params;
 
   const session = await mongoose.startSession();
@@ -526,19 +562,7 @@ exports.deletePurchase = asynchandeler(async (req, res) => {
     }
 
     // Rollback Stock
-    for (const item of purchase.allproduct) {
-      const { product, variant, quantity } = item;
-      if (product) {
-        await Product.findByIdAndUpdate(product, {
-          $inc: { stock: -quantity, purchaseQuantityStock: -quantity },
-        }).session(session);
-      }
-      if (variant) {
-        await Variant.findByIdAndUpdate(variant, {
-          $inc: { stockVariant: -quantity, purchaseQuantityStock: -quantity },
-        }).session(session);
-      }
-    }
+    await takeBackPurchasedStock(purchase.allproduct, session);
 
     // Rollback the paid amount back into its account.
     await reversePurchasePayment(session, purchase._id);
@@ -578,7 +602,7 @@ exports.deletePurchase = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // search purchases by invoiceNumber | supplierId | cashType
 exports.searchPurchase = asynchandeler(async (req, res) => {
@@ -612,7 +636,7 @@ exports.searchPurchase = asynchandeler(async (req, res) => {
   const query = {};
 
   if (invoiceNumber) {
-    query.invoiceNumber = { $regex: invoiceNumber.trim(), $options: "i" };
+    query.invoiceNumber = { $regex: escapeRegex(invoiceNumber.trim()), $options: "i" };
   }
   if (supplierId) {
     if (!mongoose.Types.ObjectId.isValid(supplierId)) {

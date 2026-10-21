@@ -9,6 +9,7 @@ const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategor
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { retryTransientErrors } = require("../utils/transaction.util");
 const { statusCodes } = require("../constant/constant");
 const {
   getCache,
@@ -177,7 +178,7 @@ const reversePurchaseReturnDue = async (session, purchaseReturn) => {
 
 // ─── createPurchaseReturn ────────────────────────────────────────────────────
 
-exports.createPurchaseReturn = asynchandeler(async (req, res) => {
+exports.createPurchaseReturn = asynchandeler(retryTransientErrors(async (req, res) => {
   const { supplier, returnDate, remarks, products } = req.body;
 
   validatePayload(req.body);
@@ -374,7 +375,7 @@ exports.createPurchaseReturn = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // ─── getPurchaseReturn ───────────────────────────────────────────────────────
 
@@ -566,7 +567,7 @@ exports.getSinglePurchaseReturn = asynchandeler(async (req, res) => {
 
 // ─── updatePurchaseReturn ────────────────────────────────────────────────────
 
-exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
+exports.updatePurchaseReturn = asynchandeler(retryTransientErrors(async (req, res) => {
   const { id } = req.params;
   const { supplier, returnDate, remarks, products } = req.body;
 
@@ -810,11 +811,11 @@ exports.updatePurchaseReturn = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // ─── deletePurchaseReturn ────────────────────────────────────────────────────
 
-exports.deletePurchaseReturn = asynchandeler(async (req, res) => {
+exports.deletePurchaseReturn = asynchandeler(retryTransientErrors(async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -891,4 +892,4 @@ exports.deletePurchaseReturn = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));

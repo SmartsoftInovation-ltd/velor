@@ -74,7 +74,7 @@ describe("permission middleware", () => {
 
   // BUG-064: a permission the platform deactivated still grants access through
   // authorize(); getMe and rbac.effectiveActions() both ignore it
-  test.failing("a deactivated permission grants nothing [BUG-064]", async () => {
+  it("a deactivated permission grants nothing [BUG-064]", async () => {
     const u = user({ roles: [role([{ permission: perm("product", false), actions: ["view"] }])] });
     expect(await run(authorize("product", "view"), u)).toMatchObject({ status: 403 });
   });

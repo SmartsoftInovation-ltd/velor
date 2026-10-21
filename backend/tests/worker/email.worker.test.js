@@ -61,7 +61,7 @@ describe("email worker (queue: email)", () => {
 
   // BUG-062: sendEmail() swallows SMTP errors and returns null, so the job
   // "completes" — the queue's 3 attempts never happen and the mail is lost
-  test.failing("an SMTP failure is retried and the job ends failed, not completed [BUG-062]", async () => {
+  it("an SMTP failure is retried and the job ends failed, not completed [BUG-062]", async () => {
     failNext = true;
     env.track(startEmailWorker());
     const job = await enqueue({ to: "buyer@example.com", subject: "x", html: "y" }, { attempts: 2, backoff: { type: "fixed", delay: 10 } });

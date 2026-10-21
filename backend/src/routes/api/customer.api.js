@@ -86,7 +86,9 @@ _.route("/get-customer-payment-recived").get(
   customerController.getCustomerPaymentReviced,
 );
 
-_.route("/update-customer-payment-recived/:customer").put(
+// :id is the payment's _id. A customer id is still accepted (older dashboards)
+// and then names that customer's latest payment.
+_.route("/update-customer-payment-recived/:id").put(
   authGuard,
   authorize("customer-payment", "edit"),
   customerController.updateCustomerPaymentRecived,

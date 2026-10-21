@@ -38,6 +38,11 @@ const moneyTransferSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  // True once the transfer has moved the two account balances. Transfers saved
+  // before that was done never moved money, so undoing one must not either.
+  balanceApplied: {
+    type: Boolean,
+  },
 }, { timestamps: true });
 
 // Auto-generate a sequential, never-reused transferSerialId after first save

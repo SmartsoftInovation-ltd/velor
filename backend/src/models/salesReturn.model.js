@@ -13,11 +13,11 @@ const salesReturnSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Indexed by the unique { tenantId, invoiceNumber } index below
     invoiceNumber: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Sales",
       required: true,
-      index:true,
     },
     refundMethod: {
       type: mongoose.Schema.Types.ObjectId,
@@ -91,10 +91,12 @@ const salesReturnSchema = new mongoose.Schema(
 salesReturnSchema.pre("save", async function (next) {
   try {
     if (this.isModified("invoiceNumber")) {
+      // Read inside the caller's transaction. The unique index below is what
+      // actually holds under parallel requests; this check gives the message.
       const existing = await this.constructor.findOne({
         invoiceNumber: this.invoiceNumber,
         _id: { $ne: this._id },
-      });
+      }).session(this.$session());
       if (existing) {
         return next(
           new customError(
@@ -137,6 +139,11 @@ salesReturnSchema.post("save", async function (doc, next) {
     next(error);
   }
 });
+
+// One return per invoice. Without the index, parallel requests could each pass
+// the pre-save check and create two returns (two refunds, double restock).
+// Built by migration 012 where autoIndex is off.
+salesReturnSchema.index({ tenantId: 1, invoiceNumber: 1 }, { unique: true });
 
 salesReturnSchema.plugin(tenantPlugin);
 const SalesReturn =

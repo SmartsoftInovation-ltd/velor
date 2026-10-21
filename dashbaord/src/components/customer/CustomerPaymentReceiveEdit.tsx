@@ -18,7 +18,9 @@ interface AccountOption {
 }
 
 const CustomerPaymentReceiveEdit = () => {
-  const { customerId } = useParams<{ customerId: string }>();
+  // The payment's own _id: keyed by customer, the page showed one payment and
+  // the save edited another
+  const { paymentId } = useParams<{ paymentId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -36,14 +38,14 @@ const CustomerPaymentReceiveEdit = () => {
 
   // fetch existing payment record
   const { data: payment, isLoading: isFetching, isError } = useQuery({
-    queryKey: ["customer-payment", customerId],
+    queryKey: ["customer-payment", paymentId],
     queryFn: async () => {
       const res = await axiosSecure.get(
-        `/customer/get-customer-payment-recived?customer=${customerId}`
+        `/customer/get-customer-payment-recived?id=${paymentId}`
       );
       return res?.data?.data?.customerPayment ?? null;
     },
-    enabled: !!customerId,
+    enabled: !!paymentId,
   });
 
   // populate form once data arrives
@@ -75,7 +77,7 @@ const CustomerPaymentReceiveEdit = () => {
   };
 
   const handleSubmit = async () => {
-    if (!customerId) return;
+    if (!paymentId) return;
     setIsLoading(true);
     try {
       const payload = {
@@ -88,12 +90,12 @@ const CustomerPaymentReceiveEdit = () => {
         date: form.date ? new Date(form.date).toISOString() : undefined,
       };
       await axiosSecure.put(
-        `/customer/update-customer-payment-recived/${customerId}`,
+        `/customer/update-customer-payment-recived/${paymentId}`,
         payload
       );
       toast.success("Payment updated successfully.");
       queryClient.invalidateQueries({ queryKey: ["customer-payments"] });
-      queryClient.invalidateQueries({ queryKey: ["customer-payment", customerId] });
+      queryClient.invalidateQueries({ queryKey: ["customer-payment", paymentId] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-transaction-history"] });
       queryClient.invalidateQueries({

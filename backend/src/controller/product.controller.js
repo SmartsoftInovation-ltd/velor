@@ -4,7 +4,7 @@ const Variant = require("../models/variant.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
-const { forAudience } = require("../utils/publicProduct");
+const { forAudience, isStaff } = require("../utils/publicProduct");
 const {
   validateProduct,
   validateProductUpdate,
@@ -85,6 +85,12 @@ const generateBarcode = () => {
 /**
  * Collect every Cloudinary publicId from a product (thumbnail + gallery + ogImage).
  */
+// The main listing serves the dashboard and the storefront from one cache.
+// Staff see every product (they re-activate from it); shoppers and visitors
+// see only active ones.
+const listedFor = (req, products) =>
+  isStaff(req) ? products : products.filter((p) => p.isActive !== false);
+
 const collectProductPublicIds = (product) => {
   const ids = [];
   if (product.thumbnail?.publicId) ids.push(product.thumbnail.publicId);
@@ -278,7 +284,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "Products fetched successfully",
-        { products: forAudience(req, cached), fromCache: true },
+        { products: forAudience(req, listedFor(req, cached)), fromCache: true },
       );
     }
 
@@ -321,7 +327,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Products fetched successfully",
-      { products: forAudience(req, products), fromCache: false },
+      { products: forAudience(req, listedFor(req, products)), fromCache: false },
     );
   });
 
@@ -350,10 +356,7 @@ class ProductController {
       .lean();
 
     if (!product) {
-      return apiResponse.sendSuccess(res, statusCodes.OK, "Product not found", {
-        product: null,
-        fromCache: false,
-      });
+      throw new customError("Product not found", statusCodes.NOT_FOUND);
     }
 
     await setCache(cacheKey, product, CACHE_TTL);
@@ -582,9 +585,7 @@ class ProductController {
 
     const product = await Product.findOne({ slug });
     if (!product) {
-      return apiResponse.sendSuccess(res, statusCodes.OK, "Product not found", {
-        product: null,
-      });
+      throw new customError("Product not found", statusCodes.NOT_FOUND);
     }
 
     const currentCount = product.image.length;
@@ -642,9 +643,7 @@ class ProductController {
 
     const product = await Product.findOne({ slug });
     if (!product) {
-      return apiResponse.sendSuccess(res, statusCodes.OK, "Product not found", {
-        product: null,
-      });
+      throw new customError("Product not found", statusCodes.NOT_FOUND);
     }
 
     const toDelete = [];
@@ -754,12 +753,19 @@ class ProductController {
 
     const product = await Product.findOneAndDelete({ slug });
     if (!product) {
-      return apiResponse.sendSuccess(res, statusCodes.OK, "Product not found", {
-        product: null,
-      });
+      throw new customError("Product not found", statusCodes.NOT_FOUND);
     }
 
-    const publicIds = collectProductPublicIds(product);
+    // Its variants go with it: left behind they pointed at a missing product
+    // and still came up in the sale-form search, stock lists and reports
+    const variantFilter = {
+      $or: [{ product: product._id }, { _id: { $in: product.variant || [] } }],
+    };
+    const variants = await Variant.find(variantFilter).lean();
+    if (variants.length) await Variant.deleteMany(variantFilter);
+
+    // Variants keep their images in the same shape as a product
+    const publicIds = [product, ...variants].flatMap(collectProductPublicIds);
     if (publicIds.length > 0) {
       await imageQueue.addBulk(
         publicIds.map((publicId) => ({
@@ -770,6 +776,7 @@ class ProductController {
     }
 
     await bumpNsVersion(NS);
+    if (variants.length) await bumpNsVersion("variant");
 
     logAudit({
       req,
@@ -913,7 +920,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "New arrival products fetched successfully",
-        { products: cached, fromCache: true },
+        { products: forAudience(req, cached), fromCache: true },
       );
     }
 
@@ -943,7 +950,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "New arrival products fetched successfully",
-      { products: products, fromCache: false },
+      { products: forAudience(req, products), fromCache: false },
     );
   });
 
@@ -969,7 +976,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "Products fetched successfully",
-        { products: cached, fromCache: true },
+        { products: forAudience(req, cached), fromCache: true },
       );
     }
 
@@ -1021,7 +1028,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Products fetched successfully",
-      { products },
+      { products: forAudience(req, products) },
     );
   });
 
@@ -1046,7 +1053,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Products fetched successfully",
-      { products },
+      { products: forAudience(req, products) },
     );
   });
 
@@ -1059,7 +1066,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "Discounted products fetched successfully",
-        { products: cached, fromCache: true },
+        { products: forAudience(req, cached), fromCache: true },
       );
     }
 
@@ -1105,7 +1112,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Discounted products fetched successfully",
-      { products: merged, fromCache: false },
+      { products: forAudience(req, merged), fromCache: false },
     );
   });
 
@@ -1118,7 +1125,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "Best selling products fetched successfully",
-        { products: cached, fromCache: true },
+        { products: forAudience(req, cached), fromCache: true },
       );
     }
 
@@ -1157,7 +1164,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Best selling products fetched successfully",
-      { products: merged, fromCache: false },
+      { products: forAudience(req, merged), fromCache: false },
     );
   });
 
@@ -1185,7 +1192,7 @@ class ProductController {
         res,
         statusCodes.OK,
         "Products fetched successfully",
-        { products: cached, fromCache: true },
+        { products: forAudience(req, cached), fromCache: true },
       );
     }
 
@@ -1333,7 +1340,7 @@ class ProductController {
       res,
       statusCodes.OK,
       "Products fetched successfully",
-      { products: products, fromCache: false },
+      { products: forAudience(req, products), fromCache: false },
     );
   });
 }

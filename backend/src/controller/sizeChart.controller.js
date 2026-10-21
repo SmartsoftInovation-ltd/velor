@@ -1,4 +1,5 @@
 const { asynchandeler } = require("../lib/asyncHandeler");
+const { retryTransientErrors } = require("../utils/transaction.util");
 const { apiResponse } = require("../utils/apiResponse");
 const { customError } = require("../lib/CustomError");
 const { statusCodes } = require("../constant/constant");
@@ -84,7 +85,7 @@ const applySizeChartToModels = async (sizeChart, session) => {
 
 // @desc    Create a new size chart
 // @route   POST /sizechart/create-sizechart
-exports.createSizeChart = asynchandeler(async (req, res) => {
+exports.createSizeChart = asynchandeler(retryTransientErrors(async (req, res) => {
   const body = stripReadOnly(req.body);
 
   // createdBy set when auth is active
@@ -114,7 +115,7 @@ exports.createSizeChart = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // @desc    Get all size charts with optional filters
 // @route   GET /sizechart/get-sizechart
@@ -199,7 +200,7 @@ exports.getSizeChartBySlug = asynchandeler(async (req, res) => {
 
 // @desc    Update a size chart by slug
 // @route   PUT /sizechart/update-sizechart/:slug
-exports.updateSizeChart = asynchandeler(async (req, res) => {
+exports.updateSizeChart = asynchandeler(retryTransientErrors(async (req, res) => {
   const { slug } = req.params;
   const body = stripReadOnly(req.body);
 
@@ -238,11 +239,11 @@ exports.updateSizeChart = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // @desc    Delete a size chart by slug
 // @route   DELETE /sizechart/delete-sizechart/:slug
-exports.deleteSizeChart = asynchandeler(async (req, res) => {
+exports.deleteSizeChart = asynchandeler(retryTransientErrors(async (req, res) => {
   const { slug } = req.params;
 
   const session = await mongoose.startSession();
@@ -268,7 +269,7 @@ exports.deleteSizeChart = asynchandeler(async (req, res) => {
     session.endSession();
     throw error;
   }
-});
+}));
 
 // @desc    Activate a size chart
 // @route   PUT /sizechart/update-sizechart/:slug/activate

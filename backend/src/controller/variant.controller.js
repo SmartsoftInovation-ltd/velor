@@ -52,6 +52,19 @@ const collectVariantPublicIds = (v) => {
   return ids;
 };
 
+// Counters the server keeps (sales, returns, purchases, adjustments). They
+// start at 0 and are moved only by those flows; a create could set them.
+const SERVER_COUNTERS = [
+  "posSold",
+  "webSold",
+  "totalSales",
+  "purchaseReturnStock",
+  "salesReturnStock",
+  "purchaseQuantityStock",
+  "stockAdjustmentPlus",
+  "stockAdjustmentMinus",
+];
+
 // @desc create variant controller (batch)
 exports.createVariant = asynchandeler(async (req, res) => {
   const { variants } = expandBracketKeys(req.body);
@@ -70,6 +83,7 @@ exports.createVariant = asynchandeler(async (req, res) => {
   for (let i = 0; i < variants.length; i++) {
     const v = variants[i];
     const validatedData = await validateVariant({ ...v, index: i }, allFiles);
+    for (const field of SERVER_COUNTERS) delete validatedData[field];
 
     if (
       validatedData.retailProfitMarginByPercentage === null ||
@@ -328,10 +342,7 @@ exports.getSingleVariant = asynchandeler(async (req, res, next) => {
     .lean();
 
   if (!singleVariant) {
-    return apiResponse.sendSuccess(res, statusCodes.OK, "Variant not found", {
-      variant: null,
-      fromCache: false,
-    });
+    throw new customError("Variant not found", statusCodes.NOT_FOUND);
   }
 
   await setCache(cacheKey, singleVariant, CACHE_TTL);
@@ -497,9 +508,7 @@ exports.addVariantImage = asynchandeler(async (req, res) => {
 
   const variantToUpdate = await variant.findOne({ slug });
   if (!variantToUpdate) {
-    return apiResponse.sendSuccess(res, statusCodes.OK, "Variant not found", {
-      variant: null,
-    });
+    throw new customError("Variant not found", statusCodes.NOT_FOUND);
   }
 
   const currentCount = variantToUpdate.image.length;
@@ -556,9 +565,7 @@ exports.deleteVariantImage = asynchandeler(async (req, res) => {
 
   const variantToUpdate = await variant.findOne({ slug });
   if (!variantToUpdate) {
-    return apiResponse.sendSuccess(res, statusCodes.OK, "Variant not found", {
-      variant: null,
-    });
+    throw new customError("Variant not found", statusCodes.NOT_FOUND);
   }
 
   const toDelete = [];
@@ -607,10 +614,7 @@ exports.deactivateVariant = asynchandeler(async (req, res) => {
   const { slug } = req.query;
   const variantToDeactivate = await variant.findOne({ slug });
   if (!variantToDeactivate) {
-    return apiResponse.sendSuccess(res, statusCodes.OK, "Variant not found", {
-      variant: null,
-      fromCache: false,
-    });
+    throw new customError("Variant not found", statusCodes.NOT_FOUND);
   }
   variantToDeactivate.isActive = false;
   await variantToDeactivate.save();
@@ -652,10 +656,7 @@ exports.deleteVariant = asynchandeler(async (req, res) => {
   const { slug } = req.params;
   const deletedVariant = await variant.findOneAndDelete({ slug });
   if (!deletedVariant) {
-    return apiResponse.sendSuccess(res, statusCodes.OK, "Variant not found", {
-      variant: null,
-      fromCache: false,
-    });
+    throw new customError("Variant not found", statusCodes.NOT_FOUND);
   }
 
   // Remove the variant from the product's variants array

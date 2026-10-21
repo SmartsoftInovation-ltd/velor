@@ -18,7 +18,7 @@ const CACHE_TTL = 60 * 60; // 1 hour
 
 // Create coupon
 exports.createCoupon = asynchandeler(async (req, res, next) => {
-  const validatedData = await validateCoupon(req, res, next);
+  const validatedData = await validateCoupon(req);
 
   // Check if coupon with this code already exists
   const existing = await Coupon.findOne({ code: validatedData.code.toUpperCase() });
@@ -74,7 +74,7 @@ exports.updateCoupon = asynchandeler(async (req, res, next) => {
   const { slug } = req.params;
   if (!slug) throw new customError("Slug not provided", statusCodes.BAD_REQUEST);
 
-  const validatedData = await validateCoupon(req, res, next);
+  const validatedData = await validateCoupon(req);
 
   const coupon = await Coupon.findOne({ slug });
   if (!coupon) throw new customError("Coupon not found", statusCodes.NOT_FOUND);

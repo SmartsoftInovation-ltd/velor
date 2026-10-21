@@ -84,7 +84,7 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
     });
 
     // BUG-051: the search term goes into $regex unescaped
-    test.failing("searches literally: regex characters are not interpreted [BUG-051]", async () => {
+    it("searches literally: regex characters are not interpreted [BUG-051]", async () => {
       await f.customer.create({ fullName: "Karim Uddin" });
       const res = await as().get("/customer/get-customers").query({ q: "(" });
       expect(res.status).toBe(200);
@@ -163,7 +163,7 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
 
     // BUG-052: deleting a payment gives the money back out of the account but
     // never puts the amount back on the customer's due
-    test.failing("deleting a payment restores the customer's due [BUG-052]", async () => {
+    it("deleting a payment restores the customer's due [BUG-052]", async () => {
       const c = await f.customer.create({ openingDues: 1000 });
       await pay(c, { paidAmount: 400 }).expect(201);
       const payment = await inTenant(() => CustomerPayment.findOne({ customer: c._id }).lean());
@@ -174,7 +174,7 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
 
     // BUG-053: the edit route is keyed by customer and always edits the
     // customer's first payment; a specific payment cannot be addressed
-    test.failing("edits the payment the request names, not the customer's first one [BUG-053]", async () => {
+    it("edits the payment the request names, not the customer's first one [BUG-053]", async () => {
       const c = await f.customer.create({ openingDues: 1000 });
       await pay(c, { paidAmount: 100 }).expect(201);
       await pay(c, { paidAmount: 200 }).expect(201);
@@ -215,7 +215,7 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
 
     // BUG-054: a sale adjusts the advance by reading the customer's FIRST
     // advance document, whose balance is only the first payment
-    test.failing("a sale can use the whole advance the customer has paid [BUG-054]", async () => {
+    it("a sale can use the whole advance the customer has paid [BUG-054]", async () => {
       const c = await f.customer.create();
       await advance(c, { paidAmount: 500 }).expect(201);
       await advance(c, { paidAmount: 500 }).expect(201);
@@ -233,7 +233,7 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
 
   // BUG-055: dueLimit (credit limit) is stored and reported but never enforced
   // by the API — the discount limit is re-checked server-side, this is not
-  test.failing("a sale that would take a customer over their due limit is refused [BUG-055]", async () => {
+  it("a sale that would take a customer over their due limit is refused [BUG-055]", async () => {
     const c = await f.customer.create({ openingDues: 900, dueLimit: 1000 });
     const product = await f.product.create({ stock: 10 });
     const salesman = await f.employee.create();

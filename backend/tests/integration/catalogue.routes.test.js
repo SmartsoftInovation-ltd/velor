@@ -71,7 +71,7 @@ describe("catalogue routes: categories, subcategories, brands, discounts", () =>
     });
 
     // BUG-037 (same family): activating an unknown category answers 200 "not found"
-    test.failing("activating an unknown category answers 404 [BUG-037]", async () => {
+    it("activating an unknown category answers 404 [BUG-037]", async () => {
       await as().put("/categories/nope/activate").expect(404);
     });
 

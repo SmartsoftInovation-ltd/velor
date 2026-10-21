@@ -7,7 +7,8 @@ const validate = (schema, property = "body") => {
 
     if (error) {
       console.log("from validate middleware", error);
-      next(new customError(error.message, statusCodes.BAD_REQUEST));
+      // return: falling through called next() a second time after the error
+      return next(new customError(error.message, statusCodes.BAD_REQUEST));
     }
 
     req[property] = value;

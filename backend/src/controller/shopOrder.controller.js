@@ -13,6 +13,7 @@ const { getGeneralConfig } = require("../integrations/config");
 const { emitToTenant } = require("../socket/socket");
 const { getTenantId } = require("../tenancy/context");
 const { WEBSITE_SOURCE } = require("../models/orderSource.model");
+const { claimCouponUse, releaseCouponUse } = require("../utils/coupon.util");
 
 /**
  * Checkout from the storefront.
@@ -176,57 +177,73 @@ exports.createOrder = asynchandeler(async (req, res) => {
   const general = await getGeneralConfig();
   const invoiceId = `${general.invoicePrefix}-${uuidv4().slice(0, 8).toUpperCase()}`;
 
-  // tenantId is stamped by the tenancy plugin from the request's context, which
-  // came from the hostname — so the order lands in the store the shopper was on.
-  const order = await Order.create({
-    user: userId,
-    guestId,
-    items,
-    shippingInfo,
-    totalAmount: subtotal,
-    discountAmount,
-    finalAmount,
-    deliveryCharge: delivery?._id,
-    coupon: coupon?._id,
-    paymentMethod,
-    paymentStatus: "Pending",
-    orderStatus: "Pending",
-    invoiceId,
-    totalQuantity,
-    // Taken on the storefront, so reports can tell it apart from a counter sale
-    channel: "web",
-    orderFrom: WEBSITE_SOURCE,
-  });
-
-  /**
-   * Stock is decremented with the quantity re-checked in the filter. The read
-   * above is already stale by the time this runs, so two shoppers buying the
-   * last unit could both pass it; the `$gte` makes the update simply not match
-   * for the second one instead of driving stock negative.
-   */
-  for (const item of items) {
-    if (item.variant) {
-      const updated = await Variant.findOneAndUpdate(
-        { _id: item.variant._id, stockVariant: { $gte: item.quantity } },
-        { $inc: { stockVariant: -item.quantity, totalSales: item.quantity } },
-      );
-      if (!updated) {
-        await Order.deleteOne({ _id: order._id });
-        throw new customError(`${item.variant.variantName} sold out while you were checking out`, statusCodes.CONFLICT);
-      }
-    } else {
-      const updated = await Product.findOneAndUpdate(
-        { _id: item.product._id, stock: { $gte: item.quantity } },
-        { $inc: { stock: -item.quantity, totalSales: item.quantity } },
-      );
-      if (!updated) {
-        await Order.deleteOne({ _id: order._id });
-        throw new customError(`${item.product.name} sold out while you were checking out`, statusCodes.CONFLICT);
-      }
+  // Lines whose stock was already taken, so a failure further on can give it back
+  const taken = [];
+  let couponClaimed = false;
+  let order = null;
+  try {
+    // The coupon's use is claimed before the order exists: under parallel
+    // checkouts only as many succeed as the usage limit allows
+    if (coupon) {
+      await claimCouponUse(coupon._id);
+      couponClaimed = true;
     }
+
+    // tenantId is stamped by the tenancy plugin from the request's context, which
+    // came from the hostname — so the order lands in the store the shopper was on.
+    order = await Order.create({
+      user: userId,
+      guestId,
+      items,
+      shippingInfo,
+      totalAmount: subtotal,
+      discountAmount,
+      finalAmount,
+      deliveryCharge: delivery?._id,
+      coupon: coupon?._id,
+      paymentMethod,
+      paymentStatus: "Pending",
+      orderStatus: "Pending",
+      invoiceId,
+      totalQuantity,
+      // Taken on the storefront, so reports can tell it apart from a counter sale
+      channel: "web",
+      orderFrom: WEBSITE_SOURCE,
+    });
+
+    /**
+     * Stock is decremented with the quantity re-checked in the filter. The read
+     * above is already stale by the time this runs, so two shoppers buying the
+     * last unit could both pass it; the `$gte` makes the update simply not match
+     * for the second one instead of driving stock negative.
+     */
+    for (const item of items) {
+      const [model, id, field, name] = item.variant
+        ? [Variant, item.variant._id, "stockVariant", item.variant.variantName]
+        : [Product, item.product._id, "stock", item.product.name];
+      const updated = await model.findOneAndUpdate(
+        { _id: id, [field]: { $gte: item.quantity } },
+        { $inc: { [field]: -item.quantity, totalSales: item.quantity } },
+      );
+      if (!updated) {
+        throw new customError(`${name} sold out while you were checking out`, statusCodes.CONFLICT);
+      }
+      taken.push({ model, id, field, quantity: item.quantity });
+    }
+  } catch (error) {
+    // Nothing of a failed checkout may stick: the lines already taken go back
+    // on the shelf, the order is removed and the coupon use is given back
+    for (const line of taken) {
+      await line.model.updateOne(
+        { _id: line.id },
+        { $inc: { [line.field]: line.quantity, totalSales: -line.quantity } },
+      );
+    }
+    if (order) await Order.deleteOne({ _id: order._id });
+    if (couponClaimed) await releaseCouponUse(coupon._id);
+    throw error;
   }
 
-  if (coupon) await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
   await Cart.deleteOne({ _id: cart._id });
 
   // Reaches this store's dashboard only; the room name carries the tenant id

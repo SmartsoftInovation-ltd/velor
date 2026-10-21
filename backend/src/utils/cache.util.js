@@ -67,10 +67,10 @@ const DASHBOARD_SOURCE_NAMESPACES = new Set([
 const bumpOne = async (ns) => {
   // atomic increment — all old versioned keys become unreachable
   const v = await cache.incr(scoped(`${ns}:v`));
-  if (v === 1) {
-    await cache.set(scoped(`${ns}:v`), 2);
-    return 2;
-  }
+  // An unset version reads as 1, so a first bump that lands on 1 has to move
+  // once more. A second INCR, not a SET to 2: a SET racing other bumps
+  // dragged the version back down and made old cached entries live again.
+  if (v === 1) return cache.incr(scoped(`${ns}:v`));
   return v;
 };
 

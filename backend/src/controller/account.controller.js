@@ -109,11 +109,21 @@ exports.getSingleAccount = asynchandeler(async (req, res) => {
 // update account using slug
 exports.updateAccount = asynchandeler(async (req, res) => {
   const { slug } = req.params;
+  // Only the account's details. The balance moves through transactions
+  // (sales, purchases, payments, transfers) so it always matches the ledger;
+  // a `balance` in the request is ignored, as is any other field.
+  const details = Object.fromEntries(
+    ["name", "isActive"]
+      .filter((field) => req.body[field] !== undefined)
+      .map((field) => [field, req.body[field]]),
+  );
   const account = await Account.findOneAndUpdate(
     { slug: slug },
-    { ...req.body },
+    // A plain object (Mongoose sets it): the slug hook reads `name` at the top
+    details,
     {
       new: true,
+      runValidators: true,
     }
   );
   if (!account) throw new customError("Account not found", 404);

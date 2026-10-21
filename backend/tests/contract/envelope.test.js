@@ -23,12 +23,8 @@ const isSuccess = (b, status) =>
 const isError = (b, status) =>
   b && typeof b.message === "string" && b.statusCode === status && (b.code === undefined || typeof b.code === "string") && !("errorStack" in b);
 
-// The Pathao lookups always call the hard-coded sandbox (BUG-004); with the
-// network blocked the outcome depends on the HTTP client's error timing, so
-// they are covered with the upstream mocked in tests/integration/courier.test.js
-const UPSTREAM_LOOKUPS = /\/courier\/(cities|zone|areas)/;
 const routes = routeInventory().filter(
-  (r) => !/\/platform\//.test(r.fullPath) && !r.platformManaged && r.auth !== "webhook" && !UPSTREAM_LOOKUPS.test(r.fullPath),
+  (r) => !/\/platform\//.test(r.fullPath) && !r.platformManaged && r.auth !== "webhook",
 );
 const label = (r) => `${r.method} ${r.fullPath}`;
 

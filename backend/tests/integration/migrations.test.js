@@ -104,6 +104,8 @@ describe("Velor migration", () => {
         ["009-backfill-sale-created-by", "applied"],
         ["010-decrypt-settings-secrets", "applied"],
         ["011-mark-system-transaction-categories", "applied"],
+        ["012-sales-return-unique-invoice", "applied"],
+        ["013-audit-job-id-index", "applied"],
       ]);
     });
 

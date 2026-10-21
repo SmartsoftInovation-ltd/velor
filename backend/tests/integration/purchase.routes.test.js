@@ -107,13 +107,13 @@ describe("purchase and purchase-return routes", () => {
     });
 
     // BUG-026: quantity is added with `+`, so a numeric string concatenates
-    test.failing("treats a numeric-string quantity as a number [BUG-026]", async () => {
+    it("treats a numeric-string quantity as a number [BUG-026]", async () => {
       await createPurchase(purchaseBody({ allproduct: [{ product: product._id.toString(), purchasePrice: 450, retailPrice: 700, quantity: "5" }] })).expect(201);
       expect((await productNow()).stock).toBe(15);
     });
 
     // BUG-027: the supplier's due grows by the client's `dueamount`, unrelated to payable − paid
-    test.failing("works the supplier's due out from payable − paid, not from the client's dueamount [BUG-027]", async () => {
+    it("works the supplier's due out from payable − paid, not from the client's dueamount [BUG-027]", async () => {
       await createPurchase(purchaseBody({ payable: 2250, paid: 2250, dueamount: 9999 })).expect(201);
       expect(await supplierDue()).toBe(0);
     });
@@ -129,7 +129,7 @@ describe("purchase and purchase-return routes", () => {
 
     // BUG-025: manual startTransaction() without retry — a write conflict between
     // parallel purchases is answered 500 instead of being retried
-    test.failing("parallel purchases all succeed (conflicts are retried, not answered 500) [BUG-025]", async () => {
+    it("parallel purchases all succeed (conflicts are retried, not answered 500) [BUG-025]", async () => {
       const results = await Promise.all(Array.from({ length: 8 }, () => createPurchase(purchaseBody({ paid: 0, dueamount: 2250 }))));
       expect(results.map((r) => r.status)).toEqual(Array(8).fill(201));
     });
@@ -162,7 +162,7 @@ describe("purchase and purchase-return routes", () => {
     });
 
     // BUG-028: invoiceNumber goes into $regex unescaped
-    test.failing("treats regex characters in the invoice search literally [BUG-028]", async () => {
+    it("treats regex characters in the invoice search literally [BUG-028]", async () => {
       await createPurchase(purchaseBody({ invoiceNumber: "ALPHA-1" })).expect(201);
       const res = await as().get("/purchase/search-purchase").query({ invoiceNumber: "(" });
       expect(res.status).toBe(200);
@@ -201,7 +201,7 @@ describe("purchase and purchase-return routes", () => {
     });
 
     // BUG-029: an edit without `allproduct` crashes on `for (const item of undefined)`
-    test.failing("an edit that leaves the items out is a 400, not a 500 [BUG-029]", async () => {
+    it("an edit that leaves the items out is a 400, not a 500 [BUG-029]", async () => {
       await createPurchase(purchaseBody({ invoiceNumber: "UP-2" })).expect(201);
       const saved = await inTenant(() => Purchase.findOne({ invoiceNumber: "UP-2" }).lean());
       const res = await as().put(`/purchase/update-purchase/${saved._id}`).send({ paid: 100, payable: 2250 });
@@ -223,7 +223,7 @@ describe("purchase and purchase-return routes", () => {
 
     // BUG-030: the stock is taken back with a bare $inc; once the purchased
     // units are sold, deleting the purchase drives stock negative
-    test.failing("never drives stock below zero [BUG-030]", async () => {
+    it("never drives stock below zero [BUG-030]", async () => {
       await createPurchase(purchaseBody({ invoiceNumber: "DEL-2" })).expect(201);
       const saved = await inTenant(() => Purchase.findOne({ invoiceNumber: "DEL-2" }).lean());
       await inTenant(() => Product.updateOne({ _id: product._id }, { stock: 1 }));

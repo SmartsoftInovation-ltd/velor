@@ -15,6 +15,7 @@ const { customError } = require("../lib/CustomError");
 const { validateUser } = require("../validation/user.validation");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { isProduction } = require("../config/nodeEnv");
+const { signInIdentifier } = require("../utils/signInIdentifier.util");
 const {
   cloudinaryFileUpload,
   deleteCloudinaryFile,
@@ -36,6 +37,26 @@ const {
 const CACHE_TTL = 60 * 60; // 1 hour
 
 const NS = "user";
+
+// Excluded from every user list and lookup: credentials, tokens, reset state
+const SECRET_FIELDS_SELECT =
+  "-password -refreshToken -resetPasswordToken -resetPasswordExpires -resetPasswordAttempts -emailVerificationToken -emailVerificationExpires -tokenVersion";
+
+// A user document as it may leave the API: no password hash, tokens or reset state
+const withoutSecrets = (user) => {
+  const {
+    password,
+    refreshToken,
+    resetPasswordToken,
+    resetPasswordExpires,
+    resetPasswordAttempts,
+    emailVerificationToken,
+    emailVerificationExpires,
+    tokenVersion,
+    ...rest
+  } = user.toObject();
+  return rest;
+};
 // user registraion/ or add user
 exports.registerUser = asynchandeler(async (req, res) => {
   // Validate input
@@ -43,7 +64,7 @@ exports.registerUser = asynchandeler(async (req, res) => {
   const { name, email, password, phone, image } = value;
 
   // Check if user already exists
-  const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+  const existingUser = await User.findOne({ $or: [{ email }, ...(phone ? [{ phone }] : [])] });
   if (existingUser) {
     throw new customError(
       "Email or phone already in use",
@@ -108,14 +129,18 @@ const tenantSummary = (tenant) =>
   tenant ? { _id: tenant._id, name: tenant.name, slug: tenant.slug, status: tenant.status } : null;
 
 exports.login = asynchandeler(async (req, res) => {
-  const { password, phone } = req.body;
-  const email = req.body.email?.trim().toLowerCase();
+  const { password } = req.body;
 
   if (!getTenantId() && process.env.TENANCY_MODE === "strict") {
     throw new customError("Workspace is required", statusCodes.BAD_REQUEST, "WORKSPACE_REQUIRED");
   }
 
-  const user = await User.findOne({ $or: [{ email }, { phone }] })
+  const identifier = signInIdentifier(req.body);
+  if (!identifier || typeof password !== "string" || !password) {
+    throw new customError("Email or phone and password are required", statusCodes.BAD_REQUEST);
+  }
+
+  const user = await User.findOne(identifier)
     .populate("roles")
     .populate("permissions.permission")
     .select(
@@ -447,8 +472,10 @@ exports.changePassword = asynchandeler(async (req, res) => {
 
   user.password = newPassword;
   user.mustChangePassword = false;
-  // Sessions opened with the old password are no longer valid.
+  // Sessions opened with the old password are no longer valid: the refresh
+  // token goes, and the version bump revokes every access token already issued.
   user.refreshToken = null;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
 
   return apiResponse.sendSuccess(
@@ -462,7 +489,7 @@ exports.changePassword = asynchandeler(async (req, res) => {
 exports.getAllUser = asynchandeler(async (_, res) => {
   const users = await User.find()
     .select(
-      "-__v -password -refreshToken  -createdAt  -twoFactorEnabled -newsLetterSubscribe ",
+      `-__v ${SECRET_FIELDS_SELECT} -createdAt -twoFactorEnabled -newsLetterSubscribe`,
     )
     .populate([{ path: "roles" }])
     .populate("wishList")
@@ -481,10 +508,11 @@ exports.getAllUser = asynchandeler(async (_, res) => {
 
 // get single user using email or phone
 exports.getUserbyEmailOrPhone = asynchandeler(async (req, res) => {
-  const { email, phone } = req.query;
-  const user = await User.findOne({ $or: [{ email }, { phone }] })
+  const identifier = signInIdentifier(req.query);
+  if (!identifier) throw new customError("Email or phone is required", statusCodes.BAD_REQUEST);
+  const user = await User.findOne(identifier)
     .select(
-      "-__v -password -refreshToken  -createdAt  -twoFactorEnabled -newsLetterSubscribe ",
+      `-__v ${SECRET_FIELDS_SELECT} -createdAt -twoFactorEnabled -newsLetterSubscribe`,
     )
     .populate([
       { path: "roles" },
@@ -604,7 +632,7 @@ exports.addPermissionToUser = asynchandeler(async (req, res) => {
     statusCodes.OK,
     "Permission added successfully",
     {
-      user,
+      user: withoutSecrets(user),
       permission,
     },
   );
@@ -636,7 +664,7 @@ exports.removePermissionFromUser = asynchandeler(async (req, res) => {
     statusCodes.OK,
     "Permission removed successfully",
     {
-      user,
+      user: withoutSecrets(user),
       permission,
     },
   );
@@ -644,8 +672,8 @@ exports.removePermissionFromUser = asynchandeler(async (req, res) => {
 
 // is SuperAdmin
 exports.isSuperAdmin = asynchandeler(async (req, res) => {
-  const { email, password, phone } = req.body;
-  if (!email && !phone) {
+  const identifier = signInIdentifier(req.body);
+  if (!identifier) {
     throw new customError(
       "Email or phone is required",
       statusCodes.BAD_REQUEST,
@@ -653,7 +681,7 @@ exports.isSuperAdmin = asynchandeler(async (req, res) => {
   }
   // roles must be populated — `role.slug` on raw ObjectIds is always undefined,
   // which made this endpoint report false for every account.
-  const user = await User.findOne({ $or: [{ email }, { phone }] })
+  const user = await User.findOne(identifier)
     .populate("roles")
     .select("roles");
   if (!user) {
@@ -675,7 +703,13 @@ exports.isSuperAdmin = asynchandeler(async (req, res) => {
 // add user
 exports.addUser = asynchandeler(async (req, res) => {
   const value = await validateUser(req);
-  const { image: imageFile, ...rest } = value;
+  const imageFile = value.image;
+  // Only the form's own fields. The schema allows unknown keys, and spreading
+  // them into create let a user manager set `permissions`, `tokenVersion` or
+  // `isEmailVerified` on the new account, bypassing the grant rules.
+  const { name, email, password, phone, discountLimit } = value;
+  const rest = { name, email, password, phone, discountLimit };
+  if (req.body.isActive !== undefined) rest.isActive = String(req.body.isActive) !== "false";
 
   if (value.role) {
     await rbac.assertStaffCapacity(req.tenant);
@@ -725,7 +759,9 @@ exports.addUser = asynchandeler(async (req, res) => {
 
 // get user added by admin
 exports.getUserAddedByAdmin = asynchandeler(async (req, res) => {
-  const cacheKey = await buildCacheKey(NS, "added-by-admin");
+  // New key: entries cached before the secret fields were excluded carry
+  // reset and verification tokens and must never be served again
+  const cacheKey = await buildCacheKey(NS, "added-by-admin:no-secrets");
   const cached = await getCache(cacheKey);
 
   if (cached) {
@@ -739,7 +775,7 @@ exports.getUserAddedByAdmin = asynchandeler(async (req, res) => {
 
   const users = await User.find({ "roles.0": { $exists: true } })
     .select(
-      "-__v -password -refreshToken -createdAt -twoFactorEnabled -newsLetterSubscribe",
+      `-__v ${SECRET_FIELDS_SELECT} -createdAt -twoFactorEnabled -newsLetterSubscribe`,
     )
     .populate("roles");
 
@@ -948,6 +984,6 @@ exports.deleteUser = asynchandeler(async (req, res) => {
     res,
     statusCodes.OK,
     "User deleted successfully",
-    user,
+    withoutSecrets(user),
   );
 });

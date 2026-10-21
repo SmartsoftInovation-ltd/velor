@@ -134,7 +134,8 @@ const optionalAuth = asynchandeler(async (req, res, next) => {
   let session;
   try {
     session = await resolveTokenSession(token, (id) =>
-      User.findById(id).select("_id tokenVersion isActive isBlocked"),
+      // roles tells staff from a shopper (forAudience in utils/publicProduct.js)
+      User.findById(id).select("_id tokenVersion isActive isBlocked roles"),
     );
   } catch {
     return next(); // anonymous, not rejected

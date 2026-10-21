@@ -14,7 +14,10 @@ const nodeEnv = () => process.env.NODE_ENV || "development";
 
 const isProduction = () => nodeEnv() === "production";
 
-const isDevelopment = () => DEV_SPELLINGS.has(nodeEnv());
+// Development only when NODE_ENV says so. An unset NODE_ENV (a deployment
+// that forgot it) gets the safe behaviour — no stack traces, no localhost
+// CORS — rather than the default above, which only names the queue prefix.
+const isDevelopment = () => DEV_SPELLINGS.has(process.env.NODE_ENV);
 
 const isTest = () => nodeEnv() === "test";
 

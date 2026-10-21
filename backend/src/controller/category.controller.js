@@ -130,12 +130,7 @@ class CategoryController {
       .lean();
 
     if (!category) {
-      return apiResponse.sendSuccess(
-        res,
-        statusCodes.OK,
-        "Category not found",
-        { category: null, fromCache: false },
-      );
+      throw new customError("Category not found", statusCodes.NOT_FOUND);
     }
 
     await setCache(cacheKey, category, CACHE_TTL);
@@ -228,10 +223,14 @@ class CategoryController {
       { new: true },
     );
     if (!category) {
+      // Already active is fine (nothing to do); an unknown slug is a 404
+      if (!(await Category.exists({ slug }))) {
+        throw new customError("Category not found", statusCodes.NOT_FOUND);
+      }
       return apiResponse.sendSuccess(
         res,
         statusCodes.OK,
-        "Category not found or already active",
+        "Category already active",
         { category: null, fromCache: false },
       );
     }
@@ -256,10 +255,14 @@ class CategoryController {
       { new: true },
     );
     if (!category) {
+      // Already inactive is fine (nothing to do); an unknown slug is a 404
+      if (!(await Category.exists({ slug }))) {
+        throw new customError("Category not found", statusCodes.NOT_FOUND);
+      }
       return apiResponse.sendSuccess(
         res,
         statusCodes.OK,
-        "Category not found or already inactive",
+        "Category already inactive",
         { category: null, fromCache: false },
       );
     }

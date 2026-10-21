@@ -87,6 +87,12 @@ const crateTransactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "SalesReturn",
     },
+    // True on a sales-return refund that took its amount out of the account's
+    // balance. Refund rows written before the balance was moved lack it, so
+    // removing one of those must not put money back that never left.
+    balanceApplied: {
+      type: Boolean,
+    },
   },
   { timestamps: true }
 );

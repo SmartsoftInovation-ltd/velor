@@ -49,7 +49,7 @@ describe("sale integrity, audience and supplier payments", () => {
   // ------------------------------------------------------------------ stock
   // BUG-067: the sale schema accepts salesStatus "return" on a new sale; such a
   // line adds stock with no sales return, refund or approval behind it
-  test.failing("a new sale cannot carry a 'return' line that puts stock back [BUG-067]", async () => {
+  it("a new sale cannot carry a 'return' line that puts stock back [BUG-067]", async () => {
     const res = await as().post("/sales/create-sales").send(sale({ searchItem: [line({ salesStatus: "return", quantity: 5 })], payable: 0, paid: 0 }));
     expect(res.status).toBe(400);
     expect(await stock()).toBe(10);
@@ -57,7 +57,7 @@ describe("sale integrity, audience and supplier payments", () => {
 
   // BUG-068: after a return flips a line to "return", an edit that sends the
   // line back as "sale" is read as −qty − (+qty): stock moves twice the quantity
-  test.failing("editing a sale after a partial return does not move stock [BUG-068]", async () => {
+  it("editing a sale after a partial return does not move stock [BUG-068]", async () => {
     const s = await create();
     await as()
       .post("/sales-return/createsalesreturn")
@@ -71,7 +71,7 @@ describe("sale integrity, audience and supplier payments", () => {
   // ------------------------------------------------------------------ mass assignment
   // BUG-069: updateSales writes `{ $set: req.body }` — the refund total, the due
   // and the invoice number are all client-writable on an edit
-  test.failing("an edit cannot rewrite the refund total, the due or the invoice number [BUG-069]", async () => {
+  it("an edit cannot rewrite the refund total, the due or the invoice number [BUG-069]", async () => {
     const s = await create();
     await update(s._id, { return: 99999, presentDue: 12345, invoiceNumber: "FAKE-1" }).expect(200);
     const stored = await inTenant(() => Sales.findById(s._id).lean());
@@ -93,7 +93,7 @@ describe("sale integrity, audience and supplier payments", () => {
 
   // BUG-070: updateSales never applies a change of customerAdvancePaymentAdjust,
   // but deleteSales credits the stored figure back
-  test.failing("an edit that raises the advance used, then a delete, leaves the advance unchanged [BUG-070]", async () => {
+  it("an edit that raises the advance used, then a delete, leaves the advance unchanged [BUG-070]", async () => {
     const c = await f.customer.create();
     await as().post("/customer/customer-advance-payment-recived").send({ customer: c._id.toString(), paidAmount: 1000, paymentMode: account._id.toString() }).expect(201);
     const s = await create({ customerType: { type: "listed", customerId: c._id.toString() }, paid: 2000, balance: 0 });
@@ -107,7 +107,7 @@ describe("sale integrity, audience and supplier payments", () => {
   // ------------------------------------------------------------------ audience
   // BUG-071: optionalAuth sets req.user for any valid token, so forAudience()
   // treats a storefront shopper exactly like staff and hands them the cost price
-  test.failing("a signed-in shopper does not see cost prices on the catalogue [BUG-071]", async () => {
+  it("a signed-in shopper does not see cost prices on the catalogue [BUG-071]", async () => {
     const shopper = await createUserIn(tenant, { shopper: true });
     const res = await as(tokenFor(shopper)).get("/product/getproduct").expect(200);
     expect(JSON.stringify(res.body)).not.toMatch(/"purchasePrice":/);
@@ -137,14 +137,14 @@ describe("sale integrity, audience and supplier payments", () => {
 
     // BUG-072: not transactional — the due is cut and the payment saved before
     // the account is checked; an unknown account answers 404 but the due stays cut
-    test.failing("an unknown payment account changes nothing [BUG-072]", async () => {
+    it("an unknown payment account changes nothing [BUG-072]", async () => {
       await pay({ paymentMode: "0123456789abcdef01234567" }).expect(404);
       expect(await due()).toBe(1000);
       expect(await inTenant(() => SupplierDuePayment.countDocuments())).toBe(0);
     });
 
     // BUG-072: deleting a payment refunds the account but not the supplier's due
-    test.failing("deleting a payment restores the supplier's due [BUG-072]", async () => {
+    it("deleting a payment restores the supplier's due [BUG-072]", async () => {
       await pay().expect(201);
       const p = await inTenant(() => SupplierDuePayment.findOne().lean());
       await as().delete(`/supplier/delete-supplier-due-payment/${p._id}`).expect(200);

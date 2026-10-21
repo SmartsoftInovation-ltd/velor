@@ -16,13 +16,19 @@
  *     → { seo: { ogImage: { url: 'https://...' } } }
  *
  * Numeric path segments produce arrays; string segments produce objects.
+ *
+ * A key with a `__proto__`, `constructor` or `prototype` segment is dropped:
+ * walking it would reach Object.prototype and write there, polluting every
+ * object of the server process.
  */
+const UNSAFE_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
+
 const expandBracketKeys = (body = {}) => {
   const result = {};
 
   for (const [key, value] of Object.entries(body)) {
     if (!key.includes("[")) {
-      result[key] = value;
+      if (!UNSAFE_SEGMENTS.has(key)) result[key] = value;
       continue;
     }
 
@@ -31,6 +37,7 @@ const expandBracketKeys = (body = {}) => {
     const re = /([^\[\]]+)/g;
     let m;
     while ((m = re.exec(key)) !== null) parts.push(m[1]);
+    if (parts.some((part) => UNSAFE_SEGMENTS.has(part))) continue;
 
     let cur = result;
     for (let i = 0; i < parts.length - 1; i++) {

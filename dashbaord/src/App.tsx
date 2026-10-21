@@ -1547,7 +1547,7 @@ export default function App() {
                   element={<CustomerPaymentReceiveList />}
                 />
                 <Route
-                  path="/customer-payment-receive-edit/:customerId"
+                  path="/customer-payment-receive-edit/:paymentId"
                   element={<CustomerPaymentReceiveEdit />}
                 />
                 <Route
