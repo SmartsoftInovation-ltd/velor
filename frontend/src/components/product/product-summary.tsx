@@ -1,13 +1,9 @@
-import { StatusDot } from "@/components/ui/badge";
 import { Stars } from "@/components/ui/stars";
 import type { ProductDetail } from "@/lib/catalog/types";
-import { ProductOptions } from "./product-options";
+import { ProductPurchase } from "./product-purchase";
 import { ShareButton } from "./share-button";
 
 export function ProductSummary({ product }: { product: ProductDetail }) {
-  const { compareAtPrice, price } = product;
-  const onSale = compareAtPrice !== undefined && compareAtPrice > price;
-
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -35,37 +31,14 @@ export function ProductSummary({ product }: { product: ProductDetail }) {
         </div>
       </div>
 
-      <div className="flex items-baseline gap-3">
-        <p className="text-h2 font-semibold tabular text-text-primary">
-          ৳{price.toLocaleString()}
-          {/* Variants priced differently: show the range, the option picker names the exact price */}
-          {product.maxPrice > price ? ` – ৳${product.maxPrice.toLocaleString()}` : null}
-        </p>
-        {onSale && compareAtPrice ? (
-          <p className="text-h2 font-medium tabular text-text-tertiary line-through">
-            ৳{compareAtPrice.toLocaleString()}
-          </p>
-        ) : null}
-      </div>
-
-      <p className="flex items-center gap-2 text-small text-text-secondary">
-        Availability:
-        {product.stockCount > 0 ? (
-          <StatusDot tone={product.stockCount <= 5 ? "warning" : "success"}>
-            In stock · {product.stockCount} left
-          </StatusDot>
-        ) : (
-          <StatusDot tone="danger">Out of stock</StatusDot>
-        )}
-      </p>
-
-      <ProductOptions
+      <ProductPurchase
+        price={product.price}
+        stockCount={product.stockCount}
+        variants={product.variants}
         colors={product.colors}
         sizes={product.sizes}
         soldOutSizes={product.soldOutSizes}
-        stockCount={product.stockCount}
         productName={product.name}
-        variants={product.variants}
       />
     </div>
   );

@@ -1,66 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductVariant } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
-import { BuyActions } from "./buy-actions";
-import { VariantPicker } from "./variant-picker";
 
 // Colour ids are lowercase dashboard names; "navy blue" paints as CSS `navyblue`
 const colorName = (id: string) => id.replace(/\b\w/g, (c) => c.toUpperCase());
 const swatchOf = (id: string) => id.replace(/\s+/g, "");
 
-/**
- * Selection state only — there is no cart yet, so the buttons do not submit.
- * See `.claude/specs/product-page.md` for the endpoints this will call.
- */
+/** Colour and size pickers for a product without variants. Selection state only. */
 export function ProductOptions({
   colors,
   sizes,
   soldOutSizes,
-  stockCount,
-  productName,
-  variants,
 }: {
   colors: string[];
   sizes: string[];
   soldOutSizes: string[];
-  stockCount: number;
-  productName: string;
-  variants: ProductVariant[];
 }) {
   const [color, setColor] = useState(colors[0]);
   const [size, setSize] = useState(
     () => sizes.find((item) => !soldOutSizes.includes(item)) ?? sizes[0],
   );
-  const [qty, setQty] = useState(1);
-  const [variantId, setVariantId] = useState(
-    () => (variants.find((v) => v.stock > 0) ?? variants[0])?.id ?? "",
-  );
-
-  // With variants, what can be bought is the selected option's stock
-  const variant = variants.find((v) => v.id === variantId);
-  const available = variant ? variant.stock : stockCount;
-  const soldOut = available <= 0;
-  const max = Math.max(1, Math.min(available, 10));
-  const pickVariant = (id: string) => {
-    setVariantId(id);
-    setQty(1);
-  };
+  if (!colors.length && !sizes.length) return null;
 
   return (
     <div className="space-y-5">
-      {variants.length > 1 ? (
-        <VariantPicker
-          variants={variants}
-          selectedId={variantId}
-          onSelect={pickVariant}
-        />
-      ) : null}
-
-      {/* A product with variants is chosen by option above; colour and size
-          pickers only appear for a single product that has them */}
-      {variants.length <= 1 && colors.length > 0 ? (
+      {colors.length > 0 ? (
         <div className="space-y-2">
           <p className="text-small text-text-secondary">
             Colour:{" "}
@@ -97,7 +62,7 @@ export function ProductOptions({
         </div>
       ) : null}
 
-      {variants.length <= 1 && sizes.length > 0 ? (
+      {sizes.length > 0 ? (
         <div className="space-y-2">
           <p className="text-small text-text-secondary">
             Size: <span className="font-medium text-text-primary">{size}</span>
@@ -140,14 +105,6 @@ export function ProductOptions({
           </ul>
         </div>
       ) : null}
-
-      <BuyActions
-        qty={qty}
-        setQty={setQty}
-        max={max}
-        soldOut={soldOut}
-        productName={productName}
-      />
     </div>
   );
 }

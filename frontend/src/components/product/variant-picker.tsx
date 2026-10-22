@@ -4,8 +4,8 @@ import type { ProductVariant } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 
 /**
- * The product's buyable options as chips. Each carries its own price and
- * stock, so the line under the chips follows the selection.
+ * The product's buyable options as chips. The price and stock of the
+ * selected one are shown above by ProductPurchase.
  */
 export function VariantPicker({
   variants,
@@ -22,12 +22,6 @@ export function VariantPicker({
     <div className="space-y-2">
       <p className="text-small text-text-secondary">
         Option: <span className="font-medium text-text-primary">{selected.label}</span>
-        <span className="tabular"> · ৳{selected.price.toLocaleString()}</span>
-        {selected.stock > 0 ? (
-          <span className="text-text-tertiary"> · {selected.stock} left</span>
-        ) : (
-          <span className="text-danger-text"> · sold out</span>
-        )}
       </p>
       <ul className="flex flex-wrap gap-2">
         {variants.map((variant) => {
