@@ -18,8 +18,6 @@ import { showApiError } from "../../../utils/apiError";
 
 interface DiscountBannerForm {
   title: string;
-  headLine: string;
-  description: string;
   link: string;
   priority: string;
 }
@@ -33,8 +31,6 @@ const DiscountBannerUpdate = () => {
 
   const [formData, setFormData] = useState<DiscountBannerForm>({
     title: "",
-    headLine: "",
-    description: "",
     link: "",
     priority: "",
   });
@@ -54,8 +50,6 @@ const DiscountBannerUpdate = () => {
         if (data) {
           setFormData({
             title: data.title || "",
-            headLine: data.headLine || "",
-            description: data.description || "",
             link: data.link || "",
             priority: data.priority?.toString() || "",
           });
@@ -63,7 +57,7 @@ const DiscountBannerUpdate = () => {
           if (imgUrl) setPreview(imgUrl);
         }
       } catch (error) {
-        showApiError(error, "Failed to load discount banner.");
+        showApiError(error, "Failed to load promo banner.");
       } finally {
         setIsFetching(false);
       }
@@ -110,8 +104,6 @@ const DiscountBannerUpdate = () => {
   const validate = () => {
     const e: typeof errors = {};
     if (!formData.title.trim()) e.title = "Title is required.";
-    if (!formData.headLine.trim()) e.headLine = "Headline is required.";
-    if (!formData.description.trim()) e.description = "Description is required.";
     if (!formData.link.trim()) e.link = "Redirect link is required.";
     if (!formData.priority.trim()) e.priority = "Priority is required.";
     setErrors(e);
@@ -126,8 +118,6 @@ const DiscountBannerUpdate = () => {
       setIsLoading(true);
       const data = new FormData();
       data.append("title", formData.title);
-      data.append("headLine", formData.headLine);
-      data.append("description", formData.description);
       data.append("link", formData.link);
       data.append("priority", formData.priority);
       if (image) data.append("image", image);
@@ -136,12 +126,12 @@ const DiscountBannerUpdate = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      toast.success("Discount banner updated successfully!");
+      toast.success("Promo banner updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["discount-banners"] });
       queryClient.invalidateQueries({ queryKey: ["discount-banner", slug] });
       setTimeout(() => navigate("/discount-banner-list"), 50);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to update discount banner.");
+      toast.error(error.response?.data?.message || "Failed to update promo banner.");
     } finally {
       setIsLoading(false);
     }
@@ -150,8 +140,8 @@ const DiscountBannerUpdate = () => {
   if (isFetching) {
     return (
       <>
-        <PageMeta title="Update Discount Banner | Admin Dashboard" description="" />
-        <PageBreadcrumb pageTitle="Update Discount Banner" />
+        <PageMeta title="Update Promo Banner | Admin Dashboard" description="" />
+        <PageBreadcrumb pageTitle="Update Promo Banner" />
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
         </div>
@@ -162,13 +152,13 @@ const DiscountBannerUpdate = () => {
   return (
     <>
       <PageMeta
-        title={`Update Discount Banner - ${formData.title}`}
-        description="Update discount banner details"
+        title={`Update Promo Banner - ${formData.title}`}
+        description="Update promo banner details"
       />
       {/* Header row is just the trail and the list button — the card carries no
           second heading of its own. */}
       <PageBreadcrumb
-        pageTitle="Update Discount Banner"
+        pageTitle="Update Promo Banner"
         className="mb-3"
         hideTitle
         actions={
@@ -182,7 +172,7 @@ const DiscountBannerUpdate = () => {
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <SectionCard icon={<FaPercent />} title="Discount Banner Content">
+            <SectionCard icon={<FaPercent />} title="Promo Banner Content">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Title <Req /></Label>
@@ -195,30 +185,6 @@ const DiscountBannerUpdate = () => {
                   />
                   {errors.title && <p className="text-red-500 text-xs mt-1 font-medium">{errors.title}</p>}
                 </div>
-                <div>
-                  <Label>Headline <Req /></Label>
-                  <Input
-                    type="text"
-                    name="headLine"
-                    placeholder="Enter headline"
-                    value={formData.headLine}
-                    onChange={handleChange}
-                  />
-                  {errors.headLine && <p className="text-red-500 text-xs mt-1 font-medium">{errors.headLine}</p>}
-                </div>
-                <div className="md:col-span-2">
-                  <Label>Description <Req /></Label>
-                  <textarea
-                    name="description"
-                    placeholder="Enter banner description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-3 focus:ring-accent-500/20 focus:border-accent-500 text-sm"
-                  />
-                  {errors.description && <p className="text-red-500 text-xs mt-1 font-medium">{errors.description}</p>}
-                </div>
-            
               </div>
             </SectionCard>
             <SectionCard icon={<FaLink />} title="Link & Order">

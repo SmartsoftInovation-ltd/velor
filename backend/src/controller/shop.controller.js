@@ -1,6 +1,7 @@
 const User = require("../models/user.model");
 const StoreInformation = require("../models/storeInformation.model");
 const Banner = require("../models/banner.model");
+const DiscountBanner = require("../models/discountbanner.model");
 const { buildCacheKey, getCache, setCache } = require("../utils/cache.util");
 const Order = require("../models/order.model");
 const { customError } = require("../lib/CustomError");
@@ -92,6 +93,32 @@ exports.banners = asynchandeler(async (req, res) => {
   }
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Banners", { banners });
+});
+
+/**
+ * The home page promo banner: the store's first active "Promo Banner"
+ * (dashboard: Website Management → Promo Banner, stored as DiscountBanner)
+ * with an uploaded image, priority 1 first. null when there is none. Shares
+ * the dashboard's cache namespace, so an edit there shows on the next visit.
+ */
+exports.promoBanner = asynchandeler(async (req, res) => {
+  requireStore();
+  const cacheKey = await buildCacheKey("discountBanner", "storefront");
+  let banner = await getCache(cacheKey);
+
+  if (banner === null || banner === undefined) {
+    const row = await DiscountBanner.findOne({ isActive: true, "image.url": { $nin: ["", null] } })
+      .sort({ priority: 1, createdAt: -1 })
+      .select("title headLine description link image.url")
+      .lean();
+    // Cached as false for "none", so an empty store does not query every visit
+    banner = row
+      ? { _id: row._id, title: row.title, headLine: row.headLine || "", description: row.description || "", link: row.link || "", image: row.image.url }
+      : false;
+    await setCache(cacheKey, banner, 60 * 60);
+  }
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Promo banner", { banner: banner || null });
 });
 
 exports.register = asynchandeler(async (req, res) => {

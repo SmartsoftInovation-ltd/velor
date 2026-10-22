@@ -16,16 +16,12 @@ import { scopedStorageKey } from "../../../lib/session";
 
 interface DiscountBannerForm {
   title: string;
-  headLine: string;
-  description: string;
   link: string;
   priority: string;
 }
 
 const initialForm: DiscountBannerForm = {
   title: "",
-  headLine: "",
-  description: "",
   link: "",
   priority: "",
 };
@@ -92,8 +88,6 @@ const AddDiscountBanner = () => {
   const validate = () => {
     const e: typeof errors = {};
     if (!formData.title.trim()) e.title = "Title is required.";
-    if (!formData.headLine.trim()) e.headLine = "Headline is required.";
-    if (!formData.description.trim()) e.description = "Description is required.";
     if (!formData.link.trim()) e.link = "Redirect link is required.";
     if (!formData.priority.trim()) e.priority = "Priority is required.";
     if (!image) e.image = "Banner image is required.";
@@ -110,8 +104,6 @@ const AddDiscountBanner = () => {
       setIsLoading(true);
       const data = new FormData();
       data.append("title", formData.title);
-      data.append("headLine", formData.headLine);
-      data.append("description", formData.description);
       data.append("link", formData.link);
       data.append("priority", formData.priority);
       data.append("image", image!);
@@ -121,7 +113,7 @@ const AddDiscountBanner = () => {
       });
 
       if ([200, 201, 202].includes(res.status)) {
-        toast.success("Discount banner created successfully!");
+        toast.success("Promo banner created successfully!");
         localStorage.removeItem(scopedStorageKey(DRAFT_KEY));
         setFormData(initialForm);
         setImage(null);
@@ -129,7 +121,7 @@ const AddDiscountBanner = () => {
         setErrors({});
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to create discount banner.");
+      toast.error(error.response?.data?.message || "Failed to create promo banner.");
     } finally {
       setIsLoading(false);
     }
@@ -138,13 +130,13 @@ const AddDiscountBanner = () => {
   return (
     <>
       <PageMeta
-        title="Create Discount Banner | Admin Dashboard"
-        description="Add discount banners for your ecommerce site"
+        title="Create Promo Banner | Admin Dashboard"
+        description="Add promo banners for your ecommerce site"
       />
       {/* Header row is just the trail and the list button — the card carries no
           second heading of its own. */}
       <PageBreadcrumb
-        pageTitle="Add Discount Banner"
+        pageTitle="Add Promo Banner"
         className="mb-3"
         hideTitle
         actions={
@@ -158,7 +150,7 @@ const AddDiscountBanner = () => {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <SectionCard icon={<FaPercent />} title="Discount Banner Content">
+            <SectionCard icon={<FaPercent />} title="Promo Banner Content">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label>Title <Req /></Label>
@@ -171,30 +163,6 @@ const AddDiscountBanner = () => {
                   />
                   {errors.title && <p className="text-red-500 text-xs mt-1 font-medium">{errors.title}</p>}
                 </div>
-                <div>
-                  <Label>Headline <Req /></Label>
-                  <Input
-                    type="text"
-                    name="headLine"
-                    placeholder="Enter headline"
-                    value={formData.headLine}
-                    onChange={handleChange}
-                  />
-                  {errors.headLine && <p className="text-red-500 text-xs mt-1 font-medium">{errors.headLine}</p>}
-                </div>
-                <div className="md:col-span-2">
-                  <Label>Description <Req /></Label>
-                  <textarea
-                    name="description"
-                    placeholder="Enter banner description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-3 focus:ring-accent-500/20 focus:border-accent-500 text-sm"
-                  />
-                  {errors.description && <p className="text-red-500 text-xs mt-1 font-medium">{errors.description}</p>}
-                </div>
-            
               </div>
             </SectionCard>
             <SectionCard icon={<FaLink />} title="Link & Order">

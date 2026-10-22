@@ -18,6 +18,7 @@ const _ = express.Router();
 
 _.get("/store", shopController.store);
 _.get("/banners", shopController.banners);
+_.get("/promo-banner", shopController.promoBanner);
 _.get("/products", shopCatalogController.products);
 _.get("/limited-offers", shopCatalogController.limitedOffers);
 _.get("/flash-sale", shopCatalogController.flashSale);

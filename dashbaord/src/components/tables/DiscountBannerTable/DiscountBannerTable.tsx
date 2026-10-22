@@ -18,8 +18,6 @@ interface DiscountBanner {
   _id: string;
   slug: string;
   title: string;
-  headLine: string;
-  description: string;
   link: string;
   priority: number;
   image: { url: string; status: string } | string;
@@ -62,8 +60,8 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 const getImageUrl = (image: DiscountBanner["image"]) =>
   typeof image === "object" && image !== null ? image.url : image || "";
 
-const gridTemplateColumns = "110px 100px 1fr 1fr 1fr 80px 180px";
-const COLUMNS = ["Serial ID", "Image", "Title", "Headline", "Description", "Priority", "Actions"];
+const gridTemplateColumns = "110px 100px 1fr 80px 180px";
+const COLUMNS = ["Serial ID", "Image", "Title", "Priority", "Actions"];
 
 const DiscountBannerTable = () => {
   const navigate = useNavigate();
@@ -107,8 +105,7 @@ const DiscountBannerTable = () => {
         const q = searchTerm.toLowerCase();
         return (
           b.title?.toLowerCase().includes(q) ||
-          b.headLine?.toLowerCase().includes(q) ||
-          b.description?.toLowerCase().includes(q)
+          b.slug?.toLowerCase().includes(q)
         );
       })
     : allBanners;
@@ -125,11 +122,11 @@ const DiscountBannerTable = () => {
     setIsDeleting(true);
     try {
       await axiosSecure.delete(`/discount-banner/delete-discountbanner/${selected.slug}`);
-      toast.success("Discount banner deleted successfully!");
+      toast.success("Promo banner deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ["discount-banners"] });
       fetchBanners();
     } catch (error) {
-      showApiError(error, "Failed to delete discount banner.");
+      showApiError(error, "Failed to delete promo banner.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -185,7 +182,7 @@ const DiscountBannerTable = () => {
       {/* Error */}
       {isError && (
         <div className="text-center py-20 min-h-[400px]">
-          <p className="text-red-500 font-bold mb-4">Failed to load discount banners!</p>
+          <p className="text-red-500 font-bold mb-4">Failed to load promo banners!</p>
           <button
             onClick={() => refetch()}
             className="px-6 py-2 bg-accent-500 text-white rounded-xl font-bold"
@@ -200,7 +197,7 @@ const DiscountBannerTable = () => {
         <MobileCardList
           items={banners}
           getKey={(banner) => banner._id}
-          emptyMessage="No discount banners found"
+          emptyMessage="No promo banners found"
           renderCard={(banner) => (
             <div className="space-y-1">
               <div className="mb-2 flex items-center gap-3 border-b border-gray-100 pb-2 dark:border-white/[0.05]">
@@ -215,7 +212,6 @@ const DiscountBannerTable = () => {
                   <p className="truncate text-sm font-bold text-gray-800 dark:text-white/90">
                     {banner.title}
                   </p>
-                  <p className="truncate text-xs text-gray-400">{banner.headLine}</p>
                 </div>
               </div>
               <MobileCardRow label="Priority">{banner.priority}</MobileCardRow>
@@ -224,7 +220,7 @@ const DiscountBannerTable = () => {
                   type="button"
                   onClick={() => navigate(`/view-discount-banner/${banner.slug}`)}
                   className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
-                  aria-label="View discount banner"
+                  aria-label="View promo banner"
                 >
                   <FaEye className="size-4" />
                 </button>
@@ -232,7 +228,7 @@ const DiscountBannerTable = () => {
                   type="button"
                   onClick={() => navigate(`/update-discount-banner/${banner.slug}`)}
                   className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
-                  aria-label="Edit discount banner"
+                  aria-label="Edit promo banner"
                 >
                   <FaEdit className="size-4" />
                 </button>
@@ -240,7 +236,7 @@ const DiscountBannerTable = () => {
                   type="button"
                   onClick={() => { setSelected(banner); setShowDeleteModal(true); }}
                   className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
-                  aria-label="Delete discount banner"
+                  aria-label="Delete promo banner"
                 >
                   <MdDelete className="size-5" />
                 </button>
@@ -324,16 +320,6 @@ const DiscountBannerTable = () => {
                         {banner.title}
                       </div>
 
-                      {/* Headline */}
-                      <div className="px-4 text-sm text-gray-600 dark:text-gray-300 truncate flex items-center justify-center">
-                        {banner.headLine}
-                      </div>
-
-                      {/* Description */}
-                      <div className="px-4 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 flex items-center justify-center">
-                        {banner.description}
-                      </div>
-
                       {/* Priority */}
                       <div className="px-4 flex items-center justify-center">
                         <span className="inline-flex items-center justify-center size-7 rounded-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400 text-xs font-bold">
@@ -348,7 +334,7 @@ const DiscountBannerTable = () => {
                             type="button"
                             onClick={() => navigate(`/view-discount-banner/${banner.slug}`)}
                             className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
-                            aria-label="View discount banner"
+                            aria-label="View promo banner"
                           >
                             <FaEye className="size-4" />
                           </button>
@@ -358,7 +344,7 @@ const DiscountBannerTable = () => {
                             type="button"
                             onClick={() => navigate(`/update-discount-banner/${banner.slug}`)}
                             className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
-                            aria-label="Edit discount banner"
+                            aria-label="Edit promo banner"
                           >
                             <FaEdit className="size-4" />
                           </button>
@@ -371,7 +357,7 @@ const DiscountBannerTable = () => {
                               setShowDeleteModal(true);
                             }}
                             className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-error-50 text-error-600 hover:bg-error-100 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
-                            aria-label="Delete discount banner"
+                            aria-label="Delete promo banner"
                           >
                             <MdDelete className="size-5" />
                           </button>

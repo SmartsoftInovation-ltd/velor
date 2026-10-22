@@ -15,13 +15,13 @@ const DiscountBannerList = () => {
   return (
     <>
       <PageMeta
-        title="Discount Banner List | Admin Dashboard"
-        description="View all discount banners added to your ecommerce website"
+        title="Promo Banner List | Admin Dashboard"
+        description="View all promo banners added to your ecommerce website"
       />
       {/* Header row is just the trail and the page actions — the card carries no
           heading of its own. */}
       <PageBreadcrumb
-        pageTitle="Discount Banner List"
+        pageTitle="Promo Banner List"
         className="mb-3"
         hideTitle
         actions={
@@ -51,7 +51,7 @@ const DiscountBannerList = () => {
             {canAdd && (
               <Link to="/add-discount">
                 <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
-                  Add Discount Banner
+                  Add Promo Banner
                 </Button>
               </Link>
             )}

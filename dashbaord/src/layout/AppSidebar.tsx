@@ -26,6 +26,7 @@ import {
   TbPhoto,
   TbSparkles,
   TbBolt,
+  TbSpeakerphone,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
@@ -440,6 +441,15 @@ const navItems: NavItem[] = [
     module: PERMISSIONS.LIMITED_OFFER,
   },
   {
+    // The wide banner in the middle of the storefront home page
+    name: "Promo Banner",
+    icon: <TbSpeakerphone />,
+    subItems: [
+      { name: "Add Promo Banner", path: "/add-discount", module: PERMISSIONS.DISCOUNT_BANNER, action: "add", pro: false },
+      { name: "Promo Banner List", path: "/discount-banner-list", module: PERMISSIONS.DISCOUNT_BANNER, pro: false },
+    ],
+  },
+  {
     // Time-limited sale prices on the storefront
     name: "Flash Sale",
     icon: <TbBolt />,
@@ -699,24 +709,6 @@ const othersItems: NavItem[] = [
           },
         ],
       },
-      {
-        name: "Discount Banner",
-        subSubItems: [
-          {
-            name: "Add Discount Banner",
-            path: "/add-discount",
-            module: PERMISSIONS.DISCOUNT_BANNER,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Discount Banner List",
-            path: "/discount-banner-list",
-            module: PERMISSIONS.DISCOUNT_BANNER,
-            pro: false,
-          },
-        ],
-      },
     ],
   },
 ];
@@ -952,7 +944,8 @@ const websiteManagementItems = navItems.filter(
     item.name === "Delivery Charge" ||
     item.name === "Banner" ||
     item.name === "Limited Offer" ||
-    item.name === "Flash Sale",
+    item.name === "Flash Sale" ||
+    item.name === "Promo Banner",
 );
 const profileItems = hrManage.filter(
   (item) =>
@@ -1105,6 +1098,7 @@ const AppSidebar: React.FC = () => {
         item.name !== "Banner" &&
         item.name !== "Limited Offer" &&
         item.name !== "Flash Sale" &&
+        item.name !== "Promo Banner" &&
         item.name !== "Order" &&
         item.name !== "Size Chart" &&
         item.name.trim() !== "All Accounts" &&

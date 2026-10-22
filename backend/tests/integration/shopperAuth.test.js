@@ -10,6 +10,7 @@ const TenantDomain = require("../../src/models/platform/tenantDomain.model");
 const User = require("../../src/models/user.model");
 const Order = require("../../src/models/order.model");
 const Banner = require("../../src/models/banner.model");
+const DiscountBanner = require("../../src/models/discountbanner.model");
 const service = require("../../src/settings/settings.service");
 
 /**
@@ -93,6 +94,21 @@ describe("storefront shopper accounts", () => {
       const res = await request(app.server).get("/api/v1/shop/banners").set(VELOR).expect(200);
       expect(res.body.data.banners.map((b) => b.title)).toEqual(["First", "Second"]);
       expect(res.body.data.banners[0]).toMatchObject({ image: "https://img/1.jpg", link: "" });
+    });
+
+    it("serves the store's first active promo banner, and null when it has none", async () => {
+      const none = await request(app.server).get("/api/v1/shop/promo-banner").set(PIZZA).expect(200);
+      expect(none.body.data.banner).toBeNull();
+
+      await runForTenant(velor.tenant._id, () =>
+        DiscountBanner.create([
+          { title: "Later", priority: 2, image: { url: "https://img/2.jpg" } },
+          { title: "Winter", priority: 1, link: "/shop", image: { url: "https://img/1.jpg" } },
+          { title: "Off", priority: 0, isActive: false, image: { url: "https://img/0.jpg" } },
+        ]),
+      );
+      const res = await request(app.server).get("/api/v1/shop/promo-banner").set(VELOR).expect(200);
+      expect(res.body.data.banner).toMatchObject({ title: "Winter", image: "https://img/1.jpg", link: "/shop" });
     });
 
     it("answers 404 for a domain no store owns", async () => {

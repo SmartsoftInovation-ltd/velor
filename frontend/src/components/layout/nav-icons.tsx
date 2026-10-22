@@ -2,7 +2,6 @@ import { HeadsetIcon } from "@/components/ui/icons";
 import {
   BagIcon,
   BoxIcon,
-  CrownIcon,
   GridIcon,
   HomeIcon,
   SparkleIcon,
@@ -18,7 +17,6 @@ const ICONS = {
   "/shop": BagIcon,
   "/category": GridIcon,
   "/shop/new-arrivals": SparkleIcon,
-  "/shop/best-sellers": CrownIcon,
   "/shop/offers": TagIcon,
   "/track-order": BoxIcon,
   "/contact": HeadsetIcon,

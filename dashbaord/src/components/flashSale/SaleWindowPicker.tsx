@@ -67,7 +67,7 @@ const SaleWindowPicker = ({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <TimeField label="Starts at" date={start} onChange={(h, m) => emit(withTime(start, h, m), end)} />
-        <TimeField label="Ends at" date={end} onChange={(h, m) => emit(start, withTime(end, h, m))} />
+        <TimeField label="Ends at" align="right" date={end} onChange={(h, m) => emit(start, withTime(end, h, m))} />
       </div>
 
       <div>

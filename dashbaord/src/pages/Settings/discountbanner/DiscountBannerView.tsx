@@ -11,8 +11,6 @@ interface DiscountBanner {
   _id: string;
   slug: string;
   title: string;
-  headLine: string;
-  description: string;
   link: string;
   priority: number;
   image: { url: string; status: string } | string;
@@ -67,10 +65,10 @@ const DiscountBannerView = () => {
     return (
       <>
         <PageMeta
-          title="View Discount Banner | Admin Dashboard"
+          title="View Promo Banner | Admin Dashboard"
           description=""
         />
-        <PageBreadcrumb pageTitle="View Discount Banner" />
+        <PageBreadcrumb pageTitle="View Promo Banner" />
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="size-10 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
         </div>
@@ -82,10 +80,10 @@ const DiscountBannerView = () => {
     return (
       <>
         <PageMeta
-          title="View Discount Banner | Admin Dashboard"
+          title="View Promo Banner | Admin Dashboard"
           description=""
         />
-        <PageBreadcrumb pageTitle="View Discount Banner" />
+        <PageBreadcrumb pageTitle="View Promo Banner" />
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
           <p className="text-red-500 font-semibold">Banner not found.</p>
           <button
@@ -104,10 +102,10 @@ const DiscountBannerView = () => {
   return (
     <>
       <PageMeta
-        title={`${banner.title} | Discount Banner`}
-        description={banner.description}
+        title={`${banner.title} | Promo Banner`}
+        description={banner.title}
       />
-      <PageBreadcrumb pageTitle="View Discount Banner" />
+      <PageBreadcrumb pageTitle="View Promo Banner" />
 
       <div className="space-y-6">
         {/* Header actions */}
@@ -145,27 +143,9 @@ const DiscountBannerView = () => {
 
         {/* Detail card — full width */}
         <div className="w-full rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm p-6 space-y-6">
-          {/* Title + headline */}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {banner.title}
-            </h1>
-            <p className="text-base text-gray-500 dark:text-gray-400 mt-1">
-              {banner.headLine}
-            </p>
-          </div>
-
-          <div className="h-px bg-gray-100 dark:bg-gray-800" />
-
-          {/* Description */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">
-              Description
-            </p>
-            <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
-              {banner.description}
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {banner.title}
+          </h1>
 
           <div className="h-px bg-gray-100 dark:bg-gray-800" />
 

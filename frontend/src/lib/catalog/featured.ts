@@ -34,3 +34,16 @@ export async function getFlashSale(tenantHost: string): Promise<FlashSale | null
     return null;
   }
 }
+
+export type PromoBanner = { title: string; headLine: string; description: string; link: string; image: string };
+
+/** The store's promo banner (Website Management → Promo Banner), or null */
+export async function getPromoBanner(tenantHost: string): Promise<PromoBanner | null> {
+  if (!tenantHost) return null;
+  try {
+    const data = await apiFetch<{ banner: PromoBanner | null }>(tenantHost, "/shop/promo-banner");
+    return data.banner;
+  } catch {
+    return null;
+  }
+}

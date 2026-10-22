@@ -1000,15 +1000,15 @@ export default function App() {
                 <Route path="/add-discount" element={<ProtectedRoute module="discount-banner" action="add"><AddDiscountBanner /></ProtectedRoute>} />
                 <Route
                   path="/discount-banner-list"
-                  element={<DiscountBannerList />}
+                  element={<ProtectedRoute module="discount-banner" action="view"><DiscountBannerList /></ProtectedRoute>}
                 />
                 <Route
                   path="/update-discount-banner/:slug"
-                  element={<DiscountBannerUpdate />}
+                  element={<ProtectedRoute module="discount-banner" action="edit"><DiscountBannerUpdate /></ProtectedRoute>}
                 />
                 <Route
                   path="/view-discount-banner/:slug"
-                  element={<DiscountBannerView />}
+                  element={<ProtectedRoute module="discount-banner" action="view"><DiscountBannerView /></ProtectedRoute>}
                 />
 
                 {/* All Report */}
