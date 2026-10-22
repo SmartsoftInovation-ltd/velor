@@ -1,25 +1,32 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { VisualSignUp } from "@/components/auth/visual-sign-up";
 import { SignUpForm } from "@/components/auth/sign-up-form";
+import { SignUpHeading } from "@/components/auth/sign-up-heading";
+import { VisualSignUp } from "@/components/auth/visual-sign-up";
+import { getStore, storeHostFrom } from "@/lib/store-api";
 
 export const metadata: Metadata = {
   title: "Create account",
-  description: "Create a ShoPzio account to check out faster and track orders.",
+  description: "Create an account to check out faster and track your orders.",
 };
 
-export default function SignUpPage() {
+export default async function SignUpPage() {
+  const store = await getStore(storeHostFrom(await headers()));
+  const storeName = store?.name || "this shop";
+
   return (
     <AuthShell
-      title="Create"
-      titleAccent="your account"
-      description="One account for orders, wishlists and faster checkout."
+      title="Create your account"
+      description="Check out faster, follow every order, and keep your details in one place."
+      heading={<SignUpHeading storeName={storeName} />}
+      showBrand={false}
       aside={{
         headline: "Join once,",
-        script: "save every time",
-        note: "Members get first look at drops, restock alerts on their sizes, and free returns.",
-        visual: <VisualSignUp />,
+        script: "shop faster",
+        note: `Your details are saved with ${storeName}, so your next order takes a few taps.`,
+        visual: <VisualSignUp storeName={storeName} />,
       }}
       footer={
         <>
@@ -33,7 +40,7 @@ export default function SignUpPage() {
         </>
       }
     >
-      <SignUpForm />
+      <SignUpForm storeName={storeName} />
     </AuthShell>
   );
 }

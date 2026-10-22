@@ -1,53 +1,67 @@
-import { CheckIcon } from "@/components/ui/icons-filter";
-import { VisualCard } from "./visual-card";
-
-const PERKS = [
-  "৳200 off your first order",
-  "Free returns for 14 days",
-  "Restock alerts on your sizes",
-  "Early access to new drops",
-];
-
 /**
- * Sign up: what the account is actually worth. A benefit list, because that is
- * the question someone weighs on this screen — not what the form looks like.
+ * Sign up, drawn: a new account card being filled in — avatar, name and
+ * contact lines, password dots, the button — with a check that says it worked
+ * and the shop's bag it is for. Colours come from the brand tokens, so it
+ * follows the theme; the card stays white like paper in both.
  */
-export function VisualSignUp() {
+export function VisualSignUp({ storeName }: { storeName: string }) {
   return (
-    <VisualCard>
-      <div className="mb-4 flex items-baseline justify-between gap-2">
-        <p className="text-caption font-semibold tracking-wide text-[#8b8378] uppercase">
-          Member perks
-        </p>
-        <p className="text-caption font-semibold text-[var(--orange-600)]">Free</p>
-      </div>
+    <figure className="w-full max-w-md">
+      <svg viewBox="0 0 360 300" role="img" aria-labelledby="sign-up-art-title" className="w-full">
+        <title id="sign-up-art-title">{`A new ${storeName} account being created`}</title>
 
-      <ul className="space-y-3">
-        {PERKS.map((perk) => (
-          <li key={perk} className="flex items-start gap-2.5">
-            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--orange-100)] text-[var(--orange-600)]">
-              <CheckIcon className="size-3" />
-            </span>
-            <span className="text-caption leading-snug text-[#3f3a33]">{perk}</span>
-          </li>
-        ))}
-      </ul>
+        {/* Soft shadow under the card */}
+        <ellipse cx="180" cy="272" rx="118" ry="10" fill="var(--color-brand-200)" opacity="0.6" />
 
-      <div className="mt-5 flex items-center gap-3 rounded-xl bg-[#faf8f5] px-3 py-2.5">
-        <span className="flex -space-x-2">
-          {["#f97316", "#26324f", "#4f9a75"].map((color) => (
-            <span
-              key={color}
-              aria-hidden="true"
-              className="size-6 rounded-full border-2 border-white"
-              style={{ backgroundColor: color }}
-            />
+        {/* The account card */}
+        <g>
+          <rect x="70" y="40" width="220" height="220" rx="22" fill="#fff" />
+          <rect x="70.5" y="40.5" width="219" height="219" rx="21.5" fill="none" stroke="var(--color-brand-200)" />
+
+          {/* Avatar */}
+          <circle cx="180" cy="86" r="24" fill="var(--color-brand-100)" />
+          <circle cx="180" cy="80" r="8" fill="var(--color-brand-500)" />
+          <path d="M166 101c3-8 9-11 14-11s11 3 14 11" fill="none" stroke="var(--color-brand-500)" strokeWidth="5" strokeLinecap="round" />
+
+          {/* Name and contact fields */}
+          <rect x="98" y="126" width="164" height="18" rx="6" fill="#f6f2ee" />
+          <rect x="108" y="133" width="62" height="4" rx="2" fill="#d8cfc6" />
+          <rect x="98" y="152" width="164" height="18" rx="6" fill="#f6f2ee" />
+          <rect x="108" y="159" width="90" height="4" rx="2" fill="#d8cfc6" />
+
+          {/* Password: dots, and a strength bar already full */}
+          <rect x="98" y="178" width="164" height="18" rx="6" fill="#f6f2ee" />
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <circle key={i} cx={112 + i * 10} cy="187" r="2.6" fill="#8b8378" />
           ))}
-        </span>
-        <p className="text-micro text-[#8b8378]">
-          Joined by <span className="font-semibold text-[#1f2a44]">12,400+</span> shoppers
-        </p>
-      </div>
-    </VisualCard>
+          {[0, 1, 2, 3].map((i) => (
+            <rect key={i} x={98 + i * 42} y="201" width="38" height="3" rx="1.5" fill="var(--color-brand-500)" opacity={0.4 + i * 0.2} />
+          ))}
+
+          {/* The button */}
+          <rect x="98" y="214" width="164" height="26" rx="8" fill="var(--color-brand-500)" />
+          <rect x="152" y="225" width="44" height="4" rx="2" fill="#fff" opacity="0.9" />
+          <path d="M204 223l4 4-4 4" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+
+        {/* Done: a check badge over the card's corner */}
+        <g className="animate-float-y [animation-duration:5s]">
+          <circle cx="282" cy="52" r="22" fill="var(--color-success-solid)" />
+          <circle cx="282" cy="52" r="22" fill="none" stroke="#fff" strokeWidth="4" />
+          <path d="M272 52l7 7 13-14" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+
+        {/* The shop it is for */}
+        <g className="animate-float-y [animation-delay:-2s] [animation-duration:6s]">
+          <rect x="34" y="176" width="58" height="58" rx="16" fill="#fff" stroke="var(--color-brand-200)" />
+          <path d="M50 196h26l-2 24H52z" fill="var(--color-brand-100)" stroke="var(--color-brand-500)" strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M56 200v-5a7 7 0 0 1 14 0v5" fill="none" stroke="var(--color-brand-500)" strokeWidth="2.5" strokeLinecap="round" />
+        </g>
+
+        {/* Two small sparkles, the only decoration */}
+        <path d="M318 150v12M312 156h12" stroke="var(--color-brand-500)" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M44 92v8M40 96h8" stroke="var(--color-brand-500)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+      </svg>
+    </figure>
   );
 }

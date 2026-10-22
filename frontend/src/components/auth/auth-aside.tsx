@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 
 /**
- * The right half of every auth card. It is not decoration: each screen passes
- * its own `visual`, a small mock of what that step actually does — the account
- * you sign into, the code in flight, the timer running down. Someone who lands
- * mid-flow can read the panel and know where they are.
+ * The right half of every auth screen: one illustration of what this step
+ * does, and a short line under it. Kept quiet on purpose — a soft brand tint,
+ * a faint dot grid for texture, no blobs — so the form stays the subject.
  *
- * The panel keeps one fixed peach ground in both themes, and its type is set
- * in fixed ink to match, because the mocks inside it are lit from one side.
+ * The ground is the brand's quietest tint, which the token layer keeps light
+ * in both themes' spirit; the type uses the semantic text tokens.
  */
 export function AuthAside({
   headline,
@@ -21,36 +20,22 @@ export function AuthAside({
   visual: ReactNode;
 }) {
   return (
-    <aside className="relative hidden min-h-[36rem] flex-col justify-between overflow-hidden bg-[#fdf1e6] p-10 lg:flex">
-      {/* Two soft washes give the flat ground some depth without an image. */}
+    <aside className="relative hidden overflow-hidden bg-brand-50 lg:flex lg:flex-col">
+      {/* A dot grid, faded toward the edges, gives the flat ground a surface */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-white/45 blur-2xl"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-24 -left-20 size-72 rounded-full bg-[var(--orange-200)]/45 blur-2xl"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-brand-200)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_75%)]"
       />
 
-      <div className="relative z-1 space-y-0.5">
-        <p className="text-h2 font-semibold tracking-tight text-[#1f2a44]">
-          {headline}
-        </p>
-        <p className="text-h1 font-semibold text-brand-500 italic">{script}</p>
-        <svg viewBox="0 0 180 12" aria-hidden="true" className="h-3 w-44 text-brand-500">
-          <path
-            d="M4 8c40-6 92-8 172-4"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            fill="none"
-          />
-        </svg>
-        <p className="max-w-xs pt-3 text-small text-[#5b5348]">{note}</p>
-      </div>
-
-      <div className="relative z-1 flex flex-1 items-center justify-center py-8">
-        {visual}
+      {/* Illustration and its caption as one centred group */}
+      <div className="relative flex flex-1 flex-col items-center justify-center px-12 py-16">
+        <div className="flex w-full max-w-md justify-center">{visual}</div>
+        <div className="mt-10 max-w-sm text-center">
+          <p className="text-h2 font-semibold tracking-tight text-text-primary">
+            {headline} <span className="text-brand-500">{script}</span>
+          </p>
+          <p className="mt-2 text-small text-text-secondary">{note}</p>
+        </div>
       </div>
     </aside>
   );
