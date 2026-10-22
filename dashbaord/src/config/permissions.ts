@@ -115,6 +115,7 @@ export const PERMISSIONS = {
   ACCOUNT_BALANCE: "account-balance",
   FUND_HANDOVER: "fund-handover",
   CREATE_BANNER: "create-banner",
+  LIMITED_OFFER: "limited-offer",
   SITE_INFORMATION: "site-information",
   OUTLET_INFORMATION: "outlet-information",
   CREATE_USER: "create-user",

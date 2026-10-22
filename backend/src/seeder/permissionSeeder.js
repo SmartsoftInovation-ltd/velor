@@ -126,6 +126,7 @@ const permissionList = [
   { permissionName: "Employee Payment Report" },
   // Settings
   { permissionName: "Create Banner" },
+  { permissionName: "Limited Offer" },
   { permissionName: "Site Information" },
   { permissionName: "Outlet Information" },
   // User Management

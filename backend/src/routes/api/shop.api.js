@@ -19,6 +19,7 @@ const _ = express.Router();
 _.get("/store", shopController.store);
 _.get("/banners", shopController.banners);
 _.get("/products", shopCatalogController.products);
+_.get("/limited-offers", shopCatalogController.limitedOffers);
 _.get("/products/:slug", shopCatalogController.product);
 _.post("/auth/register", registerLimiter, shopController.register);
 _.post("/auth/login", loginLimiter, shopController.login);

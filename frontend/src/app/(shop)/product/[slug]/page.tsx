@@ -32,8 +32,10 @@ export async function generateMetadata({
   return { title: product.name, description: product.description };
 }
 
-export default async function ProductPage({ params }: PageProps<"/product/[slug]">) {
+export default async function ProductPage({ params, searchParams }: PageProps<"/product/[slug]">) {
   const { slug } = await params;
+  // ?variant=<id> from a featured variant's card opens on that option
+  const { variant } = await searchParams;
   const product = await productFor(slug);
   if (!product) notFound();
 
@@ -68,7 +70,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
 
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:gap-12">
         <ProductGallery images={product.gallery} discountPct={discountPct} />
-        <ProductSummary product={product} />
+        <ProductSummary product={product} initialVariantId={typeof variant === "string" ? variant : undefined} />
       </div>
 
       <div className="mt-12">

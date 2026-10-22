@@ -46,6 +46,8 @@ export type ApiProduct = {
   warrantyInformation: string;
   shippingInformation: string;
   createdAt: string;
+  /** Set on a Limited Offer entry that features one variant */
+  variantId?: string | null;
 };
 
 // Shown until the seller uploads a product photo
@@ -67,7 +69,8 @@ export function toCatalogProduct(p: ApiProduct): CatalogProduct {
     reviews: "",
     stock: stockState(p.stock),
     stockCount: p.stock,
-    href: `/product/${p.slug}`,
+    // A featured variant opens the product page on that option
+    href: p.variantId ? `/product/${p.slug}?variant=${p.variantId}` : `/product/${p.slug}`,
     image: p.image || NO_IMAGE,
     alt: p.name,
     categoryId: p.category?.slug ?? "",
@@ -124,9 +127,16 @@ export function buildTaxonomy(products: ApiProduct[]): Taxonomy {
   };
 }
 
-/** The newest products (the API lists newest first). */
-export const newestProducts = (products: ApiProduct[], count: number) =>
-  products.slice(0, count).map(toCatalogProduct);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Products added in the last `days` days, newest first (the API lists newest first). */
+export const recentProducts = (products: ApiProduct[], days: number, count: number) => {
+  const since = Date.now() - days * DAY_MS;
+  return products
+    .filter((p) => new Date(p.createdAt).getTime() >= since)
+    .slice(0, count)
+    .map(toCatalogProduct);
+};
 
 /** The most sold products; a store with no sales yet gets none, not a random pick. */
 export const bestSellingProducts = (products: ApiProduct[], count: number) =>
@@ -135,6 +145,20 @@ export const bestSellingProducts = (products: ApiProduct[], count: number) =>
     .sort((a, b) => b.sold - a.sold)
     .slice(0, count)
     .map(toCatalogProduct);
+
+/**
+ * The seller's picks under Website Management → Limited Offer, in their order.
+ * A store that picked nothing (or an unreachable API) gets an empty list.
+ */
+export async function getLimitedOffers(tenantHost: string): Promise<CatalogProduct[]> {
+  if (!tenantHost) return [];
+  try {
+    const data = await apiFetch<{ products: ApiProduct[] }>(tenantHost, "/shop/limited-offers");
+    return data.products.map(toCatalogProduct);
+  } catch {
+    return [];
+  }
+}
 
 /** Every active product of the store at `tenantHost`, newest first. One call per render. */
 export const getStoreProducts = cache(async (tenantHost: string): Promise<ApiProduct[]> => {

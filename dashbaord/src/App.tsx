@@ -378,6 +378,7 @@ const BannerUpdate = lazy(
   () => import("./pages/Settings/banner/UpdateBanner.tsx"),
 );
 const BannerView = lazy(() => import("./pages/Settings/banner/BannerView.tsx"));
+const LimitedOffer = lazy(() => import("./pages/WebsiteManagement/LimitedOffer.tsx"));
 const AddSiteInfo = lazy(
   () => import("./pages/Settings/siteinformation/AddSiteInfo.tsx"),
 );
@@ -914,6 +915,7 @@ export default function App() {
                 {/* Side Information banner */}
                 <Route path="/add-banner" element={<ProtectedRoute module="create-banner" action="add"><AddBanner /></ProtectedRoute>} />
                 <Route path="/banner-list" element={<ProtectedRoute module="create-banner" action="view"><BannerList /></ProtectedRoute>} />
+                <Route path="/limited-offer" element={<ProtectedRoute module="limited-offer" action="view"><LimitedOffer /></ProtectedRoute>} />
                 <Route
                   path="/update-banner/:slug"
                   element={

@@ -21,6 +21,7 @@ export function ProductPurchase({
   sizes,
   soldOutSizes,
   productName,
+  initialVariantId,
 }: {
   price: number;
   stockCount: number;
@@ -29,10 +30,14 @@ export function ProductPurchase({
   sizes: string[];
   soldOutSizes: string[];
   productName: string;
+  /** From ?variant= on the URL; otherwise the first option that can be bought */
+  initialVariantId?: string;
 }) {
-  // Start on the first option that can be bought
   const [variantId, setVariantId] = useState(
-    () => (variants.find((v) => v.stock > 0) ?? variants[0])?.id ?? "",
+    () =>
+      variants.find((v) => v.id === initialVariantId)?.id ??
+      (variants.find((v) => v.stock > 0) ?? variants[0])?.id ??
+      "",
   );
   const [qty, setQty] = useState(1);
 

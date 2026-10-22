@@ -24,6 +24,7 @@ import {
   TbShieldLock,
   TbBuildingCommunity,
   TbPhoto,
+  TbSparkles,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
@@ -429,6 +430,13 @@ const navItems: NavItem[] = [
         pro: false,
       },
     ],
+  },
+  {
+    // The storefront's "Limited offers" section
+    name: "Limited Offer",
+    icon: <TbSparkles />,
+    path: "/limited-offer",
+    module: PERMISSIONS.LIMITED_OFFER,
   },
   {
     name: "Stock",
@@ -932,7 +940,8 @@ const websiteManagementItems = navItems.filter(
     item.name === "Courier" ||
     item.name === "Order" ||
     item.name === "Delivery Charge" ||
-    item.name === "Banner",
+    item.name === "Banner" ||
+    item.name === "Limited Offer",
 );
 const profileItems = hrManage.filter(
   (item) =>
@@ -1083,6 +1092,7 @@ const AppSidebar: React.FC = () => {
         item.name !== "Courier" &&
         item.name !== "Delivery Charge" &&
         item.name !== "Banner" &&
+        item.name !== "Limited Offer" &&
         item.name !== "Order" &&
         item.name !== "Size Chart" &&
         item.name.trim() !== "All Accounts" &&

@@ -1,4 +1,5 @@
 const Product = require("../models/product.model");
+const LimitedOffer = require("../models/limitedOffer.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
@@ -129,6 +130,35 @@ exports.product = asynchandeler(async (req, res) => {
   }
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Product", { product });
+});
+
+// GET /shop/limited-offers: what the seller picked under Website Management →
+// Limited Offer, in their order. A variant entry is its product with that
+// option's price, stock and photo, plus `variantId` so the card opens on it.
+exports.limitedOffers = asynchandeler(async (req, res) => {
+  requireStore();
+  const cacheKey = await buildCacheKey("limited-offer", "storefront");
+  let products = await getCache(cacheKey);
+
+  if (!products) {
+    const entries = await LimitedOffer.find({ isActive: true }).sort({ priority: 1, createdAt: -1 }).lean();
+    const found = await findProducts({ _id: { $in: entries.map((e) => e.product) } });
+    const byId = new Map(found.map((p) => [String(p._id), toStorefront(p)]));
+
+    products = entries.flatMap((entry) => {
+      const product = byId.get(String(entry.product));
+      if (!product) return []; // product deleted or deactivated
+      if (!entry.variant) return [{ ...product, variantId: null }];
+
+      const variant = product.variants.find((v) => String(v._id) === String(entry.variant));
+      if (!variant) return []; // variant deactivated
+      return [{ ...product, variantId: variant._id, price: variant.price, maxPrice: variant.price, stock: variant.stock, image: variant.image || product.image }];
+    });
+    // Short: stock and prices inside change without touching this namespace
+    await setCache(cacheKey, products, 60);
+  }
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Limited offers", { products });
 });
 
 module.exports.toStorefront = toStorefront;

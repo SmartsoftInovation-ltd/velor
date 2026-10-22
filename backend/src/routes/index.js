@@ -70,6 +70,7 @@ _.use("/storeinformation", require("./api/storeinformation.api"));
 _.use("/invoice", require("./api/invoice.api"));
 _.use("/userpermission", require("./api/userpermission.api"));
 _.use("/banner", require("./api/banner.api"));
+_.use("/limited-offer", require("./api/limitedOffer.api"));
 _.use("/outletinformation", require("./api/outletinformation.api"));
 _.use("/discount-banner", require("./api/discountbanner.api"));
 _.use("/courier-return", require("./api/courierReturn.api"));

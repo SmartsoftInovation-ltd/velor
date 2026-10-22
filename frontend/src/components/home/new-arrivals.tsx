@@ -1,13 +1,14 @@
 import { headers } from "next/headers";
 import { SparkleIcon } from "@/components/ui/icons-nav";
-import { getStoreProducts, newestProducts } from "@/lib/catalog/storefront";
+import { getStoreProducts, recentProducts } from "@/lib/catalog/storefront";
 import { storeHostFrom } from "@/lib/store-api";
 import { ProductCard } from "./product-card";
 import { Section } from "./section";
 import { SectionHeading } from "./section-heading";
 
 export async function NewArrivals() {
-  const products = newestProducts(await getStoreProducts(storeHostFrom(await headers())), 8);
+  // Automatic: whatever was added in the last 7 days. Nothing new, no section.
+  const products = recentProducts(await getStoreProducts(storeHostFrom(await headers())), 7, 8);
   if (!products.length) return null;
 
   return (
@@ -16,7 +17,7 @@ export async function NewArrivals() {
         eyebrow="Just landed"
         icon={<SparkleIcon />}
         title="New arrivals"
-        description="The latest additions to the shop."
+        description="Added to the shop this week."
         viewAllHref="/shop"
       />
 

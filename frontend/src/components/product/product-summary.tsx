@@ -3,7 +3,13 @@ import type { ProductDetail } from "@/lib/catalog/types";
 import { ProductPurchase } from "./product-purchase";
 import { ShareButton } from "./share-button";
 
-export function ProductSummary({ product }: { product: ProductDetail }) {
+export function ProductSummary({
+  product,
+  initialVariantId,
+}: {
+  product: ProductDetail;
+  initialVariantId?: string;
+}) {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -39,6 +45,7 @@ export function ProductSummary({ product }: { product: ProductDetail }) {
         sizes={product.sizes}
         soldOutSizes={product.soldOutSizes}
         productName={product.name}
+        initialVariantId={initialVariantId}
       />
     </div>
   );
