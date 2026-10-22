@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
-import { Badge, StatusDot } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { CartIcon, EyeIcon, TrashIcon } from "@/components/ui/icons";
-import { Stars } from "@/components/ui/stars";
-import type { WishlistItem } from "@/lib/catalog/wishlist-fixture";
+import type { WishlistItem } from "@/lib/cart/types";
 
 function savedOn(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -13,28 +12,34 @@ function savedOn(iso: string) {
   });
 }
 
+const PRIMARY =
+  "shine relative inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-brand-500 px-4 text-small font-medium text-white shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]";
+
 /**
  * A saved product. Close to the shop card, but the hover actions are replaced
- * by the two things a wishlist is for: move it to the bag, or drop it.
+ * by the two things a wishlist is for: move it to the bag, or drop it. A
+ * product saved without an option picked goes to its page to choose one.
  */
-export function WishlistCard({ item }: { item: WishlistItem }) {
-  const { product } = item;
-  const onSale =
-    product.compareAtPrice !== undefined && product.compareAtPrice > product.price;
+export function WishlistCard({
+  item,
+  onMove,
+  onRemove,
+}: {
+  item: WishlistItem;
+  onMove: () => void;
+  onRemove: () => void;
+}) {
+  const onSale = item.compareAtPrice !== null && item.compareAtPrice > item.unitPrice;
   const discountPct =
-    onSale && product.compareAtPrice !== undefined
-      ? Math.round(
-          ((product.compareAtPrice - product.price) / product.compareAtPrice) * 100,
-        )
-      : null;
+    onSale && item.compareAtPrice ? Math.round(((item.compareAtPrice - item.unitPrice) / item.compareAtPrice) * 100) : null;
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-border-subtle bg-bg-surface shadow-sm transition-shadow duration-200 hover:shadow-md">
       <div className="relative aspect-4/3 overflow-hidden bg-bg-sunken">
-        <Link href={product.href} tabIndex={-1} aria-hidden="true" className="absolute inset-0">
+        <Link href={item.href} tabIndex={-1} aria-hidden="true" className="absolute inset-0">
           <AppImage
-            src={product.image}
-            alt={product.alt}
+            src={item.image}
+            alt={item.name}
             fill
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
             className="transform-gpu object-cover transition-transform duration-300 ease-[var(--ease-hover)] group-hover:scale-[1.06]"
@@ -52,7 +57,8 @@ export function WishlistCard({ item }: { item: WishlistItem }) {
 
           <button
             type="button"
-            aria-label={`Remove ${product.name} from wishlist`}
+            onClick={onRemove}
+            aria-label={`Remove ${item.name} from wishlist`}
             className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-surface/90 text-text-tertiary shadow-xs backdrop-blur-sm transition-colors duration-150 hover:bg-danger-subtle hover:text-danger-text"
           >
             <TrashIcon className="size-4" />
@@ -61,60 +67,50 @@ export function WishlistCard({ item }: { item: WishlistItem }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p className="text-micro font-medium uppercase tracking-wide text-text-tertiary">
-          {product.brand}
-        </p>
-
         <h3 className="line-clamp-2 text-small font-semibold text-text-primary">
-          <Link href={product.href} className="hover:text-text-brand">
-            {product.name}
+          <Link href={item.href} className="hover:text-text-brand">
+            {item.name}
           </Link>
         </h3>
-
-        <Stars rating={product.rating} />
+        {item.optionLabel ? <p className="text-caption text-text-secondary">{item.optionLabel}</p> : null}
 
         <div className="flex flex-wrap items-baseline gap-2">
           <p className="text-body font-semibold tabular text-text-primary">
-            ৳{product.price.toLocaleString()}
+            {item.needsOption ? "From " : ""}৳{item.unitPrice.toLocaleString()}
           </p>
-          {onSale && product.compareAtPrice ? (
-            <p className="text-caption tabular text-text-tertiary line-through">
-              ৳{product.compareAtPrice.toLocaleString()}
-            </p>
+          {onSale && item.compareAtPrice ? (
+            <p className="text-caption tabular text-text-tertiary line-through">৳{item.compareAtPrice.toLocaleString()}</p>
           ) : null}
         </div>
 
-        <StatusDot tone={product.stock === "low" ? "warning" : "success"} size="sm">
-          {product.stock === "low" ? "Only a few left" : "In stock"}
-        </StatusDot>
-
         <div className="mt-auto space-y-2 pt-2">
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="shine relative inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-brand-500 px-4 text-small font-medium text-white shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]"
-            >
-              <span className="relative z-2 flex shrink-0 [&>svg]:size-4" aria-hidden="true">
-                <CartIcon />
-              </span>
-              Move to bag
-            </button>
+            {item.needsOption ? (
+              <Link href={item.href} className={PRIMARY}>
+                <span className="relative z-2">Choose options</span>
+              </Link>
+            ) : (
+              <button type="button" onClick={onMove} disabled={item.maxQuantity < 1} className={`${PRIMARY} disabled:pointer-events-none disabled:opacity-45`}>
+                <span className="relative z-2 flex shrink-0 [&>svg]:size-4" aria-hidden="true">
+                  <CartIcon />
+                </span>
+                <span className="relative z-2">{item.maxQuantity < 1 ? "Sold out" : "Move to bag"}</span>
+              </button>
+            )}
 
             {/* Matches the shop card's icon-only view action, but this one
                 navigates — so it is a Link wearing Button's secondary skin
                 rather than a <button>. */}
             <Link
-              href={product.href}
-              aria-label={`View ${product.name}`}
+              href={item.href}
+              aria-label={`View ${item.name}`}
               className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border-default bg-bg-surface text-text-primary shadow-xs transition-colors duration-200 ease-[var(--ease-hover)] hover:border-border-strong hover:bg-bg-hover"
             >
               <EyeIcon className="size-4" />
             </Link>
           </div>
 
-          <p className="text-center text-micro text-text-tertiary">
-            Saved {savedOn(item.savedAt)}
-          </p>
+          <p className="text-center text-micro text-text-tertiary">Saved {savedOn(item.savedAt)}</p>
         </div>
       </div>
     </article>

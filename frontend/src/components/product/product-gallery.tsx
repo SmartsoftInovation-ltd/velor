@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { AppImage } from "@/components/ui/app-image";
-import { HeartIcon } from "@/components/ui/icons";
 import { ZoomIcon } from "@/components/ui/icons-filter";
 import { cn } from "@/lib/cn";
 
@@ -111,17 +110,6 @@ export function ProductGallery({
             {discountPct}% OFF
           </span>
         ) : null}
-
-        <button
-          type="button"
-          aria-label="Save to wishlist"
-          className={cn(
-            "absolute right-4 top-4 flex size-10 items-center justify-center rounded-full border border-border-default bg-bg-surface/90 text-text-secondary shadow-xs backdrop-blur-sm transition-[color,opacity] duration-200 ease-[var(--ease-hover)] hover:text-danger-solid",
-            lens && "pointer-events-none opacity-0",
-          )}
-        >
-          <HeartIcon className="size-5" />
-        </button>
       </div>
 
       {/* The magnified panel overlays the column to the right rather than

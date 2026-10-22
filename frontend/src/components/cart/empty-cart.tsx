@@ -3,7 +3,7 @@ import { CartIcon } from "@/components/ui/icons";
 
 export function EmptyCart() {
   return (
-    <main className="container flex min-h-[60vh] flex-col items-center justify-center py-16 text-center">
+    <div className="flex min-h-[50vh] flex-col items-center justify-center py-16 text-center">
       <span
         aria-hidden="true"
         className="mb-5 flex size-16 items-center justify-center rounded-full bg-brand-100 text-brand-600"
@@ -11,9 +11,9 @@ export function EmptyCart() {
         <CartIcon className="size-7" />
       </span>
 
-      <h1 className="text-h2 font-semibold tracking-tight text-text-primary">
+      <h2 className="text-h2 font-semibold tracking-tight text-text-primary">
         Your bag is empty
-      </h1>
+      </h2>
       <p className="mt-1.5 max-w-sm text-body text-text-secondary">
         Nothing here yet. Browse the new arrivals and the pieces that keep
         selling out.
@@ -25,6 +25,6 @@ export function EmptyCart() {
       >
         Browse the shop
       </Link>
-    </main>
+    </div>
   );
 }

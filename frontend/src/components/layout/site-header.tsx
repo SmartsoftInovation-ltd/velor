@@ -1,17 +1,15 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { HeartIcon } from "@/components/ui/icons";
 import { UserIcon } from "@/components/ui/icons-nav";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { WISHLIST_ITEMS } from "@/lib/catalog/wishlist-fixture";
 import { SESSION_COOKIE } from "@/lib/shopper-auth";
 import { CartButton } from "./cart-button";
 import { HeaderActions } from "./header-actions";
-import { HeaderIconButton } from "./header-icon-button";
 import { HeaderSearch } from "./header-search";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { NavBar } from "./nav-bar";
+import { WishlistButton } from "./wishlist-button";
 
 export async function SiteHeader() {
   // Only whether a session cookie exists; the account page checks it with the API
@@ -34,14 +32,7 @@ export async function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {/* One pill, one sliding ground — see HeaderActions. */}
           <HeaderActions>
-            <HeaderIconButton
-              href="/wishlist"
-              slot="wishlist"
-              label={`Wishlist, ${WISHLIST_ITEMS.length} items`}
-              count={WISHLIST_ITEMS.length}
-            >
-              <HeartIcon />
-            </HeaderIconButton>
+            <WishlistButton />
 
             {/* Hairlines between the three slots. z-1 keeps them above the
                 sliding ground, which passes behind. */}
@@ -50,7 +41,7 @@ export async function SiteHeader() {
               className="relative z-1 mx-0.5 h-5 w-px shrink-0 bg-border-default"
             />
 
-            <CartButton itemCount={0} subtotal="0.00" />
+            <CartButton />
 
             <span
               aria-hidden="true"

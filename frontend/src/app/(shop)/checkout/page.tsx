@@ -6,7 +6,6 @@ import { DeliveryOptions } from "@/components/checkout/delivery-options";
 import { OrderReview } from "@/components/checkout/order-review";
 import { PaymentMethods } from "@/components/checkout/payment-methods";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
-import { CART_LINES } from "@/lib/catalog/cart-fixture";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -14,25 +13,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * Design only. Nothing here submits: the form has no action, the radios are
- * plain browser radios, and the totals are derived from the same fixture the
- * cart page reads.
+ * The order panel reads this shop's real cart. The form itself does not submit
+ * yet: placing the order (saveCartAction, then POST /shop/order) is the next
+ * step in `.claude/specs/cart-wishlist.md`.
  */
 export default function CheckoutPage() {
-  const lines = CART_LINES;
-  const subtotal = lines.reduce(
-    (sum, line) => sum + line.product.price * line.quantity,
-    0,
-  );
-  const saved = lines.reduce(
-    (sum, line) =>
-      sum +
-      (line.product.compareAtPrice
-        ? (line.product.compareAtPrice - line.product.price) * line.quantity
-        : 0),
-    0,
-  );
-
   return (
     <main className="container py-6">
       <h1 className="sr-only">Checkout</h1>
@@ -58,7 +43,7 @@ export default function CheckoutPage() {
 
         {/* Sticky on desktop: the total stays in view while the form scrolls. */}
         <div className="lg:sticky lg:top-32">
-          <OrderReview lines={lines} subtotal={subtotal} saved={saved} />
+          <OrderReview />
         </div>
       </div>
     </main>

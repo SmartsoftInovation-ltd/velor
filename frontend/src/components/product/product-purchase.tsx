@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { StatusDot } from "@/components/ui/badge";
+import { forVariant } from "@/lib/cart/snapshot";
+import type { ItemSnapshot } from "@/lib/cart/types";
 import type { ProductVariant } from "@/lib/catalog/types";
 import { BuyActions } from "./buy-actions";
 import { ProductOptions } from "./product-options";
@@ -22,6 +24,7 @@ export function ProductPurchase({
   sizes,
   soldOutSizes,
   productName,
+  item,
   initialVariantId,
 }: {
   price: number;
@@ -32,6 +35,8 @@ export function ProductPurchase({
   sizes: string[];
   soldOutSizes: string[];
   productName: string;
+  /** The product as the cart stores it; narrowed to the picked variant below */
+  item: ItemSnapshot;
   /** From ?variant= on the URL; otherwise the first option that can be bought */
   initialVariantId?: string;
 }) {
@@ -48,6 +53,7 @@ export function ProductPurchase({
   // Struck through while a flash sale has this option on sale
   const wasPrice = variant ? variant.compareAtPrice : compareAtPrice;
   const available = variant ? variant.stock : stockCount;
+  const cartItem = variant ? forVariant(item, variant) : item;
 
   const pickVariant = (id: string) => {
     setVariantId(id);
@@ -90,6 +96,7 @@ export function ProductPurchase({
           max={Math.max(1, Math.min(available, 10))}
           soldOut={available <= 0}
           productName={productName}
+          item={cartItem}
         />
       </div>
     </div>

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { ArrowRightIcon, ShieldCheckIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/input";
-import { FREE_SHIPPING_THRESHOLD, SHIPPING_FLAT } from "@/lib/catalog/cart-fixture";
 
+/**
+ * The cart's totals. Delivery and coupons depend on the address and are
+ * applied at checkout, so the total here is the items only.
+ */
 export function OrderSummary({
   subtotal,
   saved,
@@ -13,8 +14,6 @@ export function OrderSummary({
   saved: number;
   count: number;
 }) {
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FLAT;
-  const total = subtotal + shipping;
 
   return (
     <aside className="overflow-hidden rounded-xl border border-border-subtle bg-bg-surface shadow-sm">
@@ -34,7 +33,7 @@ export function OrderSummary({
           </div>
           {saved > 0 ? (
             <div className="flex justify-between">
-              <dt className="text-text-secondary">Discounts</dt>
+              <dt className="text-text-secondary">You save</dt>
               <dd className="font-medium tabular text-success-text">
                 −৳{saved.toLocaleString()}
               </dd>
@@ -42,26 +41,15 @@ export function OrderSummary({
           ) : null}
           <div className="flex justify-between">
             <dt className="text-text-secondary">Delivery</dt>
-            <dd className="font-medium tabular text-text-primary">
-              {shipping ? `৳${shipping}` : "Free"}
-            </dd>
+            <dd className="text-text-tertiary">At checkout</dd>
           </div>
         </dl>
 
         <div className="flex items-baseline justify-between border-t border-border-subtle pt-4">
           <p className="text-body font-semibold text-text-primary">Total</p>
           <p className="text-h2 font-semibold tabular text-text-primary">
-            ৳{total.toLocaleString()}
+            ৳{subtotal.toLocaleString()}
           </p>
-        </div>
-
-        <div className="flex gap-2">
-          <Input
-            placeholder="Discount code"
-            aria-label="Discount code"
-            className="flex-1"
-          />
-          <Button variant="secondary">Apply</Button>
         </div>
 
         {/* Button renders a <button>, and a <button> inside an <a> is invalid
@@ -78,7 +66,7 @@ export function OrderSummary({
 
         <p className="flex items-center justify-center gap-1.5 text-caption text-text-tertiary">
           <ShieldCheckIcon className="size-4" />
-          Secure checkout · 7-day returns
+          Prices are confirmed when you place the order
         </p>
       </div>
     </aside>

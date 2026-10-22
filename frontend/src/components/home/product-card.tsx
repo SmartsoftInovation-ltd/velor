@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
 import { Badge, StatusDot } from "@/components/ui/badge";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { WishlistToggle } from "@/components/cart/wishlist-toggle";
 import { Button } from "@/components/ui/button";
-import { CartIcon, EyeIcon, HeartIcon } from "@/components/ui/icons";
+import { EyeIcon } from "@/components/ui/icons";
 import { Stars } from "@/components/ui/stars";
-import type { Product } from "@/lib/product";
+import type { CatalogProduct } from "@/lib/catalog/types";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product }: { product: CatalogProduct }) {
   const { compareAtPrice, price, stock } = product;
   const onSale = compareAtPrice !== undefined && compareAtPrice > price;
   const discountPct =
@@ -42,13 +44,7 @@ export function ProductCard({ product }: { product: Product }) {
           ) : (
             <span />
           )}
-          <Button
-            variant="secondary"
-            size="sm"
-            aria-label={`Save ${product.name} to wishlist`}
-            icon={<HeartIcon />}
-            className="rounded-full hover:text-danger-solid"
-          />
+          <WishlistToggle item={product.item} size="sm" className="rounded-full" />
         </div>
 
         {stock === "out" ? (
@@ -103,14 +99,7 @@ export function ProductCard({ product }: { product: Product }) {
           {stock === "out" ? <StatusDot tone="danger">Out of stock</StatusDot> : null}
 
           <div className="flex gap-2">
-            <Button
-              variant="primary"
-              fullWidth
-              icon={<CartIcon />}
-              disabled={stock === "out"}
-            >
-              Add to cart
-            </Button>
+            <AddToCartButton item={product.item} fullWidth />
             <Button
               variant="secondary"
               aria-label={`Quick view ${product.name}`}

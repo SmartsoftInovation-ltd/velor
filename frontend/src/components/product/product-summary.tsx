@@ -1,3 +1,4 @@
+import { WishlistToggle } from "@/components/cart/wishlist-toggle";
 import { Stars } from "@/components/ui/stars";
 import type { ProductDetail } from "@/lib/catalog/types";
 import { ProductPurchase } from "./product-purchase";
@@ -17,7 +18,10 @@ export function ProductSummary({
           <p className="text-micro font-medium uppercase tracking-wide text-text-tertiary">
             {product.brand}
           </p>
-          <ShareButton productName={product.name} />
+          <div className="flex items-center gap-2">
+            <WishlistToggle item={product.item} size="sm" className="rounded-full" />
+            <ShareButton productName={product.name} />
+          </div>
         </div>
         <h1 className="text-h1 font-semibold tracking-tight text-text-primary">
           {product.name}
@@ -46,6 +50,7 @@ export function ProductSummary({
         sizes={product.sizes}
         soldOutSizes={product.soldOutSizes}
         productName={product.name}
+        item={product.item}
         initialVariantId={initialVariantId}
       />
     </div>

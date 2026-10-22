@@ -78,6 +78,9 @@ describe("storefront shopper accounts", () => {
 
       expect(fromVelor.body.data.name).toBe(velor.tenant.name);
       expect(fromPizza.body.data.name).toBe(pizza.tenant.name);
+      // The browser keys its cart and wishlist by this
+      expect(fromVelor.body.data.id).toBe(String(velor.tenant._id));
+      expect(fromPizza.body.data.id).toBe(String(pizza.tenant._id));
     });
 
     it("lists only this store's active banners that have an image, priority first", async () => {

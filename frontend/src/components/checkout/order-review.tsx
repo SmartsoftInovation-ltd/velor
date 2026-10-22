@@ -1,25 +1,31 @@
+"use client";
+
 import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
 import { Button } from "@/components/ui/button";
 import { ShieldCheckIcon } from "@/components/ui/icons";
-import type { CartLine } from "@/lib/catalog/cart-fixture";
-import { FREE_SHIPPING_THRESHOLD, SHIPPING_FLAT } from "@/lib/catalog/cart-fixture";
+import { useCart } from "@/components/cart/use-cart";
 
 /**
- * The checkout-side twin of OrderSummary: the same totals, but the lines are
- * read-only thumbnails rather than editable rows.
+ * The checkout-side twin of OrderSummary: the same totals, read from this
+ * shop's cart, but the lines are read-only thumbnails rather than editable
+ * rows. Delivery is added by the shop when the order is placed.
  */
-export function OrderReview({
-  lines,
-  subtotal,
-  saved,
-}: {
-  lines: CartLine[];
-  subtotal: number;
-  saved: number;
-}) {
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FLAT;
-  const total = subtotal + shipping;
+export function OrderReview() {
+  const { lines: all, totals, ready } = useCart();
+  const lines = all.filter((line) => !line.unavailable);
+  const { subtotal, saved } = totals;
+
+  if (ready && !lines.length) {
+    return (
+      <aside className="rounded-xl border border-border-subtle bg-bg-surface p-5 text-center shadow-sm">
+        <p className="text-body font-semibold text-text-primary">Your bag is empty</p>
+        <Link href="/shop" className="mt-2 inline-block text-small font-medium text-text-brand">
+          Browse the shop
+        </Link>
+      </aside>
+    );
+  }
 
   return (
     <aside className="overflow-hidden rounded-xl border border-border-subtle bg-bg-surface shadow-sm">
@@ -36,11 +42,11 @@ export function OrderReview({
 
         <ul className="space-y-3">
           {lines.map((line) => (
-            <li key={line.id} className="flex items-center gap-3">
+            <li key={line.key} className="flex items-center gap-3">
               <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-bg-sunken">
                 <AppImage
-                  src={line.product.image}
-                  alt={line.product.alt}
+                  src={line.image}
+                  alt={line.name}
                   fill
                   sizes="56px"
                   className="object-cover"
@@ -49,17 +55,19 @@ export function OrderReview({
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-small font-medium text-text-primary">
-                  {line.product.name}
+                  {line.name}
                 </p>
                 {/* Quantity rides the variant line rather than sitting as a
                     badge over the thumbnail, which covered the product. */}
                 <p className="flex flex-wrap items-center gap-x-1.5 text-caption text-text-tertiary">
-                  <span>
-                    {line.color} · Size {line.size}
-                  </span>
-                  <span aria-hidden="true" className="text-border-default">
-                    |
-                  </span>
+                  {line.optionLabel ? (
+                    <>
+                      <span>{line.optionLabel}</span>
+                      <span aria-hidden="true" className="text-border-default">
+                        |
+                      </span>
+                    </>
+                  ) : null}
                   <span>
                     Qty{" "}
                     <span className="font-medium tabular text-text-secondary">
@@ -70,7 +78,7 @@ export function OrderReview({
               </div>
 
               <p className="shrink-0 text-small font-semibold tabular text-text-primary">
-                ৳{(line.product.price * line.quantity).toLocaleString()}
+                ৳{(line.unitPrice * line.quantity).toLocaleString()}
               </p>
             </li>
           ))}
@@ -85,7 +93,7 @@ export function OrderReview({
           </div>
           {saved > 0 ? (
             <div className="flex justify-between">
-              <dt className="text-text-secondary">Discounts</dt>
+              <dt className="text-text-secondary">You save</dt>
               <dd className="font-medium tabular text-success-text">
                 −৳{saved.toLocaleString()}
               </dd>
@@ -93,16 +101,14 @@ export function OrderReview({
           ) : null}
           <div className="flex justify-between">
             <dt className="text-text-secondary">Delivery</dt>
-            <dd className="font-medium tabular text-text-primary">
-              {shipping ? `৳${shipping}` : "Free"}
-            </dd>
+            <dd className="text-text-tertiary">Added with your order</dd>
           </div>
         </dl>
 
         <div className="flex items-baseline justify-between border-t border-border-subtle pt-4">
-          <p className="text-body font-semibold text-text-primary">Total</p>
+          <p className="text-body font-semibold text-text-primary">Items total</p>
           <p className="text-h2 font-semibold tabular text-text-primary">
-            ৳{total.toLocaleString()}
+            ৳{subtotal.toLocaleString()}
           </p>
         </div>
 

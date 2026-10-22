@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
 import { Badge, StatusDot } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CartIcon, HeartIcon } from "@/components/ui/icons";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { WishlistToggle } from "@/components/cart/wishlist-toggle";
 import { Stars } from "@/components/ui/stars";
 import type { CatalogProduct } from "@/lib/catalog/types";
 
@@ -70,19 +70,16 @@ export function ProductRow({ product }: { product: CatalogProduct }) {
 
         <div className="mt-auto flex flex-wrap items-center gap-3">
           {stock === "in" ? <StatusDot tone="success">In stock</StatusDot> : null}
-          {stock === "low" ? <StatusDot tone="warning">Only 3 left</StatusDot> : null}
+          {stock === "low" ? (
+            <StatusDot tone="warning">
+              {product.stockCount ? `Only ${product.stockCount} left` : "Low stock"}
+            </StatusDot>
+          ) : null}
           {stock === "out" ? <StatusDot tone="danger">Out of stock</StatusDot> : null}
 
           <div className="ml-auto flex gap-2">
-            <Button
-              variant="secondary"
-              aria-label={`Save ${product.name} to wishlist`}
-              icon={<HeartIcon />}
-              className="hover:text-danger-solid"
-            />
-            <Button variant="primary" icon={<CartIcon />} disabled={stock === "out"}>
-              Add to cart
-            </Button>
+            <WishlistToggle item={product.item} />
+            <AddToCartButton item={product.item} />
           </div>
         </div>
       </div>

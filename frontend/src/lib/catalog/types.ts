@@ -1,3 +1,4 @@
+import type { ItemSnapshot } from "@/lib/cart/types";
 import type { Product } from "@/lib/product";
 
 /**
@@ -13,6 +14,8 @@ export type CatalogProduct = Product & {
   createdAt: string;
   /** Units sold so far; ranks best sellers. */
   sold?: number;
+  /** What the cart and wishlist store for this card; see lib/cart/types.ts */
+  item: ItemSnapshot;
 };
 
 /** One buyable option of a product, e.g. "Navy / M", with its own price and stock. */
@@ -23,6 +26,7 @@ export type ProductVariant = {
   /** Retail price while this option is in a flash sale */
   compareAtPrice?: number;
   stock: number;
+  image: string;
 };
 
 /**

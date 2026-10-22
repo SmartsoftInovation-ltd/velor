@@ -1,17 +1,20 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { useCart } from "@/components/cart/use-cart";
 import { Button } from "@/components/ui/button";
-import { CartIcon } from "@/components/ui/icons";
 import { PhoneIcon, WhatsAppIcon } from "@/components/ui/icons-footer";
-import { useToast } from "@/components/ui/toast";
+import type { ItemSnapshot } from "@/lib/cart/types";
 
 const WHATSAPP_NUMBER = "8801234567890";
 const PHONE_NUMBER = "+880123456789";
 
 /**
- * Quantity plus the four ways to order. Cart and checkout submit nothing yet —
- * see `.claude/specs/product-page.md`. The two contact buttons are real links:
- * they hand off to WhatsApp and the dialler, which need no backend.
+ * Quantity plus the four ways to order. Add to cart saves the picked option
+ * in this shop's cart (see `.claude/specs/cart-wishlist.md`); Buy now does
+ * the same and goes straight to the cart. The two contact buttons are real
+ * links: they hand off to WhatsApp and the dialler, which need no backend.
  */
 export function BuyActions({
   qty,
@@ -19,14 +22,21 @@ export function BuyActions({
   max,
   soldOut,
   productName,
+  item,
 }: {
   qty: number;
   setQty: (next: number) => void;
   max: number;
   soldOut: boolean;
   productName: string;
+  item: ItemSnapshot;
 }) {
-  const toast = useToast();
+  const router = useRouter();
+  const { add } = useCart();
+  const buyNow = () => {
+    const result = add(item, qty);
+    if (result !== "full" && result !== "unavailable") router.push("/cart");
+  };
   const message = encodeURIComponent(
     `Hi, I'd like to order: ${productName} (qty ${qty})`,
   );
@@ -59,23 +69,8 @@ export function BuyActions({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Button
-          variant="secondary"
-          size="lg"
-          icon={<CartIcon />}
-          disabled={soldOut}
-          fullWidth
-          onClick={() =>
-            toast({
-              tone: "success",
-              title: "Added to cart",
-              description: `${productName} · qty ${qty}`,
-            })
-          }
-        >
-          Add to cart
-        </Button>
-        <Button variant="primary" size="lg" disabled={soldOut} fullWidth>
+        <AddToCartButton item={item} quantity={qty} variant="secondary" size="lg" fullWidth />
+        <Button variant="primary" size="lg" disabled={soldOut || item.needsOption} fullWidth onClick={buyNow}>
           Buy now
         </Button>
 

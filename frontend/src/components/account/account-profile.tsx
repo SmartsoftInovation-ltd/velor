@@ -1,9 +1,7 @@
 import { AppImage } from "@/components/ui/app-image";
-import { Button } from "@/components/ui/button";
-import { ArrowRightIcon } from "@/components/ui/icons-auth";
 import { BagIcon } from "@/components/ui/icons-nav";
-import { signOutAction } from "@/lib/actions/auth";
 import type { Shopper } from "@/lib/shopper-auth";
+import { SignOutButton } from "./sign-out-button";
 
 // Up to two letters from the name, for when there is no photo
 const initialsOf = (name: string) =>
@@ -16,8 +14,7 @@ const initialsOf = (name: string) =>
 
 /**
  * Who is signed in: photo or initials, name, the shop the account belongs to,
- * and the way out. Sign out is a form posting to a Server Action, so it works
- * without any client JavaScript.
+ * and the way out (SignOutButton).
  */
 export function AccountProfile({ user, storeName }: { user: Shopper; storeName: string }) {
   return (
@@ -45,11 +42,7 @@ export function AccountProfile({ user, storeName }: { user: Shopper; storeName: 
           <span className="truncate">Member of {storeName}</span>
         </p>
 
-        <form action={signOutAction} className="mt-6 w-full">
-          <Button type="submit" variant="secondary" fullWidth iconEnd={<ArrowRightIcon />}>
-            Sign out
-          </Button>
-        </form>
+        <SignOutButton />
       </div>
     </section>
   );

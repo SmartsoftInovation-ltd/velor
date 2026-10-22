@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { apiFetch } from "@/lib/store-api";
 import type { Stock } from "@/lib/product";
+import { NO_IMAGE, toItemSnapshot, variantLabel } from "./item-snapshot";
 import type { CatalogProduct, Category, ColorOption, ProductVariant, Taxonomy } from "./types";
 
 /**
@@ -54,8 +55,7 @@ export type ApiProduct = {
   variantId?: string | null;
 };
 
-// Shown until the seller uploads a product photo
-export const NO_IMAGE = "/image-fallback.svg";
+export { NO_IMAGE };
 const LOW_STOCK = 5;
 
 const stockState = (count: number): Stock => (count <= 0 ? "out" : count <= LOW_STOCK ? "low" : "in");
@@ -84,6 +84,7 @@ export function toCatalogProduct(p: ApiProduct): CatalogProduct {
     sizes: p.sizes,
     createdAt: p.createdAt,
     sold: p.sold,
+    item: toItemSnapshot(p),
   };
 }
 
@@ -91,10 +92,11 @@ export function toVariant(v: ApiVariant): ProductVariant {
   return {
     id: v._id,
     // Size and colour name a variant best; a variant without them goes by its name
-    label: [v.color, v.size].filter(Boolean).join(" / ") || v.name,
+    label: variantLabel(v),
     price: v.price,
     compareAtPrice: v.compareAtPrice ?? undefined,
     stock: v.stock,
+    image: v.image,
   };
 }
 

@@ -60,6 +60,9 @@ exports.store = asynchandeler(async (req, res) => {
   requireStore();
   const info = await StoreInformation.findOne().select("storeName image").lean();
   return apiResponse.sendSuccess(res, statusCodes.OK, "Store", {
+    // The storefront keys the browser's cart and wishlist by it. Safe to show:
+    // no storefront endpoint accepts it, the store always comes from the domain.
+    id: String(getTenantId()),
     name: info?.storeName || req.tenant?.name || "",
     logo: info?.image?.url || "",
   });

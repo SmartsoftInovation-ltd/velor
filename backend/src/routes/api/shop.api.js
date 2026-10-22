@@ -3,6 +3,7 @@ const shopController = require("../../controller/shop.controller");
 const { shopperGuard } = require("../../middleware/authMiddleware");
 const shopOrderController = require("../../controller/shopOrder.controller");
 const shopCatalogController = require("../../controller/shopCatalog.controller");
+const shopCartController = require("../../controller/shopCart.controller");
 const { guestOrAuth } = require("../../middleware/guestOrAuth");
 const { loginLimiter, registerLimiter } = require("../../middleware/rateLimit.middleware");
 
@@ -32,6 +33,7 @@ _.get("/orders/:id", shopperGuard, shopController.myOrder);
 
 // Checkout is open to signed-in shoppers and to guests carrying a cart id.
 // Amounts are computed server-side; the body only names the cart and address.
+_.put("/cart", guestOrAuth, shopCartController.replaceCart);
 _.post("/order", guestOrAuth, shopOrderController.createOrder);
 _.get("/track/:invoiceId", shopOrderController.trackOrder);
 

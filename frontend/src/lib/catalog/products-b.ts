@@ -4,7 +4,7 @@ const img = (id: string) =>
   `https://images.unsplash.com/${id}?q=80&w=600&auto=format&fit=crop`;
 
 /** Topwear, bottomwear and the rest of footwear. */
-export const CATALOG_B: CatalogProduct[] = [
+export const CATALOG_B: Omit<CatalogProduct, "item">[] = [
   {
     id: "dot-print-shirt", name: "Dot Print Casual Shirt", brand: "Northwell",
     price: 1490, compareAtPrice: 1890, rating: 4.8, reviews: "1.2k", stock: "in",

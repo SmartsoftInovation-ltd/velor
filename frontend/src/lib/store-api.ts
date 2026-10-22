@@ -58,7 +58,8 @@ export async function apiFetch<T>(tenantHost: string, path: string, init: Reques
   return body?.data as T;
 }
 
-export type Store = { name: string; logo: string };
+/** `id` is the tenant id: the browser keys its cart and wishlist by it */
+export type Store = { id: string; name: string; logo: string };
 
 /**
  * The store's name and logo, or null when the API cannot be reached or the

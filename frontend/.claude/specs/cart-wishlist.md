@@ -1,7 +1,20 @@
 # Plan — cart and wishlist, stored in the browser, per tenant
 
-Status: **draft for review**. Nothing here is built yet. Decisions that need the
-owner's call are marked **DECIDE**.
+Status: **built through the cart and wishlist; placing the order is next.**
+The owner approved the plan with the recommended option at every decision.
+
+## Progress (2026-10-22)
+
+| Step | State |
+|---|---|
+| 1. `productId` on catalogue, storage, store functions, provider, hooks | Done |
+| 2. Header counts, add to cart (card, row, product page, Buy now), wishlist heart | Done |
+| 3. `/cart` and `/wishlist` on real state; `wishlist-fixture.ts` removed | Done. `cart-fixture.ts` stays only for the order-tracking design. |
+| 4. Cart refresh against the API | Done (`refreshCartAction`, reuses `GET /shop/products`, so backend change #2 was not needed) |
+| 5. Backend `id` on `/shop/store`, `PUT /shop/cart` | Done, with tests (`tests/integration/shopCart.test.js`) |
+| 5. Checkout: order panel reads the real cart | Done |
+| 5. Checkout: **Place order** submits | **Not yet.** `saveCartAction` is ready; the form fields need names, COD-only payment, and delivery options need a public endpoint. |
+
 
 ## Goal
 
@@ -42,7 +55,7 @@ IndexedDB earns its cost only for large or binary data (offline catalogue,
 images). We store neither. If the cart ever needs to hold more, the store module
 below is the only file that changes.
 
-**DECIDE:** localStorage (recommended) or IndexedDB.
+**Decided:** localStorage.
 
 ## Tenant isolation
 
@@ -75,7 +88,7 @@ from the domain.
   backend change, but a domain that moves to another tenant keeps its old cart,
   and the key is not a tenant id as asked.
 
-**DECIDE:** A or B.
+**Decided:** A.
 
 ## Data shapes
 
@@ -177,14 +190,12 @@ body: { items: [{ productId, variantId|null, quantity }] }   // max 50
 200:  { cart }          // server-priced; unknown or unavailable items listed in `rejected`
 ```
 
-**DECIDE:** new `PUT /shop/cart` (recommended), or loop over the existing
-`/cart/clear` + `/cart/add` for a first version.
+**Decided:** new `PUT /shop/cart`.
 
 ### Sign in / sign out
 - The cart and wishlist are keyed by tenant, not by user, so they are kept across
   sign-in. That matches what shoppers expect ("I added things, then logged in").
-- **DECIDE:** on sign-out, clear both lists (safer on a shared computer) or keep
-  them (friendlier)? Recommendation: clear the wishlist, keep the cart.
+- **Decided:** sign-out clears the wishlist and keeps the cart (`SignOutButton`).
 
 ## Not in phase 1 (and why)
 

@@ -4,7 +4,7 @@ import type { CatalogProduct } from "./types";
 
 export type CartLine = {
   id: string;
-  product: CatalogProduct;
+  product: Omit<CatalogProduct, "item">;
   size: string;
   color: string;
   quantity: number;
@@ -19,9 +19,9 @@ const DRAFT = [
 ];
 
 /**
- * A hard-coded basket so the cart page has something to lay out. There is no
- * cart state anywhere — this is a design fixture, not a store. Lines whose id
- * no longer resolves are dropped rather than asserted away.
+ * A hard-coded basket for the order-tracking design (order-fixture.ts) only.
+ * The real cart lives in the browser: see lib/cart/. Lines whose id no longer
+ * resolves are dropped rather than asserted away.
  */
 export const CART_LINES: CartLine[] = DRAFT.flatMap((line) => {
   const product = ALL.find((item) => item.id === line.productId);

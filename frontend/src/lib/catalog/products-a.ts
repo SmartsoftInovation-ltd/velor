@@ -4,7 +4,7 @@ const img = (id: string) =>
   `https://images.unsplash.com/${id}?q=80&w=600&auto=format&fit=crop`;
 
 /** Outerwear and formal. Split across two files to stay under the line cap. */
-export const CATALOG_A: CatalogProduct[] = [
+export const CATALOG_A: Omit<CatalogProduct, "item">[] = [
   {
     id: "bomber-jacket", name: "Classic Bomber Jacket", brand: "Ashcroft",
     price: 3290, rating: 4.6, reviews: "840", stock: "low",

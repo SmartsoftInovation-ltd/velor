@@ -1,13 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useCart } from "@/components/cart/use-cart";
 import { CartIcon } from "@/components/ui/icons";
 
-export function CartButton({
-  itemCount = 0,
-  subtotal = "0.00",
-}: {
-  itemCount?: number;
-  subtotal?: string;
-}) {
+/** The header's cart: units and subtotal of this shop's cart, live across tabs */
+export function CartButton() {
+  const { totals } = useCart();
+  const itemCount = totals.count;
+  const subtotal = totals.subtotal.toLocaleString();
+
   return (
     <Link
       href="/cart"
