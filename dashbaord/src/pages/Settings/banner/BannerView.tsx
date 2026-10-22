@@ -23,24 +23,27 @@ interface Banner {
 const getImageUrl = (image: Banner["image"]) =>
   typeof image === "object" && image !== null ? image.url : image || "";
 
-const Field = ({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value?: string | number;
-  mono?: boolean;
-}) => (
-  <div>
-    <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
-      {label}
-    </p>
-    <p className={`text-sm ${mono ? "font-mono" : ""} text-gray-700 dark:text-gray-200`}>
-      {value || <span className="text-gray-300 dark:text-gray-600">—</span>}
-    </p>
+// One row of the details list: label on the left, value on the right
+const DetailRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="flex items-start justify-between gap-6 py-3 first:pt-0 last:pb-0">
+    <dt className="shrink-0 text-sm text-gray-500 dark:text-gray-400">{label}</dt>
+    <dd className="min-w-0 text-right text-sm font-medium text-gray-800 dark:text-gray-200">{children}</dd>
   </div>
 );
+
+const Empty = () => <span className="text-gray-300 dark:text-gray-600">—</span>;
+
+const IMAGE_STATUS: Record<string, string> = {
+  uploaded: "bg-accent-50 text-accent-700 ring-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400",
+  pending: "bg-warning-50 text-warning-700 ring-warning-500/20 dark:bg-warning-500/15 dark:text-warning-400",
+  processing: "bg-warning-50 text-warning-700 ring-warning-500/20 dark:bg-warning-500/15 dark:text-warning-400",
+  failed: "bg-error-50 text-error-700 ring-error-500/20 dark:bg-error-500/15 dark:text-error-400",
+};
+
+const formatDate = (value?: string) =>
+  value
+    ? new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "";
 
 const BannerView = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -86,152 +89,115 @@ const BannerView = () => {
   }
 
   const imgUrl = getImageUrl(banner.image);
+  const imageStatus = typeof banner.image === "object" && banner.image !== null ? banner.image.status : "";
 
   return (
     <>
-      <PageMeta
-        title={`${banner.title} | Banner`}
-        description={banner.description}
-      />
+      <PageMeta title={`${banner.title} | Banner`} description={banner.description} />
       <PageBreadcrumb pageTitle="View Banner" />
 
-      <div className="space-y-6">
-        {/* Header actions */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate("/banner-list")}
-            className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-accent-500 dark:hover:text-accent-400 transition-colors"
-          >
-            <FaArrowLeft className="size-3.5" />
-            Back to List
-          </button>
-          <Button
-            onClick={() => navigate(`/update-banner/${banner.slug}`)}
-            className="flex items-center gap-2 !bg-accent-500 hover:!bg-accent-600 !text-white px-5 py-2 !rounded-xl text-sm font-semibold"
-          >
-            <FaEdit className="size-3.5" />
-            Edit Banner
-          </Button>
-        </div>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => navigate("/banner-list")}
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-accent-600 dark:text-gray-400 dark:hover:text-accent-400"
+        >
+          <FaArrowLeft className="size-3.5" />
+          Back to list
+        </button>
+        <Button
+          onClick={() => navigate(`/update-banner/${banner.slug}`)}
+          className="flex items-center gap-2 !rounded-xl !bg-accent-500 px-5 py-2 text-sm font-semibold !text-white hover:!bg-accent-600"
+        >
+          <FaEdit className="size-3.5" />
+          Edit banner
+        </Button>
+      </div>
 
-        {/* Full-width banner image */}
-        {imgUrl ? (
-          <div className="w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-theme-md bg-gray-50 dark:bg-gray-800">
-            <img
-              src={imgUrl}
-              alt={banner.title}
-              className="w-full max-h-[480px] object-cover"
-            />
-          </div>
-        ) : (
-          <div className="w-full h-48 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm">
-            No image uploaded
-          </div>
-        )}
-
-        {/* Detail card — full width */}
-        <div className="w-full rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm p-6 space-y-6">
-          {/* Title + headline */}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {banner.title}
-            </h1>
-            <p className="text-base text-gray-500 dark:text-gray-400 mt-1">
-              {banner.headLine}
+      <div className="grid gap-5 lg:grid-cols-5">
+        {/* Left: the banner as shoppers see it */}
+        <section className="lg:col-span-3">
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs lg:sticky lg:top-24 dark:border-gray-800 dark:bg-white/[0.03]">
+            {imgUrl ? (
+              // Whole image, never cropped; a blurred copy fills any space around it
+              <div className="relative aspect-[16/9] bg-gray-900">
+                <img src={imgUrl} alt="" aria-hidden="true" className="absolute inset-0 size-full scale-110 object-cover opacity-60 blur-2xl" />
+                <img src={imgUrl} alt={banner.title} className="relative size-full object-contain" />
+              </div>
+            ) : (
+              <div className="flex aspect-[16/9] items-center justify-center border-b border-dashed border-gray-200 text-sm text-gray-400 dark:border-gray-700">
+                No image uploaded yet
+              </div>
+            )}
+            <p className="px-5 py-3.5 text-sm text-gray-500 dark:text-gray-400">
+              {banner.isActive
+                ? `Shown on the home page slider in position ${banner.priority}.`
+                : "Hidden from the home page until you activate it."}
             </p>
           </div>
+        </section>
 
-          <div className="h-px bg-gray-100 dark:bg-gray-800" />
-
-          {/* Description */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">
-              Description
-            </p>
-            <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
-              {banner.description}
-            </p>
-          </div>
-
-          <div className="h-px bg-gray-100 dark:bg-gray-800" />
-
-          {/* Grid of meta fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
-                Redirect Link
-              </p>
-              {banner.link ? (
-                <a
-                  href={banner.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-accent-500 hover:text-accent-600 hover:underline break-all"
-                >
-                  {banner.link}
-                  <FaExternalLinkAlt className="size-3 shrink-0" />
-                </a>
-              ) : (
-                <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-              )}
-            </div>
-
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
-                Priority
-              </p>
-              <span className="inline-flex items-center justify-center size-8 rounded-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400 text-sm font-bold">
-                {banner.priority}
-              </span>
-            </div>
-
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
-                Status
-              </p>
+        {/* Right: content and settings */}
+        <div className="space-y-5 lg:col-span-2">
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03]">
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-white/90">{banner.title}</h1>
               <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
                   banner.isActive
-                    ? "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400"
-                    : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
+                    ? "bg-accent-50 text-accent-700 ring-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400"
+                    : "bg-error-50 text-error-700 ring-error-500/20 dark:bg-error-500/15 dark:text-error-400"
                 }`}
               >
+                <span className={`size-1.5 rounded-full ${banner.isActive ? "animate-pulse bg-accent-500" : "bg-error-500"}`} />
                 {banner.isActive ? "Active" : "Inactive"}
               </span>
             </div>
-
-            <Field label="Slug" value={banner.slug} mono />
-
-            <Field
-              label="Created At"
-              value={banner.createdAt ? new Date(banner.createdAt).toLocaleString() : undefined}
-            />
-            <Field
-              label="Updated At"
-              value={banner.updatedAt ? new Date(banner.updatedAt).toLocaleString() : undefined}
-            />
-
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
-                Image Status
+            {banner.headLine && (
+              <p className="mt-1.5 text-base text-gray-600 dark:text-gray-300">{banner.headLine}</p>
+            )}
+            {banner.description && (
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                {banner.description}
               </p>
-              {typeof banner.image === "object" && banner.image !== null ? (
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase
-                    ${banner.image.status === "uploaded"
-                      ? "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400"
-                      : banner.image.status === "pending" || banner.image.status === "processing"
-                        ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
-                    }`}
-                >
-                  {banner.image.status}
-                </span>
-              ) : (
-                <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-              )}
-            </div>
-          </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03]">
+            <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Details</h2>
+            <dl className="divide-y divide-gray-100 dark:divide-gray-800">
+              <DetailRow label="Opens">
+                {banner.link ? (
+                  <a
+                    href={banner.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 break-all text-accent-600 hover:underline dark:text-accent-400"
+                  >
+                    {banner.link}
+                    <FaExternalLinkAlt className="size-3 shrink-0" />
+                  </a>
+                ) : (
+                  <span className="text-gray-500">The shop page</span>
+                )}
+              </DetailRow>
+              <DetailRow label="Priority">{banner.priority}</DetailRow>
+              <DetailRow label="Image">
+                {imageStatus ? (
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ring-1 ring-inset ${IMAGE_STATUS[imageStatus] ?? IMAGE_STATUS.failed}`}>
+                    {imageStatus}
+                  </span>
+                ) : (
+                  <Empty />
+                )}
+              </DetailRow>
+              <DetailRow label="Slug">
+                <code className="font-mono text-xs text-gray-600 dark:text-gray-300">{banner.slug}</code>
+              </DetailRow>
+              <DetailRow label="Created">{formatDate(banner.createdAt) || <Empty />}</DetailRow>
+              <DetailRow label="Last updated">{formatDate(banner.updatedAt) || <Empty />}</DetailRow>
+            </dl>
+          </section>
         </div>
       </div>
     </>

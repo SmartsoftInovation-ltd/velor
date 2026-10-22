@@ -63,6 +63,12 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 const getImageUrl = (image: Banner["image"]) =>
   typeof image === "object" && image !== null ? image.url : image || "";
 
+// The list stays scannable: the first few words, the rest in the hover title
+const firstWords = (text: string, count: number) => {
+  const words = (text || "").trim().split(/\s+/).filter(Boolean);
+  return words.length > count ? `${words.slice(0, count).join(" ")}...` : words.join(" ");
+};
+
 const gridTemplateColumns = "110px 100px 1fr 1fr 1fr 80px 180px";
 const COLUMNS = ["Serial ID", "Image", "Title", "Headline", "Description", "Priority", "Actions"];
 
@@ -297,8 +303,11 @@ export default function BannerTable({
                     </div>
 
                     {/* Description */}
-                    <div className="px-4 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 flex items-center justify-center">
-                      {banner.description}
+                    <div
+                      className="px-4 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center"
+                      title={banner.description}
+                    >
+                      {firstWords(banner.description, 4)}
                     </div>
 
                     {/* Priority */}

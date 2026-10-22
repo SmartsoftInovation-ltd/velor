@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Velor backend API
+  title: ECOMPOS backend API
   version: "phase1-generated"
   description: >-
     Generated from the route source by tests/scripts/generateInventory.js.

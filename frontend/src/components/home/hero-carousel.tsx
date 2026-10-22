@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef } from "react";
+import Link from "next/link";
 import type { Swiper as SwiperType } from "swiper";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { AppImage } from "@/components/ui/app-image";
-import { Button } from "@/components/ui/button";
+import { buttonClassName } from "@/components/ui/button";
 import {
   ArrowRightIcon,
   ChevronLeftIcon,
@@ -34,23 +35,27 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           <SwiperSlide key={slide.id}>
             <div className="flex h-full w-full flex-col bg-brand-500 sm:flex-row">
               <div className="flex flex-1 flex-col justify-center gap-5 px-6 py-10 sm:px-10 lg:pl-[max(2rem,calc((100vw-var(--container-content))/2+2rem))]">
-                <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-caption font-semibold uppercase tracking-wide text-white">
-                  {slide.eyebrow}
-                </span>
+                {slide.eyebrow && (
+                  <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-caption font-semibold uppercase tracking-wide text-white">
+                    {slide.eyebrow}
+                  </span>
+                )}
                 <h1 className="max-w-md text-h1 font-extrabold text-white sm:text-display">
                   {slide.title}
                 </h1>
                 <p className="max-w-sm text-body text-white/90">
                   {slide.description}
                 </p>
-                <Button
-                  variant="onBrand"
-                  size="lg"
-                  iconEnd={<ArrowRightIcon />}
-                  className="mt-2 w-fit rounded-full"
+                {/* The seller's banner link: a page on this shop or another site */}
+                <Link
+                  href={slide.ctaHref}
+                  className={`${buttonClassName("onBrand", "lg")} mt-2 w-fit rounded-full`}
                 >
-                  {slide.ctaLabel}
-                </Button>
+                  <span className="relative z-2">{slide.ctaLabel}</span>
+                  <span className="relative z-2 flex shrink-0 [&>svg]:size-4" aria-hidden="true">
+                    <ArrowRightIcon />
+                  </span>
+                </Link>
               </div>
 
               <div className="relative h-56 w-full shrink-0 sm:h-full sm:w-[45%] lg:w-[38%]">

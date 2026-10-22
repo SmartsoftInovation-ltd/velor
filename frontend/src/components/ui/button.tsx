@@ -42,6 +42,11 @@ const ICON_SIZES: Record<Size, string> = {
   lg: "size-12 px-0",
 };
 
+/** The button look for a link (`<Link className={buttonClassName(...)}>`), so a
+    navigation target never nests a <button> inside an <a>. */
+export const buttonClassName = (variant: Variant = "primary", size: Size = "md") =>
+  cn(BASE, VARIANTS[variant], SIZES[size]);
+
 export function Button({
   variant = "primary",
   size = "md",

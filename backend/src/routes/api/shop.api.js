@@ -15,6 +15,8 @@ const { loginLimiter, registerLimiter } = require("../../middleware/rateLimit.mi
  */
 const _ = express.Router();
 
+_.get("/store", shopController.store);
+_.get("/banners", shopController.banners);
 _.post("/auth/register", registerLimiter, shopController.register);
 _.post("/auth/login", loginLimiter, shopController.login);
 

@@ -92,8 +92,8 @@ describe("platform domain API", () => {
       const res = await addDomain({ host: "Velor.com" }).expect(201);
 
       expect(res.body.data).toMatchObject({ host: "velor.com", status: "pending", isPrimary: false });
-      expect(res.body.data.dnsRecord).toMatchObject({ type: "TXT", name: "_velor-verify.velor.com" });
-      expect(res.body.data.dnsRecord.value).toMatch(/^velor-verify=/);
+      expect(res.body.data.dnsRecord).toMatchObject({ type: "TXT", name: "_ecompos-verify.velor.com" });
+      expect(res.body.data.dnsRecord.value).toMatch(/^ecompos-verify=/);
     });
 
     // The whole point of verification: a pending row must not route anything.
@@ -144,7 +144,7 @@ describe("platform domain API", () => {
     });
 
     it("fails, and still does not route, when the record does not match", async () => {
-      setResolver(stubResolver({ [recordName("velor.com")]: [["velor-verify=somebody-elses-token"]] }));
+      setResolver(stubResolver({ [recordName("velor.com")]: [["ecompos-verify=somebody-elses-token"]] }));
 
       const res = await verify(domain._id).expect(200);
       expect(res.body.data.status).toBe("failed");

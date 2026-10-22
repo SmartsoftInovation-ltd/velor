@@ -26,6 +26,22 @@ export interface Tenant {
   createdAt: string;
 }
 
+export type DomainStatus = "pending" | "verifying" | "active" | "failed";
+
+/** A storefront hostname mapped to a seller; it serves traffic only once active */
+export interface TenantDomain {
+  _id: string;
+  host: string;
+  status: DomainStatus;
+  isPrimary: boolean;
+  verifiedAt: string | null;
+  lastCheckedAt: string | null;
+  failureReason: string;
+  createdAt: string;
+  /** The TXT record the seller publishes to prove they own the host */
+  dnsRecord: { type: "TXT"; name: string; value: string };
+}
+
 export interface Page<T> {
   items: T[];
   total: number;

@@ -1,7 +1,14 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { AppImage } from "@/components/ui/app-image";
+import { getStore, storeHostFrom } from "@/lib/store-api";
 
-export function Logo() {
+// The default wordmark, shown until the API names the store for this domain
+const FALLBACK_NAME = "ShoPzio";
+
+export async function Logo() {
+  const store = await getStore(storeHostFrom(await headers()));
+
   return (
     <Link
       href="/"
@@ -10,14 +17,14 @@ export function Logo() {
       {/* The mark is above the fold in every route, so it loads eagerly. It
           carries no alt of its own — the wordmark beside it is the label. */}
       <AppImage
-        src="/logo.png"
+        src={store?.logo || "/logo.png"}
         alt=""
         width={40}
         height={40}
         loading="eager"
         className="size-10 object-contain"
       />
-      ShoPzio
+      {store?.name || FALLBACK_NAME}
     </Link>
   );
 }

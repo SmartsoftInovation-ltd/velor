@@ -174,8 +174,8 @@ proxy_set_header x-tenant-host $host;   # client-এর পাঠানো ম�
   "status": "pending",
   "dnsRecord": {
     "type": "TXT",
-    "name": "_velor-verify.velor.com",
-    "value": "velor-verify=<token>"
+    "name": "_ecompos-verify.velor.com",
+    "value": "ecompos-verify=<token>"
   }
 }
 ```

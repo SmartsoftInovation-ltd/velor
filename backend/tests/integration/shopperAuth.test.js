@@ -9,6 +9,7 @@ const { resetRateLimitCounters } = require("../../src/middleware/rateLimit.middl
 const TenantDomain = require("../../src/models/platform/tenantDomain.model");
 const User = require("../../src/models/user.model");
 const Order = require("../../src/models/order.model");
+const Banner = require("../../src/models/banner.model");
 const service = require("../../src/settings/settings.service");
 
 /**
@@ -68,6 +69,36 @@ describe("storefront shopper accounts", () => {
   const bearer = (token) => ({ Authorization: `Bearer ${token}` });
 
   const SHOPPER = { name: "Rahim", email: "rahim@example.com", password: "Shopper-Pass1" };
+
+  describe("store identity", () => {
+    it("names the store whose domain the visitor arrived on", async () => {
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
+
+      expect(fromVelor.body.data.name).toBe(velor.tenant.name);
+      expect(fromPizza.body.data.name).toBe(pizza.tenant.name);
+    });
+
+    it("lists only this store's active banners that have an image, priority first", async () => {
+      await runForTenant(velor.tenant._id, () =>
+        Banner.create([
+          { title: "Second", priority: 2, image: { url: "https://img/2.jpg" } },
+          { title: "First", priority: 1, image: { url: "https://img/1.jpg" } },
+          { title: "Hidden", priority: 0, isActive: false, image: { url: "https://img/0.jpg" } },
+          { title: "No image yet", priority: 0 },
+        ]),
+      );
+      await runForTenant(pizza.tenant._id, () => Banner.create({ title: "Pizza", image: { url: "https://img/p.jpg" } }));
+
+      const res = await request(app.server).get("/api/v1/shop/banners").set(VELOR).expect(200);
+      expect(res.body.data.banners.map((b) => b.title)).toEqual(["First", "Second"]);
+      expect(res.body.data.banners[0]).toMatchObject({ image: "https://img/1.jpg", link: "" });
+    });
+
+    it("answers 404 for a domain no store owns", async () => {
+      await request(app.server).get("/api/v1/shop/store").set({ "x-tenant-host": "unknown.com" }).expect(404);
+    });
+  });
 
   describe("registration", () => {
     it("creates an account in the store whose domain was used", async () => {

@@ -23,6 +23,7 @@ import {
   TbSettings,
   TbShieldLock,
   TbBuildingCommunity,
+  TbPhoto,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
@@ -410,6 +411,26 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    // The storefront's home page slider
+    name: "Banner",
+    icon: <TbPhoto />,
+    subItems: [
+      {
+        name: "Add Banner",
+        path: "/add-banner",
+        module: PERMISSIONS.CREATE_BANNER,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Banner List",
+        path: "/banner-list",
+        module: PERMISSIONS.CREATE_BANNER,
+        pro: false,
+      },
+    ],
+  },
+  {
     name: "Stock",
     icon: <TbBuildingWarehouse />,
     subItems: [
@@ -606,24 +627,6 @@ const othersItems: NavItem[] = [
     name: "Settings ",
     icon: <TbSettings />,
     subItems: [
-      {
-        name: "Banner",
-        subSubItems: [
-          {
-            name: "Add Banner",
-            path: "/add-banner",
-            module: PERMISSIONS.CREATE_BANNER,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Banner List",
-            path: "/banner-list",
-            module: PERMISSIONS.CREATE_BANNER,
-            pro: false,
-          },
-        ],
-      },
       {
         name: "Site Information",
         subSubItems: [
@@ -928,7 +931,8 @@ const websiteManagementItems = navItems.filter(
   (item) =>
     item.name === "Courier" ||
     item.name === "Order" ||
-    item.name === "Delivery Charge",
+    item.name === "Delivery Charge" ||
+    item.name === "Banner",
 );
 const profileItems = hrManage.filter(
   (item) =>
@@ -1078,6 +1082,7 @@ const AppSidebar: React.FC = () => {
         item.name !== "Stock" &&
         item.name !== "Courier" &&
         item.name !== "Delivery Charge" &&
+        item.name !== "Banner" &&
         item.name !== "Order" &&
         item.name !== "Size Chart" &&
         item.name.trim() !== "All Accounts" &&

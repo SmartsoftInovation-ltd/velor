@@ -6,6 +6,7 @@ import {
   FiActivity,
   FiCheck,
   FiCopy,
+  FiGlobe,
   FiGrid,
   FiInfo,
   FiLink,
@@ -26,6 +27,7 @@ import type {
 } from "../Settings/StoreSettings/types";
 import OwnerPasswordCard from "./OwnerPasswordCard";
 import SellerBillingCard from "./SellerBillingCard";
+import SellerDomainsTab from "./SellerDomainsTab";
 import SellerStatusBadge from "./SellerStatusBadge";
 import SellerStatusDialog, { canSuspend } from "./SellerStatusDialog";
 import {
@@ -43,6 +45,7 @@ import {
 
 const TABS = [
   { key: "overview", label: "Overview", icon: <FiInfo /> },
+  { key: "domains", label: "Domains", icon: <FiGlobe /> },
   { key: "integrations", label: "Integrations", icon: <FiGrid /> },
   { key: "webhooks", label: "Webhooks", icon: <FiLink /> },
   { key: "audit", label: "Audit", icon: <FiActivity /> },
@@ -517,7 +520,7 @@ const SellerDetailPage = () => {
           { label: seller.name },
         ]}
         title="Seller Details"
-        subtitle="Information, integrations, webhooks and activity for one seller."
+        subtitle="Information, domains, integrations, webhooks and activity for one seller."
         actions={
           <RefreshButton onClick={() => refetch()} spinning={isFetching} />
         }
@@ -601,6 +604,7 @@ const SellerDetailPage = () => {
       </section>
 
       {tab === "overview" && <Overview seller={seller} />}
+      {tab === "domains" && <SellerDomainsTab tenantId={seller._id} />}
       {tab === "integrations" && <IntegrationsTab tenantId={seller._id} />}
       {tab === "webhooks" && <WebhooksTab tenantId={seller._id} />}
       {tab === "audit" && <AuditTab tenantId={seller._id} />}

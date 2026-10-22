@@ -8,6 +8,7 @@ import type {
   SettingsSectionSchema,
   Tenant,
   TenantBilling,
+  TenantDomain,
   TenantStatus,
   TestResult,
 } from "./types";
@@ -143,6 +144,19 @@ export const tenantsApi = {
   setOwnerPassword: (id: string, body: { password: string; notify: boolean }) =>
     data<{ owner: OwnerSummary; notification: CredentialsNotice }>(api.post(`/tenants/${id}/owner/password`, body)),
   audit: (id: string, page = 1) => data<Page<AuditEntry>>(api.get(`/tenants/${id}/audit`, { params: { page, limit: 20 } })),
+};
+
+export const domainsApi = {
+  list: (tenantId: string) => data<TenantDomain[]>(api.get(`/tenants/${tenantId}/domains`)),
+  add: (tenantId: string, body: { host: string; isPrimary?: boolean }) =>
+    data<TenantDomain>(api.post(`/tenants/${tenantId}/domains`, body)),
+  // Answers 200 either way; the returned status says whether the DNS check passed
+  verify: (tenantId: string, domainId: string) =>
+    data<TenantDomain>(api.post(`/tenants/${tenantId}/domains/${domainId}/verify`)),
+  makePrimary: (tenantId: string, domainId: string) =>
+    data<TenantDomain>(api.patch(`/tenants/${tenantId}/domains/${domainId}`, { isPrimary: true })),
+  remove: (tenantId: string, domainId: string) =>
+    data<{ _id: string; host: string }>(api.delete(`/tenants/${tenantId}/domains/${domainId}`)),
 };
 
 export const settingsApi = {

@@ -39,7 +39,7 @@
 আপনি domain যোগ করলেন  →  status: "pending"  (এখনো কোনো traffic যাবে না)
          ↓
 Seller-কে একটা TXT record দেওয়া হলো:
-   _velor-verify.velor.com  TXT  "velor-verify=<token>"
+   _ecompos-verify.velor.com  TXT  "ecompos-verify=<token>"
          ↓
 Seller তার DNS-এ বসালো  →  আপনি verify চাপলেন
          ↓

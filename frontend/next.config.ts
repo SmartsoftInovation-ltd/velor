@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
+      // Store logos and product images uploaded through the dashboard
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
 };

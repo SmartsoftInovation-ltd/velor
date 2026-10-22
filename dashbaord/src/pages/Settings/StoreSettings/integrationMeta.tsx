@@ -54,7 +54,7 @@ export const INTEGRATIONS: Record<string, IntegrationMeta> = {
         options: { smtp: "On — send from this mail server", disabled: "Off — don't send email" },
         help: "Your store sends its own email. Works with Gmail app passwords, Zoho, Mailgun and most providers.",
       },
-      fromName: { label: "Sender name", placeholder: "Velor" },
+      fromName: { label: "Sender name", placeholder: "ECOMPOS" },
       fromEmail: { label: "Sender email", placeholder: "orders@yourstore.com", help: "Shown as the sender, and where replies go. Leave empty to use the SMTP username." },
       smtpHost: {
         label: "SMTP host",

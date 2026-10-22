@@ -1,4 +1,7 @@
 const User = require("../models/user.model");
+const StoreInformation = require("../models/storeInformation.model");
+const Banner = require("../models/banner.model");
+const { buildCacheKey, getCache, setCache } = require("../utils/cache.util");
 const Order = require("../models/order.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
@@ -45,6 +48,50 @@ const shopperSummary = (user) => ({
 const issueSession = (user) => ({
   accessToken: user.generateJwtAccessToken(),
   refreshToken: user.generateJwtRefreshToken(),
+});
+
+/**
+ * Who this storefront belongs to: the store resolved from the hostname, with
+ * the name and logo the seller set in Store Information. Public, because the
+ * shop header needs it before anyone signs in, and limited to branding.
+ */
+exports.store = asynchandeler(async (req, res) => {
+  requireStore();
+  const info = await StoreInformation.findOne().select("storeName image").lean();
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Store", {
+    name: info?.storeName || req.tenant?.name || "",
+    logo: info?.image?.url || "",
+  });
+});
+
+/**
+ * The home page slider: this store's active banners with an uploaded image,
+ * priority 1 first. Shares the dashboard's "banner" cache namespace, so adding
+ * or editing a banner there refreshes this list too.
+ */
+exports.banners = asynchandeler(async (req, res) => {
+  requireStore();
+  const cacheKey = await buildCacheKey("banner", "storefront");
+  let banners = await getCache(cacheKey);
+
+  if (!banners) {
+    const rows = await Banner.find({ isActive: true, "image.url": { $nin: ["", null] } })
+      .sort({ priority: 1, createdAt: -1 })
+      .select("title slug headLine description link image.url")
+      .lean();
+    banners = rows.map((b) => ({
+      _id: b._id,
+      slug: b.slug,
+      title: b.title,
+      headLine: b.headLine || "",
+      description: b.description || "",
+      link: b.link || "",
+      image: b.image.url,
+    }));
+    await setCache(cacheKey, banners, 60 * 60);
+  }
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Banners", { banners });
 });
 
 exports.register = asynchandeler(async (req, res) => {
