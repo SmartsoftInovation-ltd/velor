@@ -73,7 +73,7 @@ describe("image worker (queue: image-upload)", () => {
     expect(await testRedis().get(`t:${tenantId}:category:v`)).toBeTruthy();
   });
 
-  it("a Cloudinary failure marks the image failed, keeps the file for the retry, and retries", async () => {
+  it("a Cloudinary failure marks the image failed, retries, and deletes the file after the last attempt", async () => {
     nock(CLOUDINARY).post("/v1_1/test-cloud/auto/upload").times(2).reply(500, { error: { message: "boom" } });
     env.track(startImageWorker());
     const doc = await category();
@@ -86,7 +86,47 @@ describe("image worker (queue: image-upload)", () => {
     expect(stored.image.status).toBe("failed");
     expect(stored.image.lastError).toMatch(/upload failed|null/i);
     expect(stored.image.tries).toBe(2);
-    expect(fs.existsSync(file)).toBe(true); // fewer than 3 attempts made: kept for a manual retry
+    // Every attempt used: nothing will upload it now, so it must not stay in public/temp
+    expect(fs.existsSync(file)).toBe(false);
+  });
+
+  it("with the queue's own settings, tries 5 times, then deletes the local file", async () => {
+    let calls = 0;
+    // Records whether the file was still there for each upload call
+    const fileThere = [];
+    const file = tempImage();
+    nock(CLOUDINARY)
+      .post("/v1_1/test-cloud/auto/upload")
+      .times(6)
+      .reply(() => {
+        calls += 1;
+        fileThere.push(fs.existsSync(file));
+        return [500, { error: { message: "boom" } }];
+      });
+    env.track(startImageWorker());
+    const doc = await category();
+    // Only the wait is shortened; the number of attempts is the queue default
+    const job = await upload(doc, file, { backoff: { type: "fixed", delay: 10 } });
+    const { state, job: done } = await waitForJob(imageQueue, job.id);
+
+    expect(state).toBe("failed");
+    expect(done.opts.attempts).toBe(5);
+    expect(done.attemptsMade).toBe(5);
+    expect(calls).toBe(5); // no 6th try
+    expect(fileThere).toEqual([true, true, true, true, true]); // every try had the file to upload
+    expect(fs.existsSync(file)).toBe(false); // removed after the 5th failure
+    expect((await reload(doc)).image).toMatchObject({ status: "failed", tries: 5 });
+  });
+
+  it("keeps the file between attempts so a retry can still upload it", async () => {
+    nock(CLOUDINARY).post("/v1_1/test-cloud/auto/upload").times(2).reply(500, { error: { message: "boom" } });
+    nock(CLOUDINARY).post("/v1_1/test-cloud/auto/upload").reply(200, { public_id: "shop/third" });
+    env.track(startImageWorker());
+    const doc = await category();
+    const job = await upload(doc, tempImage(), { attempts: 3, backoff: { type: "fixed", delay: 10 } });
+    const { state } = await waitForJob(imageQueue, job.id);
+    expect(state).toBe("completed");
+    expect((await reload(doc)).image).toMatchObject({ status: "uploaded", publicId: "shop/third", tries: 3 });
   });
 
   it("succeeds on a retry after a transient failure", async () => {

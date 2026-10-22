@@ -165,8 +165,10 @@ const processImageJob = async (job) => {
           },
         );
 
-        // Cleanup local file once max retries are exhausted
-        if (job.attemptsMade >= 3) {
+        // Cleanup local file once this was the last attempt. attemptsMade counts
+        // the attempts before this one, so this one is number attemptsMade + 1;
+        // deleting any earlier would leave the remaining retries no file to upload.
+        if (job.attemptsMade + 1 >= (job.opts?.attempts ?? 1)) {
           await fs.unlink(localPath).catch(() => {});
         }
 

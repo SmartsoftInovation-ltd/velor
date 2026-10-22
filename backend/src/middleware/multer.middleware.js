@@ -6,27 +6,53 @@ const fs = require("fs");
 const { getTenantId } = require("../tenancy/context");
 const settings = require("../settings/settings.service");
 const { AsyncResource } = require("async_hooks");
+const { takeHandedOff } = require("../queues/uploadHandoff");
 
 // Multer calls back from busboy's stream events, which run outside the request's
 // AsyncLocalStorage scope: without this the store's tenant is lost, the upload
 // guard skips its check and the controller's queries throw TENANT_CONTEXT_REQUIRED.
 const keepTenant = (callback) => AsyncResource.bind(callback);
 
+// Every file multer saved for this request, whichever wrapper was used
+const filesOf = (req) => [
+  ...(req.file ? [req.file] : []),
+  ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat()),
+];
+
+const removeFiles = (files) =>
+  Promise.all(files.map((file) => fs.promises.unlink(file.path).catch(() => {})));
+
+/**
+ * Deletes this request's temp files when it ends in an error.
+ *
+ * On success the image worker uploads the file and deletes it. But a request
+ * can fail after multer has written the file (validation, a duplicate title,
+ * a database error), and then no job is queued and the file stays in
+ * public/temp for good. Error responses are where those leftovers come from,
+ * so they are cleaned up here, once, for every upload route. A file that
+ * was already queued is skipped: from then on the worker owns it.
+ */
+const cleanUpOnError = (req, res) => {
+  res.once("finish", () => {
+    // A file already queued belongs to the image worker, which deletes it
+    // itself after the upload, or after its last retry
+    const files = filesOf(req).filter((file) => !takeHandedOff(file.path));
+    if (res.statusCode >= 400) removeFiles(files);
+  });
+};
+
 // Uploaded files are pushed to the tenant's Cloudinary account in the background.
 // Reject them up front when that account is not configured, so the record is not
 // saved with an image that can never upload.
 const guardUploads = async (req, next) => {
-  const files = [
-    ...(req.file ? [req.file] : []),
-    ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat()),
-  ];
+  const files = filesOf(req);
   const tenantId = getTenantId();
   if (!files.length || !tenantId) return next();
 
   try {
     const { cloudinary } = await settings.getFeatures(tenantId);
     if (cloudinary) return next();
-    await Promise.all(files.map((file) => fs.promises.unlink(file.path).catch(() => {})));
+    await removeFiles(files);
     next(settings.featureNotConfigured("CLOUDINARY_NOT_CONFIGURED", "Image storage (Cloudinary)"));
   } catch (error) {
     next(error);
@@ -90,14 +116,16 @@ const uploadError = (err) => {
   );
 };
 
-const withUploadErrors = (uploader) => (req, res, next) =>
-  uploader(req, res, keepTenant(function (err) {
+const withUploadErrors = (uploader) => (req, res, next) => {
+  cleanUpOnError(req, res);
+  return uploader(req, res, keepTenant(function (err) {
     if (err) {
       console.error("File upload error:", err);
       return next(uploadError(err));
     }
     guardUploads(req, next);
   }));
+};
 
 /**
  * Middleware wrapper for single file upload with clean error handling
