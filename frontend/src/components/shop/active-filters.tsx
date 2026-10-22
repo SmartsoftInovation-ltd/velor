@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { CloseIcon } from "@/components/ui/icons";
 import { buildShopHref, toggleValue } from "@/lib/catalog/query-params";
-import { CATEGORIES, COLORS } from "@/lib/catalog/taxonomy";
-import type { ShopQuery } from "@/lib/catalog/types";
+import type { ShopQuery, Taxonomy } from "@/lib/catalog/types";
 
 type Chip = { label: string; href: string };
 
@@ -12,17 +11,17 @@ const AVAILABILITY_LABELS = {
   offer: "On offer",
 } as const;
 
-function categoryLabel(query: ShopQuery) {
-  const category = CATEGORIES.find((item) => item.id === query.category);
+function categoryLabel(query: ShopQuery, { categories }: Taxonomy) {
+  const category = categories.find((item) => item.id === query.category);
   if (!category) return undefined;
   const sub = category.subcategories.find((item) => item.id === query.subcategory);
   return sub ? `${category.name} · ${sub.name}` : category.name;
 }
 
-function buildChips(query: ShopQuery): Chip[] {
+function buildChips(query: ShopQuery, taxonomy: Taxonomy): Chip[] {
   const chips: Chip[] = [];
 
-  const category = categoryLabel(query);
+  const category = categoryLabel(query, taxonomy);
   if (category) {
     chips.push({
       label: category,
@@ -39,7 +38,7 @@ function buildChips(query: ShopQuery): Chip[] {
 
   for (const colorId of query.colors ?? []) {
     chips.push({
-      label: COLORS.find((color) => color.id === colorId)?.name ?? colorId,
+      label: taxonomy.colors.find((color) => color.id === colorId)?.name ?? colorId,
       href: buildShopHref(query, { colors: toggleValue(query.colors, colorId) }),
     });
   }
@@ -79,8 +78,8 @@ function buildChips(query: ShopQuery): Chip[] {
   return chips;
 }
 
-export function ActiveFilters({ query }: { query: ShopQuery }) {
-  const chips = buildChips(query);
+export function ActiveFilters({ query, taxonomy }: { query: ShopQuery; taxonomy: Taxonomy }) {
+  const chips = buildChips(query, taxonomy);
   if (!chips.length) return null;
 
   return (

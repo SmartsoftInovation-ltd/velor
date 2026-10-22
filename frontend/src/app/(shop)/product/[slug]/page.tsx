@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/home/product-card";
 import { ProductGallery } from "@/components/product/product-gallery";
@@ -15,13 +16,17 @@ import {
   getRelatedProducts,
   getReviews,
 } from "@/lib/catalog/product-detail";
-import { CATEGORIES } from "@/lib/catalog/taxonomy";
+import { storeHostFrom } from "@/lib/store-api";
+
+// Rendered per request for the store on this domain: no generateStaticParams,
+// since a page built once at deploy time would carry one store's product.
+const productFor = async (slug: string) => getProduct(storeHostFrom(await headers()), slug);
 
 export async function generateMetadata({
   params,
 }: PageProps<"/product/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await productFor(slug);
   if (!product) return { title: "Product not found" };
 
   return { title: product.name, description: product.description };
@@ -29,15 +34,17 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: PageProps<"/product/[slug]">) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await productFor(slug);
   if (!product) notFound();
 
   const [reviews, related] = await Promise.all([
-    getReviews(slug),
-    getRelatedProducts(slug),
+    getReviews(),
+    getRelatedProducts(storeHostFrom(await headers()), product),
   ]);
 
-  const category = CATEGORIES.find((item) => item.id === product.categoryId);
+  const category = product.categoryId
+    ? { id: product.categoryId, name: product.categoryName }
+    : undefined;
   const { compareAtPrice, price } = product;
   const discountPct =
     compareAtPrice && compareAtPrice > price

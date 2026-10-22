@@ -2,8 +2,7 @@ import Link from "next/link";
 import { TagIcon } from "@/components/ui/icons-nav";
 import { SlidersIcon } from "@/components/ui/icons-section";
 import type { FacetCounts } from "@/lib/catalog/shop";
-import { BRANDS } from "@/lib/catalog/taxonomy";
-import type { ShopQuery } from "@/lib/catalog/types";
+import type { ShopQuery, Taxonomy } from "@/lib/catalog/types";
 import { AvailabilityFilter } from "./availability-filter";
 import { CategoryFilter } from "./category-filter";
 import { CheckboxFilter } from "./checkbox-filter";
@@ -15,10 +14,13 @@ import { SizeFilter } from "./size-filter";
 export function FilterSidebar({
   query,
   counts,
+  taxonomy,
   bare = false,
 }: {
   query: ShopQuery;
   counts: FacetCounts;
+  /** The store's own categories, brands, colours and sizes. */
+  taxonomy: Taxonomy;
   /** Inside the mobile drawer, which draws its own frame and title. */
   bare?: boolean;
 }) {
@@ -55,19 +57,22 @@ export function FilterSidebar({
         </div>
       )}
 
-      <CategoryFilter query={query} counts={counts.categories} />
-      <CheckboxFilter
-        title="Brand"
-        icon={<TagIcon />}
-        facet="brands"
-        options={BRANDS}
-        query={query}
-        counts={counts.brands}
-      />
+      <CategoryFilter query={query} counts={counts.categories} categories={taxonomy.categories} />
+      {/* A facet the store has nothing in is left out rather than shown empty */}
+      {taxonomy.brands.length ? (
+        <CheckboxFilter
+          title="Brand"
+          icon={<TagIcon />}
+          facet="brands"
+          options={taxonomy.brands}
+          query={query}
+          counts={counts.brands}
+        />
+      ) : null}
       <PriceFilter query={query} />
       <RatingFilter query={query} />
-      <ColorFilter query={query} />
-      <SizeFilter query={query} />
+      {taxonomy.colors.length ? <ColorFilter query={query} colors={taxonomy.colors} /> : null}
+      {taxonomy.sizes.length ? <SizeFilter query={query} sizes={taxonomy.sizes} /> : null}
       <AvailabilityFilter query={query} counts={counts.availability} />
     </aside>
   );

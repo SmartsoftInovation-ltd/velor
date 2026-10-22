@@ -1,22 +1,27 @@
+import { headers } from "next/headers";
 import { CrownIcon } from "@/components/ui/icons-nav";
-import { BEST_SELLERS } from "@/lib/best-sellers";
+import { bestSellingProducts, getStoreProducts } from "@/lib/catalog/storefront";
+import { storeHostFrom } from "@/lib/store-api";
 import { ProductCard } from "./product-card";
 import { Section } from "./section";
 import { SectionHeading } from "./section-heading";
 
-export function BestSellers() {
+export async function BestSellers() {
+  const products = bestSellingProducts(await getStoreProducts(storeHostFrom(await headers())), 8);
+  if (!products.length) return null;
+
   return (
     <Section>
       <SectionHeading
         eyebrow="Most wanted"
         icon={<CrownIcon />}
         title="Best sellers"
-        description="What keeps selling out, restocked and ready to go."
+        description="What customers buy most."
         viewAllHref="/shop"
       />
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
-        {BEST_SELLERS.map((product) => (
+        {products.map((product) => (
           <li key={product.id}>
             <ProductCard product={product} />
           </li>

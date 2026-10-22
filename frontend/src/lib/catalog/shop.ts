@@ -1,5 +1,3 @@
-import { CATALOG_A } from "./products-a";
-import { CATALOG_B } from "./products-b";
 import type {
   Availability,
   CatalogProduct,
@@ -7,8 +5,6 @@ import type {
   ShopResult,
   SortOption,
 } from "./types";
-
-const ALL: CatalogProduct[] = [...CATALOG_A, ...CATALOG_B];
 
 export const PAGE_SIZE = 9;
 
@@ -55,12 +51,12 @@ function hasAvailability(product: CatalogProduct, wanted: Availability[]) {
 }
 
 /**
- * Shaped like the eventual `GET /api/products` call — see
- * `.claude/specs/shop-page.md`. Swapping the body for a fetch is the whole
- * migration; nothing above it needs to change.
+ * Filters, sorts and pages the store's catalogue (from `getStoreProducts`).
+ * Done here rather than by the API: the whole active catalogue is one cached
+ * call, and the facet counts need every product anyway.
  */
-export async function searchProducts(query: ShopQuery = {}): Promise<ShopResult> {
-  const filtered = ALL.filter((product) => matches(product, query));
+export function searchProducts(all: CatalogProduct[], query: ShopQuery = {}): ShopResult {
+  const filtered = all.filter((product) => matches(product, query));
   const sorted = [...filtered].sort(SORTERS[query.sort ?? "relevance"]);
 
   const page = Math.max(1, query.page ?? 1);
@@ -82,7 +78,7 @@ export type FacetCounts = {
 };
 
 /** Per-facet counts for the current filter set, so the sidebar can show them. */
-export async function getFacetCounts(query: ShopQuery = {}): Promise<FacetCounts> {
+export function getFacetCounts(all: CatalogProduct[], query: ShopQuery = {}): FacetCounts {
   const categories: Record<string, number> = {};
   const brands: Record<string, number> = {};
   const availability: Record<Availability, number> = {
@@ -91,7 +87,7 @@ export async function getFacetCounts(query: ShopQuery = {}): Promise<FacetCounts
     offer: 0,
   };
 
-  for (const product of ALL) {
+  for (const product of all) {
     // Each facet counts against every filter except its own, so a count never
     // drops to zero just because that facet is the one being filtered on.
     if (matches(product, { ...query, category: undefined, subcategory: undefined })) {

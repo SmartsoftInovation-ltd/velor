@@ -9,6 +9,8 @@ export type Product = {
   rating: number;
   reviews: string;
   stock: Stock;
+  /** Units left, when known; the card says "Only N left" when stock is low. */
+  stockCount?: number;
   href: string;
   image: string;
   alt: string;

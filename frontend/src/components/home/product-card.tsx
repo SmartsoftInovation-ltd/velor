@@ -70,12 +70,16 @@ export function ProductCard({ product }: { product: Product }) {
               {product.name}
             </Link>
           </h3>
-          <div className="flex items-center gap-2">
-            <Stars rating={product.rating} />
-            <span className="text-caption text-text-tertiary tabular">
-              {product.rating} ({product.reviews})
-            </span>
-          </div>
+          {/* No stars until the product has been rated */}
+          {product.rating > 0 ? (
+            <div className="flex items-center gap-2">
+              <Stars rating={product.rating} />
+              <span className="text-caption text-text-tertiary tabular">
+                {product.rating}
+                {product.reviews ? ` (${product.reviews})` : null}
+              </span>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex items-baseline gap-2">
@@ -91,7 +95,11 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="mt-auto space-y-3">
           {stock === "in" ? <StatusDot tone="success">In stock</StatusDot> : null}
-          {stock === "low" ? <StatusDot tone="warning">Only 3 left</StatusDot> : null}
+          {stock === "low" ? (
+            <StatusDot tone="warning">
+              {product.stockCount ? `Only ${product.stockCount} left` : "Low stock"}
+            </StatusDot>
+          ) : null}
           {stock === "out" ? <StatusDot tone="danger">Out of stock</StatusDot> : null}
 
           <div className="flex gap-2">

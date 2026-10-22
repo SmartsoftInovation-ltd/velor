@@ -1,118 +1,68 @@
-import { CATALOG_A } from "./products-a";
-import { CATALOG_B } from "./products-b";
-import { reviewsForRating } from "./reviews";
+import { apiFetch, ApiError } from "@/lib/store-api";
+import { getStoreProducts, NO_IMAGE, toCatalogProduct, toVariant, type ApiProduct } from "./storefront";
 import type { CatalogProduct, ProductDetail, Review } from "./types";
 
-const ALL: CatalogProduct[] = [...CATALOG_A, ...CATALOG_B];
-
-/* Copy that is genuinely per-product. Everything else on ProductDetail is
-   derived from the catalogue row, so adding a product does not mean writing
-   twenty more lines of boilerplate. */
-const COPY: Record<string, { description: string; highlights: string[] }> = {
-  "leather-biker-jacket": {
-    description:
-      "A full-grain leather biker cut close through the body, with an asymmetric zip and a quilted shoulder panel. The lining is viscose, so it slides over a sweater instead of dragging on it.",
-    highlights: [
-      "Full-grain cowhide, vegetable tanned",
-      "Asymmetric YKK zip with storm flap",
-      "Quilted shoulder and elbow panels",
-    ],
-  },
-  "tailored-suit": {
-    description:
-      "A two-piece in a mid-weight wool blend, half-canvassed so it holds its line without the stiffness of a fused front. Trousers come unhemmed for tailoring.",
-    highlights: [
-      "Half-canvassed construction",
-      "Mid-weight wool blend, four-season",
-      "Trousers supplied unhemmed",
-    ],
-  },
-};
-
-const FALLBACK_COPY = {
-  description:
-    "Cut from a mid-weight fabric that holds its shape through a wash cycle, finished with flat-felled seams and a relaxed body that layers without bunching.",
-  highlights: [
-    "Pre-shrunk fabric, holds its size",
-    "Flat-felled seams throughout",
-    "Machine washable at 30°C",
-  ],
-};
-
-/**
- * The fixtures carry one real photo per product. Unsplash re-crops when both
- * `w` and `h` are set, so the rail shows three framings of that shot — on the
- * square crop the top and bottom both land on the garment, which is why this
- * works here and did not at 4:5. Real product data supplies separate images
- * and this function goes away.
- */
-function buildGallery(product: CatalogProduct) {
-  const base = product.image.replace("w=600", "w=900&h=900");
-  return [
-    { src: base, alt: product.alt },
-    { src: `${base}&crop=top`, alt: `${product.alt} — upper detail` },
-    { src: `${base}&crop=bottom`, alt: `${product.alt} — lower detail` },
+function specs(p: ApiProduct) {
+  const rows = [
+    { label: "Brand", value: p.brand?.name ?? "" },
+    { label: "Category", value: [p.category?.name, p.subcategory?.name].filter(Boolean).join(" / ") },
+    { label: "Colours", value: p.colors.join(", ") },
+    { label: "Sizes", value: p.sizes.join(", ") },
+    { label: "Warranty", value: p.warrantyInformation },
+    { label: "Shipping", value: p.shippingInformation },
   ];
+  return rows.filter((row) => row.value);
 }
 
-/**
- * Fixture stand-in for per-size inventory. Real data has a row per variant;
- * here the last size of a low-stock product and the largest two of a sold-out
- * one stand in, so the sold-out state is visible without inventing a table.
- */
-function soldOutSizes(product: CatalogProduct): string[] {
-  if (product.stock === "out") return product.sizes;
-  if (product.stock === "low") return product.sizes.slice(-1);
-  return product.sizes.length > 3 ? [product.sizes[1]] : [];
-}
-
-function buildDetail(product: CatalogProduct): ProductDetail {
-  const copy = COPY[product.id] ?? FALLBACK_COPY;
-  const stockCount =
-    product.stock === "out" ? 0 : product.stock === "low" ? 3 : 55;
+function buildDetail(p: ApiProduct): ProductDetail {
+  const variants = p.variants.map(toVariant);
+  const gallery = (p.gallery.length ? p.gallery : [NO_IMAGE]).map((src, i) => ({
+    src,
+    alt: i === 0 ? p.name : `${p.name}, photo ${i + 1}`,
+  }));
 
   return {
-    ...product,
-    ...copy,
-    sku: product.id.slice(0, 3).toUpperCase() + "-" + String(product.price),
-    stockCount,
-    soldOutSizes: soldOutSizes(product),
-    specs: [
-      { label: "Brand", value: product.brand },
-      { label: "Colours", value: product.colors.join(", ") },
-      { label: "Sizes", value: product.sizes.join(", ") },
-      { label: "Material", value: "Cotton blend" },
-      { label: "Fit", value: "Regular" },
-      { label: "Care", value: "Machine wash cold, line dry" },
-      { label: "Country of origin", value: "Bangladesh" },
-    ],
-    gallery: buildGallery(product),
+    ...toCatalogProduct(p),
+    sku: p.variants.length === 1 ? p.variants[0].sku || p.sku : p.sku,
+    description: p.description,
+    // The dashboard's free-text specifications field, one highlight per line
+    highlights: p.specifications.split("\n").map((line) => line.trim()).filter(Boolean),
+    specs: specs(p),
+    gallery,
+    stockCount: p.stock,
+    // Sizes that every variant carrying them has sold out of
+    soldOutSizes: p.sizes.filter((size) => {
+      const withSize = p.variants.filter((v) => v.size === size);
+      return withSize.length > 0 && withSize.every((v) => v.stock <= 0);
+    }),
+    maxPrice: p.maxPrice,
+    variants,
+    categoryName: p.category?.name ?? "",
   };
 }
 
-/** Shaped like `GET /api/products/:id` — see `.claude/specs/product-page.md`. */
-export async function getProduct(id: string): Promise<ProductDetail | undefined> {
-  const product = ALL.find((item) => item.id === id);
-  return product ? buildDetail(product) : undefined;
+/** One product of the store at `tenantHost` (GET /shop/products/:slug), or undefined. */
+export async function getProduct(tenantHost: string, slug: string): Promise<ProductDetail | undefined> {
+  if (!tenantHost) return undefined;
+  try {
+    const data = await apiFetch<{ product: ApiProduct }>(tenantHost, `/shop/products/${encodeURIComponent(slug)}`);
+    return buildDetail(data.product);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return undefined;
+    throw error;
+  }
 }
 
-/** Shaped like `GET /api/products/:id/reviews`. */
-export async function getReviews(id: string): Promise<Review[]> {
-  const product = ALL.find((item) => item.id === id);
-  if (!product) return [];
-  return reviewsForRating(product.rating);
+/** The store has no reviews yet; the tab shows its empty state. */
+export async function getReviews(): Promise<Review[]> {
+  return [];
 }
 
-/** Shaped like `GET /api/products/:id/related`. */
-export async function getRelatedProducts(id: string): Promise<CatalogProduct[]> {
-  const product = ALL.find((item) => item.id === id);
-  if (!product) return [];
-
-  return ALL.filter(
-    (item) => item.id !== id && item.categoryId === product.categoryId,
-  ).slice(0, 4);
-}
-
-export function listProductIds(): string[] {
-  return ALL.map((product) => product.id);
+/** Up to four other products from the same category. */
+export async function getRelatedProducts(tenantHost: string, product: ProductDetail): Promise<CatalogProduct[]> {
+  const all = await getStoreProducts(tenantHost);
+  return all
+    .map(toCatalogProduct)
+    .filter((item) => item.id !== product.id && item.categoryId === product.categoryId)
+    .slice(0, 4);
 }

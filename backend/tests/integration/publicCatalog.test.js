@@ -175,4 +175,32 @@ describe("public catalogue for storefront visitors", () => {
       expect(product).not.toHaveProperty("purchasePrice");
     });
   });
+
+  describe("storefront catalogue (/shop/products)", () => {
+    const shopList = (headers) => request(app.server).get("/api/v1/shop/products").set(headers);
+
+    it("lists only this store's active products, shaped for a shop page", async () => {
+      await runForTenant(velor.tenant._id, async () => {
+        const category = await Category.findOne({ slug: "drinks" });
+        await Product.create({ name: "Hidden", slug: "hidden", category: category._id, retailPrice: 1, purchasePrice: 1, variantType: "singleVariant", isActive: false });
+      });
+
+      const res = await shopList({ "x-tenant-host": "velor.com" }).expect(200);
+      const list = res.body.data.products;
+
+      expect(list.map((p) => p.slug)).toEqual(["cola"]);
+      expect(list[0]).toMatchObject({ name: "Cola", price: 500, stock: 10, category: { slug: "drinks" } });
+      // Cost and internal stock bookkeeping never leave the API
+      for (const field of ["purchasePrice", "wholesalePrice", "posSold", "salesReturn", "initialStock"]) {
+        expect(list[0]).not.toHaveProperty(field);
+      }
+    });
+
+    it("serves one product by slug and 404s an unknown one", async () => {
+      const res = await request(app.server).get("/api/v1/shop/products/cola").set({ "x-tenant-host": "pizzashop.com" }).expect(200);
+      expect(res.body.data.product).toMatchObject({ slug: "cola", price: 500 });
+
+      await request(app.server).get("/api/v1/shop/products/nope").set({ "x-tenant-host": "velor.com" }).expect(404);
+    });
+  });
 });

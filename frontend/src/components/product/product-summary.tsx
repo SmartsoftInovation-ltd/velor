@@ -21,21 +21,25 @@ export function ProductSummary({ product }: { product: ProductDetail }) {
           {product.name}
         </h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <div className="flex items-center gap-2">
-            <Stars rating={product.rating} />
-            <span className="text-small tabular text-text-secondary">
-              {product.rating} ({product.reviews} ratings)
+          {product.rating > 0 ? (
+            <div className="flex items-center gap-2">
+              <Stars rating={product.rating} />
+              <span className="text-small tabular text-text-secondary">{product.rating}</span>
+            </div>
+          ) : null}
+          {product.sku ? (
+            <span className="text-caption text-text-tertiary">
+              SKU <span className="font-mono">{product.sku}</span>
             </span>
-          </div>
-          <span className="text-caption text-text-tertiary">
-            SKU <span className="font-mono">{product.sku}</span>
-          </span>
+          ) : null}
         </div>
       </div>
 
       <div className="flex items-baseline gap-3">
         <p className="text-h2 font-semibold tabular text-text-primary">
           ৳{price.toLocaleString()}
+          {/* Variants priced differently: show the range, the option picker names the exact price */}
+          {product.maxPrice > price ? ` – ৳${product.maxPrice.toLocaleString()}` : null}
         </p>
         {onSale && compareAtPrice ? (
           <p className="text-h2 font-medium tabular text-text-tertiary line-through">
@@ -61,6 +65,7 @@ export function ProductSummary({ product }: { product: ProductDetail }) {
         soldOutSizes={product.soldOutSizes}
         stockCount={product.stockCount}
         productName={product.name}
+        variants={product.variants}
       />
     </div>
   );

@@ -1,18 +1,17 @@
 import { PaletteIcon } from "@/components/ui/icons-filter";
 import Link from "next/link";
 import { buildShopHref, toggleValue } from "@/lib/catalog/query-params";
-import { COLORS } from "@/lib/catalog/taxonomy";
-import type { ShopQuery } from "@/lib/catalog/types";
+import type { ColorOption, ShopQuery } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 import { FilterSection } from "./filter-section";
 
-export function ColorFilter({ query }: { query: ShopQuery }) {
+export function ColorFilter({ query, colors }: { query: ShopQuery; colors: ColorOption[] }) {
   const selected = query.colors ?? [];
 
   return (
     <FilterSection title="Colour" icon={<PaletteIcon />}>
       <ul className="flex flex-wrap gap-2">
-        {COLORS.map((color) => {
+        {colors.map((color) => {
           const checked = selected.includes(color.id);
           return (
             <li key={color.id}>

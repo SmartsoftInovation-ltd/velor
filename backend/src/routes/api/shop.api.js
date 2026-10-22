@@ -2,6 +2,7 @@ const express = require("express");
 const shopController = require("../../controller/shop.controller");
 const { shopperGuard } = require("../../middleware/authMiddleware");
 const shopOrderController = require("../../controller/shopOrder.controller");
+const shopCatalogController = require("../../controller/shopCatalog.controller");
 const { guestOrAuth } = require("../../middleware/guestOrAuth");
 const { loginLimiter, registerLimiter } = require("../../middleware/rateLimit.middleware");
 
@@ -17,6 +18,8 @@ const _ = express.Router();
 
 _.get("/store", shopController.store);
 _.get("/banners", shopController.banners);
+_.get("/products", shopCatalogController.products);
+_.get("/products/:slug", shopCatalogController.product);
 _.post("/auth/register", registerLimiter, shopController.register);
 _.post("/auth/login", loginLimiter, shopController.login);
 

@@ -5,7 +5,9 @@ import { ReviewForm } from "./review-form";
 export function DescriptionPanel({ product }: { product: ProductDetail }) {
   return (
     <div className="space-y-5">
-      <p className="max-w-2xl text-body text-text-secondary">{product.description}</p>
+      <p className="max-w-2xl text-body text-text-secondary">
+        {product.description || "The seller has not added a description for this product yet."}
+      </p>
       <ul className="space-y-2">
         {product.highlights.map((point) => (
           <li key={point} className="flex items-start gap-2.5 text-small text-text-secondary">
@@ -30,10 +32,12 @@ export function SpecificationPanel({ product }: { product: ProductDetail }) {
           <dd className="text-small text-text-primary">{spec.value}</dd>
         </div>
       ))}
-      <div className="flex gap-4 py-2.5">
-        <dt className="w-40 shrink-0 text-small text-text-tertiary">SKU</dt>
-        <dd className="font-mono text-small text-text-primary">{product.sku}</dd>
-      </div>
+      {product.sku ? (
+        <div className="flex gap-4 py-2.5">
+          <dt className="w-40 shrink-0 text-small text-text-tertiary">SKU</dt>
+          <dd className="font-mono text-small text-text-primary">{product.sku}</dd>
+        </div>
+      ) : null}
     </dl>
   );
 }
@@ -47,6 +51,15 @@ export function ReviewsPanel({
   rating: number;
   count: string;
 }) {
+  if (!reviews.length) {
+    return (
+      <div className="space-y-6">
+        <p className="text-body text-text-secondary">No reviews yet. Be the first to review this product.</p>
+        <ReviewForm />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 rounded-lg bg-bg-sunken p-4">

@@ -1,18 +1,17 @@
 import { RulerIcon } from "@/components/ui/icons-filter";
 import Link from "next/link";
 import { buildShopHref, toggleValue } from "@/lib/catalog/query-params";
-import { SIZES } from "@/lib/catalog/taxonomy";
 import type { ShopQuery } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 import { FilterSection } from "./filter-section";
 
-export function SizeFilter({ query }: { query: ShopQuery }) {
+export function SizeFilter({ query, sizes }: { query: ShopQuery; sizes: string[] }) {
   const selected = query.sizes ?? [];
 
   return (
     <FilterSection title="Size" icon={<RulerIcon />}>
       <ul className="flex flex-wrap gap-2">
-        {SIZES.map((size) => {
+        {sizes.map((size) => {
           const checked = selected.includes(size);
           return (
             <li key={size}>

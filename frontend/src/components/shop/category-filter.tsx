@@ -1,18 +1,19 @@
 import { GridIcon } from "@/components/ui/icons-nav";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CATEGORIES } from "@/lib/catalog/taxonomy";
 import { buildShopHref } from "@/lib/catalog/query-params";
-import type { ShopQuery } from "@/lib/catalog/types";
+import type { Category, ShopQuery } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 import { FilterSection } from "./filter-section";
 
 export function CategoryFilter({
   query,
   counts,
+  categories,
 }: {
   query: ShopQuery;
   counts: Record<string, number>;
+  categories: Category[];
 }) {
   return (
     <FilterSection title="Category" icon={<GridIcon />}>
@@ -28,7 +29,7 @@ export function CategoryFilter({
           </Link>
         </li>
 
-        {CATEGORIES.map((category) => {
+        {categories.map((category) => {
           const active = query.category === category.id;
           return (
             <li key={category.id}>

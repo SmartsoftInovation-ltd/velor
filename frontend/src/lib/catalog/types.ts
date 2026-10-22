@@ -11,6 +11,16 @@ export type CatalogProduct = Product & {
   colors: string[];
   sizes: string[];
   createdAt: string;
+  /** Units sold so far; ranks best sellers. */
+  sold?: number;
+};
+
+/** One buyable option of a product, e.g. "Navy / M", with its own price and stock. */
+export type ProductVariant = {
+  id: string;
+  label: string;
+  price: number;
+  stock: number;
 };
 
 /**
@@ -26,6 +36,11 @@ export type ProductDetail = CatalogProduct & {
   stockCount: number;
   /** A subset of `sizes` that is currently unavailable, not a separate list. */
   soldOutSizes: string[];
+  /** Highest variant price; above `price` when variants are priced differently. */
+  maxPrice: number;
+  variants: ProductVariant[];
+  /** For the breadcrumb; `categoryId` is the slug. */
+  categoryName: string;
 };
 
 export type Review = {
@@ -50,6 +65,14 @@ export type ColorOption = {
   name: string;
   /** A fixed hex, not a token: these are product colours, not UI colours. */
   swatch: string;
+};
+
+/** The shop's filter options, built from what the store sells. */
+export type Taxonomy = {
+  categories: Category[];
+  brands: string[];
+  colors: ColorOption[];
+  sizes: string[];
 };
 
 export type SortOption =

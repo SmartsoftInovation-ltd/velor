@@ -1,22 +1,27 @@
+import { headers } from "next/headers";
 import { SparkleIcon } from "@/components/ui/icons-nav";
-import { NEW_ARRIVALS } from "@/lib/products";
+import { getStoreProducts, newestProducts } from "@/lib/catalog/storefront";
+import { storeHostFrom } from "@/lib/store-api";
 import { ProductCard } from "./product-card";
 import { Section } from "./section";
 import { SectionHeading } from "./section-heading";
 
-export function NewArrivals() {
+export async function NewArrivals() {
+  const products = newestProducts(await getStoreProducts(storeHostFrom(await headers())), 8);
+  if (!products.length) return null;
+
   return (
     <Section muted>
       <SectionHeading
         eyebrow="Just landed"
         icon={<SparkleIcon />}
         title="New arrivals"
-        description="Fresh in this week — the pieces the season is being built around."
+        description="The latest additions to the shop."
         viewAllHref="/shop"
       />
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
-        {NEW_ARRIVALS.map((product) => (
+        {products.map((product) => (
           <li key={product.id}>
             <ProductCard product={product} />
           </li>
