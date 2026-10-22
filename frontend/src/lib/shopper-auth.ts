@@ -7,7 +7,11 @@ import { apiFetch } from "@/lib/store-api";
  * different shops.
  */
 
-export type Shopper = { _id: string; name: string; email?: string; phone?: string };
+export type Shopper = { _id: string; name: string; email?: string; phone?: string; image?: string | null };
+
+// The session cookies live on the shop's own domain, so each store keeps its own
+export const SESSION_COOKIE = "shop_session";
+export const REFRESH_COOKIE = "shop_refresh";
 
 export type ShopperSession = { user: Shopper; accessToken: string; refreshToken: string };
 
@@ -30,6 +34,14 @@ export const loginShopper = (tenantHost: string, input: SignInInput) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
+
+// GET /shop/me — the signed-in shopper, in the store this domain belongs to
+export const getMe = async (tenantHost: string, accessToken: string) =>
+  (
+    await apiFetch<{ user: Shopper }>(tenantHost, "/shop/me", {
+      headers: { authorization: `Bearer ${accessToken}` },
+    })
+  ).user;
 
 export const PASSWORD_MIN = 8;
 

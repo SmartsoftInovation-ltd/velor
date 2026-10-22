@@ -9,7 +9,9 @@ import {
   loginShopper,
   normalizePhone,
   passwordProblems,
+  REFRESH_COOKIE,
   registerShopper,
+  SESSION_COOKIE,
   type ShopperSession,
 } from "@/lib/shopper-auth";
 
@@ -26,9 +28,6 @@ export type SignInState = {
   values?: { contact: string; method: "email" | "phone" };
 };
 
-// The session cookies live on the shop's own domain, so each store keeps its own
-const SESSION_COOKIE = "shop_session";
-const REFRESH_COOKIE = "shop_refresh";
 const DAY = 24 * 60 * 60;
 
 /**
@@ -113,6 +112,14 @@ export async function signInAction(_prev: SignInState, form: FormData): Promise<
 
   await saveSession(session, form.get("remember") === "on");
   redirect("/");
+}
+
+/** Ends the session on this shop's domain only; other shops keep theirs. */
+export async function signOutAction() {
+  const jar = await cookies();
+  jar.delete(SESSION_COOKIE);
+  jar.delete(REFRESH_COOKIE);
+  redirect("/sign-in");
 }
 
 /**

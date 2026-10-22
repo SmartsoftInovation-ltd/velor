@@ -6,7 +6,7 @@ import { CloseIcon, MenuIcon } from "@/components/ui/icons";
 import { UserIcon } from "@/components/ui/icons-nav";
 import { NAV_LINKS } from "@/lib/nav-links";
 
-export function MobileMenu() {
+export function MobileMenu({ signedIn = false }: { signedIn?: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -67,21 +67,23 @@ export function MobileMenu() {
             {/* The header's own Log in is hidden below sm, so the drawer is
                 the only way in on a phone. */}
             <Link
-              href="/sign-in"
+              href={signedIn ? "/account" : "/sign-in"}
               onClick={() => setOpen(false)}
               className="mt-auto flex h-11 items-center justify-center gap-2 rounded-md bg-brand-500 text-body font-medium text-white shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600"
             >
               <UserIcon className="size-4" />
-              Log in
+              {signedIn ? "My account" : "Log in"}
             </Link>
 
-            <Link
-              href="/sign-up"
-              onClick={() => setOpen(false)}
-              className="flex h-11 items-center justify-center rounded-md border border-border-default text-body font-medium text-text-primary transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-bg-hover"
-            >
-              Create account
-            </Link>
+            {signedIn ? null : (
+              <Link
+                href="/sign-up"
+                onClick={() => setOpen(false)}
+                className="flex h-11 items-center justify-center rounded-md border border-border-default text-body font-medium text-text-primary transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-bg-hover"
+              >
+                Create account
+              </Link>
+            )}
           </div>
         </div>
       ) : null}

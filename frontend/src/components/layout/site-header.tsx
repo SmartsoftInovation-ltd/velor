@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { HeartIcon } from "@/components/ui/icons";
 import { UserIcon } from "@/components/ui/icons-nav";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { WISHLIST_ITEMS } from "@/lib/catalog/wishlist-fixture";
+import { SESSION_COOKIE } from "@/lib/shopper-auth";
 import { CartButton } from "./cart-button";
 import { HeaderActions } from "./header-actions";
 import { HeaderIconButton } from "./header-icon-button";
@@ -11,7 +13,10 @@ import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { NavBar } from "./nav-bar";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  // Only whether a session cookie exists; the account page checks it with the API
+  const signedIn = (await cookies()).has(SESSION_COOKIE);
+
   return (
     <header className="sticky top-0 z-30 border-b border-border-subtle bg-bg-surface/85 backdrop-blur-md">
       {/* Identity, search, account. A three-track grid rather than a flex row.
@@ -58,14 +63,14 @@ export function SiteHeader() {
           {/* A link, not a Button: nesting a <button> inside an <a> gives the
               row two focus stops for one target. */}
           <Link
-            href="/sign-in"
+            href={signedIn ? "/account" : "/sign-in"}
             className="shine ml-2 hidden h-10 items-center gap-2 rounded-md bg-brand-500 px-4 text-body font-medium whitespace-nowrap text-white shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 sm:inline-flex"
           >
             <UserIcon className="relative z-2 size-4" />
-            <span className="relative z-2">Log in</span>
+            <span className="relative z-2">{signedIn ? "My account" : "Log in"}</span>
           </Link>
 
-          <MobileMenu />
+          <MobileMenu signedIn={signedIn} />
         </div>
       </div>
 
