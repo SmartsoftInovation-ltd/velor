@@ -379,6 +379,8 @@ const BannerUpdate = lazy(
 );
 const BannerView = lazy(() => import("./pages/Settings/banner/BannerView.tsx"));
 const LimitedOffer = lazy(() => import("./pages/WebsiteManagement/LimitedOffer.tsx"));
+const FlashSaleList = lazy(() => import("./pages/WebsiteManagement/FlashSaleList.tsx"));
+const FlashSaleForm = lazy(() => import("./pages/WebsiteManagement/FlashSaleForm.tsx"));
 const AddSiteInfo = lazy(
   () => import("./pages/Settings/siteinformation/AddSiteInfo.tsx"),
 );
@@ -916,6 +918,9 @@ export default function App() {
                 <Route path="/add-banner" element={<ProtectedRoute module="create-banner" action="add"><AddBanner /></ProtectedRoute>} />
                 <Route path="/banner-list" element={<ProtectedRoute module="create-banner" action="view"><BannerList /></ProtectedRoute>} />
                 <Route path="/limited-offer" element={<ProtectedRoute module="limited-offer" action="view"><LimitedOffer /></ProtectedRoute>} />
+                <Route path="/flash-sale" element={<ProtectedRoute module="flash-sale" action="view"><FlashSaleList /></ProtectedRoute>} />
+                <Route path="/flash-sale/new" element={<ProtectedRoute module="flash-sale" action="add"><FlashSaleForm /></ProtectedRoute>} />
+                <Route path="/flash-sale/:id" element={<ProtectedRoute module="flash-sale" action="edit"><FlashSaleForm /></ProtectedRoute>} />
                 <Route
                   path="/update-banner/:slug"
                   element={

@@ -21,16 +21,17 @@ const UNITS: { key: keyof TimeLeft; label: string }[] = [
   { key: "seconds", label: "Sec" },
 ];
 
-export function CountdownTimer({ durationMs }: { durationMs: number }) {
+/** Counts down to `endsAt` (an ISO time from the API). */
+export function CountdownTimer({ endsAt }: { endsAt: string }) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
 
   useEffect(() => {
-    const endsAt = Date.now() + durationMs;
-    const tick = () => setTimeLeft(getTimeLeft(endsAt));
+    const target = new Date(endsAt).getTime();
+    const tick = () => setTimeLeft(getTimeLeft(target));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [durationMs]);
+  }, [endsAt]);
 
   return (
     <div className="flex items-center gap-2">

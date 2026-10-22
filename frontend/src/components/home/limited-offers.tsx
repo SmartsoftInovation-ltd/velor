@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { TagIcon } from "@/components/ui/icons-nav";
-import { getLimitedOffers } from "@/lib/catalog/storefront";
+import { getLimitedOffers } from "@/lib/catalog/featured";
 import { storeHostFrom } from "@/lib/store-api";
 import { ProductCard } from "./product-card";
 import { Section } from "./section";

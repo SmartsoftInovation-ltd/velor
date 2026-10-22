@@ -5,7 +5,7 @@ import { FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { useRemoteLookup } from "../../hooks/useRemoteLookup";
 import { getApiErrorMessage } from "../../utils/apiError";
-import ProductPickList from "./ProductPickList";
+import ProductPickList from "../productPicker/ProductPickList";
 import { type LookupProduct, pickKey, variantLabel } from "./types";
 
 type Pick = { product: string; variant: string | null; label: string };

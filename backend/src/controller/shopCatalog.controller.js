@@ -1,5 +1,6 @@
 const Product = require("../models/product.model");
 const LimitedOffer = require("../models/limitedOffer.model");
+const { currentPricing } = require("../service/flashSale.service");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
@@ -101,6 +102,51 @@ const findProducts = (filter) =>
     .sort({ createdAt: -1 })
     .lean();
 
+/**
+ * Puts a running flash sale's prices on storefront products. Done per
+ * response, after the cache, so a sale starts and ends on the minute. An item
+ * on sale keeps its retail price as `compareAtPrice`.
+ */
+const withSale = (products, priceFor) =>
+  products.map((p) => {
+    if (!p.variants.length) {
+      const sale = priceFor({ productId: p._id, retailPrice: p.price });
+      return sale === null ? { ...p, compareAtPrice: null } : { ...p, price: sale, maxPrice: sale, compareAtPrice: p.price };
+    }
+    const variants = p.variants.map((v) => {
+      const sale = priceFor({ productId: p._id, variantId: v._id, retailPrice: v.price });
+      return sale === null ? { ...v, compareAtPrice: null } : { ...v, price: sale, compareAtPrice: v.price };
+    });
+    // The card shows the cheapest option, struck through when that option is on sale
+    const cheapest = variants.reduce((low, v) => (v.price < low.price ? v : low), variants[0]);
+    return {
+      ...p,
+      variants,
+      price: cheapest.price,
+      maxPrice: Math.max(...variants.map((v) => v.price)),
+      compareAtPrice: cheapest.compareAtPrice,
+    };
+  });
+
+/**
+ * A curated list (limited offers, flash sale) as cards: a whole-product entry
+ * is the product, a variant entry is its product narrowed to that option's
+ * price, stock and photo, with `variantId` so the card opens on it. Entries
+ * whose product or variant is gone or inactive are skipped.
+ */
+const featured = (entries, products) => {
+  const byId = new Map(products.map((p) => [String(p._id), p]));
+  return entries.flatMap((entry) => {
+    const product = byId.get(String(entry.product));
+    if (!product) return [];
+    if (!entry.variant) return [{ ...product, variantId: null }];
+
+    const v = product.variants.find((x) => String(x._id) === String(entry.variant));
+    if (!v) return [];
+    return [{ ...product, variantId: v._id, price: v.price, maxPrice: v.price, compareAtPrice: v.compareAtPrice, stock: v.stock, image: v.image || product.image }];
+  });
+};
+
 // GET /shop/products: every active product, newest first
 exports.products = asynchandeler(async (req, res) => {
   requireStore();
@@ -112,7 +158,8 @@ exports.products = asynchandeler(async (req, res) => {
     await setCache(cacheKey, products, CACHE_TTL);
   }
 
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Products", { products });
+  const { priceFor } = await currentPricing();
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Products", { products: withSale(products, priceFor) });
 });
 
 // GET /shop/products/:slug: one active product with its variants
@@ -129,36 +176,44 @@ exports.product = asynchandeler(async (req, res) => {
     await setCache(cacheKey, product, CACHE_TTL);
   }
 
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Product", { product });
+  const { priceFor } = await currentPricing();
+  const [priced] = withSale([product], priceFor);
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Product", { product: priced });
 });
 
-// GET /shop/limited-offers: what the seller picked under Website Management →
-// Limited Offer, in their order. A variant entry is its product with that
-// option's price, stock and photo, plus `variantId` so the card opens on it.
+// GET /shop/limited-offers: the seller's picks under Website Management →
+// Limited Offer, in their order
 exports.limitedOffers = asynchandeler(async (req, res) => {
   requireStore();
   const cacheKey = await buildCacheKey("limited-offer", "storefront");
-  let products = await getCache(cacheKey);
+  let cached = await getCache(cacheKey);
 
-  if (!products) {
-    const entries = await LimitedOffer.find({ isActive: true }).sort({ priority: 1, createdAt: -1 }).lean();
-    const found = await findProducts({ _id: { $in: entries.map((e) => e.product) } });
-    const byId = new Map(found.map((p) => [String(p._id), toStorefront(p)]));
-
-    products = entries.flatMap((entry) => {
-      const product = byId.get(String(entry.product));
-      if (!product) return []; // product deleted or deactivated
-      if (!entry.variant) return [{ ...product, variantId: null }];
-
-      const variant = product.variants.find((v) => String(v._id) === String(entry.variant));
-      if (!variant) return []; // variant deactivated
-      return [{ ...product, variantId: variant._id, price: variant.price, maxPrice: variant.price, stock: variant.stock, image: variant.image || product.image }];
-    });
+  if (!cached) {
+    const entries = await LimitedOffer.find({ isActive: true }).sort({ priority: 1, createdAt: -1 }).select("product variant").lean();
+    const products = (await findProducts({ _id: { $in: entries.map((e) => e.product) } })).map(toStorefront);
+    cached = { entries, products };
     // Short: stock and prices inside change without touching this namespace
-    await setCache(cacheKey, products, 60);
+    await setCache(cacheKey, cached, 60);
   }
 
+  const { priceFor } = await currentPricing();
+  const products = featured(cached.entries, withSale(cached.products, priceFor));
   return apiResponse.sendSuccess(res, statusCodes.OK, "Limited offers", { products });
+});
+
+// GET /shop/flash-sale: the sale running now, with its items at sale price,
+// or { sale: null } when none is
+exports.flashSale = asynchandeler(async (req, res) => {
+  requireStore();
+  const { sale, priceFor } = await currentPricing();
+  if (!sale) return apiResponse.sendSuccess(res, statusCodes.OK, "No flash sale", { sale: null, products: [] });
+
+  const found = (await findProducts({ _id: { $in: sale.items.map((i) => i.product) } })).map(toStorefront);
+  const products = featured(sale.items, withSale(found, priceFor));
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Flash sale", {
+    sale: { _id: sale._id, title: sale.title, startsAt: sale.startsAt, endsAt: sale.endsAt },
+    products,
+  });
 });
 
 module.exports.toStorefront = toStorefront;

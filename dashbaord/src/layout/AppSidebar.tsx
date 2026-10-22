@@ -25,6 +25,7 @@ import {
   TbBuildingCommunity,
   TbPhoto,
   TbSparkles,
+  TbBolt,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
@@ -437,6 +438,15 @@ const navItems: NavItem[] = [
     icon: <TbSparkles />,
     path: "/limited-offer",
     module: PERMISSIONS.LIMITED_OFFER,
+  },
+  {
+    // Time-limited sale prices on the storefront
+    name: "Flash Sale",
+    icon: <TbBolt />,
+    subItems: [
+      { name: "Create Flash Sale", path: "/flash-sale/new", module: PERMISSIONS.FLASH_SALE, action: "add", pro: false },
+      { name: "Flash Sale List", path: "/flash-sale", module: PERMISSIONS.FLASH_SALE, pro: false },
+    ],
   },
   {
     name: "Stock",
@@ -941,7 +951,8 @@ const websiteManagementItems = navItems.filter(
     item.name === "Order" ||
     item.name === "Delivery Charge" ||
     item.name === "Banner" ||
-    item.name === "Limited Offer",
+    item.name === "Limited Offer" ||
+    item.name === "Flash Sale",
 );
 const profileItems = hrManage.filter(
   (item) =>
@@ -1093,6 +1104,7 @@ const AppSidebar: React.FC = () => {
         item.name !== "Delivery Charge" &&
         item.name !== "Banner" &&
         item.name !== "Limited Offer" &&
+        item.name !== "Flash Sale" &&
         item.name !== "Order" &&
         item.name !== "Size Chart" &&
         item.name.trim() !== "All Accounts" &&

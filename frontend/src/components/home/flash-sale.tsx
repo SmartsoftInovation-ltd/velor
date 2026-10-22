@@ -1,25 +1,29 @@
+import { headers } from "next/headers";
 import { BoltIcon } from "@/components/ui/icons-section";
-import { FLASH_SALE_PRODUCTS } from "@/lib/flash-sale";
+import { getFlashSale } from "@/lib/catalog/featured";
+import { storeHostFrom } from "@/lib/store-api";
 import { CountdownTimer } from "./countdown-timer";
 import { ProductCard } from "./product-card";
 import { Section } from "./section";
 import { SectionHeading } from "./section-heading";
 
-const SALE_DURATION_MS = 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000;
+// The sale set under Website Management → Flash Sale; hidden when none is running
+export async function FlashSale() {
+  const sale = await getFlashSale(storeHostFrom(await headers()));
+  if (!sale) return null;
 
-export function FlashSale() {
   return (
     <Section>
       <SectionHeading
         eyebrow="Ends soon"
         icon={<BoltIcon />}
-        title="Flash sale"
-        description="Deepest cuts of the season. When the clock stops, so do the prices."
-        action={<CountdownTimer durationMs={SALE_DURATION_MS} />}
+        title={sale.title}
+        description="Sale prices until the clock runs out."
+        action={<CountdownTimer endsAt={sale.endsAt} />}
       />
 
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
-        {FLASH_SALE_PRODUCTS.map((product) => (
+        {sale.products.map((product) => (
           <li key={product.id}>
             <ProductCard product={product} />
           </li>

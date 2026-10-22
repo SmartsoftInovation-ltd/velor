@@ -116,6 +116,7 @@ export const PERMISSIONS = {
   FUND_HANDOVER: "fund-handover",
   CREATE_BANNER: "create-banner",
   LIMITED_OFFER: "limited-offer",
+  FLASH_SALE: "flash-sale",
   SITE_INFORMATION: "site-information",
   OUTLET_INFORMATION: "outlet-information",
   CREATE_USER: "create-user",

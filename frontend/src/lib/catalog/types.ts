@@ -20,6 +20,8 @@ export type ProductVariant = {
   id: string;
   label: string;
   price: number;
+  /** Retail price while this option is in a flash sale */
+  compareAtPrice?: number;
   stock: number;
 };
 

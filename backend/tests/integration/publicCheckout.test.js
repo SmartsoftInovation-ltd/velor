@@ -11,6 +11,7 @@ const Category = require("../../src/models/category.model");
 const Coupon = require("../../src/models/coupon.model");
 const Delivery = require("../../src/models/delivery.model");
 const Order = require("../../src/models/order.model");
+const FlashSale = require("../../src/models/flashSale.model");
 const service = require("../../src/settings/settings.service");
 const { cache } = require("../../src/config/redis.config");
 
@@ -139,6 +140,27 @@ describe("storefront checkout", () => {
       expect(res.body.data.order.finalAmount).toBe(500);
       expect(res.body.data.order.totalAmount).toBe(500);
       expect(res.body.data.order.discountAmount).toBe(0);
+    });
+
+    it("charges the flash sale price while the sale runs, and the full price after", async () => {
+      const HOUR = 60 * 60 * 1000;
+      const sale = await runForTenant(velor.tenant._id, () =>
+        FlashSale.create({
+          title: "Weekend",
+          startsAt: new Date(Date.now() - HOUR),
+          endsAt: new Date(Date.now() + HOUR),
+          items: [{ product: velorProduct._id, salePrice: 400 }],
+        }),
+      );
+
+      await fillCart();
+      const during = await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
+      expect(during.body.data.order.finalAmount).toBe(400);
+
+      await runForTenant(velor.tenant._id, () => FlashSale.updateOne({ _id: sale._id }, { $set: { endsAt: new Date(Date.now() - 1000) } }));
+      await fillCart();
+      const after = await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
+      expect(after.body.data.order.finalAmount).toBe(500);
     });
 
     it("charges the delivery fee recorded against the chosen option", async () => {

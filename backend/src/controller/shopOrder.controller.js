@@ -3,6 +3,7 @@ const Order = require("../models/order.model");
 const Cart = require("../models/cart.model");
 const Product = require("../models/product.model");
 const Variant = require("../models/variant.model");
+const { currentPricing } = require("../service/flashSale.service");
 const Coupon = require("../models/coupon.model");
 const DeliveryCharge = require("../models/delivery.model");
 const { customError } = require("../lib/CustomError");
@@ -50,6 +51,8 @@ const requireStore = () => {
  * tampered cart row cannot set its own price.
  */
 const priceCart = async (cart) => {
+  // A running flash sale sets the price of the items it lists
+  const { priceFor } = await currentPricing();
   const items = [];
   let subtotal = 0;
   let totalQuantity = 0;
@@ -67,7 +70,9 @@ const priceCart = async (cart) => {
         throw new customError(`${variant.variantName} is out of stock`, statusCodes.BAD_REQUEST);
       }
 
-      const unitPrice = variant.retailPrice;
+      const unitPrice =
+        priceFor({ productId: variant.product?._id, variantId: variant._id, retailPrice: variant.retailPrice }) ??
+        variant.retailPrice;
       items.push({
         variant,
         product: variant.product?._id ?? null,
@@ -89,7 +94,7 @@ const priceCart = async (cart) => {
       throw new customError(`${product.name} is out of stock`, statusCodes.BAD_REQUEST);
     }
 
-    const unitPrice = product.retailPrice;
+    const unitPrice = priceFor({ productId: product._id, retailPrice: product.retailPrice }) ?? product.retailPrice;
     items.push({
       product,
       quantity,

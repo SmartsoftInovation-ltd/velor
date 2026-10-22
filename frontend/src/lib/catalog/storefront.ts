@@ -19,6 +19,8 @@ export type ApiVariant = {
   size: string;
   color: string;
   price: number;
+  /** Retail price while a flash sale puts this option on sale, else null */
+  compareAtPrice: number | null;
   stock: number;
   image: string;
 };
@@ -35,6 +37,8 @@ export type ApiProduct = {
   gallery: string[];
   price: number;
   maxPrice: number;
+  /** Retail price struck through on the card while a flash sale runs, else null */
+  compareAtPrice: number | null;
   stock: number;
   sizes: string[];
   colors: string[];
@@ -65,6 +69,7 @@ export function toCatalogProduct(p: ApiProduct): CatalogProduct {
     name: p.name,
     brand: p.brand?.name ?? "",
     price: p.price,
+    compareAtPrice: p.compareAtPrice ?? undefined,
     rating: p.rating,
     reviews: "",
     stock: stockState(p.stock),
@@ -88,6 +93,7 @@ export function toVariant(v: ApiVariant): ProductVariant {
     // Size and colour name a variant best; a variant without them goes by its name
     label: [v.color, v.size].filter(Boolean).join(" / ") || v.name,
     price: v.price,
+    compareAtPrice: v.compareAtPrice ?? undefined,
     stock: v.stock,
   };
 }
@@ -145,20 +151,6 @@ export const bestSellingProducts = (products: ApiProduct[], count: number) =>
     .sort((a, b) => b.sold - a.sold)
     .slice(0, count)
     .map(toCatalogProduct);
-
-/**
- * The seller's picks under Website Management → Limited Offer, in their order.
- * A store that picked nothing (or an unreachable API) gets an empty list.
- */
-export async function getLimitedOffers(tenantHost: string): Promise<CatalogProduct[]> {
-  if (!tenantHost) return [];
-  try {
-    const data = await apiFetch<{ products: ApiProduct[] }>(tenantHost, "/shop/limited-offers");
-    return data.products.map(toCatalogProduct);
-  } catch {
-    return [];
-  }
-}
 
 /** Every active product of the store at `tenantHost`, newest first. One call per render. */
 export const getStoreProducts = cache(async (tenantHost: string): Promise<ApiProduct[]> => {

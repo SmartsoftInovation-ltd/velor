@@ -15,6 +15,7 @@ import { VariantPicker } from "./variant-picker";
  */
 export function ProductPurchase({
   price,
+  compareAtPrice,
   stockCount,
   variants,
   colors,
@@ -24,6 +25,7 @@ export function ProductPurchase({
   initialVariantId,
 }: {
   price: number;
+  compareAtPrice?: number;
   stockCount: number;
   variants: ProductVariant[];
   colors: string[];
@@ -43,6 +45,8 @@ export function ProductPurchase({
 
   const variant = variants.find((v) => v.id === variantId);
   const shownPrice = variant ? variant.price : price;
+  // Struck through while a flash sale has this option on sale
+  const wasPrice = variant ? variant.compareAtPrice : compareAtPrice;
   const available = variant ? variant.stock : stockCount;
 
   const pickVariant = (id: string) => {
@@ -52,8 +56,13 @@ export function ProductPurchase({
 
   return (
     <div className="space-y-6">
-      <p className="text-h2 font-semibold tabular text-text-primary" aria-live="polite">
-        ৳{shownPrice.toLocaleString()}
+      <p className="flex items-baseline gap-3" aria-live="polite">
+        <span className="text-h2 font-semibold tabular text-text-primary">৳{shownPrice.toLocaleString()}</span>
+        {wasPrice && wasPrice > shownPrice ? (
+          <span className="text-h3 font-medium tabular text-text-tertiary line-through">
+            ৳{wasPrice.toLocaleString()}
+          </span>
+        ) : null}
       </p>
 
       <p className="flex items-center gap-2 text-small text-text-secondary">

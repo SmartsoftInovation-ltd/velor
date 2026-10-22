@@ -127,6 +127,7 @@ const permissionList = [
   // Settings
   { permissionName: "Create Banner" },
   { permissionName: "Limited Offer" },
+  { permissionName: "Flash Sale" },
   { permissionName: "Site Information" },
   { permissionName: "Outlet Information" },
   // User Management

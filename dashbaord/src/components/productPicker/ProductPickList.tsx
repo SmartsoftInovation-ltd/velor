@@ -25,19 +25,30 @@ const ProductPickList = ({
   products,
   isSelected,
   onToggle,
+  variantsOnly = false,
 }: {
   products: LookupProduct[];
   isSelected: (key: string) => boolean;
   onToggle: (product: LookupProduct, variantId: string | null) => void;
+  /** A product with variants can only be picked by variant (a flash sale prices each one) */
+  variantsOnly?: boolean;
 }) => (
   <ul className="no-scrollbar max-h-80 space-y-1 overflow-y-auto overscroll-contain">
     {products.map((product) => {
       const variants = (product.variant ?? []).filter((v) => v && v.isActive !== false);
       const whole = isSelected(pickKey(product._id));
+      const wholePickable = !(variantsOnly && variants.length);
       return (
         <li key={product._id}>
-          <button type="button" role="checkbox" aria-checked={whole} onClick={() => onToggle(product, null)} className={rowClass(whole)}>
-            <Box checked={whole} />
+          <button
+            type="button"
+            role={wholePickable ? "checkbox" : undefined}
+            aria-checked={wholePickable ? whole : undefined}
+            disabled={!wholePickable}
+            onClick={() => onToggle(product, null)}
+            className={`${rowClass(whole)} disabled:cursor-default disabled:hover:bg-transparent`}
+          >
+            {wholePickable ? <Box checked={whole} /> : <span className="size-[18px] shrink-0" />}
             <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-100 dark:bg-white/5">
               {product.thumbnail?.url ? (
                 <img src={product.thumbnail.url} alt="" className="size-full object-cover" />

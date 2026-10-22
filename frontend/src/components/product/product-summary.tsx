@@ -39,6 +39,7 @@ export function ProductSummary({
 
       <ProductPurchase
         price={product.price}
+        compareAtPrice={product.compareAtPrice}
         stockCount={product.stockCount}
         variants={product.variants}
         colors={product.colors}
