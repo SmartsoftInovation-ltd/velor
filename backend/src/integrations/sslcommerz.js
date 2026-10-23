@@ -22,6 +22,15 @@ const client = async () => {
  */
 const createPaymentSession = async (payment) => {
   const { config, sslcz } = await client();
+
+  // The callback URLs are built from API_PUBLIC_URL. Without it they come out
+  // relative ("/api/v1/hooks/…") and the gateway resolves them against its own
+  // host, so the shopper lands on a 404 at sslcommerz.com and the IPN is lost.
+  const callbacks = config.callbackUrls ?? {};
+  if (!["success", "fail", "cancel", "ipn"].every((key) => /^https?:\/\//.test(callbacks[key] ?? ""))) {
+    throw new Error("SSLCommerz callback URLs are not absolute: set API_PUBLIC_URL to the API's public address");
+  }
+
   const response = await sslcz.init({
     currency: "BDT",
     ...payment,

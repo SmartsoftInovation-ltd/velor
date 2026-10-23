@@ -49,6 +49,15 @@ describe("integrations/sslcommerz", () => {
     expect(validate).toHaveBeenCalledWith({ val_id: "VAL1" });
   });
 
+  it("refuses to open a session whose callbacks have no host (API_PUBLIC_URL unset)", async () => {
+    getSslCommerzConfig.mockResolvedValue({
+      storeId: "pizzastore", storePassword: "pizzapass", isLive: false,
+      callbackUrls: { success: "/api/v1/hooks/sslcommerz/k/success", fail: "/f", cancel: "/c", ipn: "/i" },
+    });
+    await expect(createPaymentSession({ total_amount: 100, tran_id: "x" })).rejects.toThrow(/API_PUBLIC_URL/);
+    expect(init).not.toHaveBeenCalled();
+  });
+
   it("fails when the gateway returns no payment page", async () => {
     init.mockResolvedValue({ status: "FAILED", failedreason: "bad store" });
     await expect(createPaymentSession({ total_amount: 1, tran_id: "x" })).rejects.toThrow(/bad store/);

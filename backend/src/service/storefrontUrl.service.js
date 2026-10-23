@@ -11,12 +11,13 @@ const { getTenantId } = require("../tenancy/context");
  * whichever shop happened to be in the environment file.
  *
  * Preference order:
+ *   0. the domain the order was placed on, if still active for this tenant
  *   1. the tenant's primary verified domain — the address the shopper is on
  *   2. `general.storefrontUrl` from that tenant's settings, for a store whose
  *      domain is not registered here yet
  *   3. nothing, and the caller answers with JSON instead of redirecting
  */
-const storefrontOrigin = async () => {
+const storefrontOrigin = async (preferredHost = null) => {
   const tenantId = getTenantId();
   if (!tenantId) return null;
 
@@ -25,6 +26,15 @@ const storefrontOrigin = async () => {
   // shoppers to one address.
   const devOrigin = process.env.PAYMENT_RETURN_ORIGIN?.trim();
   if (devOrigin && process.env.NODE_ENV !== "production") return devOrigin.replace(/\/+$/, "");
+
+  // The domain the shopper checked out on, when it is still one of this
+  // store's active domains: a store with several sites returns each shopper
+  // to the one they bought from. Checked against this tenant's own domains, so
+  // a stored value can never send a shopper to another store or site.
+  if (preferredHost) {
+    const own = await TenantDomain.findOne({ tenantId, host: preferredHost, status: "active" }).select("host").lean();
+    if (own?.host) return `https://${own.host}`;
+  }
 
   const primary = await TenantDomain.findOne({ tenantId, isPrimary: true, status: "active" })
     .select("host")
@@ -50,8 +60,8 @@ const storefrontOrigin = async () => {
  * Builds the URL a shopper returns to, carrying the invoice so the shop can
  * show them their order.
  */
-const paymentReturnUrl = async (result, invoiceId) => {
-  const origin = await storefrontOrigin();
+const paymentReturnUrl = async (result, invoiceId, preferredHost = null) => {
+  const origin = await storefrontOrigin(preferredHost);
   if (!origin) return null;
 
   const url = new URL(`${origin}/checkout/${result}`);

@@ -20,7 +20,9 @@ const { settlePayment, reconcilePayment } = require("../service/onlinePayment.se
 // The browser is sent back to its own store with the outcome the server
 // established, not the one the URL claimed
 const finish = async (res, result, invoiceId, payload, message) => {
-  const target = await paymentReturnUrl(result, invoiceId);
+  // Back to the very site the order was placed on (checked against the store's domains)
+  const order = invoiceId ? await Order.findOne({ invoiceId }).select("storefrontHost").lean() : null;
+  const target = await paymentReturnUrl(result, invoiceId, order?.storefrontHost ?? null);
   if (target) return res.redirect(303, target);
   return apiResponse.sendSuccess(res, statusCodes.OK, message, payload);
 };

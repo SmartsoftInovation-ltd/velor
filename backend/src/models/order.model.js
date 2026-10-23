@@ -121,6 +121,12 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // The storefront domain the order was placed on; the payment gateway's
+    // return sends the shopper back to it (if still an active domain of the store)
+    storefrontHost: {
+      type: String,
+      default: null,
+    },
     // When a validated payment was recorded
     paidAt: {
       type: Date,

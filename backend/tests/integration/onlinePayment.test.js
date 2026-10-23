@@ -168,6 +168,31 @@ describe("online payment (SSLCommerz)", () => {
       });
     });
 
+    it("sends the shopper back to the domain they checked out on, not just the primary", async () => {
+      await TenantDomain.create({ tenantId: velor.tenant._id, host: "shop2.velor.com", status: "active" });
+      const SECOND = { "x-tenant-host": "shop2.velor.com" };
+      await request(app.server).post("/api/v1/cart/add").set({ ...SECOND, ...GUEST })
+        .send({ productId: String(product._id), quantity: 1 }).expect(200);
+      const placed = await request(app.server).post("/api/v1/shop/order").set({ ...SECOND, ...GUEST })
+        .send({ shippingInfo: SHIPPING, paymentMethod: "sslcommerz" }).expect(201);
+      const { invoiceId } = placed.body.data.order;
+      sslcommerz.validatePayment.mockResolvedValue(paid(invoiceId, "500.00"));
+
+      const res = await hook("success", { tran_id: invoiceId, val_id: "VAL1" }).expect(303);
+
+      expect((await orderOf(invoiceId)).storefrontHost).toBe("shop2.velor.com");
+      expect(res.headers.location).toBe(`https://shop2.velor.com/checkout/success?invoice=${invoiceId}`);
+    });
+
+    it("falls back to the primary domain once the checkout domain is removed", async () => {
+      const { order } = await placeOnline();
+      await inStore(() => Order.updateOne({ invoiceId: order.invoiceId }, { $set: { storefrontHost: "gone.example.com" } }));
+      sslcommerz.querySession.mockResolvedValue({ APIConnect: "DONE", status: "FAILED", tran_id: order.invoiceId });
+
+      const res = await hook("fail", { tran_id: order.invoiceId }).expect(303);
+      expect(res.headers.location).toBe(`https://velor.com/checkout/failed?invoice=${order.invoiceId}`);
+    });
+
     it("does not mark a forged success paid", async () => {
       const { order } = await placeOnline();
       sslcommerz.validatePayment.mockResolvedValue({ status: "INVALID_TRANSACTION" });

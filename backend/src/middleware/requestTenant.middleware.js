@@ -3,6 +3,7 @@ const { asynchandeler } = require("../lib/asyncHandeler");
 const { statusCodes } = require("../constant/constant");
 const { runForTenant, getTenantId } = require("../tenancy/context");
 const { getTenantBySlug, getTenantByHost, assertTenantActive } = require("../tenancy/tenantResolver");
+const { normalizeHost } = require("../models/platform/tenantDomain.model");
 
 /**
  * Whether `x-tenant-host` may be believed.
@@ -45,6 +46,9 @@ const resolveRequestTenant = asynchandeler(async (req, res, next) => {
     assertTenantActive(tenant, statusCodes.FORBIDDEN);
 
     req.tenant = tenant;
+    // The storefront domain this request came through; an order keeps it so
+    // the shopper is sent back to the same site after paying
+    req.tenantHost = normalizeHost(host);
     return runForTenant(tenant._id, () => next());
   }
 
