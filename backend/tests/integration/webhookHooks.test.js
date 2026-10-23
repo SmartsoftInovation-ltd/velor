@@ -60,7 +60,7 @@ describe("per-tenant webhook routes", () => {
     validatePayment.mockImplementation(async () => {
       const { getTenantId } = require("../../src/tenancy/context");
       expect(getTenantId().toString()).toBe(pizza._id.toString());
-      return { status: "VALID", tran_id: "INV-1", val_id: "V1" };
+      return { status: "VALID", tran_id: "INV-1", val_id: "V1", currency_type: "BDT", currency_amount: "100.00" };
     });
 
     await request(app).post(`/api/v1/hooks/sslcommerz/${pizza.webhookKey}/ipn`).send({ val_id: "V1" }).expect(200);

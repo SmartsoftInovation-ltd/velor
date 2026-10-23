@@ -20,6 +20,12 @@ const storefrontOrigin = async () => {
   const tenantId = getTenantId();
   if (!tenantId) return null;
 
+  // Local development: the storefront runs on localhost, not on the store's
+  // domain. Ignored in production, where it would send every store's
+  // shoppers to one address.
+  const devOrigin = process.env.PAYMENT_RETURN_ORIGIN?.trim();
+  if (devOrigin && process.env.NODE_ENV !== "production") return devOrigin.replace(/\/+$/, "");
+
   const primary = await TenantDomain.findOne({ tenantId, isPrimary: true, status: "active" })
     .select("host")
     .lean();

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { AddressForm } from "@/components/checkout/address-form";
+import { headers } from "next/headers";
+import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { CheckoutSteps } from "@/components/checkout/checkout-steps";
-import { ContactForm } from "@/components/checkout/contact-form";
-import { DeliveryOptions } from "@/components/checkout/delivery-options";
-import { OrderReview } from "@/components/checkout/order-review";
-import { PaymentMethods } from "@/components/checkout/payment-methods";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
+import { getDeliveryOptions } from "@/lib/checkout";
+import { storeHostFrom } from "@/lib/store-api";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -13,11 +12,14 @@ export const metadata: Metadata = {
 };
 
 /**
- * The order panel reads this shop's real cart. The form itself does not submit
- * yet: placing the order (saveCartAction, then POST /shop/order) is the next
- * step in `.claude/specs/cart-wishlist.md`.
+ * The delivery options are read here, on the server; the form is the one
+ * client leaf. Placing the order saves the browser's bag as the server cart,
+ * then POST /shop/order — the shop prices it, and online payment goes to
+ * SSLCommerz for the shop's total.
  */
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
+  const deliveryOptions = await getDeliveryOptions(storeHostFrom(await headers()));
+
   return (
     <main className="container py-6">
       <h1 className="sr-only">Checkout</h1>
@@ -33,19 +35,7 @@ export default function CheckoutPage() {
         <CheckoutSteps current={2} />
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_23rem]">
-        <div className="space-y-4">
-          <ContactForm />
-          <AddressForm />
-          <DeliveryOptions />
-          <PaymentMethods />
-        </div>
-
-        {/* Sticky on desktop: the total stays in view while the form scrolls. */}
-        <div className="lg:sticky lg:top-32">
-          <OrderReview />
-        </div>
-      </div>
+      <CheckoutForm deliveryOptions={deliveryOptions} />
     </main>
   );
 }

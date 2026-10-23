@@ -1,3 +1,11 @@
+jest.mock("../../src/integrations/sslcommerz", () => ({
+  ...jest.requireActual("../../src/integrations/sslcommerz"),
+  createPaymentSession: jest.fn(async () => ({ gatewayUrl: "https://sandbox.sslcommerz.com/pay", sessionKey: "S1" })),
+  validatePayment: jest.fn(),
+  querySession: jest.fn(async () => ({ APIConnect: "DONE", status: "PENDING" })),
+  queryTransaction: jest.fn(async () => ({ APIConnect: "DONE", element: [] })),
+}));
+
 const request = require("supertest");
 const { connectTestDb, clearTestDb, disconnectTestDb } = require("../helpers/db");
 const { setSettingsEnv } = require("../helpers/settings");
@@ -14,6 +22,7 @@ const Order = require("../../src/models/order.model");
 const FlashSale = require("../../src/models/flashSale.model");
 const service = require("../../src/settings/settings.service");
 const { cache } = require("../../src/config/redis.config");
+const { validatePayment, querySession } = require("../../src/integrations/sslcommerz");
 
 /**
  * Checkout is the one storefront endpoint where getting it wrong costs money.
@@ -286,10 +295,14 @@ describe("storefront checkout", () => {
       const placed = await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "sslcommerz" }).expect(201);
       const { invoiceId } = placed.body.data.order;
 
+      validatePayment.mockResolvedValueOnce({
+        status: "VALID", tran_id: invoiceId, val_id: "V1", currency_type: "BDT", currency_amount: "500.00",
+      });
+
       const tenant = await require("../../src/models/platform/tenant.model").findById(velor.tenant._id).lean();
       const res = await request(app.server)
         .post(`/api/v1/hooks/sslcommerz/${tenant.webhookKey}/success`)
-        .send({ tran_id: invoiceId })
+        .send({ tran_id: invoiceId, val_id: "V1" })
         .expect(303);
 
       expect(res.headers.location).toBe(`https://velor.com/checkout/success?invoice=${invoiceId}`);
@@ -312,6 +325,10 @@ describe("storefront checkout", () => {
         { shippingInfo: SHIPPING, paymentMethod: "sslcommerz" },
       ).expect(201);
 
+      querySession.mockResolvedValueOnce({
+        APIConnect: "DONE", status: "CANCELLED", tran_id: placed.body.data.order.invoiceId,
+      });
+
       const tenant = await require("../../src/models/platform/tenant.model").findById(pizza.tenant._id).lean();
       const res = await request(app.server)
         .post(`/api/v1/hooks/sslcommerz/${tenant.webhookKey}/cancel`)
@@ -319,7 +336,7 @@ describe("storefront checkout", () => {
         .expect(303);
 
       // pizzashop's customer must not be handed to velor
-      expect(res.headers.location).toContain("https://pizzashop.com/");
+      expect(res.headers.location).toContain("https://pizzashop.com/checkout/cancelled");
     });
   });
 

@@ -1,15 +1,15 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import type { FreshItem } from "@/lib/cart/cart-store";
 import { CART_MAX_LINES, itemKey } from "@/lib/cart/types";
 import { currentItem } from "@/lib/catalog/item-snapshot";
 import type { ApiProduct } from "@/lib/catalog/storefront";
-import { SESSION_COOKIE } from "@/lib/shopper-auth";
+import { shopperIdentity } from "@/lib/actions/shopper-identity";
 import { apiFetch, storeHostFrom } from "@/lib/store-api";
 
 type LineRef = { productId: string; variantId: string | null };
-type CheckoutLine = LineRef & { quantity: number };
+export type CheckoutLine = LineRef & { quantity: number };
 
 const ID = /^[a-f0-9]{24}$/i;
 const isRef = (line: LineRef) =>
@@ -68,13 +68,8 @@ export async function saveCartAction(lines: CheckoutLine[], guestId: string): Pr
   const host = storeHostFrom(await headers());
   if (!host) return { error: "This shop could not be found." };
 
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  const who: Record<string, string> = token
-    ? { authorization: `Bearer ${token}` }
-    : typeof guestId === "string" && guestId.length <= 64 && guestId
-      ? { "x-guest-id": guestId }
-      : {};
-  if (!Object.keys(who).length) return { error: "Your cart could not be saved. Please refresh the page." };
+  const who = await shopperIdentity(guestId);
+  if (!who) return { error: "Your cart could not be saved. Please refresh the page." };
 
   try {
     const data = await apiFetch<{ rejected: SaveCartResult["rejected"] }>(host, "/shop/cart", {

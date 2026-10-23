@@ -10,7 +10,7 @@ const { apiResponse } = require("../utils/apiResponse");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { customError } = require("../lib/CustomError");
 const { v4: uuidv4 } = require("uuid");
-const { createPaymentSession } = require("../integrations/sslcommerz");
+const { startPayment } = require("../service/onlinePayment.service");
 const { getGeneralConfig } = require("../integrations/config");
 const cartModel = require("../models/cart.model");
 const Variant = require("../models/variant.model");
@@ -377,26 +377,9 @@ exports.createOrder = asynchandeler(async (req, res) => {
 
     // Step 11: SSLCommerz or COD Success
     if (paymentMethod === "sslcommerz") {
-      const gatewayUrl = await createPaymentSession({
-        total_amount: Math.round(finalAmount),
-        tran_id: invoiceId, // required, must be unique per transaction
-        product_name:
-          (totalProductInfo && totalProductInfo?.map((item) => item.name)).join(
-            ",",
-          ) || "Computer.",
-        product_category: "Electronic",
-        product_profile: "general",
-        shipping_method: "Courier",
-        ship_name: "Customer Name",
-        ship_add1: shippingInfo.fullName,
-        ship_postcode: shippingInfo.postalCode || 1000,
-        ship_city: "Dhaka",
-        ship_country: "Bangladesh",
-        cus_name: shippingInfo.fullName, // required
-        cus_email: shippingInfo.email, // required; a placeholder is used for guests without email
-        cus_add1: shippingInfo.address, // required
-        cus_phone: shippingInfo.phone, // required
-      });
+      // Same session as a storefront order: the callbacks settle it from the
+      // gateway's own answer, against this order's finalAmount
+      const gatewayUrl = await startPayment(order);
       console.log("Redirecting to: ", gatewayUrl);
 
       // Emit order event

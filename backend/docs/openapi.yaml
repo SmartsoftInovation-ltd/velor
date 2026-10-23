@@ -6112,6 +6112,32 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/shop/coupon/preview":
+    post:
+      operationId: "post__shop_coupon_preview"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  "/shop/delivery-options":
+    get:
+      operationId: "get__shop_delivery-options"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/shop/me":
     get:
       operationId: "get__shop_me"

@@ -18,18 +18,20 @@ describe("integrations/sslcommerz", () => {
       isLive: false,
       callbackUrls: { success: "https://api/s", fail: "https://api/f", cancel: "https://api/c", ipn: "https://api/i" },
     });
-    init.mockResolvedValue({ GatewayPageURL: "https://gateway/pay" });
+    init.mockResolvedValue({ GatewayPageURL: "https://gateway/pay", sessionkey: "SESSION1" });
     validate.mockResolvedValue({ status: "VALID" });
   });
 
   it("opens a session with the tenant store and tenant callback URLs", async () => {
-    const url = await createPaymentSession({ total_amount: 100, tran_id: "PZS-1", cus_email: "" });
+    const session = await createPaymentSession({ total_amount: 100, tran_id: "PZS-1", cus_email: "" });
 
-    expect(url).toBe("https://gateway/pay");
+    // The session key is kept so the outcome can be asked of the gateway later
+    expect(session).toEqual({ gatewayUrl: "https://gateway/pay", sessionKey: "SESSION1" });
     expect(SSLCommerzPayment).toHaveBeenCalledWith("pizzastore", "pizzapass", false);
     expect(init).toHaveBeenCalledWith(
       expect.objectContaining({
-        total_amount: 100,
+        // decimal(10,2), as the gateway documents it
+        total_amount: "100.00",
         tran_id: "PZS-1",
         currency: "BDT",
         success_url: "https://api/s",

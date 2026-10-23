@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
 const Order = require("../models/order.model");
 const Cart = require("../models/cart.model");
@@ -6,6 +7,7 @@ const Variant = require("../models/variant.model");
 const { currentPricing } = require("../service/flashSale.service");
 const Coupon = require("../models/coupon.model");
 const DeliveryCharge = require("../models/delivery.model");
+const Invoice = require("../models/invoice.model");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
@@ -15,6 +17,8 @@ const { emitToTenant } = require("../socket/socket");
 const { getTenantId } = require("../tenancy/context");
 const { WEBSITE_SOURCE } = require("../models/orderSource.model");
 const { claimCouponUse, releaseCouponUse } = require("../utils/coupon.util");
+const { startPayment } = require("../service/onlinePayment.service");
+const { MIN_AMOUNT, MAX_AMOUNT } = require("../integrations/sslcommerz");
 
 /**
  * Checkout from the storefront.
@@ -42,6 +46,15 @@ const requireStore = () => {
   return tenantId;
 };
 
+// The address fields an order keeps, trimmed and capped; anything else is dropped
+const SHIPPING_FIELDS = { fullName: 120, phone: 20, email: 120, address: 300, city: 60, postalCode: 12, note: 300 };
+const cleanShipping = (input) =>
+  Object.fromEntries(
+    Object.entries(SHIPPING_FIELDS)
+      .map(([key, max]) => [key, typeof input?.[key] === "string" ? input[key].trim().slice(0, max) : ""])
+      .filter(([, value]) => value),
+  );
+
 /**
  * Re-prices the cart from current product and variant documents.
  *
@@ -62,7 +75,7 @@ const priceCart = async (cart) => {
     if (quantity < 1) throw new customError("Invalid quantity in cart", statusCodes.BAD_REQUEST);
 
     if (item.variant) {
-      const variant = await Variant.findById(item.variant).populate("product");
+      const variant = await Variant.findById(item.variant).populate("product", "name category subcategory brand");
       if (!variant || variant.isActive === false) {
         throw new customError("An item in your cart is no longer available", statusCodes.BAD_REQUEST);
       }
@@ -109,13 +122,47 @@ const priceCart = async (cart) => {
   return { items, subtotal, totalQuantity };
 };
 
+const idText = (ref) => String(ref?._id ?? ref ?? "");
+
+// The catalogue ids a cart line can be matched to a coupon by
+const lineRefs = (item) => {
+  const product = item.variant ? item.variant.product : item.product;
+  return {
+    product: idText(product),
+    variant: item.variant ? idText(item.variant) : "",
+    category: idText(product?.category),
+    subcategory: idText(product?.subcategory),
+    brand: idText(product?.brand),
+  };
+};
+
+// The lines a coupon covers: all of them, unless it is limited to some
+// products, variants, categories, subcategories or brands
+const eligibleLines = (coupon, items) => {
+  const scopes = [
+    ["applicableProducts", "product"],
+    ["applicableVariants", "variant"],
+    ["applicableCategories", "category"],
+    ["applicableSubCategories", "subcategory"],
+    ["applicableBrands", "brand"],
+  ].filter(([field]) => coupon[field]?.length);
+  if (!scopes.length) return items;
+
+  const allowed = scopes.map(([field, key]) => [new Set(coupon[field].map(String)), key]);
+  return items.filter((item) => {
+    const refs = lineRefs(item);
+    return allowed.some(([ids, key]) => refs[key] && ids.has(refs[key]));
+  });
+};
+
 /**
  * Validates a coupon and returns what it is worth on this cart.
  *
  * The lookup is tenant-scoped by the plugin, so a code from another shop simply
  * is not found — a customer cannot spend one store's promotion at another.
+ * A coupon limited to some products takes its discount off those lines only.
  */
-const applyCoupon = async (code, subtotal) => {
+const applyCoupon = async (code, subtotal, items = []) => {
   if (!code) return { coupon: null, discountAmount: 0 };
 
   const coupon = await Coupon.findOne({ code: String(code).trim().toUpperCase() });
@@ -135,49 +182,123 @@ const applyCoupon = async (code, subtotal) => {
     );
   }
 
+  const eligible = eligibleLines(coupon, items);
+  if (!eligible.length) {
+    throw new customError("This coupon does not apply to the items in your cart", statusCodes.BAD_REQUEST);
+  }
+  const base = eligible.reduce((sum, item) => sum + item.totalPrice, 0);
+
   let discountAmount =
     coupon.discountType === "percentage"
-      ? (subtotal * coupon.discountValue) / 100
+      ? (base * coupon.discountValue) / 100
       : coupon.discountValue;
 
   if (coupon.maxDiscountAmount) discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
-  // A discount larger than the cart would make the total negative
-  discountAmount = Math.min(discountAmount, subtotal);
+  // A discount larger than the lines it covers would make the total negative
+  discountAmount = Math.min(discountAmount, base);
 
   return { coupon, discountAmount: Math.round(discountAmount * 100) / 100 };
 };
 
+const findCart = (req) => {
+  const userId = req.user?._id ?? null;
+  const guestId = userId ? null : req.guestId ?? null;
+  return { userId, guestId, query: Cart.findOne(userId ? { user: userId } : { guestId }) };
+};
+
+// The delivery option the shopper chose, priced from the database
+const findDelivery = async (deliveryChargeId) => {
+  if (!deliveryChargeId) return null;
+  const delivery = mongoose.isValidObjectId(deliveryChargeId)
+    ? await DeliveryCharge.findById(deliveryChargeId)
+    : null;
+  if (!delivery) throw new customError("Choose a valid delivery option", statusCodes.BAD_REQUEST);
+  return delivery;
+};
+
+const money = (value) => Math.round(value * 100) / 100;
+
+/**
+ * The shop's delivery options, for the checkout page to list. The price shown
+ * here is a preview: the order reads it again from the database.
+ */
+exports.deliveryOptions = asynchandeler(async (req, res) => {
+  requireStore();
+  const options = await DeliveryCharge.find().select("name deliveryCharge description").sort({ deliveryCharge: 1 }).lean();
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Delivery options", {
+    options: options.map(({ _id, name, deliveryCharge, description }) => ({
+      _id,
+      name,
+      charge: deliveryCharge,
+      description: description ?? "",
+    })),
+  });
+});
+
+/**
+ * What a coupon is worth on this shopper's saved cart, before placing the
+ * order. Nothing is claimed: the order re-checks the coupon when it is placed.
+ */
+exports.previewCoupon = asynchandeler(async (req, res) => {
+  requireStore();
+  const { couponCode, deliveryChargeId } = req.body ?? {};
+  if (typeof couponCode !== "string" || !couponCode.trim() || couponCode.length > 64) {
+    throw new customError("Enter a coupon code", statusCodes.BAD_REQUEST);
+  }
+
+  const cart = await findCart(req).query;
+  if (!cart?.items?.length) throw new customError("Your cart is empty", statusCodes.BAD_REQUEST);
+
+  const { items, subtotal } = await priceCart(cart);
+  const { coupon, discountAmount } = await applyCoupon(couponCode, subtotal, items);
+  const delivery = await findDelivery(deliveryChargeId);
+  const deliveryAmount = delivery?.deliveryCharge ?? 0;
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Coupon applied", {
+    code: coupon.code,
+    subtotal,
+    discountAmount,
+    deliveryCharge: deliveryAmount,
+    finalAmount: money(subtotal - discountAmount + deliveryAmount),
+  });
+});
+
 exports.createOrder = asynchandeler(async (req, res) => {
   requireStore();
 
-  const { shippingInfo, paymentMethod, couponCode, deliveryChargeId } = req.body;
-  const userId = req.user?._id ?? null;
-  const guestId = userId ? null : req.guestId ?? null;
+  const { paymentMethod, couponCode, deliveryChargeId } = req.body;
+  const shippingInfo = cleanShipping(req.body.shippingInfo);
+  const { userId, guestId, query } = findCart(req);
 
-  if (!shippingInfo?.fullName || !shippingInfo?.phone || !shippingInfo?.address) {
+  if (!shippingInfo.fullName || !shippingInfo.phone || !shippingInfo.address) {
     throw new customError("Name, phone and address are required", statusCodes.BAD_REQUEST);
   }
   if (!["cod", "sslcommerz"].includes(paymentMethod)) {
     throw new customError("Choose a valid payment method", statusCodes.BAD_REQUEST);
   }
 
-  const cart = await Cart.findOne(userId ? { user: userId } : { guestId });
+  const cart = await query;
   if (!cart?.items?.length) {
     throw new customError("Your cart is empty", statusCodes.BAD_REQUEST);
   }
 
   const { items, subtotal, totalQuantity } = await priceCart(cart);
-  const { coupon, discountAmount } = await applyCoupon(couponCode, subtotal);
+  const { coupon, discountAmount } = await applyCoupon(couponCode, subtotal, items);
 
   // The id names which delivery option was chosen; the price attached to it is
   // read from the database, never from the request.
-  const delivery = deliveryChargeId ? await DeliveryCharge.findById(deliveryChargeId) : null;
-  if (deliveryChargeId && !delivery) {
-    throw new customError("Choose a valid delivery option", statusCodes.BAD_REQUEST);
-  }
+  const delivery = await findDelivery(deliveryChargeId);
   const deliveryAmount = delivery?.deliveryCharge ?? 0;
 
-  const finalAmount = Math.round((subtotal - discountAmount + deliveryAmount) * 100) / 100;
+  const finalAmount = money(subtotal - discountAmount + deliveryAmount);
+
+  // The gateway only takes amounts in this range
+  if (paymentMethod === "sslcommerz" && (finalAmount < MIN_AMOUNT || finalAmount > MAX_AMOUNT)) {
+    throw new customError(
+      `Online payment is available for orders from ৳${MIN_AMOUNT} to ৳${MAX_AMOUNT}`,
+      statusCodes.BAD_REQUEST,
+    );
+  }
 
   const general = await getGeneralConfig();
   const invoiceId = `${general.invoicePrefix}-${uuidv4().slice(0, 8).toUpperCase()}`;
@@ -186,6 +307,7 @@ exports.createOrder = asynchandeler(async (req, res) => {
   const taken = [];
   let couponClaimed = false;
   let order = null;
+  let gatewayUrl = null;
   try {
     // The coupon's use is claimed before the order exists: under parallel
     // checkouts only as many succeed as the usage limit allows
@@ -235,6 +357,31 @@ exports.createOrder = asynchandeler(async (req, res) => {
       }
       taken.push({ model, id, field, quantity: item.quantity });
     }
+
+    // Every order has its invoice, whatever the payment method
+    await Invoice.create({
+      order: order._id,
+      invoiceId: order.invoiceId,
+      customerDetails: shippingInfo,
+      totalAmount: subtotal,
+      ProductInfo: items,
+      discountAmount,
+      deliveryChargeAmount: deliveryAmount,
+      finalAmount,
+    });
+
+    // Opened last: if the gateway refuses, nothing above is kept
+    if (paymentMethod === "sslcommerz") {
+      gatewayUrl = await startPayment(order).catch((error) => {
+        // The gateway's reason can name the store's account setup; it is logged, not shown
+        console.error(`[Payment] session for ${invoiceId} failed:`, error.message);
+        if (error.statusCode) throw error;
+        throw new customError(
+          "Online payment could not be started. Please try again or choose cash on delivery.",
+          502,
+        );
+      });
+    }
   } catch (error) {
     // Nothing of a failed checkout may stick: the lines already taken go back
     // on the shelf, the order is removed and the coupon use is given back
@@ -244,7 +391,10 @@ exports.createOrder = asynchandeler(async (req, res) => {
         { $inc: { [line.field]: line.quantity, totalSales: -line.quantity } },
       );
     }
-    if (order) await Order.deleteOne({ _id: order._id });
+    if (order) {
+      await Invoice.deleteOne({ order: order._id });
+      await Order.deleteOne({ _id: order._id });
+    }
     if (couponClaimed) await releaseCouponUse(coupon._id);
     throw error;
   }
@@ -264,7 +414,10 @@ exports.createOrder = asynchandeler(async (req, res) => {
       finalAmount: order.finalAmount,
       orderStatus: order.orderStatus,
       paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
     },
+    // Where to send the shopper to pay; null for cash on delivery
+    gatewayUrl,
   });
 });
 
@@ -279,7 +432,7 @@ exports.trackOrder = asynchandeler(async (req, res) => {
   requireStore();
 
   const order = await Order.findOne({ invoiceId: req.params.invoiceId })
-    .select("invoiceId orderStatus paymentStatus createdAt finalAmount")
+    .select("invoiceId orderStatus paymentStatus paymentMethod createdAt finalAmount -_id")
     .lean();
   if (!order) throw new customError("Order not found", statusCodes.NOT_FOUND);
 

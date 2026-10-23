@@ -1,6 +1,6 @@
 # Plan — cart and wishlist, stored in the browser, per tenant
 
-Status: **built through the cart and wishlist; placing the order is next.**
+Status: **built, including checkout (COD and SSLCommerz), coupons and the payment result page.**
 The owner approved the plan with the recommended option at every decision.
 
 ## Progress (2026-10-22)
@@ -13,7 +13,7 @@ The owner approved the plan with the recommended option at every decision.
 | 4. Cart refresh against the API | Done (`refreshCartAction`, reuses `GET /shop/products`, so backend change #2 was not needed) |
 | 5. Backend `id` on `/shop/store`, `PUT /shop/cart` | Done, with tests (`tests/integration/shopCart.test.js`) |
 | 5. Checkout: order panel reads the real cart | Done |
-| 5. Checkout: **Place order** submits | **Not yet.** `saveCartAction` is ready; the form fields need names, COD-only payment, and delivery options need a public endpoint. |
+| 5. Checkout: **Place order** submits | Done (2026-10-23). `placeOrderAction` saves the cart, then `POST /shop/order`; delivery from `GET /shop/delivery-options`; coupon from `POST /shop/coupon/preview`. Online payment redirects to SSLCommerz; `/checkout/[result]` shows the server's status (`GET /shop/track/:invoiceId`) and clears the bag once paid. |
 
 
 ## Goal

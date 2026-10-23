@@ -39,6 +39,10 @@ const orderSchema = new mongoose.Schema(
       phone: { type: String },
       address: { type: String, required: false },
       email: { type: String },
+      city: { type: String },
+      postalCode: { type: String },
+      // A delivery instruction from the shopper ("leave at reception")
+      note: { type: String },
       // city: {
       //   city_id: { type: Number },
       //   city_name: { type: String },
@@ -110,6 +114,16 @@ const orderSchema = new mongoose.Schema(
     },
     valId: {
       type: String, // sslcommerz val_id used to verify
+      default: null,
+    },
+    // sslcommerz session key, for asking the gateway what became of a payment
+    sessionKey: {
+      type: String,
+      default: null,
+    },
+    // When a validated payment was recorded
+    paidAt: {
+      type: Date,
       default: null,
     },
     currency: {

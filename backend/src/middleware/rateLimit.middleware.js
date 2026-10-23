@@ -197,7 +197,23 @@ const searchLimiter = rateLimit({
   handler: tooMany("Too many searches. Please wait a moment and try again."),
 });
 
+// Coupon codes are guessable, so wrong codes are capped per shopper. Storefront
+// calls arrive from the shop's server, which shares one IP for every shopper,
+// so the shopper's own id (account or guest) is the key, the IP the fallback.
+const couponLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `coupon:${req.user?._id || req.guestId || clientIp(req)}`,
+  handler: tooMany("Too many coupon attempts. Please try again in 15 minutes."),
+});
+
 module.exports = {
+  couponLimiter,
   searchLimiter,
   reportLimiter,
   domainVerifyLimiter,

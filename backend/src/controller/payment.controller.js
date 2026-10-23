@@ -1,133 +1,81 @@
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
-const { validatePayment } = require("../integrations/sslcommerz");
 const Order = require("../models/order.model");
 const { statusCodes } = require("../constant/constant");
 const { paymentReturnUrl } = require("../service/storefrontUrl.service");
+const { settlePayment, reconcilePayment } = require("../service/onlinePayment.service");
 
 /**
- * Sends the shopper back to the shop they bought from.
+ * SSLCommerz callbacks. Reached through /hooks/sslcommerz/:webhookKey/*, which
+ * opens the store's tenant context, so every lookup here is that store's only.
  *
- * The gateway returns the customer's browser to this API, so these three
- * callbacks are page loads, not API calls. Answering them with JSON leaves the
- * shopper looking at raw text; they belong back on the storefront.
- *
- * Which storefront is decided per tenant — the order's own store — because one
- * configured URL would send every seller's customers to the same shop. When no
- * storefront is known the JSON answer is kept, so an API client or a store with
- * no domain registered yet still gets a usable response.
+ * success / fail / cancel are the shopper's browser coming back from the
+ * gateway. Their bodies are not trusted: anybody can POST them. They name an
+ * order, and the outcome is then read from the gateway itself
+ * (onlinePayment.service). The IPN is the gateway's own server call, but it is
+ * validated the same way before anything changes.
  */
+
+// The browser is sent back to its own store with the outcome the server
+// established, not the one the URL claimed
 const finish = async (res, result, invoiceId, payload, message) => {
   const target = await paymentReturnUrl(result, invoiceId);
   if (target) return res.redirect(303, target);
   return apiResponse.sendSuccess(res, statusCodes.OK, message, payload);
 };
 
-// @desc success payment
+const findOnlineOrder = (tranId) =>
+  typeof tranId === "string" && tranId
+    ? Order.findOne({ invoiceId: tranId, paymentMethod: "sslcommerz" })
+    : null;
+
+// Works out what really happened to the order the request names
+const outcomeFor = async ({ val_id: valId, tran_id: tranId }, unpaidAs) => {
+  if (typeof valId === "string" && valId) {
+    const { result, order } = await settlePayment(valId);
+    if (result === "success" || result === "review") return { result, invoiceId: order.invoiceId };
+  }
+
+  const order = await findOnlineOrder(tranId);
+  if (!order) return { result: unpaidAs, invoiceId: null };
+  return { result: await reconcilePayment(order, unpaidAs), invoiceId: order.invoiceId };
+};
+
+// The storefront knows success, failed, cancelled and pending; a payment held
+// for review reads as pending to the shopper
+const shownAs = (result) => (result === "review" ? "pending" : result);
+
+// @desc shopper returns after paying
 exports.successPayment = asynchandeler(async (req, res) => {
-  const invoiceId = req.body?.tran_id;
-  return finish(res, "success", invoiceId, req.body, "Payment successful");
+  const { result, invoiceId } = await outcomeFor(req.body ?? {}, "failed");
+  return finish(res, shownAs(result), invoiceId ?? req.body?.tran_id, { result, invoiceId }, "Payment result");
 });
 
-// @desc fail payment
+// @desc shopper returns after a failed payment
 exports.failPayment = asynchandeler(async (req, res) => {
-  const { tran_id } = req.body;
-  if (!tran_id) {
-    throw new customError("Transaction ID missing", statusCodes.BAD_REQUEST);
-  }
-
-  // Update order payment status
-  const updatedOrder = await Order.findOneAndUpdate(
-    { invoiceId: tran_id },
-    {
-      paymentStatus: "failed",
-      orderStatus: "failed",
-      paymentGatewayData: req.body,
-    },
-    { new: true },
-  );
-
-  if (!updatedOrder) {
-    throw new customError(
-      "Order not found for this transaction",
-      statusCodes.NOT_FOUND,
-    );
-  }
-
-  return finish(res, "failed", tran_id, updatedOrder, "Payment failed. Order status updated.");
+  if (!req.body?.tran_id) throw new customError("Transaction ID missing", statusCodes.BAD_REQUEST);
+  const { result, invoiceId } = await outcomeFor({ tran_id: req.body.tran_id }, "failed");
+  if (!invoiceId) throw new customError("Order not found for this transaction", statusCodes.NOT_FOUND);
+  return finish(res, shownAs(result), invoiceId ?? req.body.tran_id, { result, invoiceId }, "Payment result");
 });
 
-// @desc cancel payment
+// @desc shopper cancelled on the gateway page
 exports.cancelPayment = asynchandeler(async (req, res) => {
-  const { tran_id } = req.body;
-  if (!tran_id) {
-    throw new customError("Transaction ID missing", statusCodes.BAD_REQUEST);
-  }
-
-  // Update order payment status
-  const updatedOrder = await Order.findOneAndUpdate(
-    { invoiceId: tran_id },
-    {
-      paymentStatus: "cancelled",
-      orderStatus: "cancelled",
-      paymentGatewayData: req.body,
-    },
-    { new: true },
-  );
-
-  if (!updatedOrder) {
-    throw new customError(
-      "Order not found for this transaction",
-      statusCodes.NOT_FOUND,
-    );
-  }
-
-  return finish(res, "cancelled", tran_id, updatedOrder, "Payment cancelled. Order status updated.");
+  if (!req.body?.tran_id) throw new customError("Transaction ID missing", statusCodes.BAD_REQUEST);
+  const { result, invoiceId } = await outcomeFor({ tran_id: req.body.tran_id }, "cancelled");
+  if (!invoiceId) throw new customError("Order not found for this transaction", statusCodes.NOT_FOUND);
+  return finish(res, shownAs(result), invoiceId ?? req.body.tran_id, { result, invoiceId }, "Payment result");
 });
 
-// @desc ipn payment
+// @desc IPN: the gateway's server-to-server notice, for every outcome
 exports.ipnPayment = asynchandeler(async (req, res) => {
-  const { val_id } = req.body;
-  if (!val_id) {
-    throw new customError("Validation ID missing", statusCodes.BAD_REQUEST);
-  }
+  const { val_id: valId, tran_id: tranId } = req.body ?? {};
+  if (!valId && !tranId) throw new customError("Validation ID missing", statusCodes.BAD_REQUEST);
 
-  // Validate with the current tenant's store credentials
-  const validationResponse = await validatePayment(val_id);
-  console.log("Validation Response:", validationResponse);
-
-  if (
-    validationResponse?.status === "VALID" ||
-    validationResponse?.status === "VALIDATED"
-  ) {
-    // Update order in DB
-    const updatedOrder = await Order.findOneAndUpdate(
-      { invoiceId: validationResponse.tran_id },
-      {
-        paymentStatus: "success",
-        transactionId: validationResponse.tran_id,
-        valId: validationResponse.val_id,
-        paymentGatewayData: validationResponse,
-        orderStatus: "confirmed",
-      },
-      { new: true },
-    );
-
-    if (!updatedOrder) {
-      throw new customError(
-        "Order not found for this transaction",
-        statusCodes.NOT_FOUND,
-      );
-    }
-
-    apiResponse.sendSuccess(
-      res,
-      statusCodes.OK,
-      updatedOrder,
-      "Payment validated and order confirmed",
-    );
-  } else {
-    throw new customError("Payment validation failed", statusCodes.BAD_REQUEST);
-  }
+  const { result, invoiceId } = await outcomeFor({ val_id: valId, tran_id: tranId }, "failed");
+  // Neither a validated payment nor an order of this store: nothing to record
+  if (!invoiceId) throw new customError("Payment validation failed", statusCodes.BAD_REQUEST);
+  // A gateway error above throws (500), so SSLCommerz retries the IPN later
+  return apiResponse.sendSuccess(res, statusCodes.OK, "IPN received", { result, invoiceId });
 });

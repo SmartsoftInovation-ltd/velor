@@ -415,18 +415,21 @@ describe("commerce: coupons, cart, checkout, orders, payments", () => {
 
     it("IPN: validates val_id with the gateway and marks the order paid", async () => {
       await seedWebOrder("INV-PAY1");
-      const scope = validator({ status: "VALID", tran_id: "INV-PAY1", val_id: "VAL1", amount: "900.00" });
+      const scope = validator({
+        status: "VALID", tran_id: "INV-PAY1", val_id: "VAL1", bank_tran_id: "BANK1",
+        amount: "900.00", currency_type: "BDT", currency_amount: "900.00",
+      });
       await hook("ipn").send({ val_id: "VAL1" }).expect(200);
       expect(scope.isDone()).toBe(true);
       const order = await inTenant(() => Order.findOne({ invoiceId: "INV-PAY1" }).lean());
-      expect(order).toMatchObject({ paymentStatus: "success", valId: "VAL1", transactionId: "INV-PAY1" });
+      // transactionId is the gateway's own id, the one a refund needs
+      expect(order).toMatchObject({ paymentStatus: "success", valId: "VAL1", transactionId: "BANK1" });
     });
 
-    // BUG-074: ipnPayment calls sendSuccess(res, 200, updatedOrder, "Payment
-    // validated…") — message and data swapped, so `message` is the order object
-    test.failing("IPN answers in the standard success envelope (message is text, the order is data) [BUG-074]", async () => {
+    // BUG-074 (fixed): message and data were swapped in the IPN answer
+    it("IPN answers in the standard success envelope (message is text, the order is data) [BUG-074]", async () => {
       await seedWebOrder("INV-ENV1");
-      validator({ status: "VALID", tran_id: "INV-ENV1", val_id: "VALE", amount: "900.00" });
+      validator({ status: "VALID", tran_id: "INV-ENV1", val_id: "VALE", amount: "900.00", currency_type: "BDT", currency_amount: "900.00" });
       const res = await hook("ipn").send({ val_id: "VALE" }).expect(200);
       expect(typeof res.body.message).toBe("string");
       expect(res.body.data).toMatchObject({ invoiceId: "INV-ENV1" });
@@ -440,28 +443,30 @@ describe("commerce: coupons, cart, checkout, orders, payments", () => {
       await hook("ipn").send({}).expect(400);
     });
 
-    // BUG-048: the validated amount is never compared with the order total, so a
-    // real (cheap) payment can be replayed against an expensive order's tran_id
-    test.failing("IPN: refuses a validated payment whose amount does not match the order [BUG-048]", async () => {
+    // BUG-048 (fixed): the validated amount is compared with the order total. A
+    // mismatch is never marked paid; the order is put on Hold for staff, since
+    // money did move
+    it("IPN: refuses a validated payment whose amount does not match the order [BUG-048]", async () => {
       await seedWebOrder("INV-PAY3");
-      validator({ status: "VALID", tran_id: "INV-PAY3", val_id: "VAL3", amount: "1.00" });
-      const res = await hook("ipn").send({ val_id: "VAL3" });
-      expect(res.status).toBe(400);
-      expect((await inTenant(() => Order.findOne({ invoiceId: "INV-PAY3" }).lean())).paymentStatus).toBe("Pending");
+      validator({ status: "VALID", tran_id: "INV-PAY3", val_id: "VAL3", amount: "1.00", currency_type: "BDT", currency_amount: "1.00" });
+      await hook("ipn").send({ val_id: "VAL3" }).expect(200);
+      const order = await inTenant(() => Order.findOne({ invoiceId: "INV-PAY3" }).lean());
+      expect(order.paymentStatus).toBe("Pending");
+      expect(order.orderStatus).toBe("Hold");
     });
 
-    // BUG-049: fail/cancel are unverified and overwrite any order, paid ones
-    // included, with statuses outside the schema enum ("failed", "confirmed")
-    test.failing("fail callback cannot un-pay an order the IPN already confirmed [BUG-049]", async () => {
+    // BUG-049 (fixed): fail/cancel are checked with the gateway and never touch
+    // a paid order; statuses stay inside the schema enum
+    it("fail callback cannot un-pay an order the IPN already confirmed [BUG-049]", async () => {
       await seedWebOrder("INV-PAY4", { paymentStatus: "success", orderStatus: "Confirmed" });
       await hook("fail").send({ tran_id: "INV-PAY4" });
       const order = await inTenant(() => Order.findOne({ invoiceId: "INV-PAY4" }).lean());
       expect(order.paymentStatus).toBe("success");
     });
 
-    test.failing("payment callbacks only write order statuses the schema allows [BUG-049]", async () => {
+    it("payment callbacks only write order statuses the schema allows [BUG-049]", async () => {
       await seedWebOrder("INV-PAY5");
-      validator({ status: "VALID", tran_id: "INV-PAY5", val_id: "VAL5", amount: "900.00" });
+      validator({ status: "VALID", tran_id: "INV-PAY5", val_id: "VAL5", amount: "900.00", currency_type: "BDT", currency_amount: "900.00" });
       await hook("ipn").send({ val_id: "VAL5" }).expect(200);
       const order = await inTenant(() => Order.findOne({ invoiceId: "INV-PAY5" }).lean());
       expect(Order.schema.path("orderStatus").enumValues).toContain(order.orderStatus);

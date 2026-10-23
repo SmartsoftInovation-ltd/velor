@@ -10,6 +10,7 @@ const { dbConnect } = require("./src/database/db");
 const { customError } = require("./src/lib/CustomError");
 const { scheduleTempCleanup } = require("./src/jobs/cleanTempFiles.job");
 const { scheduleAuditLogPurge } = require("./src/jobs/purgeAuditLogs.job");
+const { schedulePaymentReconcile } = require("./src/jobs/reconcilePayments.job");
 const {
   startSettingsInvalidationListener,
 } = require("./src/settings/settings.service");
@@ -23,6 +24,7 @@ dbConnect()
   .then(() => {
     scheduleTempCleanup();
     scheduleAuditLogPurge();
+    schedulePaymentReconcile();
     startSettingsInvalidationListener().catch((err) =>
       console.error("Settings invalidation listener failed:", err.message),
     );

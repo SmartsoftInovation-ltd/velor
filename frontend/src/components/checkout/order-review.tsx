@@ -1,31 +1,32 @@
-"use client";
-
 import Link from "next/link";
-import { AppImage } from "@/components/ui/app-image";
+import type { ReactNode } from "react";
+import { OrderReviewLines } from "@/components/checkout/order-review-lines";
 import { Button } from "@/components/ui/button";
 import { ShieldCheckIcon } from "@/components/ui/icons";
-import { useCart } from "@/components/cart/use-cart";
+import type { CartLine } from "@/lib/cart/types";
+
+type Props = {
+  lines: CartLine[];
+  subtotal: number;
+  saved: number;
+  /** Null until a delivery option is chosen */
+  deliveryCharge: number | null;
+  discount: number;
+  coupon: ReactNode;
+  submitLabel: string;
+  pending: boolean;
+  error?: string;
+};
+
+const taka = (amount: number) => `৳${amount.toLocaleString()}`;
 
 /**
- * The checkout-side twin of OrderSummary: the same totals, read from this
- * shop's cart, but the lines are read-only thumbnails rather than editable
- * rows. Delivery is added by the shop when the order is placed.
+ * The order panel: the bag, the coupon box and the running total. Every figure
+ * here is a preview — the shop prices the order again when it is placed, and
+ * online payment is opened for the shop's figure, not this one.
  */
-export function OrderReview() {
-  const { lines: all, totals, ready } = useCart();
-  const lines = all.filter((line) => !line.unavailable);
-  const { subtotal, saved } = totals;
-
-  if (ready && !lines.length) {
-    return (
-      <aside className="rounded-xl border border-border-subtle bg-bg-surface p-5 text-center shadow-sm">
-        <p className="text-body font-semibold text-text-primary">Your bag is empty</p>
-        <Link href="/shop" className="mt-2 inline-block text-small font-medium text-text-brand">
-          Browse the shop
-        </Link>
-      </aside>
-    );
-  }
+export function OrderReview({ lines, subtotal, saved, deliveryCharge, discount, coupon, submitLabel, pending, error }: Props) {
+  const total = Math.max(0, subtotal - discount) + (deliveryCharge ?? 0);
 
   return (
     <aside className="overflow-hidden rounded-xl border border-border-subtle bg-bg-surface shadow-sm">
@@ -40,80 +41,50 @@ export function OrderReview() {
           </Link>
         </div>
 
-        <ul className="space-y-3">
-          {lines.map((line) => (
-            <li key={line.key} className="flex items-center gap-3">
-              <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-bg-sunken">
-                <AppImage
-                  src={line.image}
-                  alt={line.name}
-                  fill
-                  sizes="56px"
-                  className="object-cover"
-                />
-              </div>
+        <OrderReviewLines lines={lines} />
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-small font-medium text-text-primary">
-                  {line.name}
-                </p>
-                {/* Quantity rides the variant line rather than sitting as a
-                    badge over the thumbnail, which covered the product. */}
-                <p className="flex flex-wrap items-center gap-x-1.5 text-caption text-text-tertiary">
-                  {line.optionLabel ? (
-                    <>
-                      <span>{line.optionLabel}</span>
-                      <span aria-hidden="true" className="text-border-default">
-                        |
-                      </span>
-                    </>
-                  ) : null}
-                  <span>
-                    Qty{" "}
-                    <span className="font-medium tabular text-text-secondary">
-                      {line.quantity}
-                    </span>
-                  </span>
-                </p>
-              </div>
-
-              <p className="shrink-0 text-small font-semibold tabular text-text-primary">
-                ৳{(line.unitPrice * line.quantity).toLocaleString()}
-              </p>
-            </li>
-          ))}
-        </ul>
+        {coupon}
 
         <dl className="space-y-2.5 border-t border-border-subtle pt-4 text-small">
           <div className="flex justify-between">
             <dt className="text-text-secondary">Subtotal</dt>
-            <dd className="font-medium tabular text-text-primary">
-              ৳{subtotal.toLocaleString()}
-            </dd>
+            <dd className="font-medium tabular text-text-primary">{taka(subtotal)}</dd>
           </div>
           {saved > 0 ? (
             <div className="flex justify-between">
               <dt className="text-text-secondary">You save</dt>
-              <dd className="font-medium tabular text-success-text">
-                −৳{saved.toLocaleString()}
-              </dd>
+              <dd className="font-medium tabular text-success-text">−{taka(saved)}</dd>
+            </div>
+          ) : null}
+          {discount > 0 ? (
+            <div className="flex justify-between">
+              <dt className="text-text-secondary">Coupon</dt>
+              <dd className="font-medium tabular text-success-text">−{taka(discount)}</dd>
             </div>
           ) : null}
           <div className="flex justify-between">
             <dt className="text-text-secondary">Delivery</dt>
-            <dd className="text-text-tertiary">Added with your order</dd>
+            {deliveryCharge === null ? (
+              <dd className="text-text-tertiary">Choose an option</dd>
+            ) : (
+              <dd className="font-medium tabular text-text-primary">{deliveryCharge ? taka(deliveryCharge) : "Free"}</dd>
+            )}
           </div>
         </dl>
 
         <div className="flex items-baseline justify-between border-t border-border-subtle pt-4">
-          <p className="text-body font-semibold text-text-primary">Items total</p>
-          <p className="text-h2 font-semibold tabular text-text-primary">
-            ৳{subtotal.toLocaleString()}
-          </p>
+          <p className="text-body font-semibold text-text-primary">Total</p>
+          <p className="text-h2 font-semibold tabular text-text-primary">{taka(total)}</p>
         </div>
 
-        <Button variant="primary" size="lg" fullWidth>
-          Place order
+        {error ? (
+          <p role="alert" className="rounded-md bg-danger-subtle px-3 py-2 text-small text-danger-text">
+            {error}
+          </p>
+        ) : null}
+
+        <Button type="submit" variant="primary" size="lg" fullWidth disabled={pending}>
+          {pending ? "Placing your order…" : submitLabel}
         </Button>
 
         <p className="flex items-center justify-center gap-1.5 text-center text-caption text-text-tertiary">
