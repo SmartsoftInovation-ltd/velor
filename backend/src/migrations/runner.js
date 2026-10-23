@@ -20,6 +20,7 @@ const MIGRATIONS = [
   require("./013-audit-job-id-index"),
   require("./014-phase2-indexes"),
   require("./015-backfill-search-words"),
+  require("./016-backfill-invoice-serial"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

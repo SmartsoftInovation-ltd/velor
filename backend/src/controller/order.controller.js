@@ -480,19 +480,24 @@ exports.getAllOrders = asynchandeler(async (req, res) => {
 exports.getSingleOrder = asynchandeler(async (req, res) => {
   const { id } = req.params;
   const singleOrder = await Order.findOne({ _id: id })
-    .populate("user")
+    .populate("user", "name email phone")
     .populate("deliveryCharge")
-    .populate("coupon")
-    .sort({ createdAt: -1 })
+    .populate("coupon", "code discountType discountValue")
+    .populate("placedBy", "name email")
+    .populate("followUp", "name email")
     .lean();
   if (!singleOrder) {
     throw new customError("Order not found", statusCodes.NOT_FOUND);
   }
+  // The order's invoice, so the detail screen can show its serial
+  const invoice = await Invoice.findOne({ order: singleOrder._id })
+    .select("invoiceSerialId invoiceId createdAt")
+    .lean();
   apiResponse.sendSuccess(
     res,
     statusCodes.OK,
     "Order fetched successfully",
-    singleOrder,
+    { ...singleOrder, invoice: invoice ?? null },
   );
 });
 

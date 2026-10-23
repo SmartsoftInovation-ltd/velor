@@ -150,9 +150,7 @@ const StockAdjustEdit = lazy(
 );
 
 // Components - Order & Tables
-const SigleOrderDetails = lazy(
-  () => import("./components/tables/OrderTable/SigleOrderDetails"),
-);
+const OrderView = lazy(() => import("./pages/Order/OrderView"));
 const OrderList = lazy(() => import("./pages/Order/OrderList"));
 const CreateOrder = lazy(() => import("./pages/Order/CreateOrder"));
 const IncompleteOrderList = lazy(
@@ -762,10 +760,7 @@ export default function App() {
                 {/* Order */}
                 <Route path="/order-list" element={<ProtectedRoute module="order" action="view"><OrderList /></ProtectedRoute>} />
                 <Route path="/create-order" element={<ProtectedRoute module="order" action="add"><CreateOrder /></ProtectedRoute>} />
-                <Route
-                  path="/orderdetails/:id"
-                  element={<SigleOrderDetails />}
-                />
+                <Route path="/orderdetails/:id" element={<ProtectedRoute module="order" action="view"><OrderView /></ProtectedRoute>} />
                 <Route
                   path="/incomplete-order-list"
                   element={<IncompleteOrderList />}

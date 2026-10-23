@@ -139,6 +139,11 @@ describe("online payment (SSLCommerz)", () => {
         .send({ shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
       expect(cod.body.data.gatewayUrl).toBeNull();
       expect(await inStore(() => Invoice.countDocuments({ invoiceId: cod.body.data.order.invoiceId }))).toBe(1);
+
+      // Each invoice gets the next INV-<prefix>-NN serial of this store
+      const serials = (await inStore(() => Invoice.find().sort({ createdAt: 1 }).lean())).map((i) => i.invoiceSerialId);
+      expect(serials[0]).toMatch(/^INV-.+-01$/);
+      expect(serials[1]).toMatch(/^INV-.+-02$/);
     });
 
     it("keeps nothing when the gateway refuses the session", async () => {

@@ -39,32 +39,31 @@ const ShippingInfo = ({ order }: { order: any }) => {
     ? ((totalReturned / totalParcels) * 100).toFixed(1)
     : 0;
   return (
-    <div className="space-y-1 text-center">
-      <p>
-        <span className="font-medium text-gray-800">Name:</span>{" "}
-        {order?.shippingInfo?.fullName}
+    <div className="min-w-0 space-y-1 text-left">
+      <p className="truncate font-semibold text-gray-800 dark:text-white/90">
+        {order?.shippingInfo?.fullName || "—"}
       </p>
-      <p>
-        <span className="font-medium text-gray-600">Phone:</span>{" "}
-        {order?.shippingInfo?.phone}
+      {order?.shippingInfo?.phone ? (
+        <a
+          href={`tel:${order.shippingInfo.phone}`}
+          className="block font-mono text-xs text-gray-600 hover:text-accent-600 dark:text-gray-400 dark:hover:text-accent-400"
+        >
+          {order.shippingInfo.phone}
+        </a>
+      ) : null}
+      <p className="line-clamp-2 max-w-[220px] text-xs leading-relaxed text-gray-500 dark:text-gray-400" title={order?.shippingInfo?.address}>
+        {[order?.shippingInfo?.address, order?.shippingInfo?.city].filter(Boolean).join(", ")}
       </p>
-      <p>
-        <span className="font-medium text-gray-600">Address:</span>{" "}
-        {order?.shippingInfo?.address}
-      </p>
-      {/* <p>
-        <span className="font-medium text-gray-600">Area:</span>{" "}
-        {order?.shippingInfo?.area?.area_name}
-      </p> */}
-      {/* <p>
-        <span className="font-medium text-gray-600">Delivery Zone:</span>{" "}
-        {order?.shippingInfo?.deliveryZone}
-      </p> */}
+      {order?.shippingInfo?.note ? (
+        <p className="max-w-[220px] truncate text-xs italic text-gray-400" title={order.shippingInfo.note}>
+          “{order.shippingInfo.note}”
+        </p>
+      ) : null}
 
       <button
         type="button"
         onClick={openModal}
-        className="shine rounded-full border border-accent-100 bg-accent-50 px-3 py-1 text-xs font-semibold text-accent-600 hover:bg-accent-100 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25 transition"
+        className="shine mt-0.5 rounded-full border border-accent-100 bg-accent-50 px-2.5 py-0.5 text-[11px] font-semibold text-accent-600 transition hover:bg-accent-100 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25"
       >
         Fraud Check
       </button>

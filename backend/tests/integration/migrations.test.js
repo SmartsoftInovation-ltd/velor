@@ -108,6 +108,7 @@ describe("Velor migration", () => {
         ["013-audit-job-id-index", "applied"],
         ["014-phase2-indexes", "applied"],
         ["015-backfill-search-words", "applied"],
+        ["016-backfill-invoice-serial", "applied"],
       ]);
     });
 

@@ -1,98 +1,78 @@
 import { useEffect, useState } from "react";
-import { BoxIconLine } from "../../../icons";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { showApiError } from "../../../utils/apiError";
+import { ORDER_STATUSES, STATUS_LABELS, taka, toneOf } from "./orderMeta";
 
-interface StatBoxProps {
-  title: string;
-  count: number | string;
-  amount?: number;
-  color?: string;
-  bgColor?: string;
+type Stat = { _id: string; count: number; amount: number };
+
+interface OrderHistoryProps {
+  /** null = every status */
+  active: string | null;
+  onSelect: (status: string | null) => void;
+  /** Bump to refetch, e.g. after a status change or a new order */
+  refreshKey?: number;
 }
 
-const StatBox = ({
-  title,
-  count,
-  amount,
-  color = "bg-gray-200",
-  bgColor = "bg-gray-50",
-}: StatBoxProps) => {
-  return (
-    <div
-      className={`flex flex-col items-center justify-center p-2 rounded-lg border border-gray-200 ${bgColor} shadow-sm w-32 h-28 hover:shadow-md transition`}
-    >
-      <div
-        className={`flex items-center justify-center w-8 h-8 ${color} rounded-lg`}
-      >
-        <BoxIconLine className="text-gray-800 size-4 dark:text-white/90" />
-      </div>
-      <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        {title}
-      </span>
-      <h4 className="mt-1 font-semibold text-gray-800 text-sm dark:text-white/90">
-        {count}
-      </h4>
-      {amount !== undefined && (
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">
-          ৳ {amount}
-        </span>
-      )}
-    </div>
-  );
-};
-
-const statusColors: Record<string, { color: string; bgColor: string }> = {
-  Pending: { color: "bg-yellow-200", bgColor: "bg-yellow-50" },
-  Hold: { color: "bg-red-200", bgColor: "bg-red-50" },
-  Shipped: { color: "bg-green-200", bgColor: "bg-green-50" },
-  Completed: { color: "bg-indigo-200", bgColor: "bg-indigo-50" },
-  CourierPending: { color: "bg-orange-200", bgColor: "bg-orange-50" },
-  Packaging: { color: "bg-pink-200", bgColor: "bg-pink-50" },
-  Confirmed: { color: "bg-teal-200", bgColor: "bg-teal-50" },
-  Default: { color: "bg-gray-200", bgColor: "bg-gray-50" },
-};
-
-const OrderHistory = () => {
-  const [stats, setStats] = useState<
-    { _id: string; count: number; amount: number }[]
-  >([]);
-  const [totalOrder, setTotalOrder] = useState<number>(0);
+/**
+ * The order pipeline: one tile per status, in the order an order moves
+ * through them. Each tile is also the filter for the list below it.
+ */
+const OrderHistory = ({ active, onSelect, refreshKey = 0 }: OrderHistoryProps) => {
+  const [stats, setStats] = useState<Stat[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await axiosSecure.get("/order/getordercountandamount");
-        setStats(res.data.data.orderCountAndAmount);
-        setTotalOrder(res.data.data.totalOrder);
-      } catch (error) {
-        showApiError(error, "Failed to fetch order stats!");
-      }
+    let alive = true;
+    axiosSecure
+      .get("/order/getordercountandamount")
+      .then((res) => {
+        if (!alive) return;
+        setStats(res.data.data.orderCountAndAmount ?? []);
+        setTotal(res.data.data.totalOrder ?? 0);
+      })
+      .catch((error) => showApiError(error, "Failed to fetch order stats!"))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
     };
-    fetchStats();
-  }, []);
+  }, [refreshKey]);
+
+  const byStatus = new Map(stats.map((s) => [s._id, s]));
+  const totalAmount = stats.reduce((sum, s) => sum + (s.amount || 0), 0);
+
+  const tile = (key: string | null, label: string, count: number, amount: number, dot: string) => {
+    const selected = active === key;
+    return (
+      <button
+        key={key ?? "all"}
+        type="button"
+        onClick={() => onSelect(selected && key !== null ? null : key)}
+        aria-pressed={selected}
+        className={`shine group relative flex min-w-[150px] flex-1 flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.98] ${
+          selected
+            ? "border-accent-500 bg-accent-50 shadow-[0_0_0_3px] shadow-accent-500/15 dark:bg-accent-500/10"
+            : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-white/[0.06] dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
+        }`}
+      >
+        <span className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+          <span className={`size-2 rounded-full ${dot}`} />
+          {label}
+        </span>
+        <span className={`text-2xl font-semibold tabular-nums ${selected ? "text-accent-700 dark:text-accent-400" : "text-gray-900 dark:text-white/90"}`}>
+          {loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700" /> : count}
+        </span>
+        <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500">{taka(amount)}</span>
+      </button>
+    );
+  };
 
   return (
-    <div className="flex justify-around flex-wrap gap-2">
-      <StatBox
-        title="Orders"
-        count={totalOrder}
-        color="bg-accent-100"
-        bgColor="bg-accent-50"
-      />
-
-      {stats.map((item) => {
-        const colors = statusColors[item._id] || statusColors.Default;
-        return (
-          <StatBox
-            key={item._id}
-            title={item._id}
-            count={item.count}
-            amount={item.amount}
-            color={colors.color}
-            bgColor={colors.bgColor}
-          />
-        );
+    <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+      {tile(null, "All orders", total, totalAmount, "bg-gray-900 dark:bg-white")}
+      {ORDER_STATUSES.map((status) => {
+        const stat = byStatus.get(status);
+        return tile(status, STATUS_LABELS[status], stat?.count ?? 0, stat?.amount ?? 0, toneOf(status).dot);
       })}
     </div>
   );
