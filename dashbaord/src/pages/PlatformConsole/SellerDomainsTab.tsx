@@ -57,23 +57,41 @@ const CopyValue = ({ label, value }: { label: string; value: string }) => {
   );
 };
 
-// DNS panels append the domain to the name themselves, so for a bare domain
-// (two labels) the seller types only the prefix. A deeper host may sit in a
-// zone we cannot tell apart (shop.example.com vs example.com.bd), so it keeps
-// the full name, which panels also accept.
-const panelName = (record: TenantDomain["dnsRecord"], host: string) =>
-  host.split(".").length === 2 ? record.name.slice(0, -(host.length + 1)) : record.name;
+// Second-level labels that are part of a country suffix (example.com.bd, example.co.uk)
+const COUNTRY_SECOND_LEVELS = new Set(["com", "net", "org", "edu", "gov", "ac", "co", "info", "mil"]);
 
-const DnsRecord = ({ record, host }: { record: TenantDomain["dnsRecord"]; host: string }) => (
-  <div className="mt-4 space-y-2.5 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
-    <p className="text-sm text-gray-600 dark:text-gray-400">
-      Add this as a new record in the domain's DNS panel, then run the check.
-    </p>
-    <CopyValue label="Type" value={record.type} />
-    <CopyValue label="Name" value={panelName(record, host)} />
-    <CopyValue label="Value" value={record.value} />
-  </div>
-);
+// The zone the seller manages in their DNS panel: the last two labels, or three
+// under a country suffix like .com.bd
+const rootDomain = (host: string) => {
+  const labels = host.split(".");
+  const [secondLevel, tld] = labels.slice(-2);
+  const countrySuffix = labels.length > 2 && tld.length === 2 && COUNTRY_SECOND_LEVELS.has(secondLevel);
+  return labels.slice(countrySuffix ? -3 : -2).join(".");
+};
+
+// DNS panels append the root domain to the name themselves, so the seller types
+// only what comes before it: "_ecompos-verify.uat.website" for
+// uat.website.example.com, "_ecompos-verify" for example.com
+const panelName = (record: TenantDomain["dnsRecord"], root: string) =>
+  record.name.endsWith(`.${root}`) ? record.name.slice(0, -(root.length + 1)) : record.name;
+
+const DnsRecord = ({ record, host }: { record: TenantDomain["dnsRecord"]; host: string }) => {
+  const root = rootDomain(host);
+  return (
+    <div className="mt-4 space-y-2.5 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        Add this as a new record in the DNS panel of <span className="font-mono font-semibold">{root}</span>, then run the check.
+      </p>
+      <CopyValue label="Type" value={record.type} />
+      <CopyValue label="Name" value={panelName(record, root)} />
+      <CopyValue label="Value" value={record.value} />
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        The panel adds <span className="font-mono">.{root}</span> to the name itself. If yours asks for the full name, use{" "}
+        <span className="break-all font-mono">{record.name}</span>.
+      </p>
+    </div>
+  );
+};
 
 const AddDomainDialog = ({ tenantId, first, onClose, onAdded }: {
   tenantId: string;

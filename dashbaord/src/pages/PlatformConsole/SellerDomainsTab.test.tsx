@@ -53,8 +53,16 @@ describe("SellerDomainsTab (Platform Console)", () => {
   it("shows the DNS record only for unverified domains", async () => {
     renderTab();
     const row = await screen.findByRole("listitem", { name: "shop.pizza.com" });
-    expect(within(row).getByText("_ecompos-verify.shop.pizza.com")).toBeInTheDocument();
+    // The panel adds the root domain itself, so only the part before it is shown to type
+    expect(within(row).getByText("_ecompos-verify.shop")).toBeInTheDocument();
     expect(within(screen.getByRole("listitem", { name: "pizza.com" })).queryByText(/_ecompos-verify/)).toBeNull();
+  });
+
+  it("strips a country suffix as part of the root domain", async () => {
+    domains = [{ ...pending, host: "uat.shop.pizza.com.bd", dnsRecord: record("uat.shop.pizza.com.bd") }];
+    renderTab();
+    const row = await screen.findByRole("listitem", { name: "uat.shop.pizza.com.bd" });
+    expect(within(row).getByText("_ecompos-verify.uat.shop")).toBeInTheDocument();
   });
 
   it("gives a bare domain the short name a DNS panel expects", async () => {
