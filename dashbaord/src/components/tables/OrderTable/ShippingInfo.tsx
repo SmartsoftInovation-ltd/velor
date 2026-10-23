@@ -51,11 +51,11 @@ const ShippingInfo = ({ order }: { order: any }) => {
           {order.shippingInfo.phone}
         </a>
       ) : null}
-      <p className="line-clamp-2 max-w-[220px] text-xs leading-relaxed text-gray-500 dark:text-gray-400" title={order?.shippingInfo?.address}>
+      <p className="line-clamp-2 max-w-full text-xs leading-relaxed text-gray-500 dark:text-gray-400" title={order?.shippingInfo?.address}>
         {[order?.shippingInfo?.address, order?.shippingInfo?.city].filter(Boolean).join(", ")}
       </p>
       {order?.shippingInfo?.note ? (
-        <p className="max-w-[220px] truncate text-xs italic text-gray-400" title={order.shippingInfo.note}>
+        <p className="max-w-full truncate text-xs italic text-gray-400" title={order.shippingInfo.note}>
           “{order.shippingInfo.note}”
         </p>
       ) : null}

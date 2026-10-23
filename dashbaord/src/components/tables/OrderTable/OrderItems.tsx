@@ -31,7 +31,7 @@ export const OrderItemStack = ({
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
-      className="group flex items-center gap-3 rounded-lg p-1 pr-2 text-left transition hover:bg-gray-100 dark:hover:bg-white/5"
+      className="group flex w-full min-w-0 flex-col items-start gap-1.5 rounded-lg p-1 text-left transition hover:bg-gray-100 dark:hover:bg-white/5"
     >
       <span className="flex -space-x-3">
         {items.slice(0, 3).map((item, index) => (
@@ -43,8 +43,8 @@ export const OrderItemStack = ({
           </span>
         ) : null}
       </span>
-      <span className="min-w-0">
-        <span className="block max-w-[170px] truncate text-sm font-medium text-gray-800 dark:text-white/90">
+      <span className="w-full min-w-0">
+        <span className="block truncate text-sm font-medium text-gray-800 dark:text-white/90">
           {itemName(items[0])}
         </span>
         <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">

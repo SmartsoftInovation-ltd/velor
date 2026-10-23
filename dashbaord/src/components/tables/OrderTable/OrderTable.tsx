@@ -26,6 +26,7 @@ interface Order {
   _id: string;
   createdAt: string;
   invoiceId?: string;
+  invoiceSerialId?: string | null;
   items: OrderItem[];
   guestId?: string | null;
   shippingInfo: { fullName?: string; phone?: string; address?: string; city?: string; note?: string };
@@ -43,8 +44,11 @@ interface Order {
 
 type Segment = "all" | string;
 
-const ACTION = "shine flex size-9 items-center justify-center rounded border-none transition-all active:scale-90";
+const ACTION = "shine flex size-8 shrink-0 items-center justify-center rounded border-none transition-all active:scale-90";
 const VIEW_TONE = "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10";
+// Every column gets the same width, so rows line up into an even grid
+const COLUMNS = ["Serial ID", "Invoice", "Customer", "Items", "Amount", "Payment", "Source", "Status", "Actions"] as const;
+const CELL = "px-4 py-4 align-top overflow-hidden";
 const HEAD = "px-4 py-3 text-left text-theme-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400";
 
 // A two- or three-way toggle used for the channel and payment filters
@@ -85,11 +89,21 @@ const Amounts = ({ order }: { order: Order }) => (
   </div>
 );
 
+// The invoice's INV-<prefix>-NN serial; the row number until one is assigned
+const SerialCell = ({ order, index }: { order: Order; index: number }) =>
+  order.invoiceSerialId ? (
+    <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+      {order.invoiceSerialId}
+    </span>
+  ) : (
+    <span className="font-mono text-xs font-medium text-gray-500 dark:text-gray-400">#{index + 1}</span>
+  );
+
 const InvoiceCell = ({ order, index }: { order: Order; index: number }) => (
   <div className="space-y-1">
-    <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+    <p className="truncate font-mono text-sm font-semibold text-gray-800 dark:text-white/90">
       {order.invoiceId || `#${index + 1}`}
-    </span>
+    </p>
     <p className="text-xs text-gray-600 dark:text-gray-400" title={moment(order.createdAt).format("YYYY-MM-DD HH:mm")}>
       {moment(order.createdAt).format("DD MMM, HH:mm")}
     </p>
@@ -115,7 +129,7 @@ const Actions = ({ order, canDelete, onDelete }: { order: Order; canDelete: bool
         onClick={() => onDelete(order._id)}
         size="sm"
         aria-label="Delete order"
-        className="size-9 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+        className="size-8 shrink-0 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
       >
         <MdDelete className="size-4" />
       </Button>
@@ -283,44 +297,51 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
-            <Table>
+            <Table className="w-full min-w-[1600px] table-fixed">
+              <colgroup>
+                {COLUMNS.map((column) => (
+                  <col key={column} style={{ width: `${100 / COLUMNS.length}%` }} />
+                ))}
+              </colgroup>
               <TableHeader className="border-b border-gray-100 bg-gray-50/60 dark:border-white/[0.05] dark:bg-white/[0.02]">
                 <TableRow>
-                  <TableCell isHeader className={HEAD}>Invoice</TableCell>
-                  <TableCell isHeader className={HEAD}>Customer</TableCell>
-                  <TableCell isHeader className={HEAD}>Items</TableCell>
-                  <TableCell isHeader className={`${HEAD} !text-right`}>Amount</TableCell>
-                  <TableCell isHeader className={HEAD}>Payment</TableCell>
-                  <TableCell isHeader className={HEAD}>Source</TableCell>
-                  <TableCell isHeader className={HEAD}>Status</TableCell>
-                  <TableCell isHeader className={`${HEAD} !text-right`}>Actions</TableCell>
+                  {COLUMNS.map((column) => (
+                    <TableCell
+                      key={column}
+                      isHeader
+                      className={`${HEAD} ${column === "Amount" || column === "Actions" ? "!text-right" : ""}`}
+                    >
+                      {column}
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell className="px-4 py-16 text-center text-sm text-gray-500 dark:text-gray-400" colSpan={8}>
+                    <TableCell className="px-4 py-16 text-center text-sm text-gray-500 dark:text-gray-400" colSpan={COLUMNS.length}>
                       No orders match these filters.
                     </TableCell>
                   </TableRow>
                 ) : (
                   rows.map((order, index) => (
                     <Fragment key={order._id}>
-                      <TableRow className={`align-top transition-colors hover:bg-gray-50/70 dark:hover:bg-white/[0.02] ${expanded.has(order._id) ? "bg-gray-50/70 dark:bg-white/[0.02]" : ""}`}>
-                        <TableCell className="px-4 py-4"><InvoiceCell order={order} index={index} /></TableCell>
-                        <TableCell className="px-4 py-4 text-theme-sm"><ShippingInfo order={order} /></TableCell>
-                        <TableCell className="px-4 py-3">
+                      <TableRow className={`transition-colors hover:bg-gray-50/70 dark:hover:bg-white/[0.02] ${expanded.has(order._id) ? "bg-gray-50/70 dark:bg-white/[0.02]" : ""}`}>
+                        <TableCell className={CELL}><SerialCell order={order} index={index} /></TableCell>
+                        <TableCell className={CELL}><InvoiceCell order={order} index={index} /></TableCell>
+                        <TableCell className={`${CELL} text-theme-sm`}><ShippingInfo order={order} /></TableCell>
+                        <TableCell className={`${CELL} !py-3`}>
                           <OrderItemStack items={order.items} expanded={expanded.has(order._id)} onToggle={() => toggle(order._id)} />
                         </TableCell>
-                        <TableCell className="px-4 py-4"><Amounts order={order} /></TableCell>
-                        <TableCell className="px-4 py-4"><PaymentPill method={order.paymentMethod} status={order.paymentStatus} /></TableCell>
-                        <TableCell className="px-4 py-4"><ChannelTag channel={order.channel} source={order.orderFrom} /></TableCell>
-                        <TableCell className="px-4 py-4"><OrderStatus order={order} onChanged={changed} /></TableCell>
-                        <TableCell className="px-4 py-4"><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} /></TableCell>
+                        <TableCell className={CELL}><Amounts order={order} /></TableCell>
+                        <TableCell className={CELL}><PaymentPill method={order.paymentMethod} status={order.paymentStatus} /></TableCell>
+                        <TableCell className={CELL}><ChannelTag channel={order.channel} source={order.orderFrom} /></TableCell>
+                        <TableCell className={CELL}><OrderStatus order={order} onChanged={changed} /></TableCell>
+                        <TableCell className={CELL}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} /></TableCell>
                       </TableRow>
                       {expanded.has(order._id) ? (
                         <TableRow className="bg-gray-50/70 dark:bg-white/[0.02]">
-                          <TableCell className="px-4 pb-4 pt-0" colSpan={8}>
+                          <TableCell className="px-4 pb-4 pt-0" colSpan={COLUMNS.length}>
                             <OrderItemDetails items={order.items} />
                           </TableCell>
                         </TableRow>

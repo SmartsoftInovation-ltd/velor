@@ -463,16 +463,23 @@ exports.createOrder = asynchandeler(async (req, res) => {
 
 exports.getAllOrders = asynchandeler(async (req, res) => {
   const orders = await Order.find()
-    .populate("user")
+    .populate("user", "name email phone")
     .populate("deliveryCharge")
-    .populate("coupon")
+    .populate("coupon", "code discountType discountValue")
     .sort({ createdAt: -1 })
     .lean();
+
+  // Each order's invoice serial (INV-<prefix>-NN), for the list's Serial ID column
+  const invoices = await Invoice.find({ order: { $in: orders.map((o) => o._id) } })
+    .select("order invoiceSerialId")
+    .lean();
+  const serialOf = new Map(invoices.map((inv) => [String(inv.order), inv.invoiceSerialId ?? null]));
+
   apiResponse.sendSuccess(
     res,
     statusCodes.OK,
     "Orders fetched successfully",
-    orders,
+    orders.map((order) => ({ ...order, invoiceSerialId: serialOf.get(String(order._id)) ?? null })),
   );
 });
 
