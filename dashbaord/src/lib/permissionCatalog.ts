@@ -37,15 +37,32 @@ const REPORT_GROUPS: { label: string; modules: string[] }[] = [
     modules: ["Purchase Invoice", "Purchase Product Report", "Purchase Summary", "Purchase Return Report", "Purchase Return Summary"],
   },
   { label: "Order Report", modules: ["Order Invoice", "Order Status Report"] },
-  { label: "Sales Report", modules: ["Sales Invoice Report", "Sales Product Report", "Sales Summary Report"] },
+  {
+    label: "Sales Report",
+    modules: [
+      "Sales Invoice Report", "Sales Product Report", "Sales Summary Report", "Top Sales Product Report",
+      "Push Sales Product Report", "Product Sales Return Report", "Product Sales Return Summary Report",
+      "User Sales Invoice Report", "User Sales Product Report", "Top User Report",
+      "Salesman Sales Invoice Report", "Salesman Sales Product Report", "Top Salesman Report",
+      "Upcoming Delivery Order Report",
+    ],
+  },
+  { label: "Profit Report", modules: ["Invoice Profit Report", "Product Profit Report"] },
   {
     label: "Customer Report",
     modules: [
       "Customer Sales Invoice Report", "Customer Sales Product Report", "Customer Sales Summary Report",
       "Customer Payment Report", "Customer Balance Summary Report", "Customer Ledger Report", "Customer Due List Report",
+      "Customer Invoice Profit Report", "Top Customer Report",
     ],
   },
-  { label: "Supplier Report", modules: ["Supplier Purchase Invoice Report", "Supplier Payment Report"] },
+  {
+    label: "Supplier Report",
+    modules: [
+      "Supplier Purchase Invoice Report", "Supplier Payment Report", "Supplier Ledger Report",
+      "Supplier Balance Summary Report", "Supplier Dues Report",
+    ],
+  },
   {
     label: "Stock Report",
     modules: [
@@ -134,7 +151,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     label: "Stock", icon: TbPackage, color: "from-yellow-500 to-orange-500",
     modules: ["View All Stock", "Stock Adjustment", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock"],
   },
-  { label: "Web Order",     icon: TbBrandBootstrap,     color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order"] },
+  { label: "Web Order",     icon: TbBrandBootstrap,     color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order", "Chat"] },
   { label: "Courier",       icon: TbBrandBootstrap,     color: "from-indigo-500 to-blue-700",   modules: ["Courier Merchant", "Courier Delivery", "Courier Return", "Delivery Charge"] },
   { label: "Website Management", icon: TbRulerMeasure, color: "from-gray-500 to-slate-600",    modules: ["Create Banner", "Limited Offer", "Flash Sale"] },
   { label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600",       modules: ["Customer Type", "Customer", "Customer Payment", "Advance Payment"] },

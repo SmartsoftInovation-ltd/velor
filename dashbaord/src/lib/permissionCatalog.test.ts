@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { MODULE_GROUPS, actionsForModule } from "./permissionCatalog";
+import { PERMISSIONS } from "../config/permissions";
+
+// The slug the backend gives a permission name (slugify, lower + strict)
+const slugOf = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/[\s-]+/g, "-");
 
 const group = (label: string) => MODULE_GROUPS.find((g) => g.label === label)?.modules ?? [];
 
@@ -28,5 +38,19 @@ describe("permission catalog", () => {
     const all = MODULE_GROUPS.flatMap((g) => g.modules);
     const repeated = all.filter((m, i) => all.indexOf(m) !== i);
     expect(repeated).toEqual([]);
+  });
+
+  // Every permission the sidebar and the routes check (config/permissions.ts)
+  // must be grantable on the Role & Permission pages
+  it("covers every permission the app checks", () => {
+    const onPage = new Set(MODULE_GROUPS.flatMap((g) => g.modules).map(slugOf));
+    const missing = Object.values(PERMISSIONS).filter((slug) => !onPage.has(slug));
+    expect(missing).toEqual([]);
+  });
+
+  it("lists every report on the All Reports hub", () => {
+    for (const report of ["Top Salesman Report", "Invoice Profit Report", "Supplier Dues Report", "Top Customer Report"]) {
+      expect(MODULE_GROUPS.some((g) => g.modules.includes(report))).toBe(true);
+    }
   });
 });

@@ -9,6 +9,7 @@ const SmsLog = require("../models/smsLog.model");
 const { smsQueue } = require("../queues/sms.queue");
 const { statusCodes } = require("../constant/constant");
 const { smsLength } = require("../utils/smsLength.util");
+const { hasTokens, renderDueSms, DUE_TOKEN } = require("../utils/dueSmsTemplate.util");
 const {
   RECIPIENT_TYPES,
   resolveRecipients,
@@ -109,12 +110,12 @@ exports.getAllOrderPhoneNumber = asynchandeler(async (req, res) => {
 // @desc Send due SMS to a single customer
 exports.sendDueSmsToCustomer = asynchandeler(async (req, res) => {
   const { customerId } = req.params;
-  const { message } = req.body;
+  const template = req.body.message;
 
-  if (!message) {
+  if (!template) {
     throw new customError("Message is required", statusCodes.BAD_REQUEST);
   }
-  assertOneSms(message);
+  if (!hasTokens(template)) assertOneSms(template);
 
   const customer = await customerModel.findById(customerId).select("fullName mobileNumber openingDues isActive");
   if (!customer) {
@@ -123,6 +124,10 @@ exports.sendDueSmsToCustomer = asynchandeler(async (req, res) => {
   if (!customer.isActive) {
     throw new customError("Customer is inactive", statusCodes.BAD_REQUEST);
   }
+
+  // #name# / #due# become this customer's own name and due
+  const message = renderDueSms(template, { name: customer.fullName, due: customer.openingDues });
+  if (!message) assertOneSms(template);
 
   const result = await sendSMS(customer.mobileNumber, message);
 
@@ -155,20 +160,33 @@ exports.sendDueSmsToAllCustomers = asynchandeler(async (req, res) => {
   if (!message) {
     throw new customError("Message is required", statusCodes.BAD_REQUEST);
   }
-  assertOneSms(message);
+  const personal = hasTokens(message);
+  if (!personal) assertOneSms(message);
+  // The template must fit one SMS even before any name is filled in
+  if (personal && !renderDueSms(message, { name: "", due: 0 })) assertOneSms(message);
 
+  // A message that states the due goes only to customers who owe something
   const customers = await customerModel
-    .find({ isActive: true, deletedAt: null })
+    .find({
+      isActive: true,
+      deletedAt: null,
+      ...(message.includes(DUE_TOKEN) ? { openingDues: { $gt: 0 } } : {}),
+    })
     .select("_id fullName mobileNumber openingDues");
 
   if (!customers || customers.length === 0) {
-    throw new customError("No active customers found", statusCodes.NOT_FOUND);
+    throw new customError(
+      message.includes(DUE_TOKEN) ? "No active customers with a due balance" : "No active customers found",
+      statusCodes.NOT_FOUND,
+    );
   }
 
+  // Each customer's own text when the template carries #name# / #due#
   const recipients = customers.map((c) => ({
     customerId: c._id,
     phone: c.mobileNumber,
     status: "pending",
+    ...(personal ? { message: renderDueSms(message, { name: c.fullName, due: c.openingDues }) } : {}),
   }));
 
   const log = await SmsLog.create({
@@ -189,6 +207,7 @@ exports.sendDueSmsToAllCustomers = asynchandeler(async (req, res) => {
       recipients: recipients.map((r) => ({
         customerId: r.customerId.toString(),
         phone: r.phone,
+        ...(r.message ? { message: r.message } : {}),
       })),
     },
     { jobId: log._id.toString() },

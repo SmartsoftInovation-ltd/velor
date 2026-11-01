@@ -94,6 +94,35 @@ describe("SMS, employees, delivery charges and the audit log", () => {
       expect(JSON.stringify(logs.body.data)).toContain(String(res.body.data.logId));
     });
 
+    // #name# and #due# become each customer's own name and due balance
+    const TEMPLATE =
+      "Dear #name# Sir/Mam, Your overall due balance is #due# taka. Please payment your due balance as soon as possible.";
+
+    it("fills in the customer's name and due on a single due SMS", async () => {
+      const customer = await f.customer.create({ fullName: "Rina Akter", mobileNumber: "01912345678", openingDues: 5000 });
+      let sent;
+      nock(GATEWAY).post("/api/smsapi", (b) => (sent = b)).reply(200, { response_code: 202 });
+      await as().post(`/sms/due-sms/send/${customer._id}`).send({ message: TEMPLATE }).expect(200);
+      expect(sent.message).toBe(
+        "Dear Rina Akter Sir/Mam, Your overall due balance is 5,000 taka. Please payment your due balance as soon as possible.",
+      );
+    });
+
+    it("gives each customer their own text on send-all, and only customers who owe", async () => {
+      await f.customer.create({ fullName: "Rina", mobileNumber: "01911111111", openingDues: 1200 });
+      await f.customer.create({ fullName: "Karim", mobileNumber: "01922222222", openingDues: 0 });
+      const res = await as().post("/sms/due-sms/send-all").send({ message: TEMPLATE }).expect(201);
+      expect(res.body.data.totalCount).toBe(1);
+      const { smsQueue } = require("../../src/queues/sms.queue");
+      const job = await smsQueue.getJob(res.body.data.jobId);
+      expect(job.data.recipients).toEqual([
+        expect.objectContaining({
+          phone: "01911111111",
+          message: "Dear Rina Sir/Mam, Your overall due balance is 1,200 taka. Please payment your due balance as soon as possible.",
+        }),
+      ]);
+    });
+
     it("SMS_NOT_CONFIGURED when the store has not set up SMS (no fallback to another account)", async () => {
       await settings.updateSection(tenant._id, "sms", { enabled: false });
       settings.clearSettingsCache();

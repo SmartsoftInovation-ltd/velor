@@ -12,6 +12,7 @@ const { seedTenantRoles } = require("../../src/tenancy/roleTemplate");
 const Tenant = require("../../src/models/platform/tenant.model");
 const User = require("../../src/models/user.model");
 const service = require("../../src/settings/settings.service");
+const { resetRateLimitCounters } = require("../../src/middleware/rateLimit.middleware");
 const { testRedis } = require("../helpers/redis");
 
 describe("password reset by SMS code", () => {
@@ -37,6 +38,8 @@ describe("password reset by SMS code", () => {
   });
 
   beforeEach(async () => {
+    // Each case starts with a fresh reset budget (5 requests an hour)
+    resetRateLimitCounters();
     invalidateTenantCache();
     service.clearSettingsCache();
     sendSMS.mockReset().mockResolvedValue({ response_code: 202 });

@@ -1477,7 +1477,9 @@ const AppSidebar: React.FC = () => {
     >
       {/* ---------- LOGO ---------- */}
       <div
-        className={`py-5 flex items-center ${
+        // Top gap matches the header row (lg:py-3), so the banner lines up
+        // with the global search
+        className={`pt-3 pb-4 flex items-center ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-between"
         }`}
       >

@@ -59,7 +59,8 @@ const processSmsJob = async (job) => {
             const idx = typeof recipient.index === "number" ? recipient.index : i + offset;
             if (alreadySent(idx)) return;
             try {
-              await sendSMS(recipient.phone, message);
+              // A personalised due SMS carries each recipient's own text
+              await sendSMS(recipient.phone, recipient.message || message);
               await SmsLog.updateOne(
                 { _id: logId },
                 {

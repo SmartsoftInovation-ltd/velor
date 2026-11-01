@@ -8,8 +8,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
 import Label from "../form/Label";
-import { useAuth } from "../../context/AuthContext";
-import { fitOneSms } from "../../utils/smsLength";
+import { DUE_NAME_TOKEN, DUE_SMS_TEMPLATE, DUE_TOKEN, hasDueTokens, renderDueSms } from "../../utils/dueSmsTemplate";
 import SmsMessageBox from "./SmsMessageBox";
 import SmsPreview from "./SmsPreview";
 
@@ -51,7 +50,6 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 };
 
 export default function DueSmsTable() {
-  const { tenant } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewCustomer, setViewCustomer] = useState<Customer | null>(null);
@@ -120,19 +118,19 @@ export default function DueSmsTable() {
     setBulkMessage("");
   };
 
-  // Ready-made texts in plain English ("Tk", not "৳"), so they fit the
-  // 160-character SMS; cut to one SMS if a long name pushes them over
-  const store = tenant?.name || "our store";
-  const dueReminderFor = (c: Customer) =>
-    fitOneSms(
-      `Dear ${c.fullName}, your due balance at ${store} is Tk ${(c.openingDues || 0).toLocaleString()}. Please pay at your earliest convenience. Thank you.`,
-    );
-  const dueReminderForAll = () =>
-    fitOneSms(`Dear customer, you have a due balance at ${store}. Please clear it at your earliest convenience. Thank you.`);
+  // The due reminder: one customer gets their real name and due filled in;
+  // "Send to all" keeps #name# / #due#, which the server fills in per customer
+  const dueReminderFor = (c: Customer) => renderDueSms(DUE_SMS_TEMPLATE, c);
+  // Customers a "Send to all" reaches: only those who owe, once #due# is in it
+  const bulkRecipients = bulkMessage.includes(DUE_TOKEN)
+    ? tableData.filter((c) => c.isActive && c.openingDues > 0)
+    : tableData.filter((c) => c.isActive);
+  const sampleCustomer = bulkRecipients[0];
+  const bulkPreview = hasDueTokens(bulkMessage) && sampleCustomer ? renderDueSms(bulkMessage, sampleCustomer) : bulkMessage;
 
   const handleSingleSms = (customer: Customer) => {
     setSelectedCustomer(customer);
-    setSmsMessage("");
+    setSmsMessage(dueReminderFor(customer));
     setShowSingleSmsModal(true);
   };
 
@@ -206,7 +204,7 @@ export default function DueSmsTable() {
         </div>
 
         <Button
-          onClick={() => { setBulkMessage(""); setShowBulkSmsModal(true); }}
+          onClick={() => { setBulkMessage(DUE_SMS_TEMPLATE); setShowBulkSmsModal(true); }}
           className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2"
         >
           <MdSend className="text-base" />
@@ -573,15 +571,17 @@ export default function DueSmsTable() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-4">
               <div className="rounded-xl bg-accent-50 p-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-300">
-                Goes to <strong>{tableData.length.toLocaleString()}</strong> customers in the background. The SMS
-                history shows when it is done.
+                Goes to <strong>{bulkRecipients.length.toLocaleString()}</strong>{" "}
+                {bulkMessage.includes(DUE_TOKEN) ? "customers with a due balance" : "active customers"} in the
+                background. Each one gets their own name and due in place of <code>#name#</code> and{" "}
+                <code>#due#</code>. The SMS history shows when it is done.
               </div>
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <Label htmlFor="bulk-sms-message">Message</Label>
                   <button
                     type="button"
-                    onClick={() => setBulkMessage(dueReminderForAll())}
+                    onClick={() => setBulkMessage(DUE_SMS_TEMPLATE)}
                     className="rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-semibold text-accent-700 transition-colors hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400"
                   >
                     Use due reminder
@@ -593,8 +593,21 @@ export default function DueSmsTable() {
                   onChange={setBulkMessage}
                   rows={9}
                   autoFocus
-                  placeholder="Everyone gets this same text…"
+                  placeholder="Everyone gets this text, with #name# and #due# filled in per customer…"
                 />
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="text-gray-400">Insert:</span>
+                  {[DUE_NAME_TOKEN, DUE_TOKEN].map((token) => (
+                    <button
+                      key={token}
+                      type="button"
+                      onClick={() => setBulkMessage((m) => `${m}${m && !m.endsWith(" ") ? " " : ""}${token}`)}
+                      className="rounded-md border border-gray-200 px-2 py-0.5 font-mono text-gray-600 transition-colors hover:border-accent-400 hover:text-accent-700 dark:border-gray-700 dark:text-gray-300"
+                    >
+                      {token}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
@@ -608,7 +621,7 @@ export default function DueSmsTable() {
                 <button
                   type="button"
                   onClick={handleSendAll}
-                  disabled={sendingBulk || !bulkMessage.trim()}
+                  disabled={sendingBulk || !bulkMessage.trim() || bulkRecipients.length === 0}
                   className="shine flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-600 disabled:opacity-60"
                 >
                   {sendingBulk ? (
@@ -619,13 +632,17 @@ export default function DueSmsTable() {
                   ) : (
                     <>
                       <MdSend className="size-4" />
-                      Send to {tableData.length.toLocaleString()}
+                      Send to {bulkRecipients.length.toLocaleString()}
                     </>
                   )}
                 </button>
               </div>
             </div>
-            <SmsPreview message={bulkMessage} recipientLabel="All customers" recipientCount={tableData.length} />
+            <SmsPreview
+              message={bulkPreview}
+              recipientLabel={sampleCustomer && hasDueTokens(bulkMessage) ? `${sampleCustomer.fullName} (example)` : "All customers"}
+              recipientCount={bulkRecipients.length}
+            />
           </div>
         </div>
       </Modal>
