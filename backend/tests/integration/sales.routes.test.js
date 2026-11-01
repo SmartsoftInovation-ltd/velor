@@ -472,17 +472,26 @@ describe("sales routes (/api/v1/sales)", () => {
       expect(small.body.data).toHaveLength(3);
     });
 
-    // BUG-P2-004: names are searched through the index by word prefix, from 2 characters
-    it("matches any word of a name by its beginning, and needs 2 characters for a name", async () => {
+    // A typed name matches any part of it, in any case
+    it("matches any part of a name, every typed word somewhere in it", async () => {
       const named = await f.product.create({ name: "Cotton Shirt Large" });
-      const byWordPrefix = await as().get("/sales/get-sales-products").query({ q: "shi" }).expect(200);
-      expect(byWordPrefix.body.data.map((r) => String(r._id))).toContain(named._id.toString());
-      const bothWords = await as().get("/sales/get-sales-products").query({ q: "lar cot" }).expect(200);
-      expect(bothWords.body.data.map((r) => String(r._id))).toEqual([named._id.toString()]);
-      const inside = await as().get("/sales/get-sales-products").query({ q: "hirt" }).expect(200);
-      expect(inside.body.data).toEqual([]);
-      const oneLetter = await as().get("/sales/get-sales-products").query({ q: "s" }).expect(200);
-      expect(oneLetter.body.data).toEqual([]);
+      const ids = async (q) => (await as().get("/sales/get-sales-products").query({ q }).expect(200)).body.data.map((r) => String(r._id));
+      expect(await ids("shi")).toContain(named._id.toString());
+      expect(await ids("lar cot")).toEqual([named._id.toString()]);
+      expect(await ids("hirt")).toContain(named._id.toString());
+      expect(await ids("TTONSH")).toEqual([]);
+    });
+
+    // Variant names are often one glued word; the parent product's name finds them too
+    it("finds a variant by any part of its own name or its product's name", async () => {
+      const shirt = await f.product.create({ name: "Casual Full Shirt" });
+      const variant = await f.variant.create({ product: shirt._id, variantName: "CASUALFULLSHIRT2" });
+      const variantIds = async (q) =>
+        (await as().get("/sales/get-sales-products").query({ q }).expect(200)).body.data
+          .filter((r) => r._type === "variant")
+          .map((r) => String(r._id));
+      expect(await variantIds("ullshirt2")).toEqual([variant._id.toString()]);
+      expect(await variantIds("full shirt")).toEqual([variant._id.toString()]);
     });
 
     // BUG-016: a non-numeric or zero limit reaches $limit and the driver rejects it

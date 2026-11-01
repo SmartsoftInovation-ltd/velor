@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -107,7 +107,7 @@ const VariantTable = () => {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-    }, 1000);
+    }, 400);
 
     return () => clearTimeout(handler);
   }, [searchTerm]);
@@ -148,6 +148,8 @@ const VariantTable = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
+    isPlaceholderData,
   } = useInfiniteQuery({
     queryKey: ["variants", debouncedSearch],
     initialPageParam: undefined as string | undefined,
@@ -163,7 +165,13 @@ const VariantTable = () => {
     // cached page. Mutations additionally invalidate ["variants"].
     staleTime: 0,
     refetchOnMount: "always",
+    // Keep the current rows while the next search loads, instead of swapping
+    // the table for a skeleton on every keystroke
+    placeholderData: keepPreviousData,
   });
+  // Typed but not yet sent, or sent and loading
+  const searching =
+    searchTerm.trim() !== debouncedSearch.trim() || (isFetching && isPlaceholderData);
   const rawVariants: Variant[] = variantPages?.pages.flatMap((p) => p?.variants ?? []) ?? [];
 
   const virtualizer = useVirtualizer({
@@ -256,7 +264,7 @@ const VariantTable = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             onBlur={handleSearchBlur}
             onKeyDown={(e) => {
-              // Scanners terminate input with Enter — skip the 1s debounce
+              // Scanners terminate input with Enter — skip the debounce
               // and search immediately instead of waiting.
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -277,19 +285,34 @@ const VariantTable = () => {
             <MdOutlineQrCodeScanner className="size-4" />
           </button>
 
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm("")}
-              aria-label="Clear search"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1"
-              title="Clear search"
-            >
-              <FaTimes className="size-4" />
-            </button>
-          )}
+          <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1">
+            {searching && (
+              <span
+                role="status"
+                aria-label="Searching"
+                className="size-4 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+              />
+            )}
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                aria-label="Clear search"
+                className="p-1 text-gray-400 transition-colors hover:text-red-500"
+                title="Clear search"
+              >
+                <FaTimes className="size-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* While a new search loads, the current rows stay in place and dim */}
+      <div
+        aria-busy={searching}
+        className={`transition-opacity duration-200 ${searching ? "pointer-events-none opacity-50" : "opacity-100"}`}
+      >
       {isLoading ? (
         <div className="w-full animate-pulse">
           <div className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
@@ -611,6 +634,7 @@ const VariantTable = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* Delete Confirmation Modal */}
       <LoadMoreButton hasMore={hasNextPage} loading={isFetchingNextPage} onClick={() => fetchNextPage()} />

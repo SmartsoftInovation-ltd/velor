@@ -1483,9 +1483,9 @@ const AppSidebar: React.FC = () => {
       >
         <Link to="/" className="flex items-center gap-2.5">
           <img
-            src="/images/logo/logo-icon.svg"
+            src="/images/logo/online-store.gif"
             alt="Ecompose Master"
-            className="size-8 shrink-0 rounded-lg bg-brand-500 p-1.5 shadow-sm"
+            className="size-8 shrink-0 rounded-lg object-contain"
           />
           {(isExpanded || isHovered || isMobileOpen) && (
             <span className="font-bold text-gray-900 dark:text-white text-base tracking-tight uppercase whitespace-nowrap">

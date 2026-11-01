@@ -90,6 +90,8 @@ interface ProductTableProps {
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  // A search is pending or loading
+  searching?: boolean;
 }
 
 export default function ProductTable({
@@ -100,6 +102,7 @@ export default function ProductTable({
   hasMore,
   loadingMore,
   onLoadMore,
+  searching = false,
 }: ProductTableProps) {
   const queryClient = useQueryClient();
   const canAdd    = usePermission("product", "add");
@@ -230,7 +233,7 @@ export default function ProductTable({
             onChange={(e) => setSearchTerm(e.target.value)}
             onBlur={handleSearchBlur}
             onKeyDown={(e) => {
-              // Scanners terminate input with Enter — skip the 1s debounce
+              // Scanners terminate input with Enter — skip the debounce
               // in the parent and search immediately instead of waiting.
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -251,18 +254,35 @@ export default function ProductTable({
             <MdOutlineQrCodeScanner className="size-4" />
           </button>
 
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1"
-              title="Clear search"
-            >
-              <FaTimes className="size-4" />
-            </button>
-          )}
+          <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1">
+            {searching && (
+              <span
+                role="status"
+                aria-label="Searching"
+                className="size-4 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+              />
+            )}
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="p-1 text-gray-400 transition-colors hover:text-red-500"
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <FaTimes className="size-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* While a new search loads, the current rows stay in place and dim,
+          so nothing jumps; they swap in when the results arrive */}
+      <div
+        aria-busy={searching}
+        className={`transition-opacity duration-200 ${searching ? "pointer-events-none opacity-50" : "opacity-100"}`}
+      >
       {isMobile ? (
         <MobileCardList
           items={products}
@@ -535,6 +555,7 @@ export default function ProductTable({
         </div>
       </div>
       )}
+      </div>
 
       {onLoadMore && <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={onLoadMore} />}
       <Modal isOpen={showDeleteModal} onClose={closeModal} className="!w-full !max-w-sm">

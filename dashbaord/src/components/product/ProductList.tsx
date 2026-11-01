@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import ComponentCard from "../../components/common/ComponentCard";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -39,7 +39,7 @@ const ProductList = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 1000);
+    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 400);
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
@@ -55,6 +55,7 @@ const ProductList = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isPlaceholderData,
   } = useInfiniteQuery({
     queryKey: ["products", debouncedSearch],
     initialPageParam: undefined as string | undefined,
@@ -66,7 +67,13 @@ const ProductList = () => {
     },
     getNextPageParam: (last) => last?.nextCursor ?? undefined,
     staleTime: 2 * 60 * 1000,
+    // Keep showing the current rows while the next search loads, instead of
+    // swapping the whole card (search box included) for a skeleton each time
+    placeholderData: keepPreviousData,
   });
+  // Typed but not yet sent, or sent and loading
+  const searching =
+    searchTerm.trim() !== debouncedSearch.trim() || (isFetching && isPlaceholderData);
   const products = data?.pages.flatMap((p) => p?.products ?? []) ?? [];
 
   const handleSearch = (query?: string) => {
@@ -126,6 +133,7 @@ const ProductList = () => {
               hasMore={hasNextPage}
               loadingMore={isFetchingNextPage}
               onLoadMore={() => fetchNextPage()}
+              searching={searching}
             />
           )}
         </ComponentCard>

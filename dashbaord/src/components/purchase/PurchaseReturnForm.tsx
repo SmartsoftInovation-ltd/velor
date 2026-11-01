@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { FaSearch, FaTimes, FaBoxOpen, FaSpinner } from "react-icons/fa";
+import { FaSearch, FaTimes, FaBoxOpen, FaSpinner, FaChevronDown, FaCheck } from "react-icons/fa";
 import { MdDelete, MdOutlineQrCodeScanner } from "react-icons/md";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import Label from "../form/Label";
@@ -74,6 +74,9 @@ const PurchaseReturnForm = () => {
   const [showSupplierDrop, setShowSupplierDrop] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(() => draftValue<Supplier | null>(DRAFT_KEY, "selectedSupplier", null));
   const supplierRef = useRef<HTMLDivElement>(null);
+  const supplierListRef = useRef<HTMLDivElement>(null);
+  const supplierSearchRef = useRef<HTMLInputElement>(null);
+  const [activeSupplier, setActiveSupplier] = useState(0);
 
   // ── Product search state ────────────────────────────────────────────────────
   const [productQuery, setProductQuery] = useState("");
@@ -120,22 +123,47 @@ const PurchaseReturnForm = () => {
   }, []);
 
   // ── Filter suppliers as user types ─────────────────────────────────────────
+  // supplierQuery is the search box inside the dropdown; empty lists everyone
   useEffect(() => {
-    if (!supplierQuery.trim()) {
-      setSupplierResults([]);
-      setShowSupplierDrop(false);
-      return;
-    }
-    const q = supplierQuery.toLowerCase();
-    const filtered = allSuppliers.filter(
-      (s) =>
-        s.supplierName.toLowerCase().includes(q) ||
-        (s.supplierId && s.supplierId.includes(q)) ||
-        (s.mobile && s.mobile.includes(q)),
-    );
+    const q = supplierQuery.trim().toLowerCase();
+    const filtered = !q
+      ? allSuppliers
+      : allSuppliers.filter(
+          (s) =>
+            s.supplierName.toLowerCase().includes(q) ||
+            (s.supplierId && s.supplierId.toLowerCase().includes(q)) ||
+            (s.mobile && s.mobile.includes(q)),
+        );
     setSupplierResults(filtered);
-    setShowSupplierDrop(filtered.length > 0);
+    setActiveSupplier(0);
   }, [supplierQuery, allSuppliers]);
+
+  // Keep the highlighted row in view while moving with the arrow keys
+  useEffect(() => {
+    supplierListRef.current
+      ?.querySelector<HTMLElement>(`[data-index="${activeSupplier}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeSupplier]);
+
+  const openSupplierDrop = (open: boolean) => {
+    setShowSupplierDrop(open);
+    setSupplierQuery("");
+    if (open) setTimeout(() => supplierSearchRef.current?.focus(), 0);
+  };
+
+  const onSupplierKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const last = supplierResults.length - 1;
+      setActiveSupplier((i) => (e.key === "ArrowDown" ? (i >= last ? 0 : i + 1) : i <= 0 ? last : i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const s = supplierResults[activeSupplier];
+      if (s) selectSupplier(s);
+    } else if (e.key === "Escape") {
+      setShowSupplierDrop(false);
+    }
+  };
 
   // ── Close dropdowns on outside click ───────────────────────────────────────
   useEffect(() => {
@@ -188,7 +216,7 @@ const PurchaseReturnForm = () => {
   // ── Supplier actions ────────────────────────────────────────────────────────
   const selectSupplier = (s: Supplier) => {
     setSelectedSupplier(s);
-    setSupplierQuery(s.supplierName);
+    setSupplierQuery("");
     setShowSupplierDrop(false);
     setErrors((prev) => ({ ...prev, supplier: "" }));
   };
@@ -451,76 +479,154 @@ const PurchaseReturnForm = () => {
               <Label>
                 Supplier <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 size-3.5 pointer-events-none" />
-                <input
-                  type="text"
-                  value={supplierQuery}
-                  onChange={(e) => {
-                    setSupplierQuery(e.target.value);
-                    if (selectedSupplier) {
-                      setSelectedSupplier(null);
-                    }
-                  }}
-                  onFocus={() =>
-                    supplierQuery.trim() &&
-                    supplierResults.length > 0 &&
-                    setShowSupplierDrop(true)
+              {/* Trigger: shows the chosen supplier; the search lives in the dropdown */}
+              <div
+                role="combobox"
+                tabIndex={0}
+                aria-expanded={showSupplierDrop}
+                aria-controls="supplier-listbox"
+                onClick={() => openSupplierDrop(!showSupplierDrop)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+                    e.preventDefault();
+                    openSupplierDrop(true);
                   }
-                  placeholder="Search by name, ID or phone…"
-                  autoComplete="off"
-                  className={`w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border ${
-                    errors.supplier
-                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                }}
+                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm outline-none transition-all duration-200 focus:ring-2 ${
+                  errors.supplier
+                    ? "border-red-400 focus:ring-red-400/20"
+                    : showSupplierDrop
+                      ? "border-accent-500 bg-white ring-2 ring-accent-500/20 dark:bg-gray-900"
                       : selectedSupplier
-                        ? "border-accent-400 bg-accent-50/30 dark:bg-accent-500/5"
-                        : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-accent-500/20"
-                  } text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 transition-all duration-200`}
-                />
-                {supplierQuery && (
+                        ? "border-accent-400 bg-accent-50/30 focus:ring-accent-500/20 dark:bg-accent-500/5"
+                        : "border-gray-200 bg-gray-50 hover:border-accent-400 focus:ring-accent-500/20 dark:border-gray-700 dark:bg-gray-800"
+                }`}
+              >
+                {selectedSupplier ? (
+                  <>
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-[11px] font-semibold uppercase text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                      {selectedSupplier.supplierName?.charAt(0) || "?"}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-gray-800 dark:text-white">
+                      {selectedSupplier.supplierName}
+                    </span>
+                  </>
+                ) : (
+                  <span className="flex-1 truncate py-0.5 text-gray-400">Select supplier</span>
+                )}
+                {selectedSupplier && (
                   <button
                     type="button"
-                    onClick={clearSupplier}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearSupplier();
+                    }}
+                    aria-label="Clear supplier"
+                    className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500 dark:hover:bg-white/5"
                   >
                     <FaTimes className="size-3" />
                   </button>
                 )}
+                <FaChevronDown
+                  className={`size-3 shrink-0 text-gray-400 transition-transform duration-200 ${showSupplierDrop ? "rotate-180 text-accent-500" : ""}`}
+                />
               </div>
               {errors.supplier && (
                 <p className="text-red-500 text-xs mt-1">{errors.supplier}</p>
               )}
 
               {showSupplierDrop && (
-                <div className="absolute z-[9999] w-full mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
-                  <div className="max-h-52 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
-                    {supplierResults.map((s) => (
-                      <button
-                        key={s._id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          selectSupplier(s);
-                        }}
-                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                      >
-                        <p className="text-sm font-medium text-gray-800 dark:text-white">
-                          {s.supplierName}
+                <div className="absolute z-[9999] mt-1.5 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900">
+                  <div className="border-b border-gray-100 p-2 dark:border-gray-800">
+                    <div className="relative">
+                      <FaSearch className="pointer-events-none absolute left-3 top-1/2 size-3 -translate-y-1/2 text-gray-400" />
+                      <input
+                        ref={supplierSearchRef}
+                        type="text"
+                        value={supplierQuery}
+                        onChange={(e) => setSupplierQuery(e.target.value)}
+                        onKeyDown={onSupplierKeyDown}
+                        placeholder="Search name, ID or phone..."
+                        autoComplete="off"
+                        aria-label="Search suppliers"
+                        className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-8 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-accent-500 focus:ring-1 focus:ring-accent-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      />
+                      {supplierQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSupplierQuery("");
+                            supplierSearchRef.current?.focus();
+                          }}
+                          aria-label="Clear search"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-red-500"
+                        >
+                          <FaTimes className="size-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-3 pt-2 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    <span>Suppliers</span>
+                    <span>{supplierResults.length}</span>
+                  </div>
+                  <div ref={supplierListRef} id="supplier-listbox" role="listbox" className="max-h-64 overflow-y-auto p-1">
+                    {supplierResults.length === 0 ? (
+                      <div className="px-4 py-6 text-center">
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                          {allSuppliers.length === 0 ? "No suppliers yet" : "No supplier found"}
                         </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {s.supplierId && (
-                            <span className="text-xs text-gray-400">
-                              {s.supplierId}
+                        <p className="mt-0.5 text-xs text-gray-400">
+                          {allSuppliers.length === 0
+                            ? "Add a supplier first, then come back to this return."
+                            : "Try another name, supplier ID or phone number."}
+                        </p>
+                      </div>
+                    ) : (
+                      supplierResults.map((s, i) => {
+                        const selected = selectedSupplier?._id === s._id;
+                        return (
+                          <button
+                            key={s._id}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            data-index={i}
+                            onMouseEnter={() => setActiveSupplier(i)}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              selectSupplier(s);
+                            }}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                              i === activeSupplier ? "bg-accent-50 dark:bg-accent-500/10" : "hover:bg-gray-50 dark:hover:bg-white/5"
+                            }`}
+                          >
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold uppercase text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                              {s.supplierName?.charAt(0) || "?"}
                             </span>
-                          )}
-                          {s.openingDues > 0 && (
-                            <span className="text-xs text-red-500 font-medium">
-                              Due: ৳{fmt(s.openingDues)}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-gray-800 dark:text-white">
+                                {s.supplierName}
+                              </span>
+                              <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-400">
+                                {s.supplierId && <span className="font-mono">{s.supplierId}</span>}
+                                {s.mobile && <span>{s.mobile}</span>}
+                              </span>
                             </span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
+                            {s.openingDues > 0 ? (
+                              <span className="shrink-0 rounded-full bg-error-50 px-2 py-0.5 text-[11px] font-semibold text-error-600 dark:bg-error-500/15 dark:text-error-400">
+                                Due ৳{fmt(s.openingDues)}
+                              </span>
+                            ) : (
+                              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-white/5 dark:text-gray-400">
+                                No due
+                              </span>
+                            )}
+                            {selected && <FaCheck className="size-3 shrink-0 text-accent-600 dark:text-accent-400" />}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               )}

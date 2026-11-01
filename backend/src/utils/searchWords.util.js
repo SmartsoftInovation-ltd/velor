@@ -40,6 +40,19 @@ const nameSearchFilter = (query) => {
 };
 
 /**
+ * "Contains" name search for the product and variant lists: every word typed
+ * must appear somewhere in `field`, in any case ("shirt" finds
+ * "CASUALFULLSHIRT", "ull sh" finds "Casual Full Shirt"). Unlike
+ * nameSearchFilter this cannot use an index, so it reads the store's whole
+ * collection; fine for the list pages, which stay paged.
+ */
+const nameContainsFilter = (query, field) => {
+  const terms = searchWordsOf(query).slice(0, MAX_TERMS);
+  if (!terms.length) return null;
+  return { $and: terms.map((t) => ({ [field]: { $regex: escapeRegex(t), $options: "i" } })) };
+};
+
+/**
  * Keep `searchWords` in step with the name field on every write path: save,
  * insertMany and the update queries.
  */
@@ -96,4 +109,4 @@ const idsMatchingAny = async (Model, conditions, limit) => {
   return ids;
 };
 
-module.exports = { searchWordsOf, nameSearchFilter, searchWordsPlugin, idsMatchingAny, escapeRegex, MIN_TERM_LENGTH };
+module.exports = { searchWordsOf, nameSearchFilter, nameContainsFilter, searchWordsPlugin, idsMatchingAny, escapeRegex, MIN_TERM_LENGTH };

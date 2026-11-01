@@ -5,7 +5,7 @@ const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
 const { forAudience, isStaff } = require("../utils/publicProduct");
-const { nameSearchFilter, idsMatchingAny } = require("../utils/searchWords.util");
+const { nameSearchFilter, nameContainsFilter, idsMatchingAny } = require("../utils/searchWords.util");
 const { listPage, afterCursor, pageResult, NEWEST_FIRST, MAX_LIMIT } = require("../utils/listPage.util");
 
 // Rows each branch of the product search returns (products, then variants)
@@ -124,7 +124,7 @@ const pagedProducts = async (req, base, { select, populate = true } = {}) => {
       { barCode: { $regex: `^${escapeRegex(search)}` } },
       { sku: { $regex: `^${escapeRegex(search)}` } },
     ];
-    const byName = nameSearchFilter(search);
+    const byName = nameContainsFilter(search, "name");
     if (byName) conditions.unshift(byName);
     query._id = { $in: await idsMatchingAny(Product, conditions, MAX_LIMIT) };
   }
@@ -312,7 +312,7 @@ class ProductController {
   getAllProducts = asynchandeler(async (req, res) => {
     // One page at a time (BUG-P2-010): the whole catalogue with its populates
     // ran the API out of memory on a large shop. ?search= finds products by a
-    // word of the name (prefix) or a barcode / sku (prefix), through indexes.
+    // part of the name (any case) or a barcode / sku (prefix).
     const staff = isStaff(req);
     const cacheKey = await buildCacheKey(
       NS,

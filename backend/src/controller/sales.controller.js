@@ -26,7 +26,7 @@ const { clientCommandMessageReg } = require("bullmq");
 const settings = require("../settings/settings.service");
 const { getTenantId } = require("../tenancy/context");
 const { getInvoicePrefix } = require("../integrations/config");
-const { nameSearchFilter, idsMatchingAny } = require("../utils/searchWords.util");
+const { nameContainsFilter, idsMatchingAny } = require("../utils/searchWords.util");
 const {
   bumpNsVersion,
   buildCacheKey,
@@ -986,17 +986,19 @@ exports.searchProductsAndVariants = async (req, res) => {
       );
     }
 
-    // Every match goes through an index (BUG-P2-004): a scanned code exactly,
-    // a typed name by the beginning of its words (searchWords). A
-    // case-insensitive "contains" regex read the whole catalogue on every
-    // keystroke. Each query is limited before anything is joined to it.
+    // A scanned code matches exactly, through an index. A typed name matches
+    // any part of the name in any case ("shirt" finds "CASUALFULLSHIRT"), and
+    // a variant is also found through its parent product's name. The name
+    // match reads the store's catalogue, so each query is limited before
+    // anything is joined to it.
     const exact = [
       { sku: q },
       { barCode: q },
       { qrCode: q },
       { slug: q.toLowerCase() },
     ];
-    const byName = nameSearchFilter(q);
+    const byName = nameContainsFilter(q, "name");
+    const byVariantName = nameContainsFilter(q, "variantName");
     const discountPipeline = await applicableDiscountPipeline();
 
     // product discount populate — applicable discounts only (active and
@@ -1102,7 +1104,14 @@ exports.searchProductsAndVariants = async (req, res) => {
         ? variantModel.aggregate([{ $match: { _id: { $in: exactVariantIds } } }, ...variantStages(100)])
         : none,
       byName ? productModel.aggregate([{ $match: byName }, ...productStages(10)]) : none,
-      byName ? variantModel.aggregate([{ $match: byName }, ...variantStages(10)]) : none,
+      byVariantName
+        ? idsMatchingAny(productModel, [byName], 200).then((productIds) =>
+            variantModel.aggregate([
+              { $match: { $or: [byVariantName, { product: { $in: productIds } }] } },
+              ...variantStages(10),
+            ]),
+          )
+        : none,
     ]);
 
     // A scanned code first, then name matches; an item found both ways once

@@ -3,7 +3,7 @@ const { apiResponse } = require("../utils/apiResponse");
 const variant = require("../models/variant.model");
 const product = require("../models/product.model");
 const { customError } = require("../lib/CustomError");
-const { nameSearchFilter, idsMatchingAny } = require("../utils/searchWords.util");
+const { nameContainsFilter, idsMatchingAny } = require("../utils/searchWords.util");
 const { listPage, afterCursor, pageResult, NEWEST_FIRST, MAX_LIMIT } = require("../utils/listPage.util");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const {
@@ -215,8 +215,8 @@ exports.createVariant = asynchandeler(async (req, res) => {
 });
 
 // @desc get all variants
-// One page of variants (BUG-P2-010), newest first. ?search= finds a word of
-// the variant name (prefix) or a barcode / sku (prefix) through indexes;
+// One page of variants (BUG-P2-010), newest first. ?search= finds any part of
+// the variant name or of its product's name, or a barcode / sku (prefix);
 // ?after= is the previous page's cursor; ?page= numbers pages for pickers.
 const pagedVariants = async (req, base, populateProduct) => {
   const paging = listPage(req.query);
@@ -227,8 +227,14 @@ const pagedVariants = async (req, base, populateProduct) => {
       { barCode: { $regex: `^${escapeRegex(search)}` } },
       { sku: { $regex: `^${escapeRegex(search)}` } },
     ];
-    const byName = nameSearchFilter(search);
-    if (byName) conditions.unshift(byName);
+    // Any part of the variant's name, in any case, or of its parent
+    // product's name, the way staff think of it
+    const byName = nameContainsFilter(search, "variantName");
+    if (byName) {
+      const productIds = await idsMatchingAny(product, [nameContainsFilter(search, "name")], MAX_LIMIT);
+      if (productIds.length) conditions.unshift({ product: { $in: productIds } });
+      conditions.unshift(byName);
+    }
     query._id = { $in: await idsMatchingAny(variant, conditions, MAX_LIMIT) };
   }
   const rows = await variant
