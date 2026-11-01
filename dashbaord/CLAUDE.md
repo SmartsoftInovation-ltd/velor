@@ -24,7 +24,7 @@ Create a `.env` file in the root (it is gitignored):
 ```
 VITE_API_URL=http://<backend-host>/api/v1
 VITE_SOCKET_URL=http://<backend-host>
-VITE_PLATFORM_WORKSPACES=velor   # platform workspace(s); their owner sees the Platform Console
+VITE_PLATFORM_WORKSPACES=        # platform workspace(s) whose owner sees Platform Console in the sidebar; empty = none (operators open /platform directly)
 ```
 
 ## Multi-tenancy

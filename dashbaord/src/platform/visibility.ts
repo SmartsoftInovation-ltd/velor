@@ -1,6 +1,7 @@
-// The Platform Console belongs to the platform's own store: only the owner of a
-// workspace listed in VITE_PLATFORM_WORKSPACES sees it. Sellers get every other
-// module. The API enforces the same rule on /platform/auth/console-access.
+// The Platform Console link appears in the sidebar only for the owner of a
+// workspace listed in VITE_PLATFORM_WORKSPACES; empty lists none, so no seller
+// ever sees it. This only hides the link: the console itself is guarded by the
+// separate platform sign-in (PlatformGate), whatever the store.
 
 export const platformWorkspaces = (raw: string | undefined): string[] =>
   (raw || "")
