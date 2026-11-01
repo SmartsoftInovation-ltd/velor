@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, ChangeEvent, KeyboardEvent, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import DatePicker from "../form/date-picker";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
@@ -144,7 +144,7 @@ const CreatePurchaseForm = () => {
     refetchOnMount: true,
   });
 
-  const { data: searchResults = [], isFetching: searchLoading } = useQuery<
+  const { data: searchResults = [], isFetching: searchFetching } = useQuery<
     SearchResult[]
   >({
     queryKey: ["product-search", debouncedQuery],
@@ -157,7 +157,12 @@ const CreatePurchaseForm = () => {
     },
     enabled: !!debouncedQuery.trim(),
     staleTime: 30 * 1000,
+    // Keep the current results on screen (dimmed) while the next search loads
+    placeholderData: keepPreviousData,
   });
+  // Typed but not sent yet, or sent and loading
+  const searchLoading =
+    searchFetching || searchQuery.trim() !== debouncedQuery.trim();
 
   // ---------- Debounce search ----------
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -167,7 +172,7 @@ const CreatePurchaseForm = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setDebouncedQuery(value);
-    }, 400);
+    }, 300);
   };
 
   // Close dropdown on outside click
@@ -621,20 +626,20 @@ const CreatePurchaseForm = () => {
               placeholder="Scan barcode or search by product name…"
               className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all duration-200"
             />
-            {searchLoading && (
+            {searchLoading && searchQuery.trim() && (
               <FaSpinner className="absolute right-3.5 top-1/2 -translate-y-1/2 text-accent-500 size-3.5 animate-spin" />
             )}
 
             {/* Dropdown */}
             {isDropdownVisible && (
               <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
-                {searchLoading ? (
+                {searchLoading && searchResults.length === 0 ? (
                   <div className="flex items-center gap-3 px-4 py-4 text-sm text-gray-400">
                     <FaSpinner className="animate-spin text-accent-500 size-4 shrink-0" />
                     <span>Searching products…</span>
                   </div>
                 ) : searchResults.length > 0 ? (
-                  <div className="max-h-72 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
+                  <div className={`max-h-72 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800 transition-opacity duration-150 ${searchLoading ? "opacity-60" : "opacity-100"}`}>
                     {searchResults.map((item) => {
                       const displayName =
                         item._type === "variant"

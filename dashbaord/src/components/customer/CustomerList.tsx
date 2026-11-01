@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { FaArrowLeft } from "react-icons/fa";
@@ -17,6 +17,13 @@ const CustomerList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  // The list filters once typing pauses, not on every keystroke
+  const [appliedSearch, setAppliedSearch] = useState("");
+  useEffect(() => {
+    const handler = setTimeout(() => setAppliedSearch(searchTerm), 250);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+  const searching = searchTerm.trim() !== appliedSearch.trim();
 
   const {
     data: customers,
@@ -39,7 +46,7 @@ const CustomerList = () => {
   });
 
   const filtered = (customers ?? []).filter((c: any) => {
-    const q = searchTerm.toLowerCase();
+    const q = appliedSearch.trim().toLowerCase();
     if (!q) return true;
     return (
       c.fullName?.toLowerCase().includes(q) ||
@@ -111,6 +118,7 @@ const CustomerList = () => {
               }}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
+              searching={searching}
             />
           )}
         </ComponentCard>

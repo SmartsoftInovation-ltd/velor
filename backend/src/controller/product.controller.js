@@ -1171,22 +1171,29 @@ class ProductController {
       );
     }
 
-    // Every condition goes through an index and is matched before anything is
-    // joined (BUG-P2-011): the name by the beginning of its words
-    // (searchWords), codes and slugs by their beginning. The search used to
-    // join variants, discounts and subcategories onto the whole catalogue and
-    // filter afterwards — 20 s a search, on a route anyone can call.
+    // Every condition is matched before anything is joined (BUG-P2-011): the
+    // search used to join variants, discounts and subcategories onto the whole
+    // catalogue and filter afterwards. Codes and slugs match by their
+    // beginning, through indexes. The name matches any part of it in any case
+    // (dashboard stock pages); a variant also through its product's name.
     const prefix = (value) => ({ $regex: `^${escapeRegex(value)}` });
     const conditions = [];
-    if (name) {
-      const byName = nameSearchFilter(name);
-      if (byName) conditions.push(byName);
-    }
     if (barCode) conditions.push({ barCode: prefix(barCode) });
     if (sku) conditions.push({ sku: prefix(sku) });
     if (slug) conditions.push({ slug: prefix(slug.toLowerCase()) });
+    const productConditions = [...conditions];
+    const variantConditions = [...conditions];
+    if (name) {
+      const byProductName = nameContainsFilter(name, "name");
+      if (byProductName) {
+        productConditions.unshift(byProductName);
+        variantConditions.unshift(nameContainsFilter(name, "variantName"));
+        const parentIds = await idsMatchingAny(Product, [byProductName], SEARCH_LIMIT);
+        if (parentIds.length) variantConditions.push({ product: { $in: parentIds } });
+      }
+    }
 
-    if (!conditions.length) {
+    if (!productConditions.length) {
       return apiResponse.sendSuccess(
         res,
         statusCodes.OK,
@@ -1196,8 +1203,8 @@ class ProductController {
     }
     // Each condition its own indexed query; only the ids found are joined
     const [productIds, variantIds] = await Promise.all([
-      idsMatchingAny(Product, conditions, SEARCH_LIMIT),
-      idsMatchingAny(Variant, conditions, SEARCH_LIMIT),
+      idsMatchingAny(Product, productConditions, SEARCH_LIMIT),
+      idsMatchingAny(Variant, variantConditions, SEARCH_LIMIT),
     ]);
     const hide = { $project: { searchWords: 0 } };
 

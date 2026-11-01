@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -62,6 +62,7 @@ const Tooltip = ({
 };
 
 interface Customer {
+  _id?: string;
   id: string;
   customSerialId?: string;
   customerId: string;
@@ -84,6 +85,8 @@ interface CustomerTableProps {
   fetchCustomers: () => void;
   searchTerm: string;
   setSearchTerm: (t: string) => void;
+  // Typed but the list not filtered yet
+  searching?: boolean;
 }
 
 const CustomerTable = ({
@@ -91,6 +94,7 @@ const CustomerTable = ({
   fetchCustomers,
   searchTerm,
   setSearchTerm,
+  searching = false,
 }: CustomerTableProps) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -115,6 +119,11 @@ const CustomerTable = ({
   const canToggle = usePermission("customer", "toggle");
 
   const tableData = customers || [];
+
+  // New results start from the top instead of a scrolled-away blank area
+  useEffect(() => {
+    if (parentRef.current) parentRef.current.scrollTop = 0;
+  }, [customers]);
 
   const rowVirtualizer = useVirtualizer({
     count: tableData.length,
@@ -264,14 +273,25 @@ const CustomerTable = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-11 pr-12 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 transition-all text-sm font-medium h-12"
             />
-            {searchTerm && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1"
-              >
-                <FaTimes className="size-4" />
-              </button>
-            )}
+            <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1">
+              {searching && (
+                <span
+                  role="status"
+                  aria-label="Searching"
+                  className="size-4 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+                />
+              )}
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  aria-label="Clear search"
+                  className="p-1 text-gray-400 transition-colors hover:text-red-500"
+                >
+                  <FaTimes className="size-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -302,10 +322,15 @@ const CustomerTable = ({
       </div>
 
       {/* Table */}
+      {/* Rows dim while the filter is pending, so nothing flashes per keystroke */}
+      <div
+        aria-busy={searching}
+        className={`transition-opacity duration-200 ${searching ? "pointer-events-none opacity-50" : "opacity-100"}`}
+      >
       {isMobile ? (
         <MobileCardList
           items={tableData}
-          getKey={(customer, index) => customer.customerId || index}
+          getKey={(customer, index) => customer._id || customer.customerId || index}
           emptyMessage={
             searchTerm
               ? `No customers match "${searchTerm}"`
@@ -488,7 +513,7 @@ const CustomerTable = ({
                 if (!customer) return null;
                 return (
                   <div
-                    key={customer.customerId || virtualRow.index}
+                    key={customer._id || customer.customerId || virtualRow.index}
                     className="absolute top-0 left-0 w-full grid items-center px-3 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/2 transition-colors"
                     style={{
                       gridTemplateColumns,
@@ -665,6 +690,7 @@ const CustomerTable = ({
         )}
       </div>
       )}
+      </div>
 
       {/* Delete Confirmation Modal */}
       <Modal isOpen={showDeleteModal} onClose={closeDeleteModal}>

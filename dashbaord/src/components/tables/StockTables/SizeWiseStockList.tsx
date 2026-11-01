@@ -217,7 +217,7 @@ const SizeWiseStockList = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebSearch(search), 400);
+    const t = setTimeout(() => setDebSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -291,7 +291,7 @@ const SizeWiseStockList = () => {
   }, [pageData]);
 
   // ── Search query ──────────────────────────────────────────────────────────
-  const { data: searchMatched } = useQuery({
+  const { data: searchMatched, isFetching: searchFetching } = useQuery({
     queryKey: ["size-wise-search", debSearch] as const,
     queryFn: async (): Promise<Set<string>> => {
       const res = await axiosSecure.get(`/sales/get-sales-products?q=${encodeURIComponent(debSearch)}`);
@@ -311,6 +311,9 @@ const SizeWiseStockList = () => {
 
   // ── Derived filtered rows ─────────────────────────────────────────────────
   useEffect(() => {
+    // Wait for the server match of a new search, so the rows change once
+    // instead of twice (local filter first, then the server's extra matches)
+    if (debSearch && searchFetching) return;
     let r = allRows;
     if (categoryId)    r = r.filter((x) => x.categoryId    === categoryId);
     if (subcategoryId) r = r.filter((x) => x.subcategoryId === subcategoryId);
@@ -331,7 +334,12 @@ const SizeWiseStockList = () => {
       });
     }
     setRows(r);
-  }, [allRows, categoryId, subcategoryId, brandId, debSearch, searchMatched]);
+  }, [allRows, categoryId, subcategoryId, brandId, debSearch, searchMatched, searchFetching]);
+
+  // The spinner replaces the table only on the first load; after that the
+  // current rows stay and dim while a search loads
+  const firstLoad = isLoading && allRows.length === 0;
+  const busy = search.trim() !== debSearch.trim() || (!!debSearch && searchFetching);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["size-wise-stock-v2"] });
@@ -402,7 +410,7 @@ const SizeWiseStockList = () => {
             onChange={(e) => setSearch(e.target.value)}
             onBlur={handleSearchBlur}
             onKeyDown={(e) => {
-              // Scanners terminate input with Enter — skip the 400ms
+              // Scanners terminate input with Enter — skip the
               // debounce and filter immediately instead of waiting.
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -412,6 +420,13 @@ const SizeWiseStockList = () => {
             autoComplete="off"
             className="h-10 w-full rounded-xl border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-white/3 pl-9 pr-8 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-accent-500 focus:bg-white dark:focus:bg-white/5 focus:outline-none focus:ring-2 focus:ring-accent-500/20 transition-colors"
           />
+          {busy && search.trim() && (
+            <span
+              role="status"
+              aria-label="Searching"
+              className="absolute right-8 top-1/2 size-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+            />
+          )}
           {search && (
             <button onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-error-500">
               <FaTimes size={10} />
@@ -448,8 +463,8 @@ const SizeWiseStockList = () => {
       </div>
 
       {/* ── Table ── */}
-      <div className="rounded-xl border border-gray-200 dark:border-white/[0.07] bg-white dark:bg-white/3 overflow-hidden">
-        {isLoading ? (
+      <div aria-busy={busy} className={`rounded-xl border border-gray-200 dark:border-white/[0.07] bg-white dark:bg-white/3 overflow-hidden transition-opacity duration-200 ${busy && !firstLoad ? "pointer-events-none opacity-50" : "opacity-100"}`}>
+        {firstLoad ? (
           <div className="flex items-center justify-center" style={{ height: 300 }}>
             <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>

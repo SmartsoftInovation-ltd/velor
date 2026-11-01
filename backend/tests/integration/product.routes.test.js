@@ -204,6 +204,9 @@ describe("product and variant routes", () => {
       expect(JSON.stringify(hit.body.data)).toContain("Linen Shirt");
       const regex = await anonymous().get("/product/search-product").query({ name: ".*" }).expect(200);
       expect(JSON.stringify(regex.body.data)).not.toContain("Linen Shirt");
+      // Any part of the name, in any case
+      const inside = await anonymous().get("/product/search-product").query({ name: "NEN SH" }).expect(200);
+      expect(JSON.stringify(inside.body.data)).toContain("Linen Shirt");
     });
 
     it("GET /product/productperpage paginates for staff", async () => {

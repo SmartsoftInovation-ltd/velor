@@ -188,6 +188,9 @@ export default function CreateWholeSalesForm({
     const [searchQuery, setSearchQuery] = useState("");
     const [showDropdown, setShowDropdown] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
+    // A search request is in flight; only the newest one may update the list
+    const [isSearchLoading, setIsSearchLoading] = useState(false);
+    const searchRequestRef = useRef(0);
     const [draftProduct, setDraftProduct] = useState<any>(null);
     const [draftGroupQty, setDraftGroupQty] = useState("");
     const [draftQty, setDraftQty] = useState("");
@@ -631,13 +634,17 @@ export default function CreateWholeSalesForm({
     // Debounced so a barcode scanner's rapid keystrokes (or fast typing) don't
     // fire an API request per character — only once input pauses.
     const debouncedFetchResults = useDebouncedCallback(async (val: string) => {
-        try {
-            const res = await axiosSecure.get(`/sales/get-sales-products?q=${val}`);
-            setSearchResults(res.data.data || []);
-        } catch {
-            setSearchResults([]);
-        }
-    }, 400);
+      const requestId = ++searchRequestRef.current;
+      try {
+        const res = await axiosSecure.get(`/sales/get-sales-products?q=${encodeURIComponent(val.trim())}`);
+        if (requestId !== searchRequestRef.current) return;
+        setSearchResults(res.data.data || []);
+      } catch {
+        if (requestId === searchRequestRef.current) setSearchResults([]);
+      } finally {
+        if (requestId === searchRequestRef.current) setIsSearchLoading(false);
+      }
+    }, 300);
 
     // Clears the draft slot — the selected product and every field derived from
     // it — so nothing from the previous product can be carried into the next add.
@@ -652,10 +659,13 @@ export default function CreateWholeSalesForm({
         setSearchQuery(val);
         if (val.length > 0) {
             setShowDropdown(true);
+            setIsSearchLoading(true);
             debouncedFetchResults(val);
         } else {
             setShowDropdown(false);
             setSearchResults([]);
+            searchRequestRef.current += 1;
+            setIsSearchLoading(false);
             // Emptying the search box unselects the product, so drop its values too.
             clearDraft();
         }
@@ -1240,6 +1250,13 @@ export default function CreateWholeSalesForm({
                             >
                                 <MdOutlineQrCodeScanner size={16} />
                             </button>
+                            {isSearchLoading && searchQuery.trim() && (
+                              <span
+                                role="status"
+                                aria-label="Searching"
+                                className="absolute right-7 top-1/2 size-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+                              />
+                            )}
                             {searchQuery && (
                                 <button
                                     type="button"
@@ -1255,8 +1272,20 @@ export default function CreateWholeSalesForm({
                                     <FaTimes size={12} />
                                 </button>
                             )}
-                            {showDropdown && searchResults.length > 0 && (
-                                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                            {showDropdown && searchQuery.trim() && (
+                              <div className={`absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto transition-opacity duration-150 ${isSearchLoading && searchResults.length > 0 ? "opacity-60" : "opacity-100"}`}>
+                                {searchResults.length === 0 && (
+                                  <div className="flex items-center gap-2 px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
+                                    {isSearchLoading ? (
+                                      <>
+                                        <span className="size-3.5 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500" />
+                                        Searching…
+                                      </>
+                                    ) : (
+                                      <>No product found for “{searchQuery.trim()}”</>
+                                    )}
+                                  </div>
+                                )}
                                     {searchResults.map((p) => {
                                         const isVariant = p._type === "variant";
                                         const displayName = isVariant

@@ -270,6 +270,9 @@ const ViewAllStockList = () => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // Only the newest request may fill the table (a slow old search could
+  // otherwise land last and replace the right results)
+  const requestRef = useRef(0);
 
   // ── Load filter options once on mount ──────────────────────────────────────
   useEffect(() => {
@@ -305,9 +308,9 @@ const ViewAllStockList = () => {
     load();
   }, []);
 
-  // ── Debounce search 400 ms ─────────────────────────────────────────────────
+  // ── Debounce search 300 ms ─────────────────────────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => { setDebSearch(search); setPage(1); }, 400);
+    const t = setTimeout(() => { setDebSearch(search); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -352,6 +355,7 @@ const ViewAllStockList = () => {
     sub: string,
     brand: string,
   ) => {
+    const requestId = ++requestRef.current;
     setIsLoading(true);
     try {
       let endpoint: string;
@@ -372,6 +376,7 @@ const ViewAllStockList = () => {
       }
 
       const res = await axiosSecure.get(endpoint);
+      if (requestId !== requestRef.current) return;
       const data = res.data.data;
       const products: Product[] = data?.products ?? [];
       setRows(flattenProducts(products));
@@ -379,11 +384,16 @@ const ViewAllStockList = () => {
       setTotalPages(data?.totalPages ?? 1);
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
     } catch (error) {
-      showApiError(error, "Failed to fetch products");
+      if (requestId === requestRef.current) showApiError(error, "Failed to fetch products");
     } finally {
-      setIsLoading(false);
+      if (requestId === requestRef.current) setIsLoading(false);
     }
   }, []);
+
+  // The spinner replaces the table only on the first load; after that the
+  // current rows stay and dim while a search or filter loads
+  const firstLoad = isLoading && rows.length === 0;
+  const busy = isLoading || search.trim() !== debSearch.trim();
 
   useEffect(() => {
     fetchPage(page, debSearch, categoryId, subcategoryId, brandId);
@@ -485,7 +495,7 @@ const ViewAllStockList = () => {
               onChange={(e) => setSearch(e.target.value)}
               onBlur={handleSearchBlur}
               onKeyDown={(e) => {
-                // Scanners terminate input with Enter — skip the 400ms
+                // Scanners terminate input with Enter — skip the
                 // debounce and filter immediately instead of waiting.
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -496,6 +506,13 @@ const ViewAllStockList = () => {
               autoComplete="off"
               className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-white/[0.03] pl-9 pr-9 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-500/20 dark:border-white/[0.08] transition-colors"
             />
+            {busy && search.trim() && (
+              <span
+                role="status"
+                aria-label="Searching"
+                className="absolute right-8 top-1/2 size-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+              />
+            )}
             {search && (
               <button
                 onClick={() => setSearch("")}
@@ -560,11 +577,12 @@ const ViewAllStockList = () => {
 
       {/* ── Table card ── */}
       {isMobile ? (
-        isLoading ? (
+        firstLoad ? (
           <div className="flex items-center justify-center py-20">
             <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         ) : (
+          <div className={`transition-opacity duration-200 ${busy ? "pointer-events-none opacity-50" : "opacity-100"}`}>
           <MobileCardList
             items={rows}
             getKey={(row) => row.key}
@@ -594,6 +612,7 @@ const ViewAllStockList = () => {
               </div>
             )}
           />
+          </div>
         )
       ) : (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden">
@@ -619,8 +638,13 @@ const ViewAllStockList = () => {
         </div>
 
         {/* Body — virtualized scroll */}
-        <div ref={scrollRef} className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 560 }}>
-          {isLoading ? (
+        <div
+          ref={scrollRef}
+          aria-busy={busy}
+          className={`overflow-x-auto overflow-y-auto transition-opacity duration-200 ${busy && !firstLoad ? "pointer-events-none opacity-50" : "opacity-100"}`}
+          style={{ maxHeight: 560 }}
+        >
+          {firstLoad ? (
             <div className="flex items-center justify-center" style={{ height: 300 }}>
               <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
             </div>

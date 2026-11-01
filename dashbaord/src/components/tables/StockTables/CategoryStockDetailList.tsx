@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FaSync, FaTimes, FaBoxOpen, FaLayerGroup } from "react-icons/fa";
 import { MdOutlineQrCodeScanner } from "react-icons/md";
@@ -297,9 +297,9 @@ const CategoryStockDetailList = () => {
     staleTime: 10 * 60 * 1000,
   });
 
-  // ── Debounce search 400 ms ─────────────────────────────────────────────────
+  // ── Debounce search 300 ms ─────────────────────────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => setDebSearch(search), 400);
+    const t = setTimeout(() => setDebSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -318,6 +318,7 @@ const CategoryStockDetailList = () => {
     isFetching: isLoading,
     isError,
     refetch,
+    isPlaceholderData,
   } = useQuery({
     queryKey: ["category-stock", debSearch, categoryId, subcategoryId] as const,
     queryFn: async (): Promise<StockRow[]> => {
@@ -329,9 +330,14 @@ const CategoryStockDetailList = () => {
     staleTime: 0,
     refetchOnMount: true,
     gcTime: 0,
+    // Keep the current rows (dimmed) while a new search or filter loads
+    placeholderData: keepPreviousData,
   });
 
   const rows: StockRow[] = data ?? [];
+  // The spinner replaces the table only on the first load
+  const firstLoad = isLoading && !data;
+  const busy = search.trim() !== debSearch.trim() || (isLoading && isPlaceholderData);
 
   useEffect(() => {
     if (isError) toast.error("Failed to fetch products");
@@ -430,7 +436,7 @@ const CategoryStockDetailList = () => {
               onChange={(e) => setSearch(e.target.value)}
               onBlur={handleSearchBlur}
               onKeyDown={(e) => {
-                // Scanners terminate input with Enter — skip the 400ms
+                // Scanners terminate input with Enter — skip the
                 // debounce and filter immediately instead of waiting.
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -440,6 +446,13 @@ const CategoryStockDetailList = () => {
               autoComplete="off"
               className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-white/[0.03] pl-9 pr-9 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-500/20 dark:border-white/[0.08] transition-colors"
             />
+            {busy && search.trim() && (
+              <span
+                role="status"
+                aria-label="Searching"
+                className="absolute right-8 top-1/2 size-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+              />
+            )}
             {search && (
               <button
                 onClick={() => setSearch("")}
@@ -497,11 +510,12 @@ const CategoryStockDetailList = () => {
 
       {/* ── Table card ── */}
       {isMobile ? (
-        isLoading ? (
+        firstLoad ? (
           <div className="flex items-center justify-center py-20">
             <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         ) : (
+          <div className={`transition-opacity duration-200 ${busy ? "pointer-events-none opacity-50" : "opacity-100"}`}>
           <MobileCardList
             items={rows}
             getKey={(row) => row.key}
@@ -531,6 +545,7 @@ const CategoryStockDetailList = () => {
               </div>
             )}
           />
+          </div>
         )
       ) : (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden">
@@ -563,10 +578,11 @@ const CategoryStockDetailList = () => {
         {/* Virtualized body */}
         <div
           ref={scrollRef}
-          className="no-scrollbar overflow-x-auto overflow-y-auto"
+          aria-busy={busy}
+          className={`no-scrollbar overflow-x-auto overflow-y-auto transition-opacity duration-200 ${busy && !firstLoad ? "pointer-events-none opacity-50" : "opacity-100"}`}
           style={{ maxHeight: 560 }}
         >
-          {isLoading ? (
+          {firstLoad ? (
             <div
               className="flex items-center justify-center"
               style={{ height: 300 }}

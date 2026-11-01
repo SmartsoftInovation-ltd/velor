@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   FaSync,
+  FaTimes,
   FaChevronLeft,
   FaChevronRight,
   FaEye,
@@ -136,13 +137,15 @@ const StockAdjustmentList = () => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // Only the newest request may fill the list
+  const requestRef = useRef(0);
 
-  // Debounce 400 ms
+  // Debounce 300 ms
   useEffect(() => {
     const t = setTimeout(() => {
       setDebSearch(search);
       setPage(1);
-    }, 400);
+    }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -173,6 +176,7 @@ const StockAdjustmentList = () => {
   };
 
   const fetchPage = useCallback(async (p: number, q: string) => {
+    const requestId = ++requestRef.current;
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
@@ -181,16 +185,22 @@ const StockAdjustmentList = () => {
       });
       if (q) params.set("q", q);
       const { data } = await axiosSecure.get(`/stock/stock-adjust?${params}`);
+      if (requestId !== requestRef.current) return;
       setList(data.data.stockAdjusts ?? []);
       setTotal(data.data.total ?? 0);
       setTotalPages(data.data.totalPages ?? 1);
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
     } catch (error) {
-      showApiError(error, "Failed to fetch stock adjustments");
+      if (requestId === requestRef.current) showApiError(error, "Failed to fetch stock adjustments");
     } finally {
-      setIsLoading(false);
+      if (requestId === requestRef.current) setIsLoading(false);
     }
   }, []);
+
+  // The spinner replaces the list only on the first load; after that the
+  // current rows stay and dim while a search or page loads
+  const firstLoad = isLoading && list.length === 0;
+  const busy = isLoading || search.trim() !== debSearch.trim();
 
   useEffect(() => {
     fetchPage(page, debSearch);
@@ -249,7 +259,7 @@ const StockAdjustmentList = () => {
             onChange={(e) => setSearch(e.target.value)}
             onBlur={handleSearchBlur}
             onKeyDown={(e) => {
-              // Scanners terminate input with Enter — skip the 400ms
+              // Scanners terminate input with Enter — skip the
               // debounce and filter immediately instead of waiting.
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -258,8 +268,30 @@ const StockAdjustmentList = () => {
               }
             }}
             autoComplete="off"
-            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-300"
+            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-14 text-sm text-gray-700 placeholder:text-gray-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-300"
           />
+          <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+            {busy && search.trim() && (
+              <span
+                role="status"
+                aria-label="Searching"
+                className="size-3.5 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+              />
+            )}
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  focusSearchInput();
+                }}
+                aria-label="Clear search"
+                className="text-gray-400 transition-colors hover:text-error-500"
+              >
+                <FaTimes size={11} />
+              </button>
+            )}
+          </div>
         </div>
         <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto shrink-0">
           {total} record{total !== 1 ? "s" : ""}
@@ -276,11 +308,12 @@ const StockAdjustmentList = () => {
 
       {/* Table card */}
       {isMobile ? (
-        isLoading ? (
+        firstLoad ? (
           <div className="flex items-center justify-center py-20">
             <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         ) : (
+          <div className={`transition-opacity duration-200 ${busy ? "pointer-events-none opacity-50" : "opacity-100"}`}>
           <MobileCardList
             items={list}
             getKey={(item) => item._id}
@@ -381,6 +414,7 @@ const StockAdjustmentList = () => {
               );
             }}
           />
+          </div>
         )
       ) : (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden">
@@ -413,10 +447,11 @@ const StockAdjustmentList = () => {
         {/* Virtualized body */}
         <div
           ref={scrollRef}
-          className="no-scrollbar overflow-x-auto overflow-y-auto"
+          aria-busy={busy}
+          className={`no-scrollbar overflow-x-auto overflow-y-auto transition-opacity duration-200 ${busy && !firstLoad ? "pointer-events-none opacity-50" : "opacity-100"}`}
           style={{ maxHeight: 560 }}
         >
-          {isLoading ? (
+          {firstLoad ? (
             <div
               className="flex items-center justify-center"
               style={{ height: 300 }}

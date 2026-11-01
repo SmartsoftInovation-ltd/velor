@@ -1322,9 +1322,9 @@ exports.getStockReport = asynchandeler(async (req, res) => {
         ? { "stockRows.barcode": searchTerm }
         : {
             $or: [
-              { name: { $regex: searchTerm, $options: "i" } },
-              { "stockRows.variantName": { $regex: searchTerm, $options: "i" } },
-              { "stockRows.barcode": { $regex: searchTerm, $options: "i" } },
+              { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { "stockRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { "stockRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
             ],
           },
     });
@@ -1602,9 +1602,9 @@ exports.getStockDetailsReport = asynchandeler(async (req, res) => {
         ? { "detailRows.barcode": searchTerm }
         : {
             $or: [
-              { name: { $regex: searchTerm, $options: "i" } },
-              { "detailRows.variantName": { $regex: searchTerm, $options: "i" } },
-              { "detailRows.barcode": { $regex: searchTerm, $options: "i" } },
+              { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { "detailRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { "detailRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
             ],
           },
     });
@@ -2181,9 +2181,9 @@ exports.getSizeColorStockReport = asynchandeler(async (req, res) => {
         ? { $or: [{ barCode: searchTerm }, { "productInfo.barCode": searchTerm }] }
         : {
             $or: [
-              { "productInfo.name": { $regex: searchTerm, $options: "i" } },
-              { variantName: { $regex: searchTerm, $options: "i" } },
-              { barCode: { $regex: searchTerm, $options: "i" } },
+              { "productInfo.name": { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { variantName: { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { barCode: { $regex: escapeRegex(searchTerm), $options: "i" } },
             ],
           },
     });
@@ -2442,9 +2442,9 @@ exports.getStockAdjustmentReport = asynchandeler(async (req, res) => {
         ? { rowBarcode: searchTerm }
         : {
             $or: [
-              { rowProductName: { $regex: searchTerm, $options: "i" } },
-              { rowBarcode: { $regex: searchTerm, $options: "i" } },
-              { adjustReason: { $regex: searchTerm, $options: "i" } },
+              { rowProductName: { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { rowBarcode: { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { adjustReason: { $regex: escapeRegex(searchTerm), $options: "i" } },
             ],
           },
     });
@@ -2593,9 +2593,9 @@ exports.getLowStockReport = asynchandeler(async (req, res) => {
         ? { "stockRows.barcode": searchTerm }
         : {
             $or: [
-              { name: { $regex: searchTerm, $options: "i" } },
-              { "stockRows.variantName": { $regex: searchTerm, $options: "i" } },
-              { "stockRows.barcode": { $regex: searchTerm, $options: "i" } },
+              { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { "stockRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
+              { "stockRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
             ],
           },
     });
