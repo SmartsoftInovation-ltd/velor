@@ -163,6 +163,20 @@ const reportLimiter = rateLimit({
   handler: tooMany("Too many report requests. Please wait a moment and try again."),
 });
 
+// The dashboard fires about 20 summary requests per load, and again each
+// time the period changes, so the report limit (60 a minute) ran out after
+// three clicks on the period selector. Its own, roomier budget per user.
+const dashboardLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 60 * 1000,
+  limit: Number(process.env.DASHBOARD_RATE_LIMIT_MAX) || 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `dashboard:${req.user?._id || clientIp(req)}`,
+  handler: tooMany("Too many dashboard requests. Please wait a moment and try again."),
+});
+
 // Test hook: forget every counter so one suite's attempts cannot spill into the next
 /**
  * Domain verification performs a live DNS lookup, so an operator clicking
@@ -216,6 +230,7 @@ module.exports = {
   couponLimiter,
   searchLimiter,
   reportLimiter,
+  dashboardLimiter,
   domainVerifyLimiter,
   platformLoginLimiter,
   platformOtpLimiter,

@@ -157,7 +157,8 @@ export interface DashboardData {
 const noRetryOnDenied = (failureCount: number, error: unknown): boolean => {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
-    if (status === 401 || status === 403) return false;
+    // 429: retrying only spends more of the rate limit
+    if (status === 401 || status === 403 || status === 429) return false;
   }
   return failureCount < 2;
 };

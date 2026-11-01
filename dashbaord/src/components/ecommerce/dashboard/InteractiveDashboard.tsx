@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import axios from "axios";
 import {
   FiRefreshCw,
   FiAlertTriangle,
@@ -54,6 +55,81 @@ import WelcomeBar from "./WelcomeBar";
 import RevenueTrendChart from "./RevenueTrendChart";
 import SalesTypeDonut from "./SalesTypeDonut";
 import TopProductsChart from "./TopProductsChart";
+
+// Why the overview failed, in words the user can act on
+const loadErrorText = (error: unknown, rangeLabel: string) => {
+  const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+  if (status === 429) {
+    return {
+      title: "Too many requests",
+      body: "The dashboard was reloaded too often in a short time. Wait about a minute, then try again.",
+    };
+  }
+  if (status === 403) {
+    return {
+      title: "No access to the dashboard summary",
+      body: "Your role cannot view this data. Ask the store owner to give you the dashboard permission.",
+    };
+  }
+  if (axios.isAxiosError(error) && !error.response) {
+    return {
+      title: "Cannot reach the server",
+      body: "Check your internet connection, then try again.",
+    };
+  }
+  return {
+    title: `Could not load data for ${rangeLabel}`,
+    body: "Something went wrong on the server while preparing this period. Try again, or pick a shorter period.",
+  };
+};
+
+const DashboardLoadError = ({
+  error,
+  rangeLabel,
+  retrying,
+  onRetry,
+  onShowDefault,
+}: {
+  error: unknown;
+  rangeLabel: string;
+  retrying: boolean;
+  onRetry: () => void;
+  onShowDefault?: () => void;
+}) => {
+  const { title, body } = loadErrorText(error, rangeLabel);
+  return (
+    <div
+      role="alert"
+      className="flex flex-col items-center rounded-2xl border border-gray-200 bg-white px-6 py-14 text-center dark:border-gray-800 dark:bg-white/[0.03]"
+    >
+      <span className="flex size-12 items-center justify-center rounded-full bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-400">
+        <FiAlertTriangle className="size-6" aria-hidden />
+      </span>
+      <h3 className="mt-4 text-base font-semibold text-gray-800 dark:text-white/90">{title}</h3>
+      <p className="mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">{body}</p>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={retrying}
+          className="shine inline-flex items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:opacity-60"
+        >
+          <FiRefreshCw className={`size-4 ${retrying ? "animate-spin" : ""}`} aria-hidden />
+          {retrying ? "Trying…" : "Try again"}
+        </button>
+        {onShowDefault && (
+          <button
+            type="button"
+            onClick={onShowDefault}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+          >
+            Show last 30 days
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const RANGE_LABEL: Record<DashboardRange, string> = {
   today: "today",
@@ -136,7 +212,7 @@ export default function InteractiveDashboard() {
   const { data: topSelling, isLoading: isTopSellingLoading } =
     useTopSellingProducts(topMonths);
 
-  const { data, isLoading, isFetching, isError, refetch } = useDashboard(range);
+  const { data, isLoading, isFetching, isError, error, refetch } = useDashboard(range);
   // Sales Progress chart keeps its own window (default last 7 days) so the
   // dashboard's "today" range does not collapse it to a single point.
   const [trendRange, setTrendRange] = useState<SalesProgressRange>("7d");
@@ -419,17 +495,13 @@ export default function InteractiveDashboard() {
       />
 
       {isError ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-20 dark:border-gray-800 dark:bg-white/[0.03]">
-          <p className="font-semibold text-error-500">
-            Failed to load dashboard data.
-          </p>
-          <button
-            onClick={() => refetch()}
-            className="rounded-xl bg-brand-500 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600"
-          >
-            Try Again
-          </button>
-        </div>
+        <DashboardLoadError
+          error={error}
+          rangeLabel={RANGE_LABEL[range]}
+          retrying={isFetching}
+          onRetry={() => refetch()}
+          onShowDefault={range === "30d" ? undefined : () => setRange("30d")}
+        />
       ) : (
         <>
           {/* ── Row 1 — Invoices / Sale / Transaction / Accounts / Inventory ── */}

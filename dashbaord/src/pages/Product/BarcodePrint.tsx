@@ -174,7 +174,8 @@ const BarcodePrint = () => {
           key: `variant:${match._id}`,
           sourceType: "variant",
           sourceId: match._id,
-          name: match.variantName || match.product?.name || "Variant",
+          // The sticker carries the parent product's name, not the variant's
+          name: match.product?.name || match.variantName || "Variant",
           code: match.barCode,
           sku: match.sku,
           price: match.retailPrice ?? 0,
