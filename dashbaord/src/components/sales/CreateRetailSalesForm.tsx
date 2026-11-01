@@ -121,6 +121,7 @@ function RightRow({
 }
 
 interface EditSale {
+  salesType?: string;
   _id: string;
   invoiceNumber?: string;
   date?: string;
@@ -165,6 +166,8 @@ export default function CreateRetailSalesForm({
   orderMode?: boolean;
 } = {}) {
   const isEdit = !!editSale;
+  // Only sale orders carry a delivery date (editing one too)
+  const showDeliveryDate = orderMode || /order$/.test(editSale?.salesType ?? "");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -1076,20 +1079,23 @@ export default function CreateRetailSalesForm({
                 }`}
               />
             </div>
-            {/* Delivery date is optional — the sale saves without it. */}
-            <div className="w-36">
-              <DatePicker
-                id="delivery-date-picker-sales-retail"
-                label=""
-                placeholder="Delivery date"
-                defaultDate={deliveryDate}
-                onChange={(_selectedDates: Date[], dateStr: string) =>
-                  setDeliveryDate(dateStr)
-                }
-                isStatic={false}
-                inputClassName="border border-gray-300 dark:border-gray-600 rounded-md text-xs h-9 px-2.5 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36 transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
-              />
-            </div>
+            {/* Delivery date: only on sale orders (delivered later); a direct
+                sale hands the goods over at once. Optional either way. */}
+            {showDeliveryDate && (
+              <div className="w-36">
+                <DatePicker
+                  id="delivery-date-picker-sales-retail"
+                  label=""
+                  placeholder="Delivery date"
+                  defaultDate={deliveryDate}
+                  onChange={(_selectedDates: Date[], dateStr: string) =>
+                    setDeliveryDate(dateStr)
+                  }
+                  isStatic={false}
+                  inputClassName="border border-gray-300 dark:border-gray-600 rounded-md text-xs h-9 px-2.5 pr-8 bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white outline-none w-36 transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                />
+              </div>
+            )}
 
             {/* Customer Grouped Dropdown */}
             <div className="relative flex-1" ref={customerDropdownRef}>

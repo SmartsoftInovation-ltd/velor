@@ -11,9 +11,9 @@ import {
   TableRow,
 } from "../../ui/table";
 import Button from "../../ui/button/Button";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { MdDelete } from "react-icons/md";
-import { FaChevronDown, FaEdit, FaEye, FaSearch, FaTimes } from "react-icons/fa";
+import { FaChevronDown, FaEdit, FaEye, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import {
   FiAlertTriangle,
   FiBox,
@@ -392,6 +392,79 @@ function StatusBadge({ value }: { value: string }) {
 // ?salesType= / ?invoiceStatus=). The corresponding filter dropdown is hidden
 // since that dimension is already fixed. Used by the order-list and draft-order
 // list pages.
+// Shown when the list has nothing to show: why it is empty, and what to do next
+const pillClass =
+  "shine flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-accent-50 hover:text-accent-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-accent-500/15 dark:hover:text-accent-400";
+
+function SalesListEmpty({
+  orderList,
+  search,
+  filtered,
+  actions,
+  onClearSearch,
+  onClearFilters,
+}: {
+  orderList: boolean;
+  search: string;
+  filtered: boolean;
+  actions: { label: string; to: string }[];
+  onClearSearch: () => void;
+  onClearFilters: () => void;
+}) {
+  const noun = orderList ? "sale orders" : "sales";
+  const title = search
+    ? "No matches found"
+    : filtered
+      ? `No ${noun} match these filters`
+      : orderList
+        ? "No pending sale orders"
+        : "No sales yet";
+  const body = search
+    ? <>Nothing matches <span className="font-semibold text-accent-600 dark:text-accent-400">“{search}”</span>. Try an invoice number, customer name or phone.</>
+    : filtered
+      ? "Change or clear the filters to see more."
+      : orderList
+        ? "Sale orders wait here until they are completed."
+        : "Sales you record will show up here.";
+
+  return (
+    <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-4 py-12">
+      <div className="relative">
+        <span className="absolute inset-0 rounded-full bg-accent-500/10 blur-md" />
+        <span className="relative flex size-14 items-center justify-center rounded-full border border-dashed border-accent-300 bg-accent-50 text-accent-600 dark:border-accent-500/40 dark:bg-accent-500/15 dark:text-accent-400">
+          {search ? <FaSearch className="size-5" /> : <HiOutlineDocumentText className="size-6" />}
+        </span>
+      </div>
+
+      <div className="text-center">
+        <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{title}</p>
+        <p className="mt-0.5 max-w-xs text-xs text-gray-400 dark:text-gray-500">{body}</p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {search ? (
+          <button type="button" onClick={onClearSearch} className={pillClass}>
+            <FaTimes className="size-3 text-accent-600 dark:text-accent-400" />
+            Clear search
+          </button>
+        ) : filtered ? (
+          <button type="button" onClick={onClearFilters} className={pillClass}>
+            <FaTimes className="size-3 text-accent-600 dark:text-accent-400" />
+            Clear filters
+          </button>
+        ) : (
+          actions.map((a) => (
+            <Link key={a.to} to={a.to} className={pillClass}>
+              <FaPlus className="size-3 text-accent-600 dark:text-accent-400" />
+              {a.label}
+            </Link>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 const SalesHistoryTable = ({
   salesType,
   invoiceStatus: invoiceStatusProp,
@@ -409,6 +482,24 @@ const SalesHistoryTable = ({
   const isMobile = useIsMobile();
   const canEdit   = usePermission("sales-history", "edit");
   const canDelete = usePermission("sales-history", "delete");
+  const canAddRetail      = usePermission("retail-sales", "add");
+  const canAddWholesale   = usePermission("wholesale-sales", "add");
+  const canAddRetailOrder = usePermission("retail-sale-order", "add");
+  const canAddWholeOrder  = usePermission("whole-sale-order", "add");
+  // Order lists start on "pending"; their empty state offers new orders
+  const orderList = defaultInvoiceStatus === "pending";
+  const listsType = (type: string) => !salesType || salesType.split(",").includes(type);
+  const emptyActions = (
+    orderList
+      ? [
+          { show: canAddRetailOrder && listsType("retailsaleorder"), label: "New retail order", to: "/retail-sale-order" },
+          { show: canAddWholeOrder && listsType("wholesaleorder"), label: "New wholesale order", to: "/whole-sale-order" },
+        ]
+      : [
+          { show: canAddRetail && listsType("retailsale"), label: "New retail sale", to: "/create-retail-sales" },
+          { show: canAddWholesale && listsType("wholesale"), label: "New wholesale", to: "/create-whole-sales" },
+        ]
+  ).filter((a) => a.show);
   const [salesList, setSalesList] = useState<Sale[]>([]);
   // The list is paged on the server (the shop can hold a million sales): rows
   // accumulate page by page through the cursor the API hands back.
@@ -692,7 +783,7 @@ const SalesHistoryTable = ({
         <MobileCardList
           items={filtered}
           getKey={(sale) => sale._id}
-          emptyMessage="No sales found"
+          emptyMessage={orderList ? "No sale orders found" : "No sales found"}
           renderCard={(sale) => (
             <div className="space-y-1">
               <div className="mb-2 flex items-start justify-between gap-3 border-b border-gray-100 pb-2 dark:border-white/[0.05]">
@@ -814,32 +905,14 @@ const SalesHistoryTable = ({
               {!loading && !isError && filtered.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={12} className="px-4 py-0">
-                    <div className="flex flex-col items-center justify-center py-24 text-center">
-                      <div className="size-20 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-6">
-                        <svg className="size-9 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-                        No Sales Records Found
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-8">
-                        {search
-                          ? <>No results for <span className="font-bold text-accent-500">"{search}"</span>. Try a different search term.</>
-                          : salesList.length > 0
-                            ? "No sales match the current filters."
-                            : "No sales have been recorded yet."}
-                      </p>
-                      {search && (
-                        <Button
-                          onClick={() => setSearch("")}
-                          variant="outline"
-                          className="rounded-xl px-8 py-2.5 text-sm font-semibold"
-                        >
-                          Clear Search
-                        </Button>
-                      )}
-                    </div>
+                    <SalesListEmpty
+                      orderList={orderList}
+                      search={search}
+                      filtered={salesList.length > 0}
+                      actions={emptyActions}
+                      onClearSearch={() => setSearch("")}
+                      onClearFilters={clearFilters}
+                    />
                   </TableCell>
                 </TableRow>
               )}
