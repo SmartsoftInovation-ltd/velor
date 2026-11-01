@@ -2,7 +2,10 @@ const Joi = require("joi");
 const { customError } = require("../lib/CustomError");
 const { apiResponse } = require("../utils/apiResponse");
 
-const bdMobileRegex = /^(01\d{9}|\+8801\d{9})$/;
+// A Bangladeshi mobile: 01 + operator digit 3–9 + 8 digits, with or without
+// the 880 / +880 country code (01712345678, 8801712345678, +8801712345678)
+const bdMobileRegex = /^(?:\+?880|0)1[3-9]\d{8}$/;
+const BD_MOBILE_MESSAGE = "must be a valid Bangladeshi mobile number, e.g. 01712345678 or +8801712345678.";
 const nidRegex = /^(\d{10}|\d{13}|\d{17})$/;
 
 const customerCreateSchema = Joi.object({
@@ -19,9 +22,20 @@ const customerCreateSchema = Joi.object({
   mobileNumber: Joi.string().trim().pattern(bdMobileRegex).required().messages({
     "string.empty": "Mobile number is required.",
     "any.required": "Mobile number is required.",
-    "string.pattern.base":
-      "Mobile number must be a valid BD number (01XXXXXXXXX or +8801XXXXXXXXX).",
+    "string.pattern.base": `Mobile number ${BD_MOBILE_MESSAGE}`,
   }),
+
+  // Optional second number; a different one from the main mobile
+  secondaryMobileNumber: Joi.string()
+    .trim()
+    .pattern(bdMobileRegex)
+    .invalid(Joi.ref("mobileNumber"))
+    .allow("")
+    .optional()
+    .messages({
+      "string.pattern.base": `Secondary mobile number ${BD_MOBILE_MESSAGE}`,
+      "any.invalid": "Secondary mobile number must be different from the mobile number.",
+    }),
 
   occupation: Joi.string().trim().allow("").optional(),
 

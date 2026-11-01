@@ -382,12 +382,13 @@ exports.getAllCustomers = asynchandeler(async (req, res) => {
     query.customerType = customerType;
   }
 
-  // partial search by name OR phone (q = "rah" or "0171")
+  // partial search by name OR either phone (q = "rah" or "0171")
   if (q && q.trim()) {
     const search = q.trim();
     query.$or = [
       { fullName: { $regex: escapeRegex(search), $options: "i" } },
       { mobileNumber: { $regex: escapeRegex(search), $options: "i" } },
+      { secondaryMobileNumber: { $regex: escapeRegex(search), $options: "i" } },
     ];
   }
 

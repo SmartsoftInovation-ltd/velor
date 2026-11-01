@@ -117,6 +117,10 @@ const CustomerView = () => {
               <Field label="Mobile Number" value={customer.mobileNumber} />
             </div>
             <div className="flex items-start gap-3">
+              <FaPhone className="size-3.5 text-gray-400 mt-0.5 shrink-0" />
+              <Field label="Secondary Mobile Number" value={customer.secondaryMobileNumber} />
+            </div>
+            <div className="flex items-start gap-3">
               <FaEnvelope className="size-3.5 text-gray-400 mt-0.5 shrink-0" />
               <Field label="Email Address" value={customer.emailAddress} />
             </div>

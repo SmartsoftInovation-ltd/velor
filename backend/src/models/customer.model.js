@@ -108,10 +108,21 @@ const customerSchema = new mongoose.Schema(
       unique: true,
       validate: {
         validator: function (v) {
-          // BD mobile example: 01XXXXXXXXX (11 digits) or +8801XXXXXXXXX
-          return /^(01\d{9}|\+8801\d{9})$/.test(v);
+          // BD mobile: 01 + operator digit 3–9 + 8 digits, optionally with 880 / +880
+          return /^(?:\+?880|0)1[3-9]\d{8}$/.test(v);
         },
         message: "Invalid mobile number format",
+      },
+    },
+
+    // Optional second number, same format; not unique
+    secondaryMobileNumber: {
+      type: String,
+      trim: true,
+      default: "",
+      validate: {
+        validator: (v) => !v || /^(?:\+?880|0)1[3-9]\d{8}$/.test(v),
+        message: "Invalid secondary mobile number format",
       },
     },
 

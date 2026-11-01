@@ -51,6 +51,7 @@ const CustomerList = () => {
     return (
       c.fullName?.toLowerCase().includes(q) ||
       c.mobileNumber?.includes(q) ||
+      c.secondaryMobileNumber?.includes(q) ||
       c.customerId?.toLowerCase().includes(q) ||
       c.customSerialId?.toLowerCase().includes(q)
     );

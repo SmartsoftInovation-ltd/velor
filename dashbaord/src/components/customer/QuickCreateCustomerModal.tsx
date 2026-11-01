@@ -8,6 +8,7 @@ import Label from "../form/Label";
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
 import { showApiError } from "../../utils/apiError";
+import { bdMobileError, cleanPhone } from "../../lib/bdPhone";
 
 interface CustomerType {
   _id: string;
@@ -117,11 +118,8 @@ const QuickCreateCustomerModal = ({
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
     if (!form.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!form.mobileNumber.trim()) {
-      newErrors.mobileNumber = "Mobile number is required";
-    } else if (!/^(01\d{9}|\+8801\d{9})$/.test(form.mobileNumber.trim())) {
-      newErrors.mobileNumber = "Must be 01XXXXXXXXX or +8801XXXXXXXXX";
-    }
+    const mobileError = bdMobileError(form.mobileNumber, { required: true });
+    if (mobileError) newErrors.mobileNumber = mobileError;
     if (form.nidNumber.trim() && !/^(\d{10}|\d{13}|\d{17})$/.test(form.nidNumber.trim())) {
       newErrors.nidNumber = "NID must be 10, 13, or 17 digits";
     }
@@ -129,7 +127,7 @@ const QuickCreateCustomerModal = ({
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    const mobile = form.mobileNumber.trim();
+    const mobile = cleanPhone(form.mobileNumber.trim());
     setIsLoading(true);
     try {
       const formData = new FormData();

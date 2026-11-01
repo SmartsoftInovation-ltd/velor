@@ -15,6 +15,7 @@ import SectionCard from "../common/SectionCard";
 import MobileActionBar from "../common/MobileActionBar";
 import Loader from "../common/Loader";
 import { showApiError } from "../../utils/apiError";
+import { BD_MOBILE_PLACEHOLDER, bdMobileError, cleanPhone } from "../../lib/bdPhone";
 
 interface CustomerType {
   _id: string;
@@ -44,6 +45,7 @@ const CustomerEdit = () => {
   const [form, setForm] = useState({
     fullName: "",
     mobileNumber: "",
+    secondaryMobileNumber: "",
     occupation: "",
     nidNumber: "",
     openingDues: "",
@@ -75,6 +77,7 @@ const CustomerEdit = () => {
     setForm({
       fullName: customerData.fullName || "",
       mobileNumber: customerData.mobileNumber || "",
+      secondaryMobileNumber: customerData.secondaryMobileNumber || "",
       occupation: customerData.occupation || "",
       nidNumber: customerData.nidNumber || "",
       openingDues: customerData.openingDues?.toString() || "",
@@ -187,7 +190,16 @@ const CustomerEdit = () => {
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
     if (!form.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!form.mobileNumber.trim()) newErrors.mobileNumber = "Mobile number is required";
+    const mobileError = bdMobileError(form.mobileNumber, { required: true });
+    if (mobileError) newErrors.mobileNumber = mobileError;
+    const secondaryError = bdMobileError(form.secondaryMobileNumber, { label: "Secondary mobile number" });
+    if (secondaryError) newErrors.secondaryMobileNumber = secondaryError;
+    else if (
+      form.secondaryMobileNumber.trim() &&
+      cleanPhone(form.secondaryMobileNumber.trim()) === cleanPhone(form.mobileNumber.trim())
+    ) {
+      newErrors.secondaryMobileNumber = "Secondary mobile number must be different from the mobile number";
+    }
     if (!selectedType) newErrors.customerType = "Customer type is required";
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -196,7 +208,9 @@ const CustomerEdit = () => {
     try {
       const formData = new FormData();
       formData.append("fullName", form.fullName);
-      formData.append("mobileNumber", form.mobileNumber);
+      formData.append("mobileNumber", cleanPhone(form.mobileNumber.trim()));
+      // Always sent, so emptying the field removes the number
+      formData.append("secondaryMobileNumber", cleanPhone(form.secondaryMobileNumber.trim()));
       formData.append("customerType", selectedType!._id);
       if (form.occupation) formData.append("occupation", form.occupation);
       if (form.nidNumber) formData.append("nidNumber", form.nidNumber);
@@ -374,6 +388,19 @@ const CustomerEdit = () => {
                     ${errors.mobileNumber ? "border-red-400 dark:border-red-500" : "border-gray-200 dark:border-gray-700 hover:border-gray-300 focus:border-accent-500"}`}
                 />
                 {errors.mobileNumber && <p className="text-red-500 text-xs">{errors.mobileNumber}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Secondary Mobile Number</Label>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  placeholder={`${BD_MOBILE_PLACEHOLDER} (optional)`}
+                  value={form.secondaryMobileNumber}
+                  onChange={(e) => handleChange("secondaryMobileNumber", e.target.value)}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500/20 transition-colors
+                    ${errors.secondaryMobileNumber ? "border-red-400 dark:border-red-500" : "border-gray-200 dark:border-gray-700 hover:border-gray-300 focus:border-accent-500"}`}
+                />
+                {errors.secondaryMobileNumber && <p className="text-red-500 text-xs">{errors.secondaryMobileNumber}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Email Address</Label>

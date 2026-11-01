@@ -42,6 +42,25 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
       expect(stored).toMatchObject({ openingDues: 500, initialDue: 500, customerId: "01811112222", advancePaymentRecived: 0, isActive: true });
     });
 
+    it("keeps an optional secondary mobile number, finds the customer by it, and lets it be removed", async () => {
+      const type = (await as().post("/customer/create-customertype").send({ customerType: "Retail" }).expect(201)).body.data;
+      await as()
+        .post("/customer/create-customer")
+        .send({ fullName: "Two Phones", mobileNumber: "+8801712340000", secondaryMobileNumber: "01912340000", customerType: type._id || type.id })
+        .expect(201);
+      const stored = await inTenant(() => Customer.findOne({ fullName: "Two Phones" }).lean());
+      expect(stored.secondaryMobileNumber).toBe("01912340000");
+
+      const found = await as().get("/customer/get-customers").query({ q: "0191234" }).expect(200);
+      expect(found.body.data.customers.map((c) => c.fullName)).toEqual(["Two Phones"]);
+
+      await as()
+        .put(`/customer/update-customer/${stored.customerId}`)
+        .send({ fullName: "Two Phones", mobileNumber: "+8801712340000", secondaryMobileNumber: "" })
+        .expect(200);
+      expect((await customerNow(stored._id)).secondaryMobileNumber).toBe("");
+    });
+
     it("400 without a customer type (required by the model, optional in the schema)", async () => {
       await as().post("/customer/create-customer").send({ fullName: "No Type", mobileNumber: "01899990000" }).expect(400);
     });
@@ -49,6 +68,9 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
     it.each([
       ["no name", { fullName: "" }],
       ["a bad mobile number", { mobileNumber: "12345" }],
+      ["a mobile number with no operator (012…)", { mobileNumber: "01211112222" }],
+      ["a bad secondary mobile number", { secondaryMobileNumber: "0181111" }],
+      ["a secondary number equal to the mobile", { secondaryMobileNumber: "01811112222" }],
       ["negative dues", { openingDues: -1 }],
       ["a client-chosen customerId", { customerId: "C-1" }],
       ["a client-chosen initialDue", { initialDue: 100 }],
