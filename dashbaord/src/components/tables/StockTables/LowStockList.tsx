@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   FaSync, FaTimes, FaExclamationTriangle,
@@ -194,6 +194,7 @@ const LowStockList = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isPlaceholderData,
   } = useInfiniteQuery({
     queryKey: ["low-stock", debSearch, categoryId] as const,
     initialPageParam: 1,
@@ -207,7 +208,13 @@ const LowStockList = () => {
     },
     getNextPageParam: (last) => (last?.pagination?.hasNextPage ? last.pagination.page + 1 : undefined),
     staleTime: 5 * 60 * 1000,
+    // Keep the current rows (dimmed) while a new search or filter loads
+    placeholderData: keepPreviousData,
   });
+  // The spinner replaces the table only on the first load; loading the next
+  // page or a new search keeps the rows in place
+  const firstLoad = isLoading && !data;
+  const busy = search.trim() !== debSearch.trim() || (isLoading && isPlaceholderData);
 
   const rows: LowStockRow[] = data?.pages.flatMap((page) => (page?.rows ?? []).map(toRow)) ?? [];
   const totals = data?.pages[0]?.totals;
@@ -230,9 +237,9 @@ const LowStockList = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [debSearch, categoryId]);
 
-  // ── Debounce search 400 ms ─────────────────────────────────────────────────
+  // ── Debounce search 300 ms ─────────────────────────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => setDebSearch(search), 400);
+    const t = setTimeout(() => setDebSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -307,7 +314,7 @@ const LowStockList = () => {
             onChange={(e) => setSearch(e.target.value)}
             onBlur={handleSearchBlur}
             onKeyDown={(e) => {
-              // Scanners terminate input with Enter — skip the 400ms
+              // Scanners terminate input with Enter — skip the
               // debounce and filter immediately instead of waiting.
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -315,8 +322,15 @@ const LowStockList = () => {
               }
             }}
             autoComplete="off"
-            className="h-10 w-full rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] pl-9 pr-8 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-accent-500 focus:bg-white dark:focus:bg-white/[0.05] focus:outline-none focus:ring-2 focus:ring-accent-500/20 transition-colors"
+            className="h-10 w-full rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] pl-9 pr-14 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-accent-500 focus:bg-white dark:focus:bg-white/[0.05] focus:outline-none focus:ring-2 focus:ring-accent-500/20 transition-colors"
           />
+          {busy && search.trim() && (
+            <span
+              role="status"
+              aria-label="Searching"
+              className="absolute right-8 top-1/2 size-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-accent-500/25 border-t-accent-500"
+            />
+          )}
           {search && (
             <button onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-error-500">
               <FaTimes size={10} />
@@ -354,11 +368,12 @@ const LowStockList = () => {
 
       {/* ── Table ── */}
       {isMobile ? (
-        isLoading ? (
+        firstLoad ? (
           <div className="flex items-center justify-center" style={{ height: 300 }}>
             <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
         ) : (
+          <div className={`transition-opacity duration-200 ${busy ? "pointer-events-none opacity-50" : "opacity-100"}`}>
           <MobileCardList
             items={rows}
             getKey={(row) => row.key}
@@ -394,10 +409,11 @@ const LowStockList = () => {
               </div>
             )}
           />
+          </div>
         )
       ) : (
-      <div className="rounded-xl border border-gray-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.03] overflow-hidden">
-        {isLoading ? (
+      <div aria-busy={busy} className={`rounded-xl border border-gray-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.03] overflow-hidden transition-opacity duration-200 ${busy && !firstLoad ? "pointer-events-none opacity-50" : "opacity-100"}`}>
+        {firstLoad ? (
           <div className="flex items-center justify-center" style={{ height: 300 }}>
             <div className="size-8 border-4 border-accent-500/20 border-t-accent-500 rounded-full animate-spin" />
           </div>
