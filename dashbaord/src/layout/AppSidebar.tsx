@@ -945,17 +945,21 @@ const discountManagementItems = navItems.filter(
   (item) => item.name === "Discount",
 );
 const stockManagementItems = navItems.filter((item) => item.name === "Stock");
-const websiteManagementItems = navItems.filter(
-  (item) =>
-    item.name === "Courier" ||
-    item.name === "Order" ||
-    item.name === "Delivery Charge" ||
-    item.name === "Banner" ||
-    item.name === "Limited Offer" ||
-    item.name === "Flash Sale" ||
-    item.name === "Promo Banner" ||
-    item.name === "Coupon",
-);
+const websiteManagementItems: NavItem[] = [
+  ...navItems.filter(
+    (item) =>
+      item.name === "Courier" ||
+      item.name === "Order" ||
+      item.name === "Delivery Charge" ||
+      item.name === "Banner" ||
+      item.name === "Limited Offer" ||
+      item.name === "Flash Sale" ||
+      item.name === "Promo Banner" ||
+      item.name === "Coupon",
+  ),
+  // Size charts are shown on the storefront's product pages
+  ...navItems.filter((item) => item.name === "Size Chart"),
+];
 const profileItems = hrManage.filter(
   (item) =>
     item.name === "Customer" ||
@@ -976,7 +980,6 @@ const generalSettingsItems = othersItems.filter(
   (item) => item.name.trim() === "Settings",
 );
 const otherSidebarItems: NavItem[] = [
-  ...navItems.filter((item) => item.name === "Size Chart"),
   ...othersItems.filter(
     (item) =>
       item.name !== "SMS Notification" &&

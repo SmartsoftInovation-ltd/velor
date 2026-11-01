@@ -616,7 +616,7 @@ const CreateUserPermission = () => {
             {filteredGroups.length === 0 ? (
               <div className="py-16 text-center text-sm text-gray-400">No modules matching &quot;{moduleSearch}&quot;</div>
             ) : (
-              filteredGroups.map((group) => {
+              filteredGroups.map((group, gi) => {
                 const groupPerms = group.modules
                   .map((modName) => perms.find((p) => p.permissionName === modName))
                   .filter(Boolean) as Permission[];
@@ -648,6 +648,13 @@ const CreateUserPermission = () => {
 
                 return (
                   <div key={group.label}>
+                    {/* The sidebar's section heading, shown where a new section starts */}
+                    {(gi === 0 || filteredGroups[gi - 1].section !== group.section) && (
+                      <p className={`mb-3 flex items-center gap-3 text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 ${gi === 0 ? "" : "mt-4"}`}>
+                        {group.section}
+                        <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+                      </p>
+                    )}
                     <GroupHeader
                       group={group}
                       allChecked={groupAllOn && groupPerms.length > 0}

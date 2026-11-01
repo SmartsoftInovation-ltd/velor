@@ -131,7 +131,11 @@ export const actionsForModule = (name: string): Action[] => {
 };
 
 // ---------- Module groups ----------
+// The same sections, menus and order as the sidebar (layout/AppSidebar.tsx):
+// each group is one sidebar menu, and `section` is the sidebar heading it sits
+// under. Keep the two in step when a menu moves.
 export interface ModuleGroup {
+  section: string;
   label: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: React.ComponentType<any>;
@@ -140,32 +144,56 @@ export interface ModuleGroup {
 }
 
 export const MODULE_GROUPS: ModuleGroup[] = [
-  { label: "Dashboard", icon: MdDashboard, color: "from-slate-500 to-gray-700", modules: DASHBOARD_MODULES },
-  { label: "Product",       icon: MdOutlineInventory2,  color: "from-blue-500 to-blue-600",     modules: ["Category", "Sub Category", "Brand", "Product", "Barcode Print"] },
-  { label: "Variant & Size", icon: HiOutlineAdjustments, color: "from-cyan-500 to-teal-600",    modules: ["Variant", "Size Chart"] },
-  { label: "Purchase",      icon: TbBrandBootstrap,     color: "from-orange-500 to-amber-600",  modules: ["Purchase", "Purchase Return"] },
-  { label: "Sales",    icon: MdSecurity, color: "from-emerald-500 to-green-700",  modules: ["Retail Sales", "Wholesale Sales", "Sales History", "Sales Return", "Retail Sale Order", "Whole Sale Order"] },
-  { label: "Draft Order", icon: MdSecurity, color: "from-emerald-400 to-teal-600", modules: ["Draft Order"] },
-  { label: "Discount",      icon: TbRosetteDiscount,    color: "from-pink-500 to-rose-600",     modules: ["Discount", "Discount Banner", "Coupon"] },
+  // Menu
+  { section: "Menu", label: "Dashboard", icon: MdDashboard, color: "from-slate-500 to-gray-700", modules: DASHBOARD_MODULES },
+
+  // Sales Purchase
+  { section: "Sales Purchase", label: "Product", icon: MdOutlineInventory2, color: "from-blue-500 to-blue-600", modules: ["Category", "Sub Category", "Brand", "Product", "Barcode Print"] },
+  { section: "Sales Purchase", label: "Variant", icon: HiOutlineAdjustments, color: "from-cyan-500 to-teal-600", modules: ["Variant"] },
+  { section: "Sales Purchase", label: "Purchase", icon: TbBrandBootstrap, color: "from-orange-500 to-amber-600", modules: ["Purchase", "Purchase Return"] },
   {
-    label: "Stock", icon: TbPackage, color: "from-yellow-500 to-orange-500",
+    section: "Sales Purchase", label: "Sales", icon: MdSecurity, color: "from-emerald-500 to-green-700",
+    modules: ["Retail Sales", "Wholesale Sales", "Sales History", "Sales Return", "Retail Sale Order", "Whole Sale Order", "Draft Order"],
+  },
+
+  // Discount Management
+  { section: "Discount Management", label: "Discount", icon: TbRosetteDiscount, color: "from-pink-500 to-rose-600", modules: ["Discount"] },
+
+  // Stock Management
+  {
+    section: "Stock Management", label: "Stock", icon: TbPackage, color: "from-yellow-500 to-orange-500",
     modules: ["View All Stock", "Stock Adjustment", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock"],
   },
-  { label: "Web Order",     icon: TbBrandBootstrap,     color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order", "Chat"] },
-  { label: "Courier",       icon: TbBrandBootstrap,     color: "from-indigo-500 to-blue-700",   modules: ["Courier Merchant", "Courier Delivery", "Courier Return", "Delivery Charge"] },
-  { label: "Website Management", icon: TbRulerMeasure, color: "from-gray-500 to-slate-600",    modules: ["Create Banner", "Limited Offer", "Flash Sale"] },
-  { label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600",       modules: ["Customer Type", "Customer", "Customer Payment", "Advance Payment"] },
-  { label: "Supplier", icon: MdSecurity, color: "from-lime-500 to-green-600",     modules: ["Supplier", "Supplier Payment"] },
-  { label: "Employees", icon: MdSecurity, color: "from-sky-500 to-blue-600",       modules: ["Employee", "Designation", "Department", "Section"] },
+
+  // Website Management
+  { section: "Website Management", label: "Order", icon: TbBrandBootstrap, color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order", "Chat"] },
+  { section: "Website Management", label: "Courier", icon: TbBrandBootstrap, color: "from-indigo-500 to-blue-700", modules: ["Courier Merchant", "Courier Delivery", "Courier Return"] },
+  { section: "Website Management", label: "Delivery Charge", icon: TbBrandBootstrap, color: "from-indigo-400 to-sky-600", modules: ["Delivery Charge"] },
+  { section: "Website Management", label: "Banner", icon: TbRulerMeasure, color: "from-gray-500 to-slate-600", modules: ["Create Banner"] },
+  { section: "Website Management", label: "Limited Offer", icon: TbRosetteDiscount, color: "from-rose-400 to-pink-600", modules: ["Limited Offer"] },
+  { section: "Website Management", label: "Promo Banner", icon: TbRulerMeasure, color: "from-fuchsia-400 to-pink-600", modules: ["Discount Banner"] },
+  { section: "Website Management", label: "Flash Sale", icon: TbRosetteDiscount, color: "from-amber-400 to-orange-600", modules: ["Flash Sale"] },
+  { section: "Website Management", label: "Coupon", icon: TbRosetteDiscount, color: "from-pink-400 to-rose-500", modules: ["Coupon"] },
+  { section: "Website Management", label: "Size Chart", icon: HiOutlineAdjustments, color: "from-teal-400 to-cyan-600", modules: ["Size Chart"] },
+
+  // Profile
+  { section: "Profile", label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600", modules: ["Customer Type", "Customer", "Customer Payment", "Advance Payment"] },
+  { section: "Profile", label: "Supplier", icon: MdSecurity, color: "from-lime-500 to-green-600", modules: ["Supplier", "Supplier Payment"] },
+  { section: "Profile", label: "Employee Management", icon: MdSecurity, color: "from-sky-500 to-blue-600", modules: ["Employee", "Designation", "Department", "Section"] },
+
+  // Accounts Management
   {
-    label: "All Accounts", icon: TbPackage, color: "from-teal-500 to-cyan-600",
+    section: "Accounts Management", label: "All Accounts", icon: TbPackage, color: "from-teal-500 to-cyan-600",
     modules: ["Add Transaction", "Transaction Category", "Add Account", "Money Transfer", "Money Handover"],
   },
-  { label: "SMS Notifications", icon: MdSecurity, color: "from-fuchsia-500 to-purple-600", modules: ["Send SMS", "Send Bulk SMS", "SMS Info", "Due SMS"] },
-  { label: "Role & Permission",  icon: MdDashboard,    color: "from-violet-500 to-purple-600",   modules: ["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"] },
-  { label: "Settings", icon: TbSettings, color: "from-zinc-500 to-neutral-700", modules: ["Site Information", "Outlet Information", "Store Information"] },
-  ...REPORT_GROUPS.map((g) => ({
-    label: g.label, icon: TbReportAnalytics, color: "from-slate-500 to-gray-700", modules: g.modules,
-  })),
 
+  // Analytics & Users: Reports & Analytics (one group per report category), SMS, Role & Permission
+  ...REPORT_GROUPS.map((g) => ({
+    section: "Analytics & Users", label: g.label, icon: TbReportAnalytics, color: "from-slate-500 to-gray-700", modules: g.modules,
+  })),
+  { section: "Analytics & Users", label: "SMS Notification", icon: MdSecurity, color: "from-fuchsia-500 to-purple-600", modules: ["Send SMS", "Send Bulk SMS", "SMS Info", "Due SMS"] },
+  { section: "Analytics & Users", label: "Role & Permission", icon: MdDashboard, color: "from-violet-500 to-purple-600", modules: ["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"] },
+
+  // General Settings
+  { section: "General Settings", label: "Settings", icon: TbSettings, color: "from-zinc-500 to-neutral-700", modules: ["Site Information", "Outlet Information", "Store Information"] },
 ];

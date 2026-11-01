@@ -15,9 +15,8 @@ const group = (label: string) => MODULE_GROUPS.find((g) => g.label === label)?.m
 
 describe("permission catalog", () => {
   it("lists the screens that used to borrow another module's permission", () => {
-    expect(group("Sales")).toContain("Sales Return");
-    expect(group("Draft Order")).toEqual(["Draft Order"]);
-    expect(group("SMS Notifications")).toContain("Due SMS");
+    expect(group("Sales")).toEqual(expect.arrayContaining(["Sales Return", "Draft Order"]));
+    expect(group("SMS Notification")).toContain("Due SMS");
     expect(group("Role & Permission")).toEqual(
       expect.arrayContaining(["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"]),
     );
@@ -52,5 +51,19 @@ describe("permission catalog", () => {
     for (const report of ["Top Salesman Report", "Invoice Profit Report", "Supplier Dues Report", "Top Customer Report"]) {
       expect(MODULE_GROUPS.some((g) => g.modules.includes(report))).toBe(true);
     }
+  });
+
+  // Same sections, in the same order, as the sidebar
+  it("follows the sidebar's sections and order", () => {
+    const sections = MODULE_GROUPS.map((g) => g.section).filter((x, i, all) => all.indexOf(x) === i);
+    expect(sections).toEqual([
+      "Menu", "Sales Purchase", "Discount Management", "Stock Management", "Website Management",
+      "Profile", "Accounts Management", "Analytics & Users", "General Settings",
+    ]);
+    // a section's groups sit together, never split
+    const runs = MODULE_GROUPS.map((g) => g.section).filter((x, i, all) => i === 0 || all[i - 1] !== x);
+    expect(runs).toEqual(sections);
+    const website = MODULE_GROUPS.filter((g) => g.section === "Website Management").map((g) => g.label);
+    expect(website).toEqual(["Order", "Courier", "Delivery Charge", "Banner", "Limited Offer", "Promo Banner", "Flash Sale", "Coupon", "Size Chart"]);
   });
 });
