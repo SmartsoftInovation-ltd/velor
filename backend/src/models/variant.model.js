@@ -187,6 +187,9 @@ variantSchema.index({
 // become { tenantId, <field> }.
 variantSchema.index({ product: 1 });
 variantSchema.index({ product: 1, isActive: 1 });
+// Pickers page through name matches in name order, and a "contains" name
+// search can read this index instead of every variant document
+variantSchema.index({ variantName: 1 });
 // Lists page newest first (BUG-P2-010)
 variantSchema.index({ createdAt: -1, _id: -1 });
 

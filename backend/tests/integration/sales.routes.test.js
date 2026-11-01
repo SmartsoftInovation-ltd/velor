@@ -494,6 +494,32 @@ describe("sales routes (/api/v1/sales)", () => {
       expect(await variantIds("full shirt")).toEqual([variant._id.toString()]);
     });
 
+    // Paged mode for scrolling pickers: exact code first, then names, page by page
+    it("pages through every match with ?page, the exact code first", async () => {
+      for (let i = 0; i < 7; i += 1) await f.product.create({ name: `Paged Shirt ${String(i).padStart(2, "0")}` });
+      const page = (n) =>
+        as().get("/sales/get-sales-products").query({ q: "paged shirt", page: n, limit: 3 }).expect(200).then((r) => r.body.data);
+
+      const p1 = await page(1);
+      const p2 = await page(2);
+      const p3 = await page(3);
+      expect(p1.hasMore).toBe(true);
+      expect(p2.hasMore).toBe(true);
+      expect(p3.hasMore).toBe(false);
+      const names = [...p1.items, ...p2.items, ...p3.items].map((r) => r.name);
+      expect(names).toEqual([...names].sort());
+      expect(new Set(names).size).toBe(7);
+
+      const byCode = await as().get("/sales/get-sales-products").query({ q: product.barCode, page: 1 }).expect(200);
+      expect(byCode.body.data.items[0]).toMatchObject({ _id: product._id.toString(), _score: 100 });
+
+      // Opened without typing: everything, page by page
+      const all = await as().get("/sales/get-sales-products").query({ page: 1, limit: 50 }).expect(200);
+      expect(all.body.data.items.length).toBeGreaterThanOrEqual(8);
+      // Without ?page a query is still required
+      await as().get("/sales/get-sales-products").expect(400);
+    });
+
     // BUG-016: a non-numeric or zero limit reaches $limit and the driver rejects it
     it.each(["abc", "0", "-5"])("limit=%s is a client error or clamped, not a 500 [BUG-016]", async (limit) => {
       const res = await as().get("/sales/get-sales-products").query({ q: "SKU", limit });

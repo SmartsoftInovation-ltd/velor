@@ -970,6 +970,9 @@ const applicableDiscountPipeline = async () => {
   ];
 };
 
+// How many name matches a scrolling picker can page through
+const PICKER_MAX_MATCHES = 1000;
+
 exports.searchProductsAndVariants = async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
@@ -978,7 +981,9 @@ exports.searchProductsAndVariants = async (req, res) => {
     const requestedLimit = Math.floor(Number(req.query.limit));
     const limit = requestedLimit > 0 ? Math.min(requestedLimit, 50) : 20;
 
-    if (!q) {
+    // A paged picker opened without typing lists everything; otherwise q is required
+    const paged = req.query.page !== undefined;
+    if (!q && !paged) {
       return apiResponse.sendError(
         res,
         statusCodes.BAD_REQUEST,
@@ -1089,6 +1094,78 @@ exports.searchProductsAndVariants = async (req, res) => {
         },
       },
     ];
+
+    // Paged mode (?page=), for pickers that scroll through every match: one
+    // ordered list — exact codes first, then single-variant products by name,
+    // then variants by name — cut into pages; with no q, everything. Only the ids of the requested page are joined.
+    // Without ?page the answer stays the plain array the sale forms read.
+    if (paged) {
+      const page = Math.max(1, Math.floor(Number(req.query.page)) || 1);
+      const start = (page - 1) * limit;
+      const idsOf = (rows) => rows.map((r) => r._id);
+      // Nothing typed: every product and variant, by name
+      const browse = !q;
+      const [exactP, exactV, namedP, namedV] = await Promise.all([
+        browse ? [] : idsMatchingAny(productModel, exact, limit),
+        browse ? [] : idsMatchingAny(variantModel, exact, limit),
+        browse || byName
+          ? productModel
+              // A multi-variant product holds no stock itself; its variants are listed
+              .find({ ...(browse ? {} : byName), variantType: { $ne: "multipleVariant" } })
+              .sort({ name: 1, _id: 1 }).limit(PICKER_MAX_MATCHES).select("_id").lean().then(idsOf)
+          : [],
+        browse || byVariantName
+          ? (browse ? Promise.resolve(null) : idsMatchingAny(productModel, [byName], 200)).then((productIds) =>
+              variantModel
+                .find(productIds ? { $or: [byVariantName, { product: { $in: productIds } }] } : {})
+                .sort({ variantName: 1, _id: 1 })
+                .limit(PICKER_MAX_MATCHES)
+                .select("_id")
+                .lean()
+                .then(idsOf),
+            )
+          : [],
+      ]);
+
+      // One ordered list, each item once
+      const seen = new Set();
+      const ordered = [];
+      const add = (ids, type) => {
+        for (const id of ids) {
+          const key = String(id);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          ordered.push({ id, type });
+        }
+      };
+      add(exactP, "product");
+      add(exactV, "variant");
+      add(namedP, "product");
+      add(namedV, "variant");
+
+      const slice = ordered.slice(start, start + limit);
+      const exactKeys = new Set([...exactP, ...exactV].map(String));
+      const pick = (type) => slice.filter((x) => x.type === type).map((x) => x.id);
+      const [products, variants] = await Promise.all([
+        pick("product").length
+          ? productModel.aggregate([{ $match: { _id: { $in: pick("product") } } }, ...productStages(10)])
+          : [],
+        pick("variant").length
+          ? variantModel.aggregate([{ $match: { _id: { $in: pick("variant") } } }, ...variantStages(10)])
+          : [],
+      ]);
+      const byId = new Map([...products, ...variants].map((row) => [String(row._id), row]));
+      const items = slice
+        .map((x) => byId.get(String(x.id)))
+        .filter(Boolean)
+        .map((row) => (exactKeys.has(String(row._id)) ? { ...row, _score: 100 } : row));
+
+      return apiResponse.sendSuccess(res, statusCodes.OK, "Search results", {
+        items,
+        page,
+        hasMore: ordered.length > start + limit,
+      });
+    }
 
     // Exact codes: each field its own indexed query, then only those ids joined
     const [exactProductIds, exactVariantIds] = await Promise.all([

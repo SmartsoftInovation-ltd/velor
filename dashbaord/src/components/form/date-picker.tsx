@@ -11,7 +11,7 @@ type PropsType = {
   mode?: "single" | "multiple" | "range" | "time";
   onChange?: Hook | Hook[];
   defaultDate?: DateOption;
-  label?: string;
+  label?: React.ReactNode;
   placeholder?: string;
   inputClassName?: string;
   isStatic?: boolean;
