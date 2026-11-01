@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FaEye, FaSearch, FaTimes } from "react-icons/fa";
+import { FaEye, FaSearch, FaTimes, FaUsers } from "react-icons/fa";
 import { MdSend } from "react-icons/md";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
@@ -24,6 +24,7 @@ interface Customer {
   customerId: string;
   fullName: string;
   mobileNumber: string;
+  secondaryMobileNumber?: string;
   openingDues: number;
   customerType: CustomerType;
   isActive: boolean;
@@ -103,6 +104,10 @@ export default function DueSmsTable() {
     setShowViewModal(true);
   };
 
+  const closeView = () => {
+    setShowViewModal(false);
+    setViewCustomer(null);
+  };
   const closeSingle = () => {
     if (sendingId) return;
     setShowSingleSmsModal(false);
@@ -305,22 +310,25 @@ export default function DueSmsTable() {
                     <div className="flex items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
+                          type="button"
                           onClick={() => handleView(customer)}
-                          className="size-8 flex items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 transition-colors"
+                          aria-label={`View ${customer.fullName}`}
+                          className="shine flex size-10 items-center justify-center rounded bg-gray-100 text-gray-600 transition-all hover:bg-gray-200 hover:text-gray-900 active:scale-90 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
                         >
-                          <FaEye className="text-sm" />
+                          <FaEye className="size-4" />
                         </button>
                       </Tooltip>
                       <Tooltip text="Send SMS">
                         <button
                           onClick={() => handleSingleSms(customer)}
                           disabled={sendingId === customer.id || !customer.isActive}
-                          className="size-8 flex items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/20 text-brand-500 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label={`Send SMS to ${customer.fullName}`}
+                          className="shine flex size-10 items-center justify-center rounded bg-accent-50 text-accent-600 transition-all hover:bg-accent-100 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-accent-500/15 dark:text-accent-400 dark:hover:bg-accent-500/25"
                         >
                           {sendingId === customer.id ? (
-                            <div className="size-3.5 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                            <div className="size-3.5 animate-spin rounded-full border-2 border-accent-500/30 border-t-accent-500" />
                           ) : (
-                            <MdSend className="text-sm" />
+                            <MdSend className="size-4" />
                           )}
                         </button>
                       </Tooltip>
@@ -340,61 +348,102 @@ export default function DueSmsTable() {
       {/* ---------- View Customer Modal ---------- */}
       <Modal
         isOpen={showViewModal}
-        onClose={() => { setShowViewModal(false); setViewCustomer(null); }}
-        className="w-full max-w-3xl"
+        onClose={closeView}
+        className="w-[calc(100%-2rem)] max-w-3xl"
         showCloseButton={false}
       >
         {viewCustomer && (
-          <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-                Customer Details
-              </h3>
+          <div className="space-y-6 p-6 sm:p-8">
+            {/* Who */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-4">
+                <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b from-accent-400 to-accent-600 text-xl font-bold uppercase text-white shadow-sm">
+                  {viewCustomer.fullName?.charAt(0) || "?"}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="truncate text-xl font-bold text-gray-800 dark:text-white">{viewCustomer.fullName}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{viewCustomer.mobileNumber}</p>
+                  <span
+                    className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+                      viewCustomer.isActive
+                        ? "bg-accent-50 text-accent-700 ring-accent-200 dark:bg-accent-500/15 dark:text-accent-400 dark:ring-accent-500/30"
+                        : "bg-error-50 text-error-700 ring-error-200 dark:bg-error-500/15 dark:text-error-400 dark:ring-error-500/30"
+                    }`}
+                  >
+                    <span className={`size-1.5 rounded-full ${viewCustomer.isActive ? "animate-pulse bg-accent-500" : "bg-error-500"}`} />
+                    {viewCustomer.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
               <button
-                onClick={() => { setShowViewModal(false); setViewCustomer(null); }}
-                className="size-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                type="button"
+                onClick={closeView}
+                aria-label="Close"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
               >
-                <FaTimes className="text-xs" />
+                <FaTimes className="size-3" />
               </button>
             </div>
-            <div className="space-y-3 text-sm">
-              <Row label="Name" value={viewCustomer.fullName} />
-              <Row label="Mobile" value={viewCustomer.mobileNumber} />
-              <Row label="Customer ID" value={viewCustomer.customerId} />
-              <Row
-                label="Type"
-                value={viewCustomer.customerType?.customerType || "—"}
-              />
-              <Row
-                label="Opening Dues"
-                value={`৳ ${viewCustomer.openingDues.toLocaleString()}`}
-                highlight={viewCustomer.openingDues > 0}
-              />
-              <Row
-                label="Status"
-                value={viewCustomer.isActive ? "Active" : "Inactive"}
-              />
-              <Row
-                label="Joined"
-                value={new Date(viewCustomer.createdAt).toLocaleDateString("en-BD")}
-              />
+
+            {/* What they owe */}
+            <div
+              className={`flex items-center justify-between rounded-2xl p-5 ${
+                viewCustomer.openingDues > 0
+                  ? "bg-error-50 dark:bg-error-500/10"
+                  : "bg-accent-50 dark:bg-accent-500/10"
+              }`}
+            >
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Due balance</p>
+                <p
+                  className={`mt-1 text-3xl font-bold tabular-nums ${
+                    viewCustomer.openingDues > 0 ? "text-error-600 dark:text-error-400" : "text-accent-600 dark:text-accent-400"
+                  }`}
+                >
+                  ৳ {viewCustomer.openingDues.toLocaleString()}
+                </p>
+              </div>
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {viewCustomer.openingDues > 0 ? "Payment pending" : "Nothing due"}
+              </span>
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button
-                onClick={() => {
-                  setShowViewModal(false);
-                  handleSingleSms(viewCustomer);
-                }}
-                className="flex-1 bg-brand-500 hover:bg-brand-600 text-white"
-              >
-                Send SMS
-              </Button>
-              <Button
-                onClick={() => { setShowViewModal(false); setViewCustomer(null); }}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
+
+            {/* Details */}
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <DetailItem label="Customer ID" value={viewCustomer.customerId} mono />
+              <DetailItem label="Customer type" value={viewCustomer.customerType?.customerType || "—"} />
+              <DetailItem label="Mobile" value={viewCustomer.mobileNumber} />
+              {viewCustomer.secondaryMobileNumber && (
+                <DetailItem label="Secondary mobile" value={viewCustomer.secondaryMobileNumber} />
+              )}
+              <DetailItem
+                label="Customer since"
+                value={new Date(viewCustomer.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+              />
+            </dl>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-gray-100 pt-5 dark:border-gray-800 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeView}
+                className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
               >
                 Close
-              </Button>
+              </button>
+              <button
+                type="button"
+                disabled={!viewCustomer.isActive}
+                onClick={() => {
+                  const customer = viewCustomer;
+                  closeView();
+                  handleSingleSms(customer);
+                }}
+                className="shine flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
+                title={viewCustomer.isActive ? undefined : "Inactive customers cannot be messaged"}
+              >
+                <MdSend className="size-4" />
+                Send SMS
+              </button>
             </div>
           </div>
         )}
@@ -404,22 +453,30 @@ export default function DueSmsTable() {
       <Modal
         isOpen={showSingleSmsModal}
         onClose={closeSingle}
-        className="w-full max-w-3xl"
+        className="w-[calc(100%-2rem)] max-w-6xl"
         showCloseButton={false}
       >
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-              Send SMS
-            </h3>
+        <div className="space-y-6 p-6 sm:p-8">
+          <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400">
+                <MdSend className="size-5" />
+              </span>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Send SMS</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">One message to this customer, previewed as they will see it.</p>
+              </div>
+            </div>
             <button
+              type="button"
               onClick={closeSingle}
-              className="size-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+              aria-label="Close"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              <FaTimes className="text-xs" />
+              <FaTimes className="size-3" />
             </button>
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-4">
               {selectedCustomer && (
                 <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
@@ -450,7 +507,7 @@ export default function DueSmsTable() {
                     </button>
                   )}
                 </div>
-                <SmsMessageBox id="sms-message" value={smsMessage} onChange={setSmsMessage} rows={6} autoFocus />
+                <SmsMessageBox id="sms-message" value={smsMessage} onChange={setSmsMessage} rows={9} autoFocus />
               </div>
               <div className="flex gap-2">
                 <button
@@ -481,7 +538,7 @@ export default function DueSmsTable() {
                 </button>
               </div>
             </div>
-            <SmsPreview message={smsMessage} recipientLabel={selectedCustomer?.fullName} recipientCount={1} compact />
+            <SmsPreview message={smsMessage} recipientLabel={selectedCustomer?.fullName} recipientCount={1} />
           </div>
         </div>
       </Modal>
@@ -490,22 +547,30 @@ export default function DueSmsTable() {
       <Modal
         isOpen={showBulkSmsModal}
         onClose={closeBulk}
-        className="w-full max-w-3xl"
+        className="w-[calc(100%-2rem)] max-w-6xl"
         showCloseButton={false}
       >
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-              Send SMS to All Customers
-            </h3>
+        <div className="space-y-6 p-6 sm:p-8">
+          <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400">
+                <FaUsers className="size-5" />
+              </span>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Send SMS to all customers</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">The same message to everyone, sent in the background.</p>
+              </div>
+            </div>
             <button
+              type="button"
               onClick={closeBulk}
-              className="size-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+              aria-label="Close"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              <FaTimes className="text-xs" />
+              <FaTimes className="size-3" />
             </button>
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-4">
               <div className="rounded-xl bg-accent-50 p-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-300">
                 Goes to <strong>{tableData.length.toLocaleString()}</strong> customers in the background. The SMS
@@ -526,7 +591,7 @@ export default function DueSmsTable() {
                   id="bulk-sms-message"
                   value={bulkMessage}
                   onChange={setBulkMessage}
-                  rows={6}
+                  rows={9}
                   autoFocus
                   placeholder="Everyone gets this same text…"
                 />
@@ -560,7 +625,7 @@ export default function DueSmsTable() {
                 </button>
               </div>
             </div>
-            <SmsPreview message={bulkMessage} recipientLabel="All customers" recipientCount={tableData.length} compact />
+            <SmsPreview message={bulkMessage} recipientLabel="All customers" recipientCount={tableData.length} />
           </div>
         </div>
       </Modal>
@@ -569,27 +634,11 @@ export default function DueSmsTable() {
 }
 
 // ---------- Helper ----------
-function Row({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
+function DetailItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-500 dark:text-gray-400 shrink-0">{label}</span>
-      <span
-        className={`font-medium text-right ${
-          highlight
-            ? "text-red-500"
-            : "text-gray-800 dark:text-white"
-        }`}
-      >
-        {value}
-      </span>
+    <div className="rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 dark:border-gray-800 dark:bg-white/[0.02]">
+      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{label}</dt>
+      <dd className={`mt-0.5 truncate text-sm font-semibold text-gray-800 dark:text-white/90 ${mono ? "font-mono" : ""}`}>{value}</dd>
     </div>
   );
 }
