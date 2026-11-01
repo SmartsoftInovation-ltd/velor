@@ -49,7 +49,10 @@ const redisUp = async () => {
     const reply = await Promise.race([
       redis.ping(),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), REDIS_PING_TIMEOUT_MS).unref(),
+        setTimeout(
+          () => reject(new Error("timeout")),
+          REDIS_PING_TIMEOUT_MS,
+        ).unref(),
       ),
     ]);
     return reply === "PONG";

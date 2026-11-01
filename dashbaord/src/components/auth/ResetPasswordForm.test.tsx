@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import ResetPasswordForm from "./ResetPasswordForm";
@@ -94,5 +94,31 @@ describe("ResetPasswordForm", () => {
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("Password reset by SMS is not available."));
     expect(screen.queryByLabelText(/sms code/i)).not.toBeInTheDocument();
+  });
+
+  it("counts down the 3 minutes, then blocks the old code until a new one is sent", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      post.mockResolvedValue({ data: { data: { expiresIn: 180 } } });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      renderAt("/reset-password?workspace=pizzashop");
+
+      await user.type(screen.getByLabelText(/email or phone/i), "01711000000");
+      await user.click(screen.getByRole("button", { name: /send code by sms/i }));
+      expect(await screen.findByTestId("code-countdown")).toHaveTextContent(/expires in 3:00|expires in 2:59/);
+
+      await act(async () => { vi.advanceTimersByTime(61_000); });
+      expect(screen.getByTestId("code-countdown")).toHaveTextContent(/expires in 1:5\d/);
+
+      await act(async () => { vi.advanceTimersByTime(120_000); });
+      expect(screen.getByTestId("code-countdown")).toHaveTextContent(/code expired/i);
+      expect(screen.getByRole("button", { name: /set new password/i })).toBeDisabled();
+
+      await user.click(screen.getByRole("button", { name: /resend code/i }));
+      await waitFor(() => expect(screen.getByTestId("code-countdown")).toHaveTextContent(/expires in (3:00|2:59)/));
+      expect(screen.getByRole("button", { name: /set new password/i })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

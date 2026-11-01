@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -34,17 +34,42 @@ const signInPath = (workspace: string) => `/signin${workspace ? `?workspace=${en
 // writing an unauthenticated slug to localStorage would pair a signed-in
 // session's token with a different store's x-tenant on every later request —
 // and switch the query cache's namespace underneath it.
-const requestCode = (workspace: string, who: Identifier) =>
-  axiosSecure.post(
+//
+// Resolves to the moment the code expires (the API says how long it lasts).
+const CODE_TTL_FALLBACK_SECONDS = 180;
+const requestCode = async (workspace: string, who: Identifier) => {
+  const res = await axiosSecure.post(
     "/auth/forgot-password",
     { workspace, ...who },
     { headers: { "x-tenant": workspace } },
   );
+  const seconds = Number(res?.data?.data?.expiresIn) || CODE_TTL_FALLBACK_SECONDS;
+  return Date.now() + seconds * 1000;
+};
+
+// Whole seconds left until `expiresAt`, ticking once a second
+const secondsUntil = (at: number) => Math.max(0, Math.ceil((at - Date.now()) / 1000));
+
+const useSecondsLeft = (expiresAt: number) => {
+  const [seconds, setSeconds] = useState(() => secondsUntil(expiresAt));
+  useEffect(() => {
+    setSeconds(secondsUntil(expiresAt));
+    const timer = window.setInterval(() => {
+      const next = secondsUntil(expiresAt);
+      setSeconds(next);
+      if (next === 0) window.clearInterval(timer);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [expiresAt]);
+  return seconds;
+};
+
+const mmss = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
 // Step 1: which account
 const RequestCode = ({ initialWorkspace, onSent }: {
   initialWorkspace: string;
-  onSent: (workspace: string, who: Identifier) => void;
+  onSent: (workspace: string, who: Identifier, expiresAt: number) => void;
 }) => {
   const [workspace, setWorkspaceValue] = useState(initialWorkspace);
   const [identifier, setIdentifier] = useState("");
@@ -63,8 +88,7 @@ const RequestCode = ({ initialWorkspace, onSent }: {
 
     setSubmitting(true);
     try {
-      await requestCode(slug, who);
-      onSent(slug, who);
+      onSent(slug, who, await requestCode(slug, who));
     } catch (error) {
       toast.error(apiMessage(error, "Could not send the reset code."));
     } finally {
@@ -115,8 +139,15 @@ const RequestCode = ({ initialWorkspace, onSent }: {
 };
 
 // Step 2: the SMS code and the new password
-const ChooseNewPassword = ({ workspace, who }: { workspace: string; who: Identifier }) => {
+const ChooseNewPassword = ({ workspace, who, initialExpiresAt }: {
+  workspace: string;
+  who: Identifier;
+  initialExpiresAt: number;
+}) => {
   const navigate = useNavigate();
+  const [expiresAt, setExpiresAt] = useState(initialExpiresAt);
+  const secondsLeft = useSecondsLeft(expiresAt);
+  const expired = secondsLeft === 0;
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -127,6 +158,10 @@ const ChooseNewPassword = ({ workspace, who }: { workspace: string; who: Identif
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (expired) {
+      setErrors({ otp: "This code has expired. Resend a new one." });
+      return;
+    }
     const nextErrors = {
       otp: /^\d{6}$/.test(otp) ? undefined : "Enter the 6-digit code from the SMS.",
       password: password.length >= NEW_PASSWORD_MIN ? undefined : `Use at least ${NEW_PASSWORD_MIN} characters.`,
@@ -156,8 +191,9 @@ const ChooseNewPassword = ({ workspace, who }: { workspace: string; who: Identif
   const resend = async () => {
     setResending(true);
     try {
-      await requestCode(workspace, who);
+      setExpiresAt(await requestCode(workspace, who));
       setOtp("");
+      setErrors({});
       toast.success("A new code has been sent.");
     } catch (error) {
       toast.error(apiMessage(error, "Could not send the reset code."));
@@ -169,7 +205,20 @@ const ChooseNewPassword = ({ workspace, who }: { workspace: string; who: Identif
   return (
     <form onSubmit={submit} noValidate className="mt-7 space-y-5">
       <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-        If that account has a phone number, we sent a 6-digit code to it by SMS. The code expires in 10 minutes.
+        If that account has a phone number, we sent a 6-digit code to it by SMS. The code expires in 3 minutes.
+      </p>
+      <p
+        aria-live="polite"
+        data-testid="code-countdown"
+        className={`text-center text-sm font-medium ${expired ? "text-error-500" : "text-gray-600 dark:text-gray-300"}`}
+      >
+        {expired ? (
+          "Code expired. Resend a new code."
+        ) : (
+          <>
+            Code expires in <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{mmss(secondsLeft)}</span>
+          </>
+        )}
       </p>
       <div>
         <div className="mb-1.5 flex items-center justify-between">
@@ -238,7 +287,7 @@ const ChooseNewPassword = ({ workspace, who }: { workspace: string; who: Identif
         </div>
         <FieldError msg={errors.confirm} />
       </div>
-      <button type="submit" disabled={submitting} className={submitClass}>
+      <button type="submit" disabled={submitting || expired} className={submitClass}>
         {submitting ? "Saving…" : "Set new password"}
       </button>
     </form>
@@ -248,7 +297,7 @@ const ChooseNewPassword = ({ workspace, who }: { workspace: string; who: Identif
 export default function ResetPasswordForm() {
   const [searchParams] = useSearchParams();
   const initialWorkspace = workspaceFromSearch(`?${searchParams.toString()}`) || getWorkspace() || "";
-  const [sentTo, setSentTo] = useState<{ workspace: string; who: Identifier } | null>(null);
+  const [sentTo, setSentTo] = useState<{ workspace: string; who: Identifier; expiresAt: number } | null>(null);
   const workspace = sentTo?.workspace ?? initialWorkspace;
 
   return (
@@ -263,9 +312,9 @@ export default function ResetPasswordForm() {
           : "Enter your workspace and your email or phone. We'll send a code by SMS."}
       </p>
       {sentTo ? (
-        <ChooseNewPassword workspace={sentTo.workspace} who={sentTo.who} />
+        <ChooseNewPassword workspace={sentTo.workspace} who={sentTo.who} initialExpiresAt={sentTo.expiresAt} />
       ) : (
-        <RequestCode initialWorkspace={initialWorkspace} onSent={(ws, who) => setSentTo({ workspace: ws, who })} />
+        <RequestCode initialWorkspace={initialWorkspace} onSent={(ws, who, expiresAt) => setSentTo({ workspace: ws, who, expiresAt })} />
       )}
       <Link
         to={signInPath(workspace)}

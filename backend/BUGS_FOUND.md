@@ -12,82 +12,82 @@ error code on an edge case).
 
 **74 bugs** — Critical 5, High 26, Medium 26, Low 17.
 
-| Severity | Id | Summary | Test |
-|---|---|---|---| 
-| Critical | BUG-012 | ~~Admin password change stores the password in plain text~~ **Fixed** | `integration/auth.routes.test.js` |
-| Critical | BUG-018 | ~~A sales return can take back more units than were sold~~ **Fixed** | `integration/salesReturn.routes.test.js` |
-| Critical | BUG-019 | ~~A product that is not on the sale is refunded at the client's price~~ **Fixed** | `integration/salesReturn.routes.test.js` |
-| Critical | BUG-046 | ~~Marking an order "Delivered" puts its stock back~~ **Fixed** | `integration/commerce.routes.test.js` |
-| Critical | BUG-065 | ~~Prototype pollution through bracketed form-field names~~ **Fixed** | `unit/utils.test.js` |
-| High | BUG-008 | ~~Delete-user and the permission endpoints return the password hash~~ **Fixed** | `integration/auth.routes.test.js` |
-| High | BUG-009 | ~~`POST /auth/add-user` lets a user manager grant any permission~~ **Fixed** | `integration/auth.routes.test.js` |
-| High | BUG-010 | ~~Login by email fails when another account has no phone~~ **Fixed** | `integration/auth.routes.test.js` |
-| High | BUG-011 | ~~Login accepts query operators in email/phone~~ **Fixed** | `integration/auth.routes.test.js` |
-| High | BUG-014 | ~~A sale overwrites the customer's due with the client's `balance`~~ **Fixed** | `integration/sales.routes.test.js` |
-| High | BUG-020 | ~~A return against a pending/draft sale adds stock that never left~~ **Fixed** | `integration/salesReturn.routes.test.js` |
-| High | BUG-021 | ~~A sales-return refund never leaves the refund account~~ **Fixed** | `integration/salesReturn.routes.test.js` |
-| High | BUG-024 | ~~Editing a sales return always fails with 500~~ **Fixed** | `integration/salesReturn.routes.test.js` |
-| High | BUG-025 | ~~Concurrent purchases / returns fail with 500 on write conflicts~~ **Fixed** | `integration/purchase.routes.test.js` |
-| High | BUG-026 | ~~A purchase quantity sent as a string corrupts stock~~ **Fixed** | `integration/purchase.routes.test.js` |
-| High | BUG-033 | ~~Parallel stock adjustments lose updates~~ **Fixed** | `integration/stockAdjust.routes.test.js` |
-| High | BUG-035 | ~~Public product endpoints publish every product's cost price~~ **Fixed** | `integration/product.routes.test.js` |
-| High | BUG-043 | ~~A checkout that sells out half-way loses stock~~ **Fixed** | `integration/commerce.routes.test.js` |
-| High | BUG-044 | ~~A coupon's usage limit is not enforced under concurrency~~ **Fixed** | `integration/commerce.routes.test.js` |
-| High | BUG-045 | Staff "create order" always fails | `integration/commerce.routes.test.js` |
-| High | BUG-047 | Order status changes have no transition rules | `integration/commerce.routes.test.js` |
-| High | BUG-048 | SSLCommerz IPN never checks the paid amount | `integration/commerce.routes.test.js` |
-| High | BUG-052 | ~~Deleting a customer payment does not restore the due~~ **Fixed** | `integration/customer.routes.test.js` |
-| High | BUG-058 | ~~A money transfer never moves money~~ **Fixed** | `integration/finance.routes.test.js` |
-| High | BUG-067 | ~~A new sale may carry "return" lines that add stock~~ **Fixed** | `integration/salesIntegrity.test.js` |
-| High | BUG-068 | ~~Editing a sale after a return moves stock by twice the quantity~~ **Fixed** | `integration/salesIntegrity.test.js` |
-| High | BUG-069 | ~~Sale edits are mass-assigned (`$set: req.body`)~~ **Fixed** | `integration/salesIntegrity.test.js` |
-| High | BUG-070 | ~~Changing the advance used on a sale is never applied, but deleting credits it back~~ **Fixed** | `integration/salesIntegrity.test.js` |
-| High | BUG-071 | ~~A signed-in shopper sees cost prices on the catalogue~~ **Fixed** | `integration/salesIntegrity.test.js` |
-| High | BUG-072 | ~~Supplier payments: not transactional, and delete keeps the due cut~~ **Fixed** | `integration/salesIntegrity.test.js` |
-| High | BUG-073 | Every Steadfast booking fails after Steadfast accepts it | `integration/courier.test.js` |
-| Medium | BUG-001 | ~~Joi validation errors answer 500 instead of 400~~ **Fixed** | `contract/routeMatrix.test.js` |
-| Medium | BUG-002 | ~~Department/section create: `customError` arguments swapped~~ **Fixed** | `contract/routeMatrix.test.js` |
-| Medium | BUG-004 | ~~Pathao city/zone/area lookups use hard-coded sandbox credentials~~ **Fixed** | `integration/courier.test.js` |
-| Medium | BUG-006 | ~~Changing your password leaves existing sessions valid~~ **Fixed** | `integration/auth.routes.test.js` |
-| Medium | BUG-007 | ~~User list and lookup expose reset and verification tokens~~ **Fixed** | `integration/auth.routes.test.js` |
-| Medium | BUG-017 | ~~Sale-form product search cannot find a product by one word of its name~~ **Fixed** | `integration/sales.routes.test.js` |
-| Medium | BUG-022 | ~~Deleting a sales return can drive stock negative~~ **Fixed** | `integration/salesReturn.routes.test.js` |
-| Medium | BUG-023 | ~~"One return per invoice" has no unique index behind it~~ **Fixed** | `integration/salesReturn.routes.test.js` |
-| Medium | BUG-027 | ~~The supplier's due grows by the client's `dueamount`~~ **Fixed** | `integration/purchase.routes.test.js` |
-| Medium | BUG-030 | ~~Deleting or editing a purchase can drive stock negative~~ **Fixed** | `integration/purchase.routes.test.js` |
-| Medium | BUG-031 | ~~A failed stock adjustment still leaves an adjustment record~~ **Fixed** | `integration/stockAdjust.routes.test.js` |
-| Medium | BUG-032 | ~~Stock adjustment quantities are not validated~~ **Fixed** | `integration/stockAdjust.routes.test.js` |
-| Medium | BUG-036 | ~~Deactivated products stay in the storefront's main listing~~ **Fixed** | `integration/product.routes.test.js` |
-| Medium | BUG-038 | ~~Deleting a product leaves its variants behind~~ **Fixed** | `integration/product.routes.test.js` |
-| Medium | BUG-041 | Cart quantities sent as strings are concatenated | `integration/commerce.routes.test.js` |
-| Medium | BUG-042 | Shoppers cannot merge their cart or use the wishlist | `integration/commerce.routes.test.js` |
-| Medium | BUG-049 | Payment fail/cancel callbacks overwrite paid orders; statuses outside the enum | `integration/commerce.routes.test.js` |
-| Medium | BUG-050 | Profit double-counts returned units when a product is on two lines | `integration/profitRules.test.js` |
-| Medium | BUG-053 | ~~Editing a customer payment always edits that customer's first payment~~ **Fixed** | `integration/customer.routes.test.js` |
-| Medium | BUG-054 | ~~A sale only sees the customer's first advance payment~~ **Fixed** | `integration/customer.routes.test.js` |
-| Medium | BUG-055 | ~~The customer's due limit is never enforced by the API~~ **Fixed** | `integration/customer.routes.test.js` |
-| Medium | BUG-056 | ~~An account's balance can be edited directly~~ **Fixed** | `integration/finance.routes.test.js` |
-| Medium | BUG-057 | ~~Manual transactions move money before they are saved, and accept negative amounts~~ **Fixed** | `integration/finance.routes.test.js` |
-| Medium | BUG-061 | ~~A re-run SMS job texts recipients a second time~~ **Fixed** | `worker/sms.worker.test.js` |
-| Medium | BUG-062 | ~~Failed emails are never retried~~ **Fixed** | `worker/email.worker.test.js` |
-| Medium | BUG-064 | ~~A deactivated permission still grants access~~ **Fixed** | `middleware/permissions.test.js` |
-| Low | BUG-003 | ~~Deleting an unknown merchant answers 500~~ **Fixed** | `contract/routeMatrix.test.js` |
-| Low | BUG-005 | ~~`validate()` calls `next()` twice on invalid input~~ **Fixed** | `middleware/requestPipeline.test.js` |
-| Low | BUG-013 | ~~Creating a sale with short stock answers 500~~ **Fixed** | `integration/sales.routes.test.js` |
-| Low | BUG-016 | ~~Product search for the sale form answers 500 for a bad `limit`~~ **Fixed** | `integration/sales.routes.test.js` |
-| Low | BUG-028 | ~~Purchase search puts the raw query into `$regex`~~ **Fixed** | `integration/purchase.routes.test.js` |
-| Low | BUG-029 | ~~Editing a purchase without `allproduct` answers 500~~ **Fixed** | `integration/purchase.routes.test.js` |
-| Low | BUG-034 | ~~Uploading a file that is not an image answers 500~~ **Fixed** | `integration/product.routes.test.js` |
-| Low | BUG-037 | ~~Unknown product, variant or product image answers 200~~ **Fixed** | `integration/product.routes.test.js` |
-| Low | BUG-039 | ~~Variant create accepts sales counters from the client~~ **Fixed** | `integration/product.routes.test.js` |
-| Low | BUG-040 | ~~Coupon create/update accept `usedCount` from the client~~ **Fixed** | `integration/commerce.routes.test.js` |
-| Low | BUG-051 | ~~Customer search puts the raw query into `$regex`~~ **Fixed** | `integration/customer.routes.test.js` |
-| Low | BUG-059 | ~~The money-transfer date is dropped~~ **Fixed** | `integration/finance.routes.test.js` |
-| Low | BUG-060 | ~~Audit jobs are not idempotent~~ **Fixed** | `worker/audit.worker.test.js` |
-| Low | BUG-063 | ~~An unset NODE_ENV returns stack traces to clients~~ **Fixed** | `middleware/errorHandler.test.js` |
-| Low | BUG-066 | ~~Cache namespace version can move backwards~~ **Fixed** | `unit/cacheAndCost.test.js` |
-| Low | BUG-074 | The IPN success answer swaps message and data | `integration/commerce.routes.test.js` |
-| Low | BUG-075 | ~~Internal errors answer in a different envelope~~ **Fixed** | `contract/envelope.test.js` |
+| Severity | Id      | Summary                                                                                          | Test                                     |
+| -------- | ------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| Critical | BUG-012 | ~~Admin password change stores the password in plain text~~ **Fixed**                            | `integration/auth.routes.test.js`        |
+| Critical | BUG-018 | ~~A sales return can take back more units than were sold~~ **Fixed**                             | `integration/salesReturn.routes.test.js` |
+| Critical | BUG-019 | ~~A product that is not on the sale is refunded at the client's price~~ **Fixed**                | `integration/salesReturn.routes.test.js` |
+| Critical | BUG-046 | ~~Marking an order "Delivered" puts its stock back~~ **Fixed**                                   | `integration/commerce.routes.test.js`    |
+| Critical | BUG-065 | ~~Prototype pollution through bracketed form-field names~~ **Fixed**                             | `unit/utils.test.js`                     |
+| High     | BUG-008 | ~~Delete-user and the permission endpoints return the password hash~~ **Fixed**                  | `integration/auth.routes.test.js`        |
+| High     | BUG-009 | ~~`POST /auth/add-user` lets a user manager grant any permission~~ **Fixed**                     | `integration/auth.routes.test.js`        |
+| High     | BUG-010 | ~~Login by email fails when another account has no phone~~ **Fixed**                             | `integration/auth.routes.test.js`        |
+| High     | BUG-011 | ~~Login accepts query operators in email/phone~~ **Fixed**                                       | `integration/auth.routes.test.js`        |
+| High     | BUG-014 | ~~A sale overwrites the customer's due with the client's `balance`~~ **Fixed**                   | `integration/sales.routes.test.js`       |
+| High     | BUG-020 | ~~A return against a pending/draft sale adds stock that never left~~ **Fixed**                   | `integration/salesReturn.routes.test.js` |
+| High     | BUG-021 | ~~A sales-return refund never leaves the refund account~~ **Fixed**                              | `integration/salesReturn.routes.test.js` |
+| High     | BUG-024 | ~~Editing a sales return always fails with 500~~ **Fixed**                                       | `integration/salesReturn.routes.test.js` |
+| High     | BUG-025 | ~~Concurrent purchases / returns fail with 500 on write conflicts~~ **Fixed**                    | `integration/purchase.routes.test.js`    |
+| High     | BUG-026 | ~~A purchase quantity sent as a string corrupts stock~~ **Fixed**                                | `integration/purchase.routes.test.js`    |
+| High     | BUG-033 | ~~Parallel stock adjustments lose updates~~ **Fixed**                                            | `integration/stockAdjust.routes.test.js` |
+| High     | BUG-035 | ~~Public product endpoints publish every product's cost price~~ **Fixed**                        | `integration/product.routes.test.js`     |
+| High     | BUG-043 | ~~A checkout that sells out half-way loses stock~~ **Fixed**                                     | `integration/commerce.routes.test.js`    |
+| High     | BUG-044 | ~~A coupon's usage limit is not enforced under concurrency~~ **Fixed**                           | `integration/commerce.routes.test.js`    |
+| High     | BUG-045 | Staff "create order" always fails                                                                | `integration/commerce.routes.test.js`    |
+| High     | BUG-047 | Order status changes have no transition rules                                                    | `integration/commerce.routes.test.js`    |
+| High     | BUG-048 | SSLCommerz IPN never checks the paid amount                                                      | `integration/commerce.routes.test.js`    |
+| High     | BUG-052 | ~~Deleting a customer payment does not restore the due~~ **Fixed**                               | `integration/customer.routes.test.js`    |
+| High     | BUG-058 | ~~A money transfer never moves money~~ **Fixed**                                                 | `integration/finance.routes.test.js`     |
+| High     | BUG-067 | ~~A new sale may carry "return" lines that add stock~~ **Fixed**                                 | `integration/salesIntegrity.test.js`     |
+| High     | BUG-068 | ~~Editing a sale after a return moves stock by twice the quantity~~ **Fixed**                    | `integration/salesIntegrity.test.js`     |
+| High     | BUG-069 | ~~Sale edits are mass-assigned (`$set: req.body`)~~ **Fixed**                                    | `integration/salesIntegrity.test.js`     |
+| High     | BUG-070 | ~~Changing the advance used on a sale is never applied, but deleting credits it back~~ **Fixed** | `integration/salesIntegrity.test.js`     |
+| High     | BUG-071 | ~~A signed-in shopper sees cost prices on the catalogue~~ **Fixed**                              | `integration/salesIntegrity.test.js`     |
+| High     | BUG-072 | ~~Supplier payments: not transactional, and delete keeps the due cut~~ **Fixed**                 | `integration/salesIntegrity.test.js`     |
+| High     | BUG-073 | Every Steadfast booking fails after Steadfast accepts it                                         | `integration/courier.test.js`            |
+| Medium   | BUG-001 | ~~Joi validation errors answer 500 instead of 400~~ **Fixed**                                    | `contract/routeMatrix.test.js`           |
+| Medium   | BUG-002 | ~~Department/section create: `customError` arguments swapped~~ **Fixed**                         | `contract/routeMatrix.test.js`           |
+| Medium   | BUG-004 | ~~Pathao city/zone/area lookups use hard-coded sandbox credentials~~ **Fixed**                   | `integration/courier.test.js`            |
+| Medium   | BUG-006 | ~~Changing your password leaves existing sessions valid~~ **Fixed**                              | `integration/auth.routes.test.js`        |
+| Medium   | BUG-007 | ~~User list and lookup expose reset and verification tokens~~ **Fixed**                          | `integration/auth.routes.test.js`        |
+| Medium   | BUG-017 | ~~Sale-form product search cannot find a product by one word of its name~~ **Fixed**             | `integration/sales.routes.test.js`       |
+| Medium   | BUG-022 | ~~Deleting a sales return can drive stock negative~~ **Fixed**                                   | `integration/salesReturn.routes.test.js` |
+| Medium   | BUG-023 | ~~"One return per invoice" has no unique index behind it~~ **Fixed**                             | `integration/salesReturn.routes.test.js` |
+| Medium   | BUG-027 | ~~The supplier's due grows by the client's `dueamount`~~ **Fixed**                               | `integration/purchase.routes.test.js`    |
+| Medium   | BUG-030 | ~~Deleting or editing a purchase can drive stock negative~~ **Fixed**                            | `integration/purchase.routes.test.js`    |
+| Medium   | BUG-031 | ~~A failed stock adjustment still leaves an adjustment record~~ **Fixed**                        | `integration/stockAdjust.routes.test.js` |
+| Medium   | BUG-032 | ~~Stock adjustment quantities are not validated~~ **Fixed**                                      | `integration/stockAdjust.routes.test.js` |
+| Medium   | BUG-036 | ~~Deactivated products stay in the storefront's main listing~~ **Fixed**                         | `integration/product.routes.test.js`     |
+| Medium   | BUG-038 | ~~Deleting a product leaves its variants behind~~ **Fixed**                                      | `integration/product.routes.test.js`     |
+| Medium   | BUG-041 | Cart quantities sent as strings are concatenated                                                 | `integration/commerce.routes.test.js`    |
+| Medium   | BUG-042 | Shoppers cannot merge their cart or use the wishlist                                             | `integration/commerce.routes.test.js`    |
+| Medium   | BUG-049 | Payment fail/cancel callbacks overwrite paid orders; statuses outside the enum                   | `integration/commerce.routes.test.js`    |
+| Medium   | BUG-050 | Profit double-counts returned units when a product is on two lines                               | `integration/profitRules.test.js`        |
+| Medium   | BUG-053 | ~~Editing a customer payment always edits that customer's first payment~~ **Fixed**              | `integration/customer.routes.test.js`    |
+| Medium   | BUG-054 | ~~A sale only sees the customer's first advance payment~~ **Fixed**                              | `integration/customer.routes.test.js`    |
+| Medium   | BUG-055 | ~~The customer's due limit is never enforced by the API~~ **Fixed**                              | `integration/customer.routes.test.js`    |
+| Medium   | BUG-056 | ~~An account's balance can be edited directly~~ **Fixed**                                        | `integration/finance.routes.test.js`     |
+| Medium   | BUG-057 | ~~Manual transactions move money before they are saved, and accept negative amounts~~ **Fixed**  | `integration/finance.routes.test.js`     |
+| Medium   | BUG-061 | ~~A re-run SMS job texts recipients a second time~~ **Fixed**                                    | `worker/sms.worker.test.js`              |
+| Medium   | BUG-062 | ~~Failed emails are never retried~~ **Fixed**                                                    | `worker/email.worker.test.js`            |
+| Medium   | BUG-064 | ~~A deactivated permission still grants access~~ **Fixed**                                       | `middleware/permissions.test.js`         |
+| Low      | BUG-003 | ~~Deleting an unknown merchant answers 500~~ **Fixed**                                           | `contract/routeMatrix.test.js`           |
+| Low      | BUG-005 | ~~`validate()` calls `next()` twice on invalid input~~ **Fixed**                                 | `middleware/requestPipeline.test.js`     |
+| Low      | BUG-013 | ~~Creating a sale with short stock answers 500~~ **Fixed**                                       | `integration/sales.routes.test.js`       |
+| Low      | BUG-016 | ~~Product search for the sale form answers 500 for a bad `limit`~~ **Fixed**                     | `integration/sales.routes.test.js`       |
+| Low      | BUG-028 | ~~Purchase search puts the raw query into `$regex`~~ **Fixed**                                   | `integration/purchase.routes.test.js`    |
+| Low      | BUG-029 | ~~Editing a purchase without `allproduct` answers 500~~ **Fixed**                                | `integration/purchase.routes.test.js`    |
+| Low      | BUG-034 | ~~Uploading a file that is not an image answers 500~~ **Fixed**                                  | `integration/product.routes.test.js`     |
+| Low      | BUG-037 | ~~Unknown product, variant or product image answers 200~~ **Fixed**                              | `integration/product.routes.test.js`     |
+| Low      | BUG-039 | ~~Variant create accepts sales counters from the client~~ **Fixed**                              | `integration/product.routes.test.js`     |
+| Low      | BUG-040 | ~~Coupon create/update accept `usedCount` from the client~~ **Fixed**                            | `integration/commerce.routes.test.js`    |
+| Low      | BUG-051 | ~~Customer search puts the raw query into `$regex`~~ **Fixed**                                   | `integration/customer.routes.test.js`    |
+| Low      | BUG-059 | ~~The money-transfer date is dropped~~ **Fixed**                                                 | `integration/finance.routes.test.js`     |
+| Low      | BUG-060 | ~~Audit jobs are not idempotent~~ **Fixed**                                                      | `worker/audit.worker.test.js`            |
+| Low      | BUG-063 | ~~An unset NODE_ENV returns stack traces to clients~~ **Fixed**                                  | `middleware/errorHandler.test.js`        |
+| Low      | BUG-066 | ~~Cache namespace version can move backwards~~ **Fixed**                                         | `unit/cacheAndCost.test.js`              |
+| Low      | BUG-074 | The IPN success answer swaps message and data                                                    | `integration/commerce.routes.test.js`    |
+| Low      | BUG-075 | ~~Internal errors answer in a different envelope~~ **Fixed**                                     | `contract/envelope.test.js`              |
 
 ## Details
 
@@ -132,7 +132,7 @@ error code on an edge case).
 
 - **Where:** `src/service/couriers/courierCityZone.js` (constructor), used by
   `GET /courier/cities`, `/courier/zone/:cityId`, `/courier/areas/:zoneId`.
-- **Problem:** the base URL is Ptomathao's *sandbox* and the client id/secret/user/
+- **Problem:** the base URL is Ptomathao's _sandbox_ and the client id/secret/user/
   password are literals in the source. The tenant's own Pathao settings are
   never read, so a live store gets sandbox cities/zones, and any upstream
   error (including a 4xx for an unknown city) is answered 500.
@@ -1035,15 +1035,15 @@ until the Critical bugs are fixed.
 
 Do the steps in this order; later steps depend on earlier ones.
 
-| Step | What to do | Fixes |
-|---|---|---|
-| 1 | Add the missing indexes (only model-file changes, safe and quick) | P2-002, P2-006, P2-015, P2-017, P2-018, P2-019, P2-022, P2-023, P2-025 |
-| 2 | Put a limit on every list and switch to keyset paging | P2-005, P2-006, P2-010, P2-012, P2-013, P2-020, P2-021, P2-024, P2-028 |
-| 3 | Remove the Variant `post('find')` hook | P2-007 |
-| 4 | Reorder the report pipelines: filter by date first, page, then join | P2-001, P2-002, P2-008, P2-009, P2-014, P2-015, P2-016, P2-017 |
-| 5 | Fix the product searches | P2-004, P2-011 |
-| 6 | Add summary tables for profit and the dashboard | P2-001, P2-003, P2-014, P2-016 |
-| 7 | Cache, audit purge, index clean-up | P2-026, P2-027, P2-029 |
+| Step | What to do                                                          | Fixes                                                                  |
+| ---- | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1    | Add the missing indexes (only model-file changes, safe and quick)   | P2-002, P2-006, P2-015, P2-017, P2-018, P2-019, P2-022, P2-023, P2-025 |
+| 2    | Put a limit on every list and switch to keyset paging               | P2-005, P2-006, P2-010, P2-012, P2-013, P2-020, P2-021, P2-024, P2-028 |
+| 3    | Remove the Variant `post('find')` hook                              | P2-007                                                                 |
+| 4    | Reorder the report pipelines: filter by date first, page, then join | P2-001, P2-002, P2-008, P2-009, P2-014, P2-015, P2-016, P2-017         |
+| 5    | Fix the product searches                                            | P2-004, P2-011                                                         |
+| 6    | Add summary tables for profit and the dashboard                     | P2-001, P2-003, P2-014, P2-016                                         |
+| 7    | Cache, audit purge, index clean-up                                  | P2-026, P2-027, P2-029                                                 |
 
 ## How to check a fix
 
@@ -1057,37 +1057,37 @@ Do the steps in this order; later steps depend on earlier ones.
 
 ## Summary
 
-| Severity | Id | Summary | Now | After the tested fix |
-|---|---|---|---|---|
-| Critical | BUG-P2-001 | Profit reports take over a minute | >60 s | 30 days: 22.7 s; a year still >60 s (needs step 6) |
-| Critical | BUG-P2-002 | ~~Sales has no date, customer or salesman index~~ **Fixed** | >60 s | 30 days: 0.4 s |
-| Critical | BUG-P2-003 | Dashboard overview takes 135 s | 135 s | 0.001–0.35 s |
-| Critical | BUG-P2-004 | ~~POS product search never returns~~ **Fixed** | >90 s | not proven yet |
-| Critical | BUG-P2-005 | ~~`get-sales` without a page crashes the API~~ **Fixed** | crash | 4 ms |
-| Critical | BUG-P2-006 | ~~Paged sales list re-sorts every sale on each page~~ **Fixed** | 4–30 s | 4 ms |
-| Critical | BUG-P2-007 | ~~Variant hook loads whole purchases on every variant read~~ **Fixed** | 0.3–2.7 s per call | 1–525 ms |
-| Critical | BUG-P2-008 | ~~Cash ledger is read whole for dropdowns and reports~~ **Fixed** | >60 s, crash | 0.4–218 ms; cash-ledger still 18 s |
-| Critical | BUG-P2-009 | ~~Customer due and balance reports join every customer~~ **Fixed** | >60 s | 24 s (needs more work) |
-| Critical | BUG-P2-010 | List endpoints return whole collections | 4–51 s, 11 crash | 1–6 ms |
-| Critical | BUG-P2-011 | ~~Public product search joins the whole catalogue first~~ **Fixed** | 19.8 s | not tried |
-| Critical | BUG-P2-012 | Courier-return list returns every product | 10 s, crash | not tried |
-| Critical | BUG-P2-013 | Account transaction history has no limit | 0.9 s → up to 10 s | not tried |
-| High | BUG-P2-014 | Stock reports add up the whole catalogue | >60 s | not tried |
-| High | BUG-P2-015 | Product ledger unwinds every sale line | 11 s | 3.5 s |
-| High | BUG-P2-016 | Push-sales report pulls 375k lines into Node | 51 s | 30 days: 0.6 s |
-| High | BUG-P2-017 | Purchase and supplier reports read every purchase | >60 s | 0.4 s |
-| High | BUG-P2-018 | Stock-adjust and sales-return reports have no index | 41 s | 0.04–1.3 s |
-| High | BUG-P2-019 | Dashboard customer widgets: 1,145 database calls | 42 s | 28 ms |
-| High | BUG-P2-020 | Every list page counts the whole collection | 0.5–0.8 s | 1 ms |
-| High | BUG-P2-021 | Deep product-list pages use `skip` | 0.3 s | 3 ms |
-| High | BUG-P2-022 | Variant duplicate check reads all variants | 0.6 s per save | not tried |
-| High | BUG-P2-023 | Track-order has no `invoiceId` index | 0.3 s | not tried |
-| High | BUG-P2-024 | Due-SMS "send all" loads every customer at once | 1.6 s | not tried |
-| Medium | BUG-P2-025 | Orders have no date or status index | 0.4–0.8 s | 0.2–0.5 s |
-| Medium | BUG-P2-026 | Audit purge deletes a million rows in one go | 2.6 s, blocks | 12 ms per batch |
-| Medium | BUG-P2-027 | Every sale empties the caches | hit rate 0–24 % | not tried |
-| Medium | BUG-P2-028 | Three smaller lists have no paging | 0.08–1.4 s | not tried |
-| Low | BUG-P2-029 | Duplicate and unused indexes | 59 MB wasted | — |
+| Severity | Id         | Summary                                                                | Now                | After the tested fix                               |
+| -------- | ---------- | ---------------------------------------------------------------------- | ------------------ | -------------------------------------------------- |
+| Critical | BUG-P2-001 | Profit reports take over a minute                                      | >60 s              | 30 days: 22.7 s; a year still >60 s (needs step 6) |
+| Critical | BUG-P2-002 | ~~Sales has no date, customer or salesman index~~ **Fixed**            | >60 s              | 30 days: 0.4 s                                     |
+| Critical | BUG-P2-003 | Dashboard overview takes 135 s                                         | 135 s              | 0.001–0.35 s                                       |
+| Critical | BUG-P2-004 | ~~POS product search never returns~~ **Fixed**                         | >90 s              | not proven yet                                     |
+| Critical | BUG-P2-005 | ~~`get-sales` without a page crashes the API~~ **Fixed**               | crash              | 4 ms                                               |
+| Critical | BUG-P2-006 | ~~Paged sales list re-sorts every sale on each page~~ **Fixed**        | 4–30 s             | 4 ms                                               |
+| Critical | BUG-P2-007 | ~~Variant hook loads whole purchases on every variant read~~ **Fixed** | 0.3–2.7 s per call | 1–525 ms                                           |
+| Critical | BUG-P2-008 | ~~Cash ledger is read whole for dropdowns and reports~~ **Fixed**      | >60 s, crash       | 0.4–218 ms; cash-ledger still 18 s                 |
+| Critical | BUG-P2-009 | ~~Customer due and balance reports join every customer~~ **Fixed**     | >60 s              | 24 s (needs more work)                             |
+| Critical | BUG-P2-010 | List endpoints return whole collections                                | 4–51 s, 11 crash   | 1–6 ms                                             |
+| Critical | BUG-P2-011 | ~~Public product search joins the whole catalogue first~~ **Fixed**    | 19.8 s             | not tried                                          |
+| Critical | BUG-P2-012 | Courier-return list returns every product                              | 10 s, crash        | not tried                                          |
+| Critical | BUG-P2-013 | Account transaction history has no limit                               | 0.9 s → up to 10 s | not tried                                          |
+| High     | BUG-P2-014 | Stock reports add up the whole catalogue                               | >60 s              | not tried                                          |
+| High     | BUG-P2-015 | Product ledger unwinds every sale line                                 | 11 s               | 3.5 s                                              |
+| High     | BUG-P2-016 | Push-sales report pulls 375k lines into Node                           | 51 s               | 30 days: 0.6 s                                     |
+| High     | BUG-P2-017 | Purchase and supplier reports read every purchase                      | >60 s              | 0.4 s                                              |
+| High     | BUG-P2-018 | Stock-adjust and sales-return reports have no index                    | 41 s               | 0.04–1.3 s                                         |
+| High     | BUG-P2-019 | Dashboard customer widgets: 1,145 database calls                       | 42 s               | 28 ms                                              |
+| High     | BUG-P2-020 | Every list page counts the whole collection                            | 0.5–0.8 s          | 1 ms                                               |
+| High     | BUG-P2-021 | Deep product-list pages use `skip`                                     | 0.3 s              | 3 ms                                               |
+| High     | BUG-P2-022 | Variant duplicate check reads all variants                             | 0.6 s per save     | not tried                                          |
+| High     | BUG-P2-023 | Track-order has no `invoiceId` index                                   | 0.3 s              | not tried                                          |
+| High     | BUG-P2-024 | Due-SMS "send all" loads every customer at once                        | 1.6 s              | not tried                                          |
+| Medium   | BUG-P2-025 | Orders have no date or status index                                    | 0.4–0.8 s          | 0.2–0.5 s                                          |
+| Medium   | BUG-P2-026 | Audit purge deletes a million rows in one go                           | 2.6 s, blocks      | 12 ms per batch                                    |
+| Medium   | BUG-P2-027 | Every sale empties the caches                                          | hit rate 0–24 %    | not tried                                          |
+| Medium   | BUG-P2-028 | Three smaller lists have no paging                                     | 0.08–1.4 s         | not tried                                          |
+| Low      | BUG-P2-029 | Duplicate and unused indexes                                           | 59 MB wasted       | —                                                  |
 
 ## Phase 2 details
 
@@ -1124,8 +1124,8 @@ Do the steps in this order; later steps depend on earlier ones.
   customer or salesman reads all 1.1M sales. About 40 queries are hit.
 - **Where:** `src/models/sales.model.js` (add the indexes); the slowest query
   is `src/controller/report.controller.js:2867` (Sales Invoice report).
-- **Affects:** sales-invoice, sales-product, sales-summary, customer-sales-*,
-  salesman-sales-* reports, the dashboard sales widgets, and the customer and
+- **Affects:** sales-invoice, sales-product, sales-summary, customer-sales-_,
+  salesman-sales-_ reports, the dashboard sales widgets, and the customer and
   salesman pickers.
 - **How to fix:**
   1. In `sales.model.js` add:
@@ -1228,7 +1228,7 @@ Do the steps in this order; later steps depend on earlier ones.
 - **How to fix:**
   1. Add `salesSchema.index({ tenantId: 1, createdAt: -1, _id: -1 })` (BUG-P2-002).
   2. Use keyset paging: `{ $or: [{ createdAt: { $lt: lastCreatedAt } },
-     { createdAt: lastCreatedAt, _id: { $lt: lastId } }] }`,
+{ createdAt: lastCreatedAt, _id: { $lt: lastId } }] }`,
      `sort({ createdAt: -1, _id: -1 })`, `limit(n)`.
   3. Drop the exact total count per page: fetch `limit + 1` rows and return
      `hasNextPage`.

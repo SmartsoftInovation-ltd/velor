@@ -18,7 +18,12 @@ async function sendSMS(numbers, message) {
       number: numberList,
       message,
     });
-    console.log("✅ SMS Sent Successfully:", data);
+    // BulkSMSBD answers HTTP 200 even when it rejects the message; 202 is "accepted"
+    if (data?.response_code !== undefined && Number(data.response_code) !== 202) {
+      console.error("❌ SMS rejected by provider:", data);
+    } else {
+      console.log("✅ SMS Sent Successfully:", data);
+    }
     return data;
   } catch (error) {
     console.error("❌ Error sending SMS:", error.response?.data || error.message);

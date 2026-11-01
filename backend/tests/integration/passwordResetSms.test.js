@@ -12,6 +12,7 @@ const { seedTenantRoles } = require("../../src/tenancy/roleTemplate");
 const Tenant = require("../../src/models/platform/tenant.model");
 const User = require("../../src/models/user.model");
 const service = require("../../src/settings/settings.service");
+const { testRedis } = require("../helpers/redis");
 
 describe("password reset by SMS code", () => {
   let app;
@@ -70,8 +71,45 @@ describe("password reset by SMS code", () => {
     await forgot({ phone: PHONE }).expect(200);
     expect(sendSMS).toHaveBeenCalledTimes(2);
 
+    // Only a hash of the code is kept, in Redis, and it expires in 3 minutes
     const user = await runForTenant(tenant._id, () => User.findOne({ phone: PHONE }).lean());
-    expect(user.resetPasswordToken).not.toContain(sentCode());
+    const key = `pwreset:${tenant._id}:${user._id}`;
+    expect(await testRedis().get(key)).not.toContain(sentCode());
+    expect(await testRedis().ttl(key)).toBeGreaterThan(170);
+    expect(await testRedis().ttl(key)).toBeLessThanOrEqual(180);
+    expect(user.resetPasswordToken).toBeUndefined();
+  });
+
+  it("tells the form the code lasts 3 minutes, for known and unknown accounts alike", async () => {
+    expect((await forgot({ phone: PHONE }).expect(200)).body.data).toEqual({ expiresIn: 180 });
+    expect((await forgot({ phone: "01799999999" }).expect(200)).body.data).toEqual({ expiresIn: 180 });
+    expect(sendSMS.mock.calls[0][1]).toMatch(/expires in 3 minutes/);
+  });
+
+  it("finds an account saved with the 880 prefix", async () => {
+    await runForTenant(tenant._id, () => User.updateOne({ phone: PHONE }, { $set: { phone: "+8801711000000" } }));
+    await forgot({ phone: PHONE }).expect(200);
+    expect(sendSMS).toHaveBeenCalledTimes(1);
+    await reset({ phone: PHONE, otp: sentCode(), newPassword: "New-Pass-1" }).expect(200);
+  });
+
+  // BulkSMSBD answers HTTP 200 with its own error code when it rejects a message
+  it("reports a rejected SMS instead of claiming it was sent, and keeps no code", async () => {
+    sendSMS.mockResolvedValue({ response_code: 1032, error_message: "IP not whitelisted" });
+    const res = await forgot({ phone: PHONE }).expect(503);
+    expect(res.body.code).toBe("SMS_SEND_FAILED");
+    expect(await testRedis().keys(`pwreset:${tenant._id}:*`)).toEqual([]);
+  });
+
+  it("a resent code replaces the previous one", async () => {
+    await forgot({ phone: PHONE }).expect(200);
+    const first = sentCode();
+    await forgot({ phone: PHONE }).expect(200);
+    const second = sentCode();
+    if (first !== second) {
+      await reset({ phone: PHONE, otp: first, newPassword: "New-Pass-1" }).expect(400);
+    }
+    await reset({ phone: PHONE, otp: second, newPassword: "New-Pass-1" }).expect(200);
   });
 
   it("resets the password with the code and signs out old sessions", async () => {
@@ -106,7 +144,9 @@ describe("password reset by SMS code", () => {
 
   it("rejects an expired code", async () => {
     await forgot({ phone: PHONE }).expect(200);
-    await runForTenant(tenant._id, () => User.updateOne({ phone: PHONE }, { $set: { resetPasswordExpires: new Date(Date.now() - 1000) } }));
+    // What Redis does when the 3 minutes run out
+    const user = await runForTenant(tenant._id, () => User.findOne({ phone: PHONE }).lean());
+    await testRedis().del(`pwreset:${tenant._id}:${user._id}`);
     await reset({ phone: PHONE, otp: sentCode(), newPassword: "New-Pass-1" }).expect(400);
   });
 
