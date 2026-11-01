@@ -304,6 +304,8 @@ export interface DashboardInventorySummary {
   inStock: number;
   stockOut: number;
   balance: number;
+  // Products and variants at or below their Stock Amount
+  lowStockItems: number;
 }
 
 export interface InventorySummaryData {

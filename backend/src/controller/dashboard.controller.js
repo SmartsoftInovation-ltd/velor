@@ -1758,6 +1758,7 @@ exports.getInventorySummary = asynchandeler(async (req, res) => {
     variantInitialAgg,
     purchaseQtyAgg,
     stockAdjustAddAgg,
+    lowStockAgg,
   ] = await Promise.all([
     productModel.aggregate([
       { $group: { _id: null, stock: { $sum: "$stock" } } },
@@ -1795,6 +1796,19 @@ exports.getInventorySummary = asynchandeler(async (req, res) => {
     stockAdjustModel.aggregate([
       { $group: { _id: null, qty: { $sum: "$increaseQuantity" } } },
     ]),
+
+    // Low stock right now (not range-bound): every product or variant at or
+    // below its own Stock Amount, the same rows as the dashboard's low-stock
+    // list.
+    productModel.aggregate([
+      ...buildLowStockStages({ isActive: { $ne: false } }),
+      {
+        $group: {
+          _id: null,
+          items: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
   const p = productAgg[0] || { stock: 0 };
@@ -1818,6 +1832,7 @@ exports.getInventorySummary = asynchandeler(async (req, res) => {
       inStock: totalStock,
       stockOut,
       balance: totalStock - stockOut,
+      lowStockItems: lowStockAgg[0]?.items || 0,
     },
   };
 

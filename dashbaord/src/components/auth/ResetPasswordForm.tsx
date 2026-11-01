@@ -15,6 +15,12 @@ type Identifier = { email: string } | { phone: string };
 const apiMessage = (error: unknown, fallback: string) =>
   axios.isAxiosError(error) && error.response?.data?.message ? error.response.data.message : fallback;
 
+const apiCode = (error: unknown): string | undefined =>
+  axios.isAxiosError(error) ? error.response?.data?.code : undefined;
+
+// Errors the user fixes in the email/phone field are shown under it, not in a toast
+const IDENTIFIER_ERRORS = new Set(["ACCOUNT_NOT_FOUND", "ACCOUNT_HAS_NO_PHONE"]);
+
 const FieldError = ({ msg }: { msg?: string }) => (msg ? <p className="mt-1.5 text-xs text-error-500">{msg}</p> : null);
 
 const Label = ({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) => (
@@ -90,7 +96,9 @@ const RequestCode = ({ initialWorkspace, onSent }: {
     try {
       onSent(slug, who, await requestCode(slug, who));
     } catch (error) {
-      toast.error(apiMessage(error, "Could not send the reset code."));
+      const message = apiMessage(error, "Could not send the reset code.");
+      if (IDENTIFIER_ERRORS.has(apiCode(error) ?? "")) setErrors({ identifier: message });
+      else toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +213,7 @@ const ChooseNewPassword = ({ workspace, who, initialExpiresAt }: {
   return (
     <form onSubmit={submit} noValidate className="mt-7 space-y-5">
       <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-        If that account has a phone number, we sent a 6-digit code to it by SMS. The code expires in 3 minutes.
+        We sent a 6-digit code by SMS to the phone number on this account. The code expires in 3 minutes.
       </p>
       <p
         aria-live="polite"

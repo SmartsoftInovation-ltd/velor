@@ -121,4 +121,19 @@ describe("ResetPasswordForm", () => {
       vi.useRealTimers();
     }
   });
+
+  it("shows under the field when no account matches, so the user knows what to fix", async () => {
+    post.mockRejectedValue({
+      isAxiosError: true,
+      response: { data: { code: "ACCOUNT_NOT_FOUND", message: "No account in this workspace has that email or phone number." } },
+    });
+    renderAt("/reset-password?workspace=pizzashop");
+
+    await userEvent.type(screen.getByLabelText(/email or phone/i), "01799999999");
+    await userEvent.click(screen.getByRole("button", { name: /send code by sms/i }));
+
+    expect(await screen.findByText(/no account in this workspace/i)).toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/sms code/i)).not.toBeInTheDocument();
+  });
 });

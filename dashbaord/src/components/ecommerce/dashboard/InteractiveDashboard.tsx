@@ -514,7 +514,7 @@ export default function InteractiveDashboard() {
                 stats={[
                   { label: "In Stock", value: formatNumber(inventorySummary?.inStock ?? 0), color: "success" },
                   { label: "Stock Out", value: formatNumber(inventorySummary?.stockOut ?? 0), color: "error" },
-                  { label: "Balance", value: formatNumber(inventorySummary?.balance ?? 0) },
+                  { label: "Low Stock", value: formatNumber(inventorySummary?.lowStockItems ?? 0), color: "warning" },
                 ]}
                 progressSegments={[
                   { label: "In Stock", value: inventorySummary?.inStock ?? 0, color: "success" },

@@ -370,7 +370,7 @@ exports.verifyEmail = asynchandeler(async (req, res) => {
 // it expires; nothing is written to the user document.
 const RESET_CODE_TTL_SECONDS = 3 * 60;
 const RESET_CODE_MAX_ATTEMPTS = 5;
-const RESET_CODE_SENT_MESSAGE = "If that account has a phone number, a reset code has been sent by SMS";
+const RESET_CODE_SENT_MESSAGE = "A reset code has been sent by SMS to the phone number on the account";
 
 // Only a keyed hash of the code is stored, bound to the account
 const hashResetCode = (user, code) =>
@@ -420,11 +420,24 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
   // Same response whether or not the account exists — otherwise this endpoint
   // reports which accounts are registered.
   const sent = { expiresIn: RESET_CODE_TTL_SECONDS };
-  if (!user?.phone) {
-    console.warn(
-      `[forgot-password] store=${req.workspace} no SMS sent: ${user ? `user ${user._id} has no phone` : "no account matches that email or phone"}`,
+  // Staff need to know what to fix, so a missing account or phone is reported
+  // rather than answered with a generic "sent". The reset limiter (5 an hour
+  // per IP and account) keeps this from being used to list accounts.
+  if (!user) {
+    console.warn(`[forgot-password] store=${req.workspace} no SMS sent: no account matches that email or phone`);
+    throw new customError(
+      "No account in this workspace has that email or phone number. Check the workspace and the number, or use the one you sign in with.",
+      statusCodes.NOT_FOUND,
+      "ACCOUNT_NOT_FOUND",
     );
-    return apiResponse.sendSuccess(res, statusCodes.OK, RESET_CODE_SENT_MESSAGE, sent);
+  }
+  if (!user.phone) {
+    console.warn(`[forgot-password] store=${req.workspace} no SMS sent: user ${user._id} has no phone`);
+    throw new customError(
+      "This account has no phone number, so a code cannot be sent by SMS. Ask the store owner to add your phone number.",
+      statusCodes.BAD_REQUEST,
+      "ACCOUNT_HAS_NO_PHONE",
+    );
   }
 
   // A new code replaces the previous one, and its 3 minutes start again

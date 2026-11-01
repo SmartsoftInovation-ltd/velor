@@ -80,9 +80,8 @@ describe("password reset by SMS code", () => {
     expect(user.resetPasswordToken).toBeUndefined();
   });
 
-  it("tells the form the code lasts 3 minutes, for known and unknown accounts alike", async () => {
+  it("tells the form the code lasts 3 minutes", async () => {
     expect((await forgot({ phone: PHONE }).expect(200)).body.data).toEqual({ expiresIn: 180 });
-    expect((await forgot({ phone: "01799999999" }).expect(200)).body.data).toEqual({ expiresIn: 180 });
     expect(sendSMS.mock.calls[0][1]).toMatch(/expires in 3 minutes/);
   });
 
@@ -125,9 +124,17 @@ describe("password reset by SMS code", () => {
     await reset({ phone: PHONE, otp: sentCode(), newPassword: "Other-Pass-1" }).expect(400);
   });
 
-  it("answers the same for unknown accounts and sends nothing", async () => {
-    const res = await forgot({ email: "nobody@pizza.com" }).expect(200);
-    expect(res.body.message).toMatch(/if that account has a phone number/i);
+  it("tells the user when no account matches, and sends nothing", async () => {
+    const res = await forgot({ email: "nobody@pizza.com" }).expect(404);
+    expect(res.body.code).toBe("ACCOUNT_NOT_FOUND");
+    expect(res.body.message).toMatch(/no account in this workspace/i);
+    expect(sendSMS).not.toHaveBeenCalled();
+  });
+
+  it("tells the user when the account has no phone number", async () => {
+    await runForTenant(tenant._id, () => User.updateOne({ phone: PHONE }, { $unset: { phone: 1 } }));
+    const res = await forgot({ email: "rahim@pizza.com" }).expect(400);
+    expect(res.body.code).toBe("ACCOUNT_HAS_NO_PHONE");
     expect(sendSMS).not.toHaveBeenCalled();
   });
 

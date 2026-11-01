@@ -83,4 +83,26 @@ describe("low stock list", () => {
     await product("Empty", { variantType: "multipleVariant", stock: 0 });
     expect(await lowNames()).toEqual([]);
   });
+
+  // Dashboard "Inventory Items" card: how many rows are low
+  it("counts the low rows for the dashboard card", async () => {
+    const { getInventorySummary } = require("../../src/controller/dashboard.controller");
+    await product("Below", { variantType: "singleVariant", stock: 2, alertQuantity: 5 });
+    await product("Oversold", { variantType: "singleVariant", stock: -3, alertQuantity: 5 });
+    await product("Above", { variantType: "singleVariant", stock: 9, alertQuantity: 5 });
+    const shirt = await product("Shirt", { variantType: "multipleVariant", stock: 0 });
+    await variant(shirt, "L", { stockVariant: 3, alertQuantity: 3 });
+    await variant(shirt, "M", { stockVariant: 20, alertQuantity: 3 });
+
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    await runForTenant(tenantId, () =>
+      new Promise((resolve, reject) => {
+        res.json.mockImplementation(resolve);
+        getInventorySummary({ query: { range: "all" } }, res, reject);
+      }),
+    );
+    const { inventory } = res.json.mock.calls[0][0].data;
+    // Below, Oversold and Shirt/L
+    expect(inventory.lowStockItems).toBe(3);
+  });
 });
