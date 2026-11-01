@@ -1481,16 +1481,27 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-between"
         }`}
       >
-        <Link to="/" className="flex items-center gap-2.5">
-          <img
-            src="/images/logo/online-store.gif"
-            alt="Ecompose Master"
-            className="size-8 shrink-0 rounded-lg object-contain"
-          />
-          {(isExpanded || isHovered || isMobileOpen) && (
-            <span className="font-bold text-gray-900 dark:text-white text-base tracking-tight uppercase whitespace-nowrap">
-              Ecompos Master
-            </span>
+        {/* Open sidebar: the 16:5 Ecompos Master banner (animated WebP, ~120 KB,
+            from the 2.1 MB GIF). Collapsed rail: just the animated cart icon. */}
+        <Link to="/" className={isExpanded || isHovered || isMobileOpen ? "block w-full" : "flex items-center"}>
+          {isExpanded || isHovered || isMobileOpen ? (
+            <img
+              src="/images/logo/ecompos-master-banner-16x5.webp"
+              alt="Ecompos Master"
+              width={448}
+              height={140}
+              decoding="async"
+              fetchPriority="high"
+              className="aspect-[16/5] w-full rounded-xl object-cover shadow-sm"
+            />
+          ) : (
+            <img
+              src="/images/logo/ecompos-master.gif"
+              alt="Ecompos Master"
+              width={32}
+              height={32}
+              className="size-8 shrink-0 rounded-lg object-contain"
+            />
           )}
         </Link>
       </div>
