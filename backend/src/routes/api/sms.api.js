@@ -35,7 +35,7 @@ _.route("/order-phone").get(
 // Due SMS routes
 _.route("/due-sms/send-all").post(
   authGuard,
-  authorize("send-bulk-sms", "add"),
+  authorize("due-sms", "add"),
   smsController.sendDueSmsToAllCustomers,
 );
 _.route("/due-sms/logs").get(
@@ -50,7 +50,7 @@ _.route("/due-sms/logs/:logId").get(
 );
 _.route("/due-sms/send/:customerId").post(
   authGuard,
-  authorize("send-sms", "add"),
+  authorize("due-sms", "add"),
   smsController.sendDueSmsToCustomer,
 );
 

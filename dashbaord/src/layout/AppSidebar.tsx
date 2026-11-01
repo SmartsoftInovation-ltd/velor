@@ -609,7 +609,7 @@ const othersItems: NavItem[] = [
       {
         name: "Due SMS",
         path: "/due-sms",
-        module: PERMISSIONS.SEND_SMS,
+        module: PERMISSIONS.DUE_SMS,
         pro: false,
       },
     ],
@@ -648,7 +648,7 @@ const othersItems: NavItem[] = [
       {
         name: "Assign Role Permission",
         path: "/assign-role-permission",
-        module: PERMISSIONS.CREATE_PERMISSION,
+        module: PERMISSIONS.ASSIGN_ROLE,
         pro: false,
       },
       {
@@ -705,14 +705,14 @@ const othersItems: NavItem[] = [
           {
             name: "Add Store Info",
             path: "/add-store-info",
-            module: PERMISSIONS.SITE_INFORMATION,
+            module: PERMISSIONS.STORE_INFORMATION,
             action: "add",
             pro: false,
           },
           {
             name: "Store Info List",
             path: "/store-info-list",
-            module: PERMISSIONS.SITE_INFORMATION,
+            module: PERMISSIONS.STORE_INFORMATION,
             pro: false,
           },
         ],
@@ -888,14 +888,14 @@ const hrManage: NavItem[] = [
       {
         name: "Sales Return",
         path: "/sales-return",
-        module: PERMISSIONS.RETAIL_SALES,
+        module: PERMISSIONS.SALES_RETURN,
         action: "add",
         pro: false,
       },
       {
         name: "Sales Return List",
         path: "/sales-return-list",
-        module: PERMISSIONS.RETAIL_SALES,
+        module: PERMISSIONS.SALES_RETURN,
         pro: false,
       },
       {
@@ -924,7 +924,7 @@ const hrManage: NavItem[] = [
       {
         name: "Draft Order List",
         path: "/draft-order-list",
-        module: PERMISSIONS.SALES_HISTORY,
+        module: PERMISSIONS.DRAFT_ORDER,
         pro: false,
       },
     ],

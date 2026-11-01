@@ -43,9 +43,10 @@ _.route("/create-customer").post(
   validateCustomerCreate,
   customerController.createCustomer,
 );
+// Also read by the Due SMS page, which lists customers and their dues
 _.route("/get-customers").get(
   authGuard,
-  authorize("customer", "view"),
+  authorizeAny(["customer", "view"], ["due-sms", "view"]),
   customerController.getAllCustomers,
 );
 _.route("/update-customer/:customerId").put(

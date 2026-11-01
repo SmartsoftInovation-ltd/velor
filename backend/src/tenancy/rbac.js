@@ -7,7 +7,8 @@ const { statusCodes } = require("../constant/constant");
 // "superadmin" is the pre-multi-tenancy owner role; migration 005 renames it
 const OWNER_ROLE_SLUGS = ["owner", "superadmin"];
 // Permissions that control who can do what: only the owner may shape roles holding them
-const PRIVILEGED_PERMISSION_SLUGS = ["create-user", "create-role"];
+// Permissions that hand out access to others; only the owner may give them to a role
+const PRIVILEGED_PERMISSION_SLUGS = ["create-user", "create-role", "assign-role"];
 
 const forbidden = (message, code) => new customError(message, statusCodes.FORBIDDEN, code);
 

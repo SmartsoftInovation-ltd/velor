@@ -845,7 +845,7 @@ export default function App() {
                 <Route
                   path="/due-sms"
                   element={
-                    <ProtectedRoute module="send-sms" action="view">
+                    <ProtectedRoute module="due-sms" action="view">
                       <FeatureGate feature="sms" label="SMS"><DueSms /></FeatureGate>
                     </ProtectedRoute>
                   }
@@ -877,7 +877,7 @@ export default function App() {
                 <Route path="/user-view/:id" element={<ProtectedRoute module="create-user" action="view"><UserView /></ProtectedRoute>} />
                 <Route path="/user-edit/:id" element={<ProtectedRoute module="create-user" action="edit"><UserEdit /></ProtectedRoute>} />
                 <Route path="/create-user-permission" element={<ProtectedRoute module="create-permission" action="add"><CreateUserPermission /></ProtectedRoute>} />
-                <Route path="/assign-role-permission" element={<ProtectedRoute module="create-permission" action="add"><AssignRolePermission /></ProtectedRoute>} />
+                <Route path="/assign-role-permission" element={<ProtectedRoute module="assign-role" action="view"><AssignRolePermission /></ProtectedRoute>} />
                 <Route path="/audit-log" element={<ProtectedRoute module="audit-log" action="view"><AuditLogList /></ProtectedRoute>} />
 
                 {/* Accounts  */}
@@ -961,7 +961,7 @@ export default function App() {
                 <Route
                   path="/add-store-info"
                   element={
-                    <ProtectedRoute module="site-information" action="add">
+                    <ProtectedRoute module="store-information" action="add">
                       <AddStoreInfo />
                     </ProtectedRoute>
                   }
@@ -969,7 +969,7 @@ export default function App() {
                 <Route
                   path="/store-info-list"
                   element={
-                    <ProtectedRoute module="site-information" action="view">
+                    <ProtectedRoute module="store-information" action="view">
                       <StoreInfoList />
                     </ProtectedRoute>
                   }
@@ -977,7 +977,7 @@ export default function App() {
                 <Route
                   path="/store-info-view/:slug"
                   element={
-                    <ProtectedRoute module="site-information" action="view">
+                    <ProtectedRoute module="store-information" action="view">
                       <StoreInfoView />
                     </ProtectedRoute>
                   }
@@ -985,7 +985,7 @@ export default function App() {
                 <Route
                   path="/update-store-info/:slug"
                   element={
-                    <ProtectedRoute module="site-information" action="edit">
+                    <ProtectedRoute module="store-information" action="edit">
                       <UpdateStoreInfo />
                     </ProtectedRoute>
                   }
@@ -1587,9 +1587,9 @@ export default function App() {
                 <Route path="/sales-challan-print/:invoiceNumber" element={<ProtectedRoute module="sales-history" action="view"><SalesChallanPrint /></ProtectedRoute>} />
                 <Route path="/sales-view/:invoiceNumber" element={<ProtectedRoute module="sales-history" action="view"><SalesView /></ProtectedRoute>} />
                 <Route path="/sales-edit/:invoiceNumber" element={<ProtectedRoute module="sales-history" action="edit"><SalesEdit /></ProtectedRoute>} />
-                <Route path="/sales-return" element={<ProtectedRoute module="retail-sales" action="add"><CreateSalesReturn /></ProtectedRoute>} />
-                <Route path="/sales-return-list" element={<ProtectedRoute module="retail-sales" action="view"><SalesReturnList /></ProtectedRoute>} />
-                <Route path="/sales-return-invoice-print/:id" element={<ProtectedRoute module="retail-sales" action="view"><SalesReturnInvoicePrint /></ProtectedRoute>} />
+                <Route path="/sales-return" element={<ProtectedRoute module="sales-return" action="add"><CreateSalesReturn /></ProtectedRoute>} />
+                <Route path="/sales-return-list" element={<ProtectedRoute module="sales-return" action="view"><SalesReturnList /></ProtectedRoute>} />
+                <Route path="/sales-return-invoice-print/:id" element={<ProtectedRoute module="sales-return" action="view"><SalesReturnInvoicePrint /></ProtectedRoute>} />
                 <Route
                   path="/retail-sale-order"
                   element={<ProtectedRoute module="retail-sale-order" action="add"><CreateRetailSaleOrder /></ProtectedRoute>}
@@ -1619,7 +1619,7 @@ export default function App() {
                 />
                 <Route
                   path="/draft-order-list"
-                  element={<ProtectedRoute module="sales-history" action="view"><DraftOrderList /></ProtectedRoute>}
+                  element={<ProtectedRoute module="draft-order" action="view"><DraftOrderList /></ProtectedRoute>}
                 />
 
                 {/* SizeChart */}

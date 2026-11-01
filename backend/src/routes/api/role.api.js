@@ -24,7 +24,7 @@ _.route("/create-role")
 _.route("/all-role")
   .get(
     authGuard,
-    authorizeAny(["create-role", "view"], ["create-user", "view"], ["create-user", "add"], ["create-user", "edit"]),
+    authorizeAny(["create-role", "view"], ["create-user", "view"], ["create-user", "add"], ["create-user", "edit"], ["assign-role", "view"]),
     roleController.getAllRoles
   );
 
@@ -48,12 +48,13 @@ _.route("/deleterole/:slug")
 _.route("/role/:slug/permissions")
   .get(
     authGuard,
-    authorize("create-role", "view"),
+    // The Assign Role Permission page has its own permission
+    authorizeAny(["create-role", "view"], ["assign-role", "view"]),
     roleController.getRolePermissions
   )
   .put(
     authGuard,
-    authorize("create-role", "edit"),
+    authorizeAny(["create-role", "edit"], ["assign-role", "edit"]),
     roleController.assignPermissionsToRole
   );
 

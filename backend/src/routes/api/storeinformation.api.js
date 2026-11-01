@@ -2,25 +2,27 @@ const express = require("express");
 const _ = express.Router();
 const { singleFileUpload } = require("../../middleware/multer.middleware");
 const { authGuard } = require("../../middleware/authMiddleware");
-const { authorize } = require("../../middleware/checkPermission.middleware");
+const { authorize, authorizeAny } = require("../../middleware/checkPermission.middleware");
 const storeInformationController = require("../../controller/storeInformation.controller");
 
 _.route("/store-information")
   .post(
     authGuard,
-    authorize("site-information", "add"),
+    authorize("store-information", "add"),
     singleFileUpload("image"),
     storeInformationController.createStoreInformation,
   )
+  // Every printed invoice reads the store's details from here, so the older
+  // Site Information grant still opens it
   .get(
     authGuard,
-    authorize("site-information", "view"),
+    authorizeAny(["store-information", "view"], ["site-information", "view"]),
     storeInformationController.getAllStoreInformation,
   );
 
 _.route("/store-information/search").get(
   authGuard,
-  authorize("site-information", "view"),
+  authorize("store-information", "view"),
   storeInformationController.searchStoreInformation,
 );
 
@@ -32,30 +34,30 @@ _.route("/store-information-branding").get(
 _.route("/store-information/:slug")
   .get(
     authGuard,
-    authorize("site-information", "view"),
+    authorize("store-information", "view"),
     storeInformationController.getSingleStoreInformation,
   )
   .put(
     authGuard,
-    authorize("site-information", "edit"),
+    authorize("store-information", "edit"),
     singleFileUpload("image"),
     storeInformationController.updateStoreInformation,
   )
   .delete(
     authGuard,
-    authorize("site-information", "delete"),
+    authorize("store-information", "delete"),
     storeInformationController.deleteStoreInformation,
   );
 
 _.route("/store-information/:slug/activate").put(
   authGuard,
-  authorize("site-information", "edit"),
+  authorize("store-information", "edit"),
   storeInformationController.activateStoreInformation,
 );
 
 _.route("/store-information/:slug/deactivate").put(
   authGuard,
-  authorize("site-information", "edit"),
+  authorize("store-information", "edit"),
   storeInformationController.deactivateStoreInformation,
 );
 

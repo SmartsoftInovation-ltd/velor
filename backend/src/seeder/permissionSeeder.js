@@ -48,6 +48,7 @@ const permissionList = [
   { permissionName: "Send SMS" },
   { permissionName: "Send Bulk SMS" },
   { permissionName: "SMS Info" },
+  { permissionName: "Due SMS" },
   // Employee
   { permissionName: "Employee" },
   { permissionName: "Designation" },
@@ -67,6 +68,8 @@ const permissionList = [
   { permissionName: "Sales History" },
   { permissionName: "Retail Sale Order" },
   { permissionName: "Whole Sale Order" },
+  { permissionName: "Sales Return" },
+  { permissionName: "Draft Order" },
   // Reports
   { permissionName: "Purchase Invoice" },
   { permissionName: "Purchase Product Report" },
@@ -130,10 +133,12 @@ const permissionList = [
   { permissionName: "Flash Sale" },
   { permissionName: "Site Information" },
   { permissionName: "Outlet Information" },
+  { permissionName: "Store Information" },
   // User Management
   { permissionName: "Create User" },
   { permissionName: "Create Role" },
   { permissionName: "Create Permission" },
+  { permissionName: "Assign Role" },
   // Audit
   { permissionName: "Audit Log" },
   // Dashboard widgets — each box on the dashboard is independently grantable,

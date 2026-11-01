@@ -33,6 +33,9 @@ const SALES_READERS = [
   ["retail-sale-order", "add"],
   ["whole-sale-order", "view"],
   ["whole-sale-order", "add"],
+  // The draft order list and the sales return form read sales too
+  ["draft-order", "view"],
+  ["sales-return", "add"],
 ];
 
 _.route("/create-sales").post(authGuard, authorizeSalesCreate, validate(createSalesSchema), salesController.createSales);

@@ -43,6 +43,7 @@ export const PERMISSIONS = {
   SEND_SMS: "send-sms",
   SEND_BULK_SMS: "send-bulk-sms",
   SMS_INFO: "sms-info",
+  DUE_SMS: "due-sms",
   EMPLOYEE: "employee",
   DESIGNATION: "designation",
   DEPARTMENT: "department",
@@ -58,6 +59,8 @@ export const PERMISSIONS = {
   SALES_HISTORY: "sales-history",
   RETAIL_SALES_ORDER: "retail-sale-order",
   WHOLE_SALES_ORDER: "whole-sale-order",
+  SALES_RETURN: "sales-return",
+  DRAFT_ORDER: "draft-order",
   PURCHASE_INVOICE: "purchase-invoice",
   PURCHASE_PRODUCT_REPORT: "purchase-product-report",
   PURCHASE_SUMMARY: "purchase-summary",
@@ -119,9 +122,11 @@ export const PERMISSIONS = {
   FLASH_SALE: "flash-sale",
   SITE_INFORMATION: "site-information",
   OUTLET_INFORMATION: "outlet-information",
+  STORE_INFORMATION: "store-information",
   CREATE_USER: "create-user",
   CREATE_ROLE: "create-role",
   CREATE_PERMISSION: "create-permission",
+  ASSIGN_ROLE: "assign-role",
   AUDIT_LOG: "audit-log",
   // Dashboard — "dashboard" gates the page itself; each DASHBOARD_* slug gates
   // one box, so an admin can grant the whole dashboard or only selected boxes.

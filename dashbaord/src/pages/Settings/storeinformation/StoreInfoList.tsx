@@ -50,7 +50,7 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 
 const StoreInfoList = () => {
   const navigate = useNavigate();
-  const canAdd = usePermission("site-information", "add");
+  const canAdd = usePermission("store-information", "add");
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>({ total: 0, page: 1, limit: LIMIT, totalPages: 0 });
   const [loading, setLoading] = useState(true);

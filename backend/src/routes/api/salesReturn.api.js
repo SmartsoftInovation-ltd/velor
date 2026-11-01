@@ -4,10 +4,10 @@ const salesReturnController = require("../../controller/salesReturn.controller")
 const { authGuard } = require("../../middleware/authMiddleware");
 const { authorize } = require("../../middleware/checkPermission.middleware");
 
-_.route("/createsalesreturn").post(authGuard, authorize("retail-sales", "add"), salesReturnController.createSalesReturn);
-_.route("/allsalesreturn").get(authGuard, authorize("retail-sales", "view"), salesReturnController.getAllSalesReturn);
-_.route("/single-salesreturn/:id").get(authGuard, authorize("retail-sales", "view"), salesReturnController.getSingleSalesReturn);
-_.route("/update-salesreturn/:id").put(authGuard, authorize("retail-sales", "edit"), salesReturnController.updateSalesReturn);
-_.route("/delete-salesreturn/:id").delete(authGuard, authorize("retail-sales", "delete"), salesReturnController.deleteSalesReturn);
+_.route("/createsalesreturn").post(authGuard, authorize("sales-return", "add"), salesReturnController.createSalesReturn);
+_.route("/allsalesreturn").get(authGuard, authorize("sales-return", "view"), salesReturnController.getAllSalesReturn);
+_.route("/single-salesreturn/:id").get(authGuard, authorize("sales-return", "view"), salesReturnController.getSingleSalesReturn);
+_.route("/update-salesreturn/:id").put(authGuard, authorize("sales-return", "edit"), salesReturnController.updateSalesReturn);
+_.route("/delete-salesreturn/:id").delete(authGuard, authorize("sales-return", "delete"), salesReturnController.deleteSalesReturn);
 
 module.exports = _;
