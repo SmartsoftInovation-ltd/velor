@@ -114,6 +114,7 @@ exports.sendDueSmsToCustomer = asynchandeler(async (req, res) => {
   if (!message) {
     throw new customError("Message is required", statusCodes.BAD_REQUEST);
   }
+  assertOneSms(message);
 
   const customer = await customerModel.findById(customerId).select("fullName mobileNumber openingDues isActive");
   if (!customer) {
@@ -154,6 +155,7 @@ exports.sendDueSmsToAllCustomers = asynchandeler(async (req, res) => {
   if (!message) {
     throw new customError("Message is required", statusCodes.BAD_REQUEST);
   }
+  assertOneSms(message);
 
   const customers = await customerModel
     .find({ isActive: true, deletedAt: null })

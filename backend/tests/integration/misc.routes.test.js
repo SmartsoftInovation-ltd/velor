@@ -67,6 +67,10 @@ describe("SMS, employees, delivery charges and the audit log", () => {
       await as().post("/sms/send-sms").send({ phoneNumber: "01912345678", message: "অ".repeat(71) }).expect(400);
       await as().post("/sms/bulk-sms").send({ phoneNumber: ["01912345678"], message: "অ".repeat(71) }).expect(400);
       await as().post("/sms/bulk-sms/send").send({ recipientType: "logged", message: "a".repeat(161) }).expect(400);
+      // The due-SMS sends obey the same one-SMS limit as every other send
+      const customer = await f.customer.create();
+      await as().post(`/sms/due-sms/send/${customer._id}`).send({ message: "a".repeat(161) }).expect(400);
+      await as().post("/sms/due-sms/send-all").send({ message: "অ".repeat(71) }).expect(400);
     });
 
     it("400 without a message; 404 for an unknown customer; 400 for an inactive one", async () => {

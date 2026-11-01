@@ -8,6 +8,10 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import Button from "../ui/button/Button";
 import { Modal } from "../ui/modal";
 import Label from "../form/Label";
+import { useAuth } from "../../context/AuthContext";
+import { fitOneSms } from "../../utils/smsLength";
+import SmsMessageBox from "./SmsMessageBox";
+import SmsPreview from "./SmsPreview";
 
 // ---------- Types ----------
 interface CustomerType {
@@ -46,6 +50,7 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
 };
 
 export default function DueSmsTable() {
+  const { tenant } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewCustomer, setViewCustomer] = useState<Customer | null>(null);
@@ -97,6 +102,28 @@ export default function DueSmsTable() {
     setViewCustomer(customer);
     setShowViewModal(true);
   };
+
+  const closeSingle = () => {
+    if (sendingId) return;
+    setShowSingleSmsModal(false);
+    setSmsMessage("");
+    setSelectedCustomer(null);
+  };
+  const closeBulk = () => {
+    if (sendingBulk) return;
+    setShowBulkSmsModal(false);
+    setBulkMessage("");
+  };
+
+  // Ready-made texts in plain English ("Tk", not "৳"), so they fit the
+  // 160-character SMS; cut to one SMS if a long name pushes them over
+  const store = tenant?.name || "our store";
+  const dueReminderFor = (c: Customer) =>
+    fitOneSms(
+      `Dear ${c.fullName}, your due balance at ${store} is Tk ${(c.openingDues || 0).toLocaleString()}. Please pay at your earliest convenience. Thank you.`,
+    );
+  const dueReminderForAll = () =>
+    fitOneSms(`Dear customer, you have a due balance at ${store}. Please clear it at your earliest convenience. Thank you.`);
 
   const handleSingleSms = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -314,7 +341,7 @@ export default function DueSmsTable() {
       <Modal
         isOpen={showViewModal}
         onClose={() => { setShowViewModal(false); setViewCustomer(null); }}
-        className="max-w-md w-full"
+        className="w-full max-w-3xl"
         showCloseButton={false}
       >
         {viewCustomer && (
@@ -376,8 +403,8 @@ export default function DueSmsTable() {
       {/* ---------- Single SMS Modal ---------- */}
       <Modal
         isOpen={showSingleSmsModal}
-        onClose={() => { setShowSingleSmsModal(false); setSmsMessage(""); setSelectedCustomer(null); }}
-        className="max-w-md w-full"
+        onClose={closeSingle}
+        className="w-full max-w-3xl"
         showCloseButton={false}
       >
         <div className="p-6 space-y-4">
@@ -386,53 +413,75 @@ export default function DueSmsTable() {
               Send SMS
             </h3>
             <button
-              onClick={() => { setShowSingleSmsModal(false); setSmsMessage(""); setSelectedCustomer(null); }}
+              onClick={closeSingle}
               className="size-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
             >
               <FaTimes className="text-xs" />
             </button>
           </div>
-          {selectedCustomer && (
-            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm space-y-1">
-              <p className="font-semibold text-gray-800 dark:text-white">
-                {selectedCustomer.fullName}
-              </p>
-              <p className="text-gray-500 dark:text-gray-400">
-                {selectedCustomer.mobileNumber}
-              </p>
-              {selectedCustomer.openingDues > 0 && (
-                <p className="text-red-500 font-medium">
-                  Due: ৳ {selectedCustomer.openingDues.toLocaleString()}
-                </p>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="space-y-4">
+              {selectedCustomer && (
+                <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-100 font-semibold uppercase text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                    {selectedCustomer.fullName?.charAt(0) || "?"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-gray-800 dark:text-white">{selectedCustomer.fullName}</p>
+                    <p className="text-gray-500 dark:text-gray-400">{selectedCustomer.mobileNumber}</p>
+                  </div>
+                  {selectedCustomer.openingDues > 0 && (
+                    <span className="shrink-0 rounded-full bg-error-50 px-2.5 py-1 text-xs font-semibold text-error-600 dark:bg-error-500/15 dark:text-error-400">
+                      Due ৳{selectedCustomer.openingDues.toLocaleString()}
+                    </span>
+                  )}
+                </div>
               )}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <Label htmlFor="sms-message">Message</Label>
+                  {selectedCustomer && (
+                    <button
+                      type="button"
+                      onClick={() => setSmsMessage(dueReminderFor(selectedCustomer))}
+                      className="rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-semibold text-accent-700 transition-colors hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400"
+                    >
+                      Use due reminder
+                    </button>
+                  )}
+                </div>
+                <SmsMessageBox id="sms-message" value={smsMessage} onChange={setSmsMessage} rows={6} autoFocus />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeSingle}
+                  disabled={!!sendingId}
+                  className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendSingle}
+                  disabled={!!sendingId || !smsMessage.trim()}
+                  className="shine flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-600 disabled:opacity-60"
+                >
+                  {sendingId ? (
+                    <>
+                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <MdSend className="size-4" />
+                      Send SMS
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          )}
-          <div>
-            <Label htmlFor="sms-message">Message</Label>
-            <textarea
-              id="sms-message"
-              rows={4}
-              placeholder="Type your SMS message..."
-              value={smsMessage}
-              onChange={(e) => setSmsMessage(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">{smsMessage.length} characters</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSendSingle}
-              disabled={!!sendingId || !smsMessage.trim()}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43]"
-            >
-              {sendingId ? "Sending..." : "Send SMS"}
-            </Button>
-            <Button
-              onClick={() => { setShowSingleSmsModal(false); setSmsMessage(""); setSelectedCustomer(null); }}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
-            >
-              Cancel
-            </Button>
+            <SmsPreview message={smsMessage} recipientLabel={selectedCustomer?.fullName} recipientCount={1} compact />
           </div>
         </div>
       </Modal>
@@ -440,8 +489,8 @@ export default function DueSmsTable() {
       {/* ---------- Bulk SMS Modal ---------- */}
       <Modal
         isOpen={showBulkSmsModal}
-        onClose={() => { setShowBulkSmsModal(false); setBulkMessage(""); }}
-        className="max-w-md w-full"
+        onClose={closeBulk}
+        className="w-full max-w-3xl"
         showCloseButton={false}
       >
         <div className="p-6 space-y-4">
@@ -450,41 +499,68 @@ export default function DueSmsTable() {
               Send SMS to All Customers
             </h3>
             <button
-              onClick={() => { setShowBulkSmsModal(false); setBulkMessage(""); }}
+              onClick={closeBulk}
               className="size-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
             >
               <FaTimes className="text-xs" />
             </button>
           </div>
-          <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-300">
-            This will send SMS to <strong>{tableData.length}</strong> customers in the background. You will be notified when complete.
-          </div>
-          <div>
-            <Label htmlFor="bulk-sms-message">Message</Label>
-            <textarea
-              id="bulk-sms-message"
-              rows={4}
-              placeholder="Type your SMS message..."
-              value={bulkMessage}
-              onChange={(e) => setBulkMessage(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">{bulkMessage.length} characters</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSendAll}
-              disabled={sendingBulk || !bulkMessage.trim()}
-                className="flex-1 bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43]"
-            >
-              {sendingBulk ? "Queuing..." : `Send to All (${tableData.length})`}
-            </Button>
-            <Button
-              onClick={() => { setShowBulkSmsModal(false); setBulkMessage(""); }}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
-            >
-              Cancel
-            </Button>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="space-y-4">
+              <div className="rounded-xl bg-accent-50 p-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-300">
+                Goes to <strong>{tableData.length.toLocaleString()}</strong> customers in the background. The SMS
+                history shows when it is done.
+              </div>
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <Label htmlFor="bulk-sms-message">Message</Label>
+                  <button
+                    type="button"
+                    onClick={() => setBulkMessage(dueReminderForAll())}
+                    className="rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-semibold text-accent-700 transition-colors hover:bg-accent-100 dark:bg-accent-500/15 dark:text-accent-400"
+                  >
+                    Use due reminder
+                  </button>
+                </div>
+                <SmsMessageBox
+                  id="bulk-sms-message"
+                  value={bulkMessage}
+                  onChange={setBulkMessage}
+                  rows={6}
+                  autoFocus
+                  placeholder="Everyone gets this same text…"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeBulk}
+                  disabled={sendingBulk}
+                  className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendAll}
+                  disabled={sendingBulk || !bulkMessage.trim()}
+                  className="shine flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-600 disabled:opacity-60"
+                >
+                  {sendingBulk ? (
+                    <>
+                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Queuing…
+                    </>
+                  ) : (
+                    <>
+                      <MdSend className="size-4" />
+                      Send to {tableData.length.toLocaleString()}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            <SmsPreview message={bulkMessage} recipientLabel="All customers" recipientCount={tableData.length} compact />
           </div>
         </div>
       </Modal>
