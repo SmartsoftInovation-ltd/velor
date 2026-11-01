@@ -1483,12 +1483,13 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-between"
         }`}
       >
-        {/* Open sidebar: the 16:5 Ecompos Master banner (animated WebP, ~120 KB,
-            from the 2.1 MB GIF). Collapsed rail: just the animated cart icon. */}
+        {/* Open sidebar: the light-green 16:5 Ecompos Master banner (animated
+            WebP, ~118 KB, from the 1.6 MB GIF). Collapsed rail: just the
+            animated cart icon. */}
         <Link to="/" className={isExpanded || isHovered || isMobileOpen ? "block w-full" : "flex items-center"}>
           {isExpanded || isHovered || isMobileOpen ? (
             <img
-              src="/images/logo/ecompos-master-banner-16x5.webp"
+              src="/images/logo/ecompos-master-banner-green-16x5.webp"
               alt="Ecompos Master"
               width={448}
               height={140}

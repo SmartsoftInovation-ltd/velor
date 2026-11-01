@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: ECOMPOS backend API
+  title: Velor backend API
   version: "phase1-generated"
   description: >-
     Generated from the route source by tests/scripts/generateInventory.js.
@@ -1427,6 +1427,21 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/customer/customer-invoices/{customer}":
+    get:
+      operationId: "get__customer_customer_invoices_customer_"
+      tags: ["customer"]
+      security: [{ staffBearer: [] }]
+      x-permission: "customer-payment:add"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "customer", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/customer/customer-payment-recived":
     post:
       operationId: "post__customer_customer_payment_recived"
@@ -1585,7 +1600,7 @@ paths:
       x-permission: "customer-payment:edit"
       parameters:
         - $ref: "#/components/parameters/Tenant"
-        - { name: "id", in: path, required: true, description: "The payment's _id (a customer id is still accepted and names that customer's latest payment)", schema: { type: string } }
+        - { name: "id", in: path, required: true, schema: { type: string } }
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
@@ -1634,7 +1649,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-accounts-balance:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1650,7 +1665,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-customer-due-payment:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1666,7 +1681,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-customer:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1682,7 +1697,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-day-cash-summary:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1698,7 +1713,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-employee:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1714,7 +1729,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-inflow-transactions:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1730,7 +1745,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-inventory-items:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1746,7 +1761,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-inventory-value:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1762,7 +1777,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-total-invoices:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1778,7 +1793,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-outflow-transactions:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1794,7 +1809,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1810,7 +1825,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-total-products:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1826,7 +1841,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-purchase-items:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1842,7 +1857,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-total-sale:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1858,7 +1873,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-sold-items:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1874,7 +1889,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-stock-cost-value:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1890,7 +1905,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-supplier-payment:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1906,7 +1921,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-supplier:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1922,7 +1937,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-top-selling-products:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -1938,7 +1953,7 @@ paths:
       tags: ["dashboard"]
       security: [{ staffBearer: [] }]
       x-permission: "dashboard-total-transaction:view"
-      x-rate-limit: ["reportLimiter"]
+      x-rate-limit: ["dashboardLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -2604,6 +2619,81 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/flash-sale":
+    get:
+      operationId: "get__flash_sale"
+      tags: ["flashSale"]
+      security: [{ staffBearer: [] }]
+      x-permission: "flash-sale:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: "post__flash_sale"
+      tags: ["flashSale"]
+      security: [{ staffBearer: [] }]
+      x-permission: "flash-sale:add"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/flash-sale/{id}":
+    get:
+      operationId: "get__flash_sale_id_"
+      tags: ["flashSale"]
+      security: [{ staffBearer: [] }]
+      x-permission: "flash-sale:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: "put__flash_sale_id_"
+      tags: ["flashSale"]
+      security: [{ staffBearer: [] }]
+      x-permission: "flash-sale:edit"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: "delete__flash_sale_id_"
+      tags: ["flashSale"]
+      security: [{ staffBearer: [] }]
+      x-permission: "flash-sale:delete"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/fundhandover/create-fundhandover":
     post:
       operationId: "post__fundhandover_create_fundhandover"
@@ -3116,6 +3206,67 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "201": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/limited-offer":
+    get:
+      operationId: "get__limited_offer"
+      tags: ["limitedOffer"]
+      security: [{ staffBearer: [] }]
+      x-permission: "limited-offer:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: "post__limited_offer"
+      tags: ["limitedOffer"]
+      security: [{ staffBearer: [] }]
+      x-permission: "limited-offer:add"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/limited-offer/{id}":
+    patch:
+      operationId: "patch__limited_offer_id_"
+      tags: ["limitedOffer"]
+      security: [{ staffBearer: [] }]
+      x-permission: "limited-offer:edit"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: "delete__limited_offer_id_"
+      tags: ["limitedOffer"]
+      security: [{ staffBearer: [] }]
+      x-permission: "limited-offer:delete"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -3934,12 +4085,15 @@ paths:
   "/platform/dashboard":
     get:
       operationId: "get__platform_dashboard"
-      tags: ["platform"]
-      summary: "Platform Console dashboard: sellers, what they were sold for, recurring revenue and upcoming renewals"
+      tags: ["dashboard"]
       security: [{ platformBearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/platform/permissions":
     get:
       operationId: "get__platform_permissions"
@@ -4332,6 +4486,7 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   "/product/createproduct":
     post:
@@ -4390,6 +4545,7 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   "/product/getproduct":
     get:
@@ -4440,6 +4596,7 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   "/product/price-range":
     get:
@@ -4451,6 +4608,7 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   "/product/product-status/{slug}":
     put:
@@ -4496,18 +4654,22 @@ paths:
         "200": { $ref: "#/components/responses/Success" }
         "201": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   "/product/search-product":
     get:
       operationId: "get__product_search_product"
       tags: ["product"]
       security: []
+      x-rate-limit: ["searchLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   "/product/updateproductinfo/{slug}":
     put:
       operationId: "put__product_updateproductinfo_slug_"
@@ -5889,7 +6051,7 @@ paths:
       operationId: "get__sales_return_allsalesreturn"
       tags: ["salesReturn"]
       security: [{ staffBearer: [] }]
-      x-permission: "retail-sales:view"
+      x-permission: "sales-return:view"
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -5903,7 +6065,7 @@ paths:
       operationId: "post__sales_return_createsalesreturn"
       tags: ["salesReturn"]
       security: [{ staffBearer: [] }]
-      x-permission: "retail-sales:add"
+      x-permission: "sales-return:add"
       parameters:
         - $ref: "#/components/parameters/Tenant"
       requestBody:
@@ -5920,7 +6082,7 @@ paths:
       operationId: "delete__sales_return_delete_salesreturn_id_"
       tags: ["salesReturn"]
       security: [{ staffBearer: [] }]
-      x-permission: "retail-sales:delete"
+      x-permission: "sales-return:delete"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "id", in: path, required: true, schema: { type: string } }
@@ -5935,7 +6097,7 @@ paths:
       operationId: "get__sales_return_single_salesreturn_id_"
       tags: ["salesReturn"]
       security: [{ staffBearer: [] }]
-      x-permission: "retail-sales:view"
+      x-permission: "sales-return:view"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "id", in: path, required: true, schema: { type: string } }
@@ -5950,7 +6112,7 @@ paths:
       operationId: "put__sales_return_update_salesreturn_id_"
       tags: ["salesReturn"]
       security: [{ staffBearer: [] }]
-      x-permission: "retail-sales:edit"
+      x-permission: "sales-return:edit"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "id", in: path, required: true, schema: { type: string } }
@@ -6008,22 +6170,23 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
-  "/sales/get-sales-stats":
+  "/sales/get-sales-products":
     get:
-      operationId: "get__sales_get_sales_stats"
+      operationId: "get__sales_get_sales_products"
       tags: ["sales"]
-      summary: "The sales list's stat cards (today's count and amount, paid/due counts, total due) for a salesType / invoiceStatus"
       security: [{ staffBearer: [] }]
       x-permission: "retail-sales:view"
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
-  "/sales/get-sales-products":
+        "404": { $ref: "#/components/responses/Error" }
+  "/sales/get-sales-stats":
     get:
-      operationId: "get__sales_get_sales_products"
+      operationId: "get__sales_get_sales_stats"
       tags: ["sales"]
       security: [{ staffBearer: [] }]
       x-permission: "retail-sales:view"
@@ -6098,6 +6261,17 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  "/shop/banners":
+    get:
+      operationId: "get__shop_banners"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/shop/cart":
     put:
       operationId: "put__shop_cart"
@@ -6117,19 +6291,43 @@ paths:
       operationId: "post__shop_coupon_preview"
       tags: ["shop"]
       security: []
+      x-rate-limit: ["couponLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       requestBody:
         content: { application/json: { schema: { type: object } } }
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   "/shop/delivery-options":
     get:
-      operationId: "get__shop_delivery-options"
+      operationId: "get__shop_delivery_options"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/flash-sale":
+    get:
+      operationId: "get__shop_flash_sale"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/limited-offers":
+    get:
+      operationId: "get__shop_limited_offers"
       tags: ["shop"]
       security: []
       parameters:
@@ -6189,6 +6387,51 @@ paths:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/products":
+    get:
+      operationId: "get__shop_products"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/products/{slug}":
+    get:
+      operationId: "get__shop_products_slug_"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "slug", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/promo-banner":
+    get:
+      operationId: "get__shop_promo_banner"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/store":
+    get:
+      operationId: "get__shop_store"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   "/shop/track/{invoiceId}":
     get:
@@ -6517,7 +6760,7 @@ paths:
       operationId: "post__sms_due_sms_send_all"
       tags: ["sms"]
       security: [{ staffBearer: [] }]
-      x-permission: "send-bulk-sms:add"
+      x-permission: "due-sms:add"
       parameters:
         - $ref: "#/components/parameters/Tenant"
       requestBody:
@@ -6534,7 +6777,7 @@ paths:
       operationId: "post__sms_due_sms_send_customerId_"
       tags: ["sms"]
       security: [{ staffBearer: [] }]
-      x-permission: "send-sms:add"
+      x-permission: "due-sms:add"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "customerId", in: path, required: true, schema: { type: string } }
@@ -6677,6 +6920,23 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/stock/low-stock":
+    post:
+      operationId: "post__stock_low_stock"
+      tags: ["stockAdjust"]
+      security: [{ staffBearer: [] }]
+      x-permission: "low-stock:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/stock/stock-adjust":
     get:
       operationId: "get__stock_stock_adjust"
@@ -6707,21 +6967,6 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
-  "/stock/low-stock":
-    post:
-      operationId: "post__stock_low_stock"
-      tags: ["stock"]
-      summary: "The Low Stock page's rows, paged (?page=, ?limit=), filtered by subCategory and search in the body"
-      security: [{ staffBearer: [] }]
-      x-permission: "low-stock:view"
-      parameters:
-        - $ref: "#/components/parameters/Tenant"
-      requestBody:
-        content: { application/json: { schema: { type: object } } }
-      responses:
-        "200": { $ref: "#/components/responses/Success" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
   "/stock/stock-adjust/category/{category}":
     get:
       operationId: "get__stock_stock_adjust_category_category_"
@@ -6788,7 +7033,7 @@ paths:
       operationId: "get__storeinformation_store_information"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:view"
+      x-permission: "store-information:view"
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -6801,7 +7046,7 @@ paths:
       operationId: "post__storeinformation_store_information"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:add"
+      x-permission: "store-information:add"
       parameters:
         - $ref: "#/components/parameters/Tenant"
       requestBody:
@@ -6830,7 +7075,7 @@ paths:
       operationId: "get__storeinformation_store_information_search"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:view"
+      x-permission: "store-information:view"
       parameters:
         - $ref: "#/components/parameters/Tenant"
       responses:
@@ -6844,7 +7089,7 @@ paths:
       operationId: "delete__storeinformation_store_information_slug_"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:delete"
+      x-permission: "store-information:delete"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "slug", in: path, required: true, schema: { type: string } }
@@ -6858,7 +7103,7 @@ paths:
       operationId: "put__storeinformation_store_information_slug_"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:edit"
+      x-permission: "store-information:edit"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "slug", in: path, required: true, schema: { type: string } }
@@ -6874,7 +7119,7 @@ paths:
       operationId: "get__storeinformation_store_information_slug_"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:view"
+      x-permission: "store-information:view"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "slug", in: path, required: true, schema: { type: string } }
@@ -6889,7 +7134,7 @@ paths:
       operationId: "put__storeinformation_store_information_slug_activate"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:edit"
+      x-permission: "store-information:edit"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "slug", in: path, required: true, schema: { type: string } }
@@ -6906,7 +7151,7 @@ paths:
       operationId: "put__storeinformation_store_information_slug_deactivate"
       tags: ["storeinformation"]
       security: [{ staffBearer: [] }]
-      x-permission: "site-information:edit"
+      x-permission: "store-information:edit"
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "slug", in: path, required: true, schema: { type: string } }
