@@ -587,6 +587,7 @@ export default function InteractiveDashboard() {
                   { label: "Invoices", value: formatNumber(soldItemsSummary?.invoiceCount ?? 0) },
                   { label: "Total Sales", value: formatCurrency(soldItemsSummary?.totalAmount ?? 0), color: "success" },
                   { label: "Retail", value: formatCurrency(soldItemsSummary?.retailAmount ?? 0), color: "success" },
+                  { label: "Wholesale", value: formatCurrency(soldItemsSummary?.wholesaleAmount ?? 0), color: "success" },
                 ]}
               />
             )}

@@ -1844,7 +1844,7 @@ exports.getInventorySummary = asynchandeler(async (req, res) => {
   });
 });
 
-// @desc  Customer box — customer count and outstanding due balance, range-filtered
+// @desc  Customer box — customer count and outstanding due balance (all time)
 exports.getCustomerSummary = asynchandeler(async (req, res) => {
   const { start, end, key } = resolveRange(req.query.range);
 
@@ -1862,15 +1862,18 @@ exports.getCustomerSummary = asynchandeler(async (req, res) => {
   // customer created outside the window still counts; range-scoping this
   // count was making it read 0 whenever the only customer predates the
   // selected window.
+  //
+  // The due is each customer's live balance (openingDues): it starts at the
+  // initial due and every sale, due payment and return moves it. Summing the
+  // sales' presentDue instead left out initial dues and never went down when
+  // a due was collected later. Walking customers have no account, so they
+  // are not in this collection and owe nothing here.
+  const customerFilter = { deletedAt: null };
   const [customerCount, duesAgg] = await Promise.all([
-    customerModel.countDocuments({}),
-
-    // Listed customers only. A walking customer has no account to owe against —
-    // their unpaid amount is written off at the counter, not carried as a
-    // receivable — so counting it here overstated what the shop can collect.
-    salesModel.aggregate([
-      { $match: { "customerType.type": "listed" } },
-      { $group: { _id: null, totalDue: { $sum: "$presentDue" } } },
+    customerModel.countDocuments(customerFilter),
+    customerModel.aggregate([
+      { $match: customerFilter },
+      { $group: { _id: null, totalDue: { $sum: { $ifNull: ["$openingDues", 0] } } } },
     ]),
   ]);
 
@@ -2072,8 +2075,8 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
     req.query.endDate,
   );
 
-  // v2: amounts became net of invoice discount; old cached payloads lack totalAmount.
-  const cacheKey = await buildCacheKey(NS, `sold-items-summary:v2:${key}`);
+  // v3: amounts come from the shared sale formula, net of returns.
+  const cacheKey = await buildCacheKey(NS, `sold-items-summary:v3:${key}`);
   const cached = await getCache(cacheKey);
   if (cached) {
     return apiResponse.sendSuccess(res, statusCodes.OK, "Sold items summary fetched", {
@@ -2084,88 +2087,19 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
 
   const dateMatch = start ? { date: { $gte: start, $lte: end } } : {};
 
-  const [invoiceCount, quantityAgg, amountBySalesType] = await Promise.all([
+  // Net sales per invoice from the shared sale formula (saleProfit.util.js):
+  // recomputed from salesRate, the line discount and quantity (the stored
+  // subtotal is client-written), less the invoice discountPercent / lessTaka
+  // and less any sales-return refund. A partly returned line still counts
+  // for the units the customer kept. VAT, delivery and labour stay out.
+  // Grouped wholesale (wholesale/wholesaleorder) vs retail (retailsale/
+  // retailsaleorder).
+  const [invoiceCount, bySalesType] = await Promise.all([
     salesModel.countDocuments(dateMatch),
 
     salesModel.aggregate([
       { $match: dateMatch },
-      { $unwind: "$searchItem" },
-      { $match: { "searchItem.salesStatus": "sale" } },
-      { $group: { _id: null, quantity: { $sum: "$searchItem.quantity" } } },
-    ]),
-
-    // Net sales per invoice, grouped wholesale (wholesale/wholesaleorder) vs
-    // retail (retailsale/retailsaleorder). searchItem.subtotal already carries
-    // the item discount; on top of that the invoice discountPercent and
-    // lessTaka are taken off, the same way the sale forms build payable.
-    // lessTaka is spread over all lines, so only the sale lines' share of it
-    // counts here. VAT, delivery and labour are not sales price and stay out.
-    salesModel.aggregate([
-      { $match: dateMatch },
-      {
-        $project: {
-          salesType: 1,
-          saleSubtotal: {
-            $reduce: {
-              input: { $ifNull: ["$searchItem", []] },
-              initialValue: 0,
-              in: {
-                $add: [
-                  "$$value",
-                  {
-                    $cond: [
-                      { $eq: [{ $ifNull: ["$$this.salesStatus", "sale"] }, "sale"] },
-                      { $ifNull: ["$$this.subtotal", 0] },
-                      0,
-                    ],
-                  },
-                ],
-              },
-            },
-          },
-          allSubtotal: {
-            $reduce: {
-              input: { $ifNull: ["$searchItem", []] },
-              initialValue: 0,
-              in: { $add: ["$$value", { $ifNull: ["$$this.subtotal", 0] }] },
-            },
-          },
-          discountPercent: { $ifNull: ["$discountPercent", 0] },
-          lessTaka: { $ifNull: ["$lessTaka", 0] },
-        },
-      },
-      {
-        $project: {
-          salesType: 1,
-          net: {
-            $max: [
-              0,
-              {
-                $subtract: [
-                  {
-                    $multiply: [
-                      "$saleSubtotal",
-                      { $subtract: [1, { $divide: ["$discountPercent", 100] }] },
-                    ],
-                  },
-                  {
-                    $cond: [
-                      { $gt: ["$allSubtotal", 0] },
-                      {
-                        $multiply: [
-                          "$lessTaka",
-                          { $divide: ["$saleSubtotal", "$allSubtotal"] },
-                        ],
-                      },
-                      0,
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      },
+      ...saleProfitStages(),
       {
         $group: {
           _id: {
@@ -2175,22 +2109,30 @@ exports.getSoldItemsSummary = asynchandeler(async (req, res) => {
               "retail",
             ],
           },
-          amount: { $sum: "$net" },
+          quantity: { $sum: "$itemsQty" },
+          amount: {
+            $sum: {
+              $max: [
+                0,
+                { $subtract: ["$grossSales", { $add: ["$totalDiscountAmount", "$returnAmount"] }] },
+              ],
+            },
+          },
         },
       },
     ]),
   ]);
 
-  const wholesaleAmount =
-    amountBySalesType.find((r) => r._id === "wholesale")?.amount || 0;
-  const retailAmount =
-    amountBySalesType.find((r) => r._id === "retail")?.amount || 0;
+  const wholesale = bySalesType.find((r) => r._id === "wholesale") || {};
+  const retail = bySalesType.find((r) => r._id === "retail") || {};
+  const wholesaleAmount = wholesale.amount || 0;
+  const retailAmount = retail.amount || 0;
 
   const payload = {
     range: key,
     soldItems: {
       invoiceCount: invoiceCount || 0,
-      quantity: quantityAgg[0]?.quantity || 0,
+      quantity: (wholesale.quantity || 0) + (retail.quantity || 0),
       totalAmount: Math.round(wholesaleAmount + retailAmount),
       wholesaleAmount: Math.round(wholesaleAmount),
       retailAmount: Math.round(retailAmount),
