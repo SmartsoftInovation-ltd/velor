@@ -1477,34 +1477,19 @@ const AppSidebar: React.FC = () => {
     >
       {/* ---------- LOGO ---------- */}
       <div
-        // Top gap matches the header row (lg:py-3), so the banner lines up
-        // with the global search
-        className={`pt-3 pb-4 flex items-center ${
+        // py-4 centres the 32px logo on the header's 40px search box
+        className={`py-4 flex items-center ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-between"
         }`}
       >
-        {/* Open sidebar: the light-green 16:5 Ecompos Master banner (animated
-            WebP, ~118 KB, from the 1.6 MB GIF). Collapsed rail: just the
-            animated cart icon. */}
-        <Link to="/" className={isExpanded || isHovered || isMobileOpen ? "block w-full" : "flex items-center"}>
-          {isExpanded || isHovered || isMobileOpen ? (
-            <img
-              src="/images/logo/ecompos-master-banner-green-16x5.webp"
-              alt="Ecompos Master"
-              width={448}
-              height={140}
-              decoding="async"
-              fetchPriority="high"
-              className="aspect-[16/5] w-full rounded-xl object-cover shadow-sm"
-            />
-          ) : (
-            <img
-              src="/images/logo/ecompos-master.gif"
-              alt="Ecompos Master"
-              width={32}
-              height={32}
-              className="size-8 shrink-0 rounded-lg object-contain"
-            />
+        <Link to="/" className="flex items-center gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-500 p-1.5 shadow-sm">
+            <img src="/images/logo/shopping-cart.png" alt="Ecompos Master" width={20} height={20} className="size-5" />
+          </span>
+          {(isExpanded || isHovered || isMobileOpen) && (
+            <span className="font-bold text-gray-900 dark:text-white text-base tracking-tight uppercase whitespace-nowrap">
+              Ecompos Master
+            </span>
           )}
         </Link>
       </div>

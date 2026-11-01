@@ -6,7 +6,9 @@ require("../config/timezone");
 
 const { Worker } = require("bullmq");
 const { tenantJob } = require("@/tenancy/queue");
-const { startSettingsInvalidationListener } = require("@/settings/settings.service");
+const {
+  startSettingsInvalidationListener,
+} = require("@/settings/settings.service");
 const { SMS_QUEUE_NAME } = require("@/queues/sms.queue");
 const { connection } = require("@/config/redis.config");
 const { queuePrefix } = require("@/queues/prefix");
@@ -37,109 +39,113 @@ if (require.main === module) {
 }
 
 const processSmsJob = async (job) => {
-      const { logId, recipients, message } = job.data;
+  const { logId, recipients, message } = job.data;
 
-      await SmsLog.updateOne({ _id: logId }, { $set: { status: "processing" } });
+  await SmsLog.updateOne({ _id: logId }, { $set: { status: "processing" } });
 
-      // A job can run more than once (a retry after a crash, a stalled job).
-      // Recipients the log already marks "sent" were texted by an earlier run
-      // and are skipped, so nobody is texted (or billed) twice.
-      const before = await SmsLog.findById(logId).select("recipients.status").lean();
-      const alreadySent = (idx) => before?.recipients?.[idx]?.status === "sent";
+  // A job can run more than once (a retry after a crash, a stalled job).
+  // Recipients the log already marks "sent" were texted by an earlier run
+  // and are skipped, so nobody is texted (or billed) twice.
+  const before = await SmsLog.findById(logId)
+    .select("recipients.status")
+    .lean();
+  const alreadySent = (idx) => before?.recipients?.[idx]?.status === "sent";
 
-      // Send to all recipients in parallel batches of 10.
-      // Recipients are matched back to the log by their array index so that
-      // walking / order recipients (which have no customerId) are tracked too.
-      const BATCH_SIZE = 10;
-      for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-        const batch = recipients.slice(i, i + BATCH_SIZE);
+  // Send to all recipients in parallel batches of 10.
+  // Recipients are matched back to the log by their array index so that
+  // walking / order recipients (which have no customerId) are tracked too.
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const batch = recipients.slice(i, i + BATCH_SIZE);
 
-        await Promise.all(
-          batch.map(async (recipient, offset) => {
-            const idx = typeof recipient.index === "number" ? recipient.index : i + offset;
-            if (alreadySent(idx)) return;
-            try {
-              // A personalised due SMS carries each recipient's own text
-              await sendSMS(recipient.phone, recipient.message || message);
-              await SmsLog.updateOne(
-                { _id: logId },
-                {
-                  $set: {
-                    [`recipients.${idx}.status`]: "sent",
-                    [`recipients.${idx}.error`]: "",
-                  },
-                },
-              );
-            } catch (err) {
-              await SmsLog.updateOne(
-                { _id: logId },
-                {
-                  $set: {
-                    [`recipients.${idx}.status`]: "failed",
-                    [`recipients.${idx}.error`]: err.message || "Send failed",
-                  },
-                },
-              );
-            }
-          }),
-        );
-      }
+    await Promise.all(
+      batch.map(async (recipient, offset) => {
+        const idx =
+          typeof recipient.index === "number" ? recipient.index : i + offset;
+        if (alreadySent(idx)) return;
+        try {
+          // A personalised due SMS carries each recipient's own text
+          await sendSMS(recipient.phone, recipient.message || message);
+          await SmsLog.updateOne(
+            { _id: logId },
+            {
+              $set: {
+                [`recipients.${idx}.status`]: "sent",
+                [`recipients.${idx}.error`]: "",
+              },
+            },
+          );
+        } catch (err) {
+          await SmsLog.updateOne(
+            { _id: logId },
+            {
+              $set: {
+                [`recipients.${idx}.status`]: "failed",
+                [`recipients.${idx}.error`]: err.message || "Send failed",
+              },
+            },
+          );
+        }
+      }),
+    );
+  }
 
-      // The totals are counted from the per-recipient statuses, so every run,
-      // first or repeated, ends with the same figures
-      const after = await SmsLog.findById(logId).select("recipients.status").lean();
-      const statusOf = (idx) => after?.recipients?.[idx]?.status;
-      const indexes = recipients.map((r, i) => (typeof r.index === "number" ? r.index : i));
-      const sentCount = indexes.filter((idx) => statusOf(idx) === "sent").length;
-      const failedCount = indexes.filter((idx) => statusOf(idx) === "failed").length;
+  // The totals are counted from the per-recipient statuses, so every run,
+  // first or repeated, ends with the same figures
+  const after = await SmsLog.findById(logId).select("recipients.status").lean();
+  const statusOf = (idx) => after?.recipients?.[idx]?.status;
+  const indexes = recipients.map((r, i) =>
+    typeof r.index === "number" ? r.index : i,
+  );
+  const sentCount = indexes.filter((idx) => statusOf(idx) === "sent").length;
+  const failedCount = indexes.filter(
+    (idx) => statusOf(idx) === "failed",
+  ).length;
 
-      const finalStatus =
-        failedCount === 0
-          ? "completed"
-          : sentCount === 0
-            ? "failed"
-            : "partial";
+  const finalStatus =
+    failedCount === 0 ? "completed" : sentCount === 0 ? "failed" : "partial";
 
-      await SmsLog.updateOne(
-        { _id: logId },
-        {
-          $set: {
-            status: finalStatus,
-            sentCount,
-            failedCount,
-          },
-        },
-      );
+  await SmsLog.updateOne(
+    { _id: logId },
+    {
+      $set: {
+        status: finalStatus,
+        sentCount,
+        failedCount,
+      },
+    },
+  );
 
-      // Notify connected admin via Socket.IO
-      try {
-        emitToTenant(getTenantId(), "sms:bulk:done", {
-          logId,
-          status: finalStatus,
-          sentCount,
-          failedCount,
-          total: recipients.length,
-        });
-      } catch (_) {
-        // Socket not initialized — non-fatal
-      }
+  // Notify connected admin via Socket.IO
+  try {
+    emitToTenant(getTenantId(), "sms:bulk:done", {
+      logId,
+      status: finalStatus,
+      sentCount,
+      failedCount,
+      total: recipients.length,
+    });
+  } catch (_) {
+    // Socket not initialized — non-fatal
+  }
 
-      return { logId, sentCount, failedCount, status: finalStatus };
+  return { logId, sentCount, failedCount, status: finalStatus };
 };
 
 function startSmsWorker(options = {}) {
-  const worker = new Worker(
-    SMS_QUEUE_NAME,
-    tenantJob(processSmsJob),
-    { connection, prefix: queuePrefix(), concurrency: 2, ...options },
-  );
+  const worker = new Worker(SMS_QUEUE_NAME, tenantJob(processSmsJob), {
+    connection,
+    prefix: queuePrefix(),
+    concurrency: 2,
+    ...options,
+  });
 
   worker.on("ready", () => console.log("✅ SMS Worker ready"));
-  worker.on("active", (job) =>
-    console.log(`▶️  SMS Job active [${job.id}]`),
-  );
+  worker.on("active", (job) => console.log(`▶️  SMS Job active [${job.id}]`));
   worker.on("completed", (job, result) =>
-    console.log(`✅ SMS Job completed [${job.id}] — sent:${result.sentCount} failed:${result.failedCount}`),
+    console.log(
+      `✅ SMS Job completed [${job.id}] — sent:${result.sentCount} failed:${result.failedCount}`,
+    ),
   );
   worker.on("failed", (job, err) =>
     console.error(`❌ SMS Job failed [${job?.id}]:`, err.message),
