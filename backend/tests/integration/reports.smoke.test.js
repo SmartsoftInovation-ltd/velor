@@ -141,6 +141,17 @@ describe("reports, dashboard and invoice sheets", () => {
     expect(second.pagination).toMatchObject({ total: 4, page: 2, hasNextPage: false });
   });
 
+  // Preview / print / PDF: ?all=1 returns every row at once, whatever page was asked for
+  it("a report returns every row in one request with ?all=1", async () => {
+    const res = await api(ctx.server, { token, tenant: "reportshop" })
+      .post("/report/sales-invoice")
+      .query({ all: 1, page: 3, limit: 1 })
+      .send({ startDate: BODIES["this year"].startDate, endDate: `${today}T23:59:59.999Z` })
+      .expect(200);
+    expect(res.body.data.rows.map((r) => r.invoiceNumber)).toEqual(["INV-INV-04", "INV-INV-03", "INV-INV-02", "INV-INV-01"]);
+    expect(res.body.data.pagination).toMatchObject({ total: 4, page: 1, hasNextPage: false });
+  });
+
   // BUG-P2-002: lines are grouped per item before the product/variant join, and
   // the buy price reads only the purchases holding the page's items
   it("sales summary report: one row per item, quantities summed, buy price from its purchases", async () => {

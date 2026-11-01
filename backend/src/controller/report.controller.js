@@ -147,7 +147,15 @@ function productLineFilterStage(productId) {
   return [{ $match: { "allproduct.product": new mongoose.Types.ObjectId(productId) } }];
 }
 
+// Rows one report request may return when printing or previewing the whole
+// report (?all=1), instead of one screen page
+const REPORT_EXPORT_MAX = Number(process.env.REPORT_EXPORT_MAX) || 20000;
+
 function parsePagination(req) {
+  // Preview / print / PDF: every row in one request (one query, no paging round trips)
+  if (req.query.all === "1" || req.query.all === "true") {
+    return { page: 1, limit: REPORT_EXPORT_MAX, skip: 0 };
+  }
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
   return { page, limit, skip: (page - 1) * limit };

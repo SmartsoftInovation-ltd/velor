@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 import toast from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import PageMeta from "../../common/PageMeta";
@@ -14,6 +12,8 @@ import { MdChevronLeft, MdChevronRight, MdClose, MdOutlineFilterAlt } from "reac
 import { TbReceipt2 } from "react-icons/tb";
 import { LuFileDown } from "react-icons/lu";
 import ReportDateField from "../../form/ReportDateField";
+import { useReportPrintAll, useRunWhenAllRowsReady } from "../../../hooks/useReportPrintAll";
+import { sheetToPdf } from "../../../utils/sheetPdf";
 
 // ---------- Types ----------
 interface ProductRow {
@@ -211,6 +211,9 @@ const TopSalesProductReport = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pageFormat, setPageFormat] = useState<PageFormat>("a4");
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Preview, Print and PDF cover every row, not just this page
+  const printAllCtl = useReportPrintAll(previewOpen);
+  const { printAll } = printAllCtl;
   const [previewHtml, setPreviewHtml] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(
@@ -262,10 +265,10 @@ const TopSalesProductReport = () => {
   const filters = { startDate, endDate, salesType, top: Number(top) };
 
   const { data, isLoading, isError, isFetching } = useQuery<ReportData>({
-    queryKey: ["top-sales-product-report", filters, page],
+    queryKey: ["top-sales-product-report", filters, page, printAll],
     queryFn: async () => {
       const res = await axiosSecure.post(
-        `/report/top-sales-product?page=${page}&limit=${LIMIT}`,
+        `/report/top-sales-product${printAll ? "?all=1" : `?page=${page}&limit=${LIMIT}`}`,
         filters,
       );
       return res.data.data as ReportData;
@@ -285,6 +288,7 @@ const TopSalesProductReport = () => {
   const totals = data?.totals;
   const pagination = data?.pagination;
   const rows = data?.rows ?? [];
+  useRunWhenAllRowsReady(printAllCtl, printAll && !isFetching && !!data);
 
   const filterChips: string[] = [topOptions.find((o) => o.value === top)?.label ?? "All Sales Product"];
   if (salesType) filterChips.push(salesTypeLabel[salesType] ?? salesType);
@@ -348,43 +352,15 @@ const TopSalesProductReport = () => {
     };
   }, [pageFormat, isThermal, generatedOn]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => printAllCtl.run(() => window.print());
 
-  const handleDownloadPdf = async () => {
+  const downloadPdfNow = async () => {
     const source = isThermal ? thermalRef.current : printRef.current;
     if (!source) return;
     setPdfBusy(true);
     try {
-      const canvas = await html2canvas(source, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-      });
-
-      const size = pageSizeMm[pageFormat];
-      const pdf = isThermal
-        ? new jsPDF({ unit: "mm", format: [size.width, (canvas.height * size.width) / canvas.width] })
-        : new jsPDF({ unit: "mm", format: pageFormat });
-
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
-      const img = canvas.toDataURL("image/png");
-
-      if (imgH <= pageH) {
-        pdf.addImage(img, "PNG", 0, 0, pageW, imgH);
-      } else {
-        let remaining = imgH;
-        let offset = 0;
-        while (remaining > 0) {
-          pdf.addImage(img, "PNG", 0, -offset, pageW, imgH);
-          remaining -= pageH;
-          offset += pageH;
-          if (remaining > 0) pdf.addPage();
-        }
-      }
+      // Page by page, so a report of any length fits (see utils/sheetPdf)
+      const pdf = await sheetToPdf(source, pageFormat);
 
       pdf.save(`top-sales-product-report-${startDate}-to-${endDate}.pdf`);
       toast.success("Report PDF downloaded");
@@ -394,6 +370,9 @@ const TopSalesProductReport = () => {
       setPdfBusy(false);
     }
   };
+
+  const handleDownloadPdf = () => printAllCtl.run(downloadPdfNow);
+
 
   const portalTarget = document.getElementById("app-content-portal-target");
   if (!portalTarget) return null;
