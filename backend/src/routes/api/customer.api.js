@@ -1,7 +1,7 @@
 const express = require("express");
 const _ = express.Router();
 const { authGuard } = require("../../middleware/authMiddleware");
-const { authorize } = require("../../middleware/checkPermission.middleware");
+const { authorize, authorizeAny } = require("../../middleware/checkPermission.middleware");
 const customerController = require("../../controller/customer.controller");
 const { multipleFileUpload } = require("../../middleware/multer.middleware");
 const validate = require("../../middleware/validate");
@@ -78,6 +78,13 @@ _.route("/customer-payment-recived").post(
   authorize("customer-payment", "add"),
   validate(createCustomerPaymentSchema),
   customerController.createCustomerPaymentRecived,
+);
+
+// The customer's own sale invoices, for the payment forms' Reference Invoice list
+_.route("/customer-invoices/:customer").get(
+  authGuard,
+  authorizeAny(["customer-payment", "add"], ["customer-payment", "edit"], ["customer-payment", "view"]),
+  customerController.getCustomerInvoices,
 );
 
 _.route("/get-customer-payment-recived").get(

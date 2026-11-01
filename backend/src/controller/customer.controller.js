@@ -30,6 +30,7 @@ const {
 const { imageQueue } = require("../queues/image.queue");
 const { logAudit } = require("@/service/audit.service");
 const Account = require("../models/account.model");
+const salesModel = require("../models/sales.model");
 const CrateTransaction = require("../models/crateTransaction.model");
 const { SYSTEM_CATEGORIES, getSystemCategory } = require("../utils/systemCategory.util");
 
@@ -1225,3 +1226,40 @@ exports.deleteCustomerAdvancePaymentRecived = asynchandeler(
     );
   },
 );
+
+// How many of a customer's invoices the Reference Invoice list offers
+const CUSTOMER_INVOICES_LIMIT = 500;
+
+// @desc  A listed customer's sale invoices, newest first, read from the sales
+//        by the customer's id (sale.customerType.customerId). Feeds the
+//        Reference Invoice list on the customer payment forms.
+// @route GET /api/customer/customer-invoices/:customer
+//        :customer is the customer's _id, or their customerId for older clients
+exports.getCustomerInvoices = asynchandeler(async (req, res) => {
+  const ref = String(req.params.customer || "").trim();
+  const customer = await customerModel
+    .findOne(mongoose.isValidObjectId(ref) ? { _id: ref } : { customerId: ref })
+    .select("_id")
+    .lean();
+  if (!customer) throw new customError("Customer not found", statusCodes.NOT_FOUND);
+
+  const sales = await salesModel
+    .find({ "customerType.customerId": customer._id, invoiceNumber: { $nin: [null, ""] } })
+    // Newest first straight off the { tenantId, customerType.customerId, date }
+    // index: one index range, no in-memory sort, no per-invoice lookups
+    .sort({ date: -1 })
+    .limit(CUSTOMER_INVOICES_LIMIT)
+    .select("invoiceNumber date payable presentDue invoiceStatus paymentStatus")
+    .lean();
+
+  const invoices = sales.map((s) => ({
+    invoiceNumber: s.invoiceNumber,
+    date: s.date,
+    payable: s.payable || 0,
+    due: s.presentDue || 0,
+    invoiceStatus: s.invoiceStatus,
+    paymentStatus: s.paymentStatus,
+  }));
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Customer invoices fetched", { invoices });
+});

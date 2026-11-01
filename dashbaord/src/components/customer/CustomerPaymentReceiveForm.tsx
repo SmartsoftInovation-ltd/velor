@@ -6,9 +6,8 @@ import SectionCard from "../common/SectionCard";
 import MobileActionBar from "../common/MobileActionBar";
 import { FaUser, FaMoneyBillWave } from "react-icons/fa";
 import SearchableSelect from "../form/SearchableSelect";
-import Select from "../form/Select";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import { useFormDraft, draftValue, clearDraft } from "../../hooks/useFormDraft";
@@ -22,6 +21,22 @@ interface CustomerOption {
   value: string;
   due: number;
 }
+
+interface CustomerInvoice {
+  invoiceNumber: string;
+  date?: string;
+  payable: number;
+  due: number;
+}
+
+// "INV-0001 · 12 Jan 2026 · Due ৳400" (or "Paid")
+const invoiceLabel = (inv: CustomerInvoice) => {
+  const date = inv.date
+    ? new Date(inv.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "";
+  const due = inv.due > 0 ? `Due ৳${inv.due.toLocaleString()}` : "Paid";
+  return [inv.invoiceNumber, date, due].filter(Boolean).join(" · ");
+};
 
 interface AccountOption {
   label: string;
@@ -93,6 +108,21 @@ const CustomerPaymentReceiveForm = () => {
     });
   }, []);
 
+  // The selected customer's own sale invoices, for Reference Invoice
+  const { data: invoices = [], isFetching: invoicesLoading } = useQuery({
+    queryKey: ["customer-invoices", selectedCustomer],
+    enabled: !!selectedCustomer,
+    queryFn: async (): Promise<CustomerInvoice[]> => {
+      const res = await axiosSecure.get(`/customer/customer-invoices/${encodeURIComponent(selectedCustomer)}`);
+      return res?.data?.data?.invoices ?? [];
+    },
+    staleTime: 30 * 1000,
+  });
+  const invoiceOptions = invoices.map((inv) => ({
+    value: inv.invoiceNumber,
+    label: invoiceLabel(inv),
+  }));
+
   const handleChange = (name: string, value: any) => {
     setForm((prev: any) => ({ ...prev, [name]: value }));
   };
@@ -100,6 +130,9 @@ const CustomerPaymentReceiveForm = () => {
   const handleCustomerChange = (value: string) => {
     setSelectedCustomer(value);
     handleChange("customer", value);
+    // Another customer's invoice is never a valid reference
+    setSelectedInvoice("");
+    handleChange("referenceInvoice", "");
     const selected = customers.find((c) => c.value === value);
     handleChange("dueBalance", selected?.due ?? 0);
     if (errors.customer) setErrors((prev: any) => ({ ...prev, customer: false }));
@@ -197,13 +230,23 @@ const CustomerPaymentReceiveForm = () => {
             </div>
             <div className="flex flex-col md:col-span-2">
               <Label>Reference Invoice (Optional)</Label>
-              <Select
-                options={[{ label: "Select Invoice #", value: "" }]}
+              <SearchableSelect
+                options={invoiceOptions}
                 value={selectedInvoice}
                 onChange={(value) => {
                   setSelectedInvoice(value);
                   handleChange("referenceInvoice", value);
                 }}
+                placeholder={
+                  !selectedCustomer
+                    ? "Select a customer first"
+                    : invoicesLoading
+                      ? "Loading invoices…"
+                      : invoices.length
+                        ? "Select Invoice #"
+                        : "This customer has no invoices"
+                }
+                searchPlaceholder="Search invoice #..."
               />
             </div>
         </div>

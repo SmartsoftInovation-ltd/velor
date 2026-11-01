@@ -5,6 +5,7 @@ const { tenantFactory, forTenant } = require("../factories");
 const { runForTenant } = require("../../src/tenancy/context");
 const Account = require("../../src/models/account.model");
 const CrateTransaction = require("../../src/models/crateTransaction.model");
+const Sales = require("../../src/models/sales.model");
 const {
   customerModel: Customer,
   customerPaymentRecived: CustomerPayment,
@@ -29,6 +30,65 @@ describe("customer routes (/customer): customers, dues, payments, advances", () 
   const inTenant = (fn) => runForTenant(tenant._id, fn);
   const customerNow = (id) => inTenant(() => Customer.findById(id).lean());
   const balance = async () => (await inTenant(() => Account.findById(account._id).lean())).balance;
+
+  // Reference Invoice list on the payment forms: the customer's own sale
+  // invoices, found in the sales by the customer's id
+  describe("GET /customer/customer-invoices/:customer", () => {
+    const sale = (customerId, invoiceNumber, date, extra = {}) =>
+      inTenant(() =>
+        Sales.collection.insertOne({
+          tenantId: tenant._id,
+          invoiceNumber,
+          date: new Date(date),
+          customerType: customerId ? { type: "listed", customerId } : { type: "walking", walking: { customerName: "Walk In" } },
+          payable: 1000,
+          presentDue: 400,
+          invoiceStatus: "complete",
+          paymentStatus: "due",
+          searchItem: [],
+          createdAt: new Date(date),
+        }),
+      );
+
+    it("lists only that customer's invoices, newest first, by _id or customerId", async () => {
+      const rina = await f.customer.create({ fullName: "Rina" });
+      const karim = await f.customer.create({ fullName: "Karim" });
+      await sale(rina._id, "INV-1", "2026-01-01");
+      await sale(rina._id, "INV-3", "2026-03-01", { presentDue: 0 });
+      await sale(karim._id, "INV-2", "2026-02-01");
+      await sale(null, "INV-4", "2026-04-01");
+
+      const res = await as().get(`/customer/customer-invoices/${rina._id}`).expect(200);
+      expect(res.body.data.invoices.map((i) => i.invoiceNumber)).toEqual(["INV-3", "INV-1"]);
+      expect(res.body.data.invoices[0]).toMatchObject({ payable: 1000, due: 400, invoiceStatus: "complete" });
+
+      const byCustomerId = await as().get(`/customer/customer-invoices/${rina.customerId}`).expect(200);
+      expect(byCustomerId.body.data.invoices.map((i) => i.invoiceNumber)).toEqual(["INV-3", "INV-1"]);
+    });
+
+    it("an empty list for a customer with no invoices; 404 for an unknown customer", async () => {
+      const fresh = await f.customer.create({ fullName: "No Sales Yet" });
+      const res = await as().get(`/customer/customer-invoices/${fresh._id}`).expect(200);
+      expect(res.body.data.invoices).toEqual([]);
+      await as().get("/customer/customer-invoices/0000000000000000000000ab").expect(404);
+    });
+
+    it("never shows another store's invoices", async () => {
+      const rina = await f.customer.create({ fullName: "Rina" });
+      const other = await tenantFactory.create({ slug: "custinvother" });
+      await runForTenant(other._id, () =>
+        Sales.collection.insertOne({
+          tenantId: other._id,
+          invoiceNumber: "OTHER-1",
+          date: new Date(),
+          customerType: { type: "listed", customerId: rina._id },
+          payable: 1,
+        }),
+      );
+      const res = await as().get(`/customer/customer-invoices/${rina._id}`).expect(200);
+      expect(res.body.data.invoices).toEqual([]);
+    });
+  });
 
   describe("customers", () => {
     it("creates a customer: initialDue seeded from openingDues, server-only fields refused or ignored", async () => {

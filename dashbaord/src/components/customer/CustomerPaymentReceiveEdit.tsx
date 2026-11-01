@@ -48,6 +48,32 @@ const CustomerPaymentReceiveEdit = () => {
     enabled: !!paymentId,
   });
 
+  // The payment's customer, and their own sale invoices for Reference Invoice
+  const paymentCustomer: string = payment?.customer?._id ?? payment?.customer ?? "";
+  const { data: invoices = [], isFetching: invoicesLoading } = useQuery({
+    queryKey: ["customer-invoices", paymentCustomer],
+    enabled: !!paymentCustomer,
+    queryFn: async (): Promise<{ invoiceNumber: string; date?: string; due: number }[]> => {
+      const res = await axiosSecure.get(`/customer/customer-invoices/${encodeURIComponent(paymentCustomer)}`);
+      return res?.data?.data?.invoices ?? [];
+    },
+    staleTime: 30 * 1000,
+  });
+  const invoiceOptions = invoices.map((inv) => ({
+    value: inv.invoiceNumber,
+    label: [
+      inv.invoiceNumber,
+      inv.date ? new Date(inv.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "",
+      inv.due > 0 ? `Due ৳${inv.due.toLocaleString()}` : "Paid",
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  }));
+  // A reference saved before (or typed by hand on older payments) stays selectable
+  if (form.referenceInvoice && !invoiceOptions.some((o) => o.value === form.referenceInvoice)) {
+    invoiceOptions.unshift({ value: form.referenceInvoice, label: form.referenceInvoice });
+  }
+
   // populate form once data arrives
   useEffect(() => {
     if (!payment) return;
@@ -205,11 +231,18 @@ const CustomerPaymentReceiveEdit = () => {
 
             <div className="flex flex-col">
               <Label>Reference Invoice (Optional)</Label>
-              <Input
-                type="text"
-                placeholder="Reference invoice"
+              <SearchableSelect
+                options={invoiceOptions}
                 value={form.referenceInvoice}
-                onChange={(e) => handleChange("referenceInvoice", e.target.value)}
+                onChange={(value) => handleChange("referenceInvoice", value)}
+                placeholder={
+                  invoicesLoading
+                    ? "Loading invoices…"
+                    : invoiceOptions.length
+                      ? "Select Invoice #"
+                      : "This customer has no invoices"
+                }
+                searchPlaceholder="Search invoice #..."
               />
             </div>
 
