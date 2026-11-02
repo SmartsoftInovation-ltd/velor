@@ -529,6 +529,8 @@ const CustomerTypeList = lazy(
   () => import("./components/customer/CustomerTypeList.tsx"),
 );
 const CustomerView = lazy(() => import("./pages/Customer/CustomerView.tsx"));
+const CustomerProfilePrint = lazy(() => import("./components/customer/CustomerProfilePrint.tsx"));
+const AccountVoucherPrint = lazy(() => import("./components/account/AccountVoucherPrint.tsx"));
 const CustomerEdit = lazy(
   () => import("./components/customer/CustomerEdit.tsx"),
 );
@@ -891,6 +893,9 @@ export default function App() {
                   element={<TransactionCategoryList />}
                 />
                 <Route path="/transaction-list" element={<ProtectedRoute module="add-transaction" action="view"><TransactionList /></ProtectedRoute>} />
+                <Route path="/transaction-print/:id" element={<ProtectedRoute module="add-transaction" action="view"><AccountVoucherPrint kind="transaction" /></ProtectedRoute>} />
+                <Route path="/money-transfer-print/:id" element={<ProtectedRoute module="money-transfer" action="view"><AccountVoucherPrint kind="transfer" /></ProtectedRoute>} />
+                <Route path="/money-handover-print/:id" element={<ProtectedRoute module="money-handover" action="view"><AccountVoucherPrint kind="handover" /></ProtectedRoute>} />
                 <Route path="/add-money-transfer" element={<ProtectedRoute module="money-transfer" action="add"><MoneyTransfer /></ProtectedRoute>} />
                 <Route
                   path="/money-transfer-list"
@@ -1535,6 +1540,10 @@ export default function App() {
                 <Route
                   path="/customer-view/:customerId"
                   element={<CustomerView />}
+                />
+                <Route
+                  path="/customer-profile-print/:customerId"
+                  element={<ProtectedRoute module="customer" action="view"><CustomerProfilePrint /></ProtectedRoute>}
                 />
                 <Route
                   path="/customer-edit/:customerId"

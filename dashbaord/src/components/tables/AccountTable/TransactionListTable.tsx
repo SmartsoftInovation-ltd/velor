@@ -3,6 +3,8 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FaEdit, FaSearch, FaTimes } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
+import { IoIosPrint } from "react-icons/io";
+import { Link } from "react-router";
 import toast from "react-hot-toast";
 import moment from "moment";
 import axiosSecure from "../../../hooks/useAxiosSecure";
@@ -20,6 +22,7 @@ import {
   TableRow,
 } from "../../ui/table";
 import MobileCardList from "../../common/MobileCardList";
+import Tooltip from "../../common/Tooltip";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
 
@@ -51,20 +54,6 @@ interface EditState {
 
 const PAGE_LIMIT = 50;
 
-const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="relative inline-block" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
-      {children}
-      {visible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-gray-900 text-white text-[10px] font-bold rounded shadow-lg whitespace-nowrap z-50 pointer-events-none">
-          {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
-        </div>
-      )}
-    </div>
-  );
-};
 
 const TransactionListTable = () => {
   const queryClient = useQueryClient();
@@ -304,6 +293,9 @@ const TransactionListTable = () => {
                       <MobileCardRow label="Description">{tx.transactionDescription}</MobileCardRow>
                     )}
                     <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/5">
+                      <Link to={`/transaction-print/${tx._id}`} className="shine flex size-10 items-center justify-center rounded transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 max-md:size-11" aria-label="Print transaction voucher">
+                        <IoIosPrint className="size-4" />
+                      </Link>
                       <Button
                         onClick={() => openEditModal(tx)}
                         size="sm"
@@ -401,6 +393,11 @@ const TransactionListTable = () => {
                           <span className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{tx.transactionDescription || "—"}</span>
                         </TableCell>
                         <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                          <Tooltip text="Print">
+                            <Link to={`/transaction-print/${tx._id}`} className="shine flex size-10 items-center justify-center rounded transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10" aria-label="Print transaction voucher">
+                              <IoIosPrint className="size-4" />
+                            </Link>
+                          </Tooltip>
                           <Tooltip text="Edit">
                             <Button
                               onClick={() => openEditModal(tx)}

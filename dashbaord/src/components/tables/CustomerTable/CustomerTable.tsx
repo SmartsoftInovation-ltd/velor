@@ -9,6 +9,7 @@ import { Modal } from "../../ui/modal";
 import toast from "react-hot-toast";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { MdDelete } from "react-icons/md";
+import { IoIosPrint } from "react-icons/io";
 import {
   FaEdit,
   FaToggleOn,
@@ -89,6 +90,9 @@ interface CustomerTableProps {
   searching?: boolean;
 }
 
+// Money in the list: at most 2 decimals (dues can carry long fractions from % discounts)
+const amount = (n?: number | null) => (n != null ? Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "N/A");
+
 const CustomerTable = ({
   customers,
   fetchCustomers,
@@ -133,7 +137,7 @@ const CustomerTable = ({
   });
 
   const gridTemplateColumns =
-    "1fr 60px 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 200px";
+    "1fr 60px 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 250px";
 
   const handleDeleteModal = (customerId: string) => {
     setSelectedCustomer(customerId);
@@ -363,17 +367,25 @@ const CustomerTable = ({
               <MobileCardRow label="Mobile">{customer.mobileNumber || "N/A"}</MobileCardRow>
               <MobileCardRow label="Dues (৳)">
                 <span className={(customer.openingDues || 0) > 0 ? "text-red-500 font-semibold" : ""}>
-                  {customer.openingDues != null ? customer.openingDues : "N/A"}
+                  {amount(customer.openingDues)}
                 </span>
               </MobileCardRow>
               <MobileCardRow label="Initial Due (৳)">
-                {customer.initialDue != null ? customer.initialDue : "N/A"}
+                {amount(customer.initialDue)}
               </MobileCardRow>
               <MobileCardRow label="Discount">
                 {customer.regularDiscountPercent != null ? `${customer.regularDiscountPercent}%` : "N/A"}
               </MobileCardRow>
-              <MobileCardRow label="Due Limit">{customer.dueLimit != null ? customer.dueLimit : "N/A"}</MobileCardRow>
+              <MobileCardRow label="Due Limit">{amount(customer.dueLimit)}</MobileCardRow>
               <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-gray-100 dark:border-white/[0.05]">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/customer-profile-print/${customer.customerId}`)}
+                  className="shine flex max-md:size-11 size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                  aria-label="Print customer"
+                >
+                  <IoIosPrint className="size-4" />
+                </button>
                 <button
                   type="button"
                   onClick={() => handleViewCustomer(customer)}
@@ -576,9 +588,7 @@ const CustomerTable = ({
                       <span
                         className={`text-sm font-semibold ${(customer.openingDues || 0) > 0 ? "text-red-500" : "text-gray-500 dark:text-gray-400"}`}
                       >
-                        {customer.openingDues != null
-                          ? customer.openingDues
-                          : "N/A"}
+                        {amount(customer.openingDues)}
                       </span>
                     </div>
 
@@ -586,7 +596,7 @@ const CustomerTable = ({
                         moved by transactions. */}
                     <div className="flex items-center justify-center">
                       <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        {customer.initialDue != null ? customer.initialDue : "N/A"}
+                        {amount(customer.initialDue)}
                       </span>
                     </div>
 
@@ -602,7 +612,7 @@ const CustomerTable = ({
                     {/* Due Limit */}
                     <div className="flex items-center justify-center">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {customer.dueLimit != null ? customer.dueLimit : "N/A"}
+                        {amount(customer.dueLimit)}
                       </span>
                     </div>
 
@@ -620,6 +630,16 @@ const CustomerTable = ({
 
                     {/* Actions */}
                     <div className="flex items-center justify-center gap-2">
+                      <Tooltip text="Print">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/customer-profile-print/${customer.customerId}`)}
+                          className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10"
+                          aria-label="Print customer"
+                        >
+                          <IoIosPrint className="size-4" />
+                        </button>
+                      </Tooltip>
                       <Tooltip text="View">
                         <button
                           type="button"
