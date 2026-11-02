@@ -6,7 +6,10 @@ import MobileCardList from "../../../common/MobileCardList";
 import MobileCardRow from "../../../common/MobileCardRow";
 import useIsMobile from "../../../../hooks/useIsMobile";
 import { IoIosPrint } from "react-icons/io";
-import { useRef } from "react";
+import { MdClose } from "react-icons/md";
+import { TbEye } from "react-icons/tb";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ROWS_ATTR, printSnapshot, renderPreview, type ReportSnapshot } from "../../../../hooks/useReportPrintAll";
 
 interface StatusRow {
   _id: string;
@@ -35,13 +38,58 @@ const STATUS_COLOR: Record<string, string> = {
   Hold: "text-gray-600 bg-gray-50",
 };
 
+const esc = (v: unknown) =>
+  String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+const taka = (n: number) => `৳${(n ?? 0).toLocaleString()}`;
+
+// The printed sheet, built from the report data so Preview and Print look the
+// same on every screen size (phones show cards instead of the table)
+function statusSheet({ statuses, grandTotal, totalOrderCount, totalAmount }: OrderStatusData): ReportSnapshot {
+  const shell = `<style>
+    .os-sheet{font-family:Arial,sans-serif;color:#111}
+    .os-head{text-align:center;margin-bottom:16px}
+    .os-company{font-size:20px;font-weight:bold}
+    .os-sub{font-size:12px;color:#666;margin-top:2px}
+    .os-sheet table{width:100%;border-collapse:collapse}
+    .os-sheet th,.os-sheet td{border:1px solid #ddd;padding:8px;font-size:12px;text-align:center}
+    .os-sheet th{background:#dcfce7;font-weight:bold;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .os-sheet tfoot td{background:#f3f4f6;font-weight:bold;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  </style><div class="os-sheet">
+    <div class="os-head"><div class="os-company">Baig's Digital</div>
+    <div class="os-sub">Order Status Report · ${totalOrderCount} total orders · ${taka(totalAmount)}</div></div>
+    <table><thead><tr><th>SL#</th><th>Status</th><th>Qty</th><th>Value</th></tr></thead><tbody ${ROWS_ATTR}=""></tbody>
+    <tfoot><tr><td></td><td>Total</td><td>${grandTotal?.qty ?? 0}</td><td>${taka(grandTotal?.value)}</td></tr></tfoot></table></div>`;
+  return {
+    shell,
+    rows: statuses.map((row, i) => `<tr><td>${i + 1}</td><td>${esc(row._id)}</td><td>${row.totalQty}</td><td>${taka(row.totalValue)}</td></tr>`),
+    className: "",
+    width: 0,
+    thermalHtml: "",
+    thermalClassName: "",
+  };
+}
+
 const OrderStatusReportView = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const printRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const previewElRef = useRef<HTMLDivElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const reportData = location.state as ReportData | undefined;
+  const sheet = useMemo(() => (reportData?.data ? statusSheet(reportData.data) : null), [reportData]);
+
+  useEffect(() => {
+    if (!previewOpen || !sheet || !previewElRef.current) return;
+    return renderPreview(previewElRef.current, sheet);
+  }, [previewOpen, sheet]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPreviewOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [previewOpen]);
 
   if (!reportData?.data) {
     return (
@@ -55,23 +103,7 @@ const OrderStatusReportView = () => {
   const { statuses, grandTotal, totalOrderCount, totalAmount } = reportData.data;
 
   const handlePrint = () => {
-    if (!printRef.current) return;
-    const win = window.open("", "", "height=600,width=800");
-    if (!win) return;
-    win.document.write(`<html><head><title>Order Status Report</title><style>
-      body{font-family:Arial,sans-serif;padding:20px}
-      .header{text-align:center;margin-bottom:20px}
-      .company{font-size:22px;font-weight:bold}
-      table{width:100%;border-collapse:collapse}
-      th,td{border:1px solid #ddd;padding:8px;text-align:center}
-      th{background:#4ade80;font-weight:bold}
-      .total{background:#f3f4f6;font-weight:bold}
-    </style></head><body>
-    <div class="header"><div class="company">Baig's Digital</div><div>Order Status Report</div></div>`);
-    win.document.write(printRef.current.innerHTML);
-    win.document.write("</body></html>");
-    win.document.close();
-    win.print();
+    if (sheet) void printSnapshot(sheet);
   };
 
   return (
@@ -84,13 +116,18 @@ const OrderStatusReportView = () => {
               <h2 className="text-sm font-semibold">Order Status Report</h2>
               <p className="text-xs text-gray-500 mt-0.5">{totalOrderCount} total orders · ৳{(totalAmount ?? 0).toLocaleString()}</p>
             </div>
-            <Button onClick={handlePrint} className="bg-brand-500 hover:bg-brand-600 text-white px-3 py-2 rounded text-sm flex items-center gap-1">
-              <IoIosPrint /> Print
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setPreviewOpen(true)} className="bg-brand-500 hover:bg-brand-600 text-white px-3 py-2 rounded text-sm flex items-center gap-1">
+                <TbEye /> Preview
+              </Button>
+              <Button onClick={handlePrint} className="bg-brand-500 hover:bg-brand-600 text-white px-3 py-2 rounded text-sm flex items-center gap-1">
+                <IoIosPrint /> Print
+              </Button>
+            </div>
           </div>
         }
       >
-        <div ref={printRef}>
+        <div>
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center border border-blue-100 dark:border-blue-800">
@@ -169,6 +206,28 @@ const OrderStatusReportView = () => {
           )}
         </div>
       </ComponentCard>
+
+      {previewOpen && (
+        <div className="fixed inset-0 z-[100010] flex flex-col items-center bg-black/60 py-6" onClick={() => setPreviewOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="mb-3 flex shrink-0 items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-semibold text-gray-800 shadow-lg hover:bg-gray-100"
+            >
+              <IoIosPrint className="size-4" /> Print
+            </button>
+            <button
+              onClick={() => setPreviewOpen(false)}
+              className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-semibold text-gray-800 shadow-lg hover:bg-gray-100"
+            >
+              <MdClose className="size-4" /> Close
+            </button>
+          </div>
+          <div className="no-scrollbar min-h-0 w-full flex-1 overflow-y-auto px-4" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto w-full max-w-[210mm] bg-white p-[12mm] text-black shadow-lg" ref={previewElRef} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1175,8 +1175,11 @@ span.flatpickr-weekday,
     border: none;
     vertical-align: middle;
   }
+  /* The totals row prints once, after the last row. As a footer group the
+     browser would repeat it at the bottom of every page. */
   body.printing-report tfoot {
-    display: table-footer-group;
+    display: table-row-group;
+    break-inside: avoid;
   }
   /* Letterhead row inside <thead> (repeats on every printed page): a plain
      cell, not a styled column heading. */
@@ -1338,7 +1341,7 @@ span.flatpickr-weekday,
     display: table-header-group;
   }
 .paper-preview-body tfoot {
-    display: table-footer-group;
+    display: table-row-group;
   }
 /* A5 is narrower than the table's natural width. At print the browser
    compresses the columns to fit the page; the copied markup keeps a screen

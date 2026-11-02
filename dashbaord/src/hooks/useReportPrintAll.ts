@@ -4,7 +4,7 @@ import { mainTable } from "../utils/sheetPdf";
 
 const TOAST_ID = "report-print-all";
 // Attribute on the empty <tbody> left in the snapshot's shell, where rows go back in
-const ROWS_ATTR = "data-report-rows";
+export const ROWS_ATTR = "data-report-rows";
 const ROWS_SLOT = `${ROWS_ATTR}=""></tbody>`;
 // Rows added to the preview per step as it scrolls
 const PREVIEW_CHUNK = 300;
@@ -108,7 +108,7 @@ const removePrintHost = () => {
   document.body.classList.remove("print-snapshot");
 };
 
-async function printSnapshot(snap: ReportSnapshot) {
+export async function printSnapshot(snap: ReportSnapshot) {
   removePrintHost();
   const host = document.createElement("div");
   host.id = PRINT_HOST_ID;
@@ -123,7 +123,7 @@ async function printSnapshot(snap: ReportSnapshot) {
 
 // Fills the preview with the shell and the first rows, then adds the next
 // rows each time the last one comes within reach of the view
-function renderPreview(el: HTMLElement, snap: ReportSnapshot, wrapText: boolean) {
+export function renderPreview(el: HTMLElement, snap: ReportSnapshot, wrapText = false) {
   el.innerHTML = toPreviewHtml(snap.shell, wrapText);
   const tbody = el.querySelector(`[${ROWS_ATTR}]`);
   if (!tbody || !snap.rows.length) return () => {};

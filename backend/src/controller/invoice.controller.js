@@ -259,11 +259,16 @@ exports.getPurchaseBySupplier = asynchandeler(async (req, res) => {
 });
 
 // geta all order and calculate tatoal product price or varinat producxt price or deliveryCharge price
+// Rows the order invoice report returns for Preview / Print (?all=1), same cap as the other reports
+const ORDER_REPORT_EXPORT_MAX = Number(process.env.REPORT_EXPORT_MAX) || 20000;
+
 exports.getInvoiceReport = asynchandeler(async (req, res) => {
   const startDate = req.query.startDate || req.body?.startDate;
   const endDate = req.query.endDate || req.body?.endDate;
-  const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+  // Preview / Print: every order in one request instead of one scroll page
+  const all = req.query.all === "1" || req.query.all === "true";
+  const page = all ? 1 : Math.max(1, parseInt(req.query.page) || 1);
+  const limit = all ? ORDER_REPORT_EXPORT_MAX : Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
   const skip = (page - 1) * limit;
 
   const match = {};
