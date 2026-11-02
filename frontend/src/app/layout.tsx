@@ -63,6 +63,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       data-banner={store?.bannerLayout}
       data-card={store?.cardLayout}
       data-grid={store?.gridColumns}
+      data-category={store?.categoryLayout}
+      data-gallery={store?.galleryPosition}
+      data-thumbs={store?.thumbnailPosition}
+      data-filter={store?.filterLayout}
+      data-footer={store?.footerLayout}
+      data-button={store?.buttonStyle}
+      data-menu={store?.menuColor}
+      data-menu-align={store?.menuAlign}
+      data-announcement={store?.announcementText ? store.announcementEnabled : "off"}
       suppressHydrationWarning
     >
       <head>

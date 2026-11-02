@@ -17,6 +17,14 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
 
   return (
     <ShopStorageProvider tenantId={store?.id ?? ""}>
+      {/* Always in the page, hidden unless the store turned it on, so the Platform
+          Console's preview can show it without a reload. */}
+      <p
+        id="announcement-bar"
+        className="hidden bg-brand-500 px-4 py-2 text-center text-small font-medium text-on-brand announcement-on:block"
+      >
+        {store?.announcementText}
+      </p>
       <SiteHeader />
       <div className="flex-1">{children}</div>
       <SiteFooter />

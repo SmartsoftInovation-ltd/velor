@@ -71,8 +71,8 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
         <Breadcrumb items={crumbs(query, taxonomy.categories)} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[17rem_1fr]">
-        <div className="hidden lg:block">
+      <div className="grid gap-6 lg:grid-cols-[17rem_1fr] filter-right:lg:grid-cols-[1fr_17rem] filter-popup:lg:grid-cols-1">
+        <div className="hidden lg:block filter-right:lg:order-2 filter-popup:lg:hidden">
           <FilterSidebar query={query} counts={counts} taxonomy={taxonomy} />
         </div>
 

@@ -66,7 +66,9 @@ export async function SiteHeader() {
       </div>
 
       {/* Catalogue navigation. The mobile drawer covers this below lg. */}
-      <NavBar tone="sunken" className="hidden lg:block" />
+      <div data-nav-bar>
+        <NavBar tone="sunken" className="hidden lg:block" />
+      </div>
     </header>
   );
 }

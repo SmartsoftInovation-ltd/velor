@@ -32,9 +32,9 @@ export function ProductGallery({
   };
 
   return (
-    <div className="relative flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:gap-4">
+    <div className="relative flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:gap-4 gallery-right:lg:order-2 thumbs-bottom:sm:flex-col">
       {images.length > 1 ? (
-        <ul className="order-2 flex gap-3 sm:order-none sm:w-20 sm:shrink-0 sm:flex-col">
+        <ul className="order-2 flex gap-3 sm:order-none sm:w-20 sm:shrink-0 sm:flex-col thumbs-bottom:sm:order-2 thumbs-bottom:sm:w-auto thumbs-bottom:sm:flex-row thumbs-bottom:sm:flex-wrap">
           {images.map((image, index) => (
             <li key={image.src} className="shrink-0">
               <button
@@ -117,7 +117,7 @@ export function ProductGallery({
       {lens ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute left-full top-0 z-20 ml-4 hidden aspect-square w-[32vw] max-w-lg overflow-hidden rounded-xl border border-border-default bg-bg-surface shadow-xl lg:block"
+          className="pointer-events-none absolute left-full top-0 z-20 ml-4 gallery-right:left-auto gallery-right:right-full gallery-right:ml-0 gallery-right:mr-4 hidden aspect-square w-[32vw] max-w-lg overflow-hidden rounded-xl border border-border-default bg-bg-surface shadow-xl lg:block"
           style={{
             backgroundImage: `url(${current.src})`,
             backgroundRepeat: "no-repeat",

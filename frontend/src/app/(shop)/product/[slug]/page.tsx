@@ -68,7 +68,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
         />
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:gap-12">
+      <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:gap-12 gallery-right:lg:grid-cols-[1fr_auto]">
         <ProductGallery images={product.gallery} discountPct={discountPct} />
         <ProductSummary product={product} initialVariantId={typeof variant === "string" ? variant : undefined} />
       </div>

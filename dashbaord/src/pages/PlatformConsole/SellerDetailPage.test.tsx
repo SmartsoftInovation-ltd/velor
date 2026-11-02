@@ -137,14 +137,28 @@ describe("SellerDetailPage (Platform Console)", () => {
     await userEvent.click(screen.getByRole("button", { name: /banner: full image/i }));
     await userEvent.click(screen.getByRole("button", { name: /product card: overlay/i }));
     await userEvent.click(screen.getByRole("button", { name: /product grid: 5 per row/i }));
+
+    await userEvent.click(screen.getByRole("button", { name: /menu color: color/i }));
+    await userEvent.click(screen.getByRole("button", { name: /shop filters: popup/i }));
+    await userEvent.click(screen.getByLabelText(/show the bar/i));
+    await userEvent.type(screen.getByLabelText(/announcement text/i), " Eid sale ");
     await userEvent.click(save);
 
     await waitFor(() =>
-      expect(settings.update).toHaveBeenCalledWith("t1", "general", {
-        bannerLayout: "full",
-        cardLayout: "overlay",
-        gridColumns: "5",
-      }),
+      expect(settings.update).toHaveBeenCalledWith(
+        "t1",
+        "general",
+        expect.objectContaining({
+          bannerLayout: "full",
+          cardLayout: "overlay",
+          gridColumns: "5",
+          menuColor: "brand",
+          filterLayout: "popup",
+          announcementEnabled: "on",
+          announcementText: "Eid sale",
+          footerLayout: "full",
+        }),
+      ),
     );
   });
 

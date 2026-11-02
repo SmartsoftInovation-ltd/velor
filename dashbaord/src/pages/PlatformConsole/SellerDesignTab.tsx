@@ -7,11 +7,24 @@ import { settingsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import { useSellerPreviewUrl } from "./useSellerPreviewUrl";
 import WebsitePreview from "./WebsitePreview";
-import { cardClass, primaryButtonClass, secondaryButtonClass } from "./ui";
+import { cardClass, inputClass, primaryButtonClass, secondaryButtonClass } from "./ui";
 
-export type WebsiteDesign = { bannerLayout: string; cardLayout: string; gridColumns: string };
-
-const DEFAULT_DESIGN: WebsiteDesign = { bannerLayout: "split", cardLayout: "standard", gridColumns: "4" };
+const DEFAULT_DESIGN = {
+  bannerLayout: "split",
+  cardLayout: "standard",
+  gridColumns: "4",
+  categoryLayout: "image",
+  galleryPosition: "left",
+  thumbnailPosition: "side",
+  filterLayout: "left",
+  footerLayout: "full",
+  buttonStyle: "solid",
+  menuColor: "sunken",
+  menuAlign: "left",
+  announcementEnabled: "off",
+  announcementText: "",
+};
+export type WebsiteDesign = typeof DEFAULT_DESIGN;
 
 const Bar = ({ className = "" }: { className?: string }) => (
   <span className={`block h-1 rounded-full bg-gray-300 dark:bg-gray-600 ${className}`} />
@@ -110,6 +123,224 @@ const GRIDS = ["3", "4", "5"].map((value) => ({
   ),
 }));
 
+const Block = ({ className = "" }: { className?: string }) => (
+  <span className={`block rounded-sm bg-gray-300 dark:bg-gray-600 ${className}`} />
+);
+
+const CATEGORIES = [
+  {
+    value: "image",
+    label: "Image",
+    hint: "Photo with the name on it",
+    picture: (
+      <span className="flex h-full gap-1">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="flex flex-1 flex-col justify-end rounded-sm bg-gray-500 p-0.5">
+            <span className="block h-0.5 rounded-full bg-white/90" />
+          </span>
+        ))}
+      </span>
+    ),
+  },
+  {
+    value: "round",
+    label: "Round",
+    hint: "Round photo, name below",
+    picture: (
+      <span className="flex h-full items-center gap-1">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="flex flex-1 flex-col items-center gap-1">
+            <span className="block aspect-square w-full rounded-full bg-gray-300 dark:bg-gray-600" />
+            <Bar className="w-2/3" />
+          </span>
+        ))}
+      </span>
+    ),
+  },
+  {
+    value: "name",
+    label: "Name only",
+    hint: "Just the names",
+    picture: (
+      <span className="flex h-full flex-wrap content-center gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className="h-2.5 w-[45%] rounded-full border border-gray-300 dark:border-gray-600" />
+        ))}
+      </span>
+    ),
+  },
+];
+
+const GALLERY = [
+  {
+    value: "left",
+    label: "Left",
+    hint: "Photos on the left",
+    picture: (
+      <span className="flex h-full gap-1">
+        <Block className="w-1/2" />
+        <span className="flex flex-1 flex-col justify-center gap-1"><Bar /><Bar className="w-2/3" /></span>
+      </span>
+    ),
+  },
+  {
+    value: "right",
+    label: "Right",
+    hint: "Photos on the right",
+    picture: (
+      <span className="flex h-full gap-1">
+        <span className="flex flex-1 flex-col justify-center gap-1"><Bar /><Bar className="w-2/3" /></span>
+        <Block className="w-1/2" />
+      </span>
+    ),
+  },
+];
+
+const THUMBS = [
+  {
+    value: "side",
+    label: "Side",
+    hint: "Small photos beside the big one",
+    picture: (
+      <span className="flex h-full gap-1">
+        <span className="flex w-1/5 flex-col gap-0.5"><Block className="flex-1" /><Block className="flex-1" /><Block className="flex-1" /></span>
+        <Block className="flex-1" />
+      </span>
+    ),
+  },
+  {
+    value: "bottom",
+    label: "Bottom",
+    hint: "Small photos under the big one",
+    picture: (
+      <span className="flex h-full flex-col gap-1">
+        <Block className="flex-1" />
+        <span className="flex h-1/4 gap-0.5"><Block className="flex-1" /><Block className="flex-1" /><Block className="flex-1" /></span>
+      </span>
+    ),
+  },
+];
+
+const FILTERS = [
+  {
+    value: "left",
+    label: "Left",
+    hint: "Filters beside the products",
+    picture: (
+      <span className="flex h-full gap-1">
+        <span className="w-1/4 rounded-sm bg-accent-500" />
+        <Block className="flex-1" />
+      </span>
+    ),
+  },
+  {
+    value: "right",
+    label: "Right",
+    hint: "Filters on the right",
+    picture: (
+      <span className="flex h-full gap-1">
+        <Block className="flex-1" />
+        <span className="w-1/4 rounded-sm bg-accent-500" />
+      </span>
+    ),
+  },
+  {
+    value: "popup",
+    label: "Popup",
+    hint: "A Filters button, products use the full width",
+    picture: (
+      <span className="flex h-full flex-col gap-1">
+        <span className="h-1.5 w-1/3 rounded-sm bg-accent-500" />
+        <Block className="flex-1" />
+      </span>
+    ),
+  },
+];
+
+const FOOTERS = [
+  {
+    value: "full",
+    label: "Full",
+    hint: "Newsletter, links and contact",
+    picture: (
+      <span className="flex h-full flex-col justify-end gap-1">
+        <Bar className="w-1/2" />
+        <span className="flex gap-1"><Block className="h-4 flex-1" /><Block className="h-4 flex-1" /><Block className="h-4 flex-1" /></span>
+      </span>
+    ),
+  },
+  {
+    value: "compact",
+    label: "Compact",
+    hint: "Payment methods and copyright only",
+    picture: (
+      <span className="flex h-full flex-col justify-end">
+        <Block className="h-2" />
+      </span>
+    ),
+  },
+];
+
+const BUTTONS = [
+  {
+    value: "solid",
+    label: "Solid",
+    hint: "Filled, with a soft shadow",
+    picture: <span className="flex h-full items-center"><span className="h-5 w-full rounded bg-accent-500 shadow-md" /></span>,
+  },
+  {
+    value: "flat",
+    label: "Flat",
+    hint: "Filled, no shadow",
+    picture: <span className="flex h-full items-center"><span className="h-5 w-full rounded bg-accent-500" /></span>,
+  },
+  {
+    value: "outline",
+    label: "Outline",
+    hint: "Border only, fills on hover",
+    picture: <span className="flex h-full items-center"><span className="h-5 w-full rounded border-2 border-accent-500" /></span>,
+  },
+];
+
+const menuPicture = (band: string, pill = "bg-accent-500") => (
+  <span className="flex h-full items-center">
+    <span className={`flex h-5 w-full items-center gap-1 rounded-sm px-1 ${band}`}>
+      <span className={`h-2.5 w-1/3 rounded-full ${pill}`} />
+      <span className="h-1 w-1/4 rounded-full bg-gray-400" />
+    </span>
+  </span>
+);
+
+const MENU_COLORS = [
+  { value: "sunken", label: "Soft", hint: "Light tint", picture: menuPicture("bg-gray-100 dark:bg-white/5") },
+  { value: "surface", label: "White", hint: "Same as the header", picture: menuPicture("border border-gray-200 dark:border-gray-700") },
+  { value: "brand", label: "Color", hint: "The website color", picture: menuPicture("bg-accent-500", "bg-white/40") },
+  { value: "inverse", label: "Dark", hint: "Dark band", picture: menuPicture("bg-gray-800") },
+];
+
+const MENU_ALIGN = [
+  {
+    value: "left",
+    label: "Left",
+    hint: "Menu starts at the left",
+    picture: <span className="flex h-full items-center gap-1"><Bar className="w-1/5" /><Bar className="w-1/5" /><Bar className="w-1/5" /></span>,
+  },
+  {
+    value: "center",
+    label: "Center",
+    hint: "Menu in the middle",
+    picture: <span className="flex h-full items-center justify-center gap-1"><Bar className="w-1/5" /><Bar className="w-1/5" /><Bar className="w-1/5" /></span>,
+  },
+];
+
+const ANNOUNCEMENT_MAX = 120;
+
+const SectionLabel = ({ children }: { children: ReactNode }) => (
+  <p className="border-t border-gray-100 pt-5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 first:border-t-0 first:pt-0 dark:border-gray-800">
+    {children}
+  </p>
+);
+
 const OptionGroup = ({
   title,
   where,
@@ -128,7 +359,7 @@ const OptionGroup = ({
   <fieldset>
     <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">{title}</legend>
     <p className="mb-2.5 text-xs text-gray-500 dark:text-gray-400">{where}</p>
-    <div className="grid grid-cols-3 gap-2">
+    <div className={`grid gap-2 ${options.length === 4 ? "grid-cols-4" : options.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
       {options.map((option) => {
         const selected = value === option.value;
         return (
@@ -185,45 +416,68 @@ export const DesignStudio = ({
 
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-      <section className={`${cardClass} space-y-6 p-5 xl:sticky xl:top-24`}>
-        <div>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white/90">Website design</h3>
-          <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-            Try a layout and it changes in the preview. Shoppers see it only after you save.
-          </p>
+      <section className={`${cardClass} flex flex-col overflow-hidden xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)]`}>
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white/90">Website design</h3>
+            <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+              Try a layout and it changes in the preview. Open the page named under each option
+              to see it. Shoppers see it only after you save.
+            </p>
+          </div>
+
+          <SectionLabel>Header</SectionLabel>
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">Announcement bar</legend>
+            <p className="mb-2.5 text-xs text-gray-500 dark:text-gray-400">Above the header, on every shopping page</p>
+            <label className="mb-2 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                className="size-4 accent-accent-500"
+                checked={design.announcementEnabled === "on"}
+                disabled={!canEdit}
+                onChange={(e) => change("announcementEnabled")(e.target.checked ? "on" : "off")}
+              />
+              Show the bar
+            </label>
+            <input
+              aria-label="Announcement text"
+              className={inputClass}
+              placeholder="Free delivery on orders over ৳2,000"
+              maxLength={ANNOUNCEMENT_MAX}
+              value={design.announcementText}
+              readOnly={!canEdit}
+              onChange={(e) => change("announcementText")(e.target.value)}
+            />
+            {design.announcementEnabled === "on" && !design.announcementText.trim() && (
+              <p className="mt-1 text-xs text-warning-600 dark:text-warning-400">Add some text, or the bar stays hidden.</p>
+            )}
+          </fieldset>
+          <OptionGroup title="Menu color" where="The menu row under the header" options={MENU_COLORS} value={design.menuColor} disabled={!canEdit} onChange={change("menuColor")} />
+          <OptionGroup title="Menu position" where="Large screens" options={MENU_ALIGN} value={design.menuAlign} disabled={!canEdit} onChange={change("menuAlign")} />
+
+          <SectionLabel>Home page</SectionLabel>
+          <OptionGroup title="Banner" where="Top of the home page" options={BANNERS} value={design.bannerLayout} disabled={!canEdit} onChange={change("bannerLayout")} />
+          <OptionGroup title="Category card" where="Shop by category, on the home page" options={CATEGORIES} value={design.categoryLayout} disabled={!canEdit} onChange={change("categoryLayout")} />
+
+          <SectionLabel>Products</SectionLabel>
+          <OptionGroup title="Product card" where="Home and Shop pages" options={CARDS} value={design.cardLayout} disabled={!canEdit} onChange={change("cardLayout")} />
+          <OptionGroup title="Product grid" where="Large screens. Phones keep 2 per row." options={GRIDS} value={design.gridColumns} disabled={!canEdit} onChange={change("gridColumns")} />
+          <OptionGroup title="Shop filters" where="Shop page, large screens" options={FILTERS} value={design.filterLayout} disabled={!canEdit} onChange={change("filterLayout")} />
+          <OptionGroup title="Product gallery" where="Product page, large screens" options={GALLERY} value={design.galleryPosition} disabled={!canEdit} onChange={change("galleryPosition")} />
+          <OptionGroup title="Thumbnails" where="Product page, when it has several photos" options={THUMBS} value={design.thumbnailPosition} disabled={!canEdit} onChange={change("thumbnailPosition")} />
+
+          <SectionLabel>Whole website</SectionLabel>
+          <OptionGroup title="Buttons" where="Every page, cart and checkout too" options={BUTTONS} value={design.buttonStyle} disabled={!canEdit} onChange={change("buttonStyle")} />
+          <OptionGroup title="Footer" where="Bottom of every shopping page" options={FOOTERS} value={design.footerLayout} disabled={!canEdit} onChange={change("footerLayout")} />
         </div>
 
-        <OptionGroup
-          title="Banner"
-          where="Top of the home page"
-          options={BANNERS}
-          value={design.bannerLayout}
-          disabled={!canEdit}
-          onChange={change("bannerLayout")}
-        />
-        <OptionGroup
-          title="Product card"
-          where="Home and shop pages"
-          options={CARDS}
-          value={design.cardLayout}
-          disabled={!canEdit}
-          onChange={change("cardLayout")}
-        />
-        <OptionGroup
-          title="Product grid"
-          where="Large screens. Phones keep 2 per row."
-          options={GRIDS}
-          value={design.gridColumns}
-          disabled={!canEdit}
-          onChange={change("gridColumns")}
-        />
-
         {canEdit && (
-          <div className="space-y-2">
+          <div className="space-y-2 border-t border-gray-100 p-4 dark:border-gray-800">
             <button
               type="button"
               disabled={!changed || saving}
-              onClick={() => onSave(design)}
+              onClick={() => onSave({ ...design, announcementText: design.announcementText.trim() })}
               className={`${primaryButtonClass} h-11 w-full`}
             >
               Save design
@@ -259,6 +513,16 @@ export const DesignStudio = ({
           banner: design.bannerLayout,
           card: design.cardLayout,
           grid: design.gridColumns,
+          category: design.categoryLayout,
+          gallery: design.galleryPosition,
+          thumbs: design.thumbnailPosition,
+          filter: design.filterLayout,
+          footer: design.footerLayout,
+          button: design.buttonStyle,
+          menu: design.menuColor,
+          "menu-align": design.menuAlign,
+          announcement: design.announcementText.trim() ? design.announcementEnabled : "off",
+          announcementText: design.announcementText,
         }}
       />
     </div>
@@ -292,11 +556,11 @@ const SellerDesignTab = ({ tenantId }: { tenantId: string }) => {
   const general = current.data.settings.general;
   return (
     <DesignStudio
-      saved={{
-        bannerLayout: String(general?.bannerLayout ?? DEFAULT_DESIGN.bannerLayout),
-        cardLayout: String(general?.cardLayout ?? DEFAULT_DESIGN.cardLayout),
-        gridColumns: String(general?.gridColumns ?? DEFAULT_DESIGN.gridColumns),
-      }}
+      saved={
+        Object.fromEntries(
+          Object.entries(DEFAULT_DESIGN).map(([field, fallback]) => [field, String(general?.[field] ?? fallback)]),
+        ) as WebsiteDesign
+      }
       previewUrl={previewUrl}
       canEdit={isSuperadmin}
       saving={save.isPending}

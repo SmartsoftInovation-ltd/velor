@@ -5,7 +5,20 @@ import { useEffect } from "react";
 import { brandThemeCss } from "@/lib/brand-theme";
 
 const STYLE_ID = "brand-preview";
-const LAYOUTS = { banner: /^(split|full|boxed)$/, card: /^(standard|minimal|overlay)$/, grid: /^[345]$/ };
+const LAYOUTS = {
+  banner: /^(split|full|boxed)$/,
+  card: /^(standard|minimal|overlay)$/,
+  grid: /^[345]$/,
+  category: /^(image|round|name)$/,
+  gallery: /^(left|right)$/,
+  thumbs: /^(side|bottom)$/,
+  filter: /^(left|right|popup)$/,
+  footer: /^(full|compact)$/,
+  button: /^(solid|flat|outline)$/,
+  menu: /^(sunken|surface|brand|inverse)$/,
+  "menu-align": /^(left|center)$/,
+  announcement: /^(on|off)$/,
+};
 
 /**
  * Lets the Platform Console try a color or layout on this site while showing it
@@ -25,6 +38,11 @@ export function BrandPreviewListener({ parentOrigin }: { parentOrigin: string })
         for (const [name, allowed] of Object.entries(LAYOUTS)) {
           const value = event.data[name];
           if (allowed.test(value)) document.documentElement.setAttribute(`data-${name}`, value);
+        }
+        // textContent, so whatever is typed stays text
+        const bar = document.getElementById("announcement-bar");
+        if (bar && typeof event.data.announcementText === "string") {
+          bar.textContent = event.data.announcementText;
         }
         return;
       }

@@ -18,7 +18,7 @@ export function MobileFilters({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="lg:hidden">
+    <div className="lg:hidden filter-popup:lg:block">
       <button
         type="button"
         onClick={() => setOpen(true)}

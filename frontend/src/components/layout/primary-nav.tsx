@@ -54,7 +54,7 @@ export function PrimaryNav({ className }: { className?: string }) {
         onBlur={(event) => {
           if (!listRef.current?.contains(event.relatedTarget as Node)) settle();
         }}
-        className="relative flex items-center gap-1"
+        className="relative flex items-center gap-1 menu-center:justify-center"
       >
         <span
           aria-hidden="true"

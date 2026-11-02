@@ -8,6 +8,15 @@
 @custom-variant banner-boxed (&:where([data-banner="boxed"] *));
 @custom-variant card-minimal (&:where([data-card="minimal"] *));
 @custom-variant card-overlay (&:where([data-card="overlay"] *));
+@custom-variant category-round (&:where([data-category="round"] *));
+@custom-variant category-name (&:where([data-category="name"] *));
+@custom-variant gallery-right (&:where([data-gallery="right"] *));
+@custom-variant thumbs-bottom (&:where([data-thumbs="bottom"] *));
+@custom-variant filter-right (&:where([data-filter="right"] *));
+@custom-variant filter-popup (&:where([data-filter="popup"] *));
+@custom-variant footer-compact (&:where([data-footer="compact"] *));
+@custom-variant menu-center (&:where([data-menu-align="center"] *));
+@custom-variant announcement-on (&:where([data-announcement="on"] *));
 
 /* ---------------------------------------------------------------------------
    PRIMITIVES
@@ -644,4 +653,76 @@ select:focus-visible {
   [data-grid="5"] .product-grid-filtered {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  /* With the filters in a popup, the shop's grid has the whole width */
+  [data-filter="popup"] .product-grid-filtered {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  [data-filter="popup"][data-grid="3"] .product-grid-filtered {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  [data-filter="popup"][data-grid="5"] .product-grid-filtered {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* A store's button style. Every solid brand button is a link or button carrying
+   these two utilities; badges and chips are spans, so they keep their fill. */
+[data-button="flat"] :is(a, button).bg-brand-500.text-on-brand {
+  box-shadow: none;
+}
+
+[data-button="outline"] :is(a, button).bg-brand-500.text-on-brand {
+  background-color: transparent;
+  color: var(--color-text-brand);
+  box-shadow: inset 0 0 0 1.5px var(--color-brand-500);
+}
+
+[data-button="outline"] :is(a, button).bg-brand-500.text-on-brand:hover {
+  background-color: var(--color-brand-500);
+  color: var(--color-on-brand);
+}
+
+/* A store's menu band. Only the storefront's own header carries data-nav-bar, so
+   the design-system page keeps showing its fixed tones. */
+[data-menu="surface"] [data-nav-bar] [data-nav-tone] {
+  background-color: var(--color-bg-surface);
+}
+
+[data-menu="brand"] [data-nav-bar] [data-nav-tone] {
+  --menu-ink: var(--color-on-brand);
+  --menu-strong: var(--color-on-brand);
+  background-color: var(--color-brand-500);
+  border-top-color: transparent;
+}
+
+[data-menu="inverse"] [data-nav-bar] [data-nav-tone] {
+  --menu-ink: var(--color-text-inverse);
+  /* The sliding pill stays brand here, so the word on it follows the brand */
+  --menu-strong: var(--color-on-brand);
+  background-color: var(--color-bg-inverse);
+  border-top-color: transparent;
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav :is(a, button):not([role="menu"] *) {
+  color: color-mix(in srgb, var(--menu-ink) 80%, transparent);
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav :is(a, button):not([role="menu"] *):hover,
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav a[aria-current="page"]:not([role="menu"] *) {
+  color: var(--menu-strong);
+}
+
+[data-menu="brand"] [data-nav-bar] nav [aria-hidden="true"].bg-brand-500 {
+  background-color: color-mix(in srgb, var(--menu-ink) 18%, transparent);
+  box-shadow: none;
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] [data-nav-tone] > div > p {
+  background-color: color-mix(in srgb, var(--menu-ink) 14%, transparent);
+  color: var(--menu-ink);
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] [data-nav-tone] > div > span {
+  background-color: color-mix(in srgb, var(--menu-ink) 25%, transparent);
 }

@@ -67,6 +67,16 @@ export type Store = {
   bannerLayout: string;
   cardLayout: string;
   gridColumns: string;
+  categoryLayout: string;
+  galleryPosition: string;
+  thumbnailPosition: string;
+  filterLayout: string;
+  footerLayout: string;
+  buttonStyle: string;
+  menuColor: string;
+  menuAlign: string;
+  announcementEnabled: string;
+  announcementText: string;
 };
 
 /**

@@ -57,6 +57,23 @@ const issueSession = (user) => ({
  * the name and logo the seller set in Store Information. Public, because the
  * shop header needs it before anyone signs in, and limited to branding.
  */
+// The look a seller picked in the Platform Console; the storefront reads it here
+const STOREFRONT_DESIGN_FIELDS = [
+  "bannerLayout",
+  "cardLayout",
+  "gridColumns",
+  "categoryLayout",
+  "galleryPosition",
+  "thumbnailPosition",
+  "filterLayout",
+  "footerLayout",
+  "buttonStyle",
+  "menuColor",
+  "menuAlign",
+  "announcementEnabled",
+  "announcementText",
+];
+
 exports.store = asynchandeler(async (req, res) => {
   requireStore();
   const [info, settings] = await Promise.all([
@@ -70,9 +87,7 @@ exports.store = asynchandeler(async (req, res) => {
     name: info?.storeName || req.tenant?.name || "",
     logo: info?.image?.url || "",
     primaryColor: settings.general.primaryColor || "",
-    bannerLayout: settings.general.bannerLayout,
-    cardLayout: settings.general.cardLayout,
-    gridColumns: settings.general.gridColumns,
+    ...Object.fromEntries(STOREFRONT_DESIGN_FIELDS.map((field) => [field, settings.general[field]])),
   });
 });
 

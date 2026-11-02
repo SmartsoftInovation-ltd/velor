@@ -92,6 +92,30 @@ describe("storefront shopper accounts", () => {
       expect(fromPizza.body.data).toMatchObject({ bannerLayout: "split", cardLayout: "standard", gridColumns: "4" });
     });
 
+    it("sends the rest of the design, and refuses an over-long announcement", async () => {
+      await service.updateSection(velor.tenant._id, "general", {
+        categoryLayout: "round",
+        filterLayout: "popup",
+        menuColor: "brand",
+        announcementEnabled: "on",
+        announcementText: "Free delivery this week",
+      });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      expect(fromVelor.body.data).toMatchObject({
+        categoryLayout: "round",
+        filterLayout: "popup",
+        menuColor: "brand",
+        menuAlign: "left",
+        announcementEnabled: "on",
+        announcementText: "Free delivery this week",
+      });
+
+      await expect(
+        service.updateSection(velor.tenant._id, "general", { announcementText: "x".repeat(121) }),
+      ).rejects.toThrow();
+    });
+
     it("refuses a layout the storefront does not have", async () => {
       await expect(service.updateSection(velor.tenant._id, "general", { cardLayout: "fancy" })).rejects.toThrow();
     });
