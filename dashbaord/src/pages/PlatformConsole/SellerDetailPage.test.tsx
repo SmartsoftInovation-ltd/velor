@@ -31,7 +31,11 @@ vi.mock("../../platform/endpoints", () => {
   // Resolved lazily: the mock factory is hoisted above the mocks it forwards to
   const forward = (pick: () => Record<string, (...a: unknown[]) => unknown>) =>
     new Proxy({}, { get: (_, key: string) => (...args: unknown[]) => pick()[key](...args) });
-  return { tenantsApi: forward(() => tenants as never), settingsApi: forward(() => settings as never) };
+  return {
+    tenantsApi: forward(() => tenants as never),
+    settingsApi: forward(() => settings as never),
+    domainsApi: { list: async () => [] },
+  };
 });
 vi.mock("../../platform/PlatformAuthContext", () => ({ usePlatformAuth: () => ({ isSuperadmin: true }) }));
 vi.mock("react-hot-toast", () => ({ default: { success: vi.fn(), error: vi.fn() } }));

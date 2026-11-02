@@ -24,6 +24,7 @@ Create a `.env` file in the root (it is gitignored):
 ```
 VITE_API_URL=http://<backend-host>/api/v1
 VITE_SOCKET_URL=http://<backend-host>
+VITE_STOREFRONT_PREVIEW_URL=     # local storefront for the console's Website Color preview, e.g. http://localhost:3001; empty = the seller's own domain (the storefront needs DASHBOARD_URL set to accept colors)
 VITE_PLATFORM_WORKSPACES=        # platform workspace(s) whose owner sees Platform Console in the sidebar; empty = none (operators open /platform directly)
 ```
 
