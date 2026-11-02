@@ -29,7 +29,7 @@
     "axios": "^1.8.4",
     "clsx": "^2.1.1",
     "flatpickr": "^4.6.13",
-    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "2.5.2",
     "jsbarcode": "^3.12.3",
     "jspdf": "^3.0.3",
     "moment": "^2.30.1",

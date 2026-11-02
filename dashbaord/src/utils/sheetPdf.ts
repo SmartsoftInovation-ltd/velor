@@ -1,4 +1,4 @@
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 
 // Turns a report sheet into a PDF, however many rows it has.
@@ -23,7 +23,7 @@ const draw = (el: HTMLElement) =>
   html2canvas(el, { scale: SCALE, backgroundColor: "#ffffff", useCORS: true, logging: false });
 
 // The table that holds the report's rows: the one with the most body rows
-const mainTable = (root: HTMLElement) => {
+export const mainTable = (root: HTMLElement) => {
   let best: HTMLTableElement | null = null;
   let most = 0;
   root.querySelectorAll("table").forEach((t) => {

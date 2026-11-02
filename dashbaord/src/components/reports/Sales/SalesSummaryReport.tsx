@@ -204,9 +204,8 @@ const SalesSummaryReport = () => {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   // Preview, Print and PDF cover every row, not just this page
-  const printAllCtl = useReportPrintAll(previewOpen);
+  const printAllCtl = useReportPrintAll(previewOpen, { sheetRef: printRef, thermalRef });
   const { printAll } = printAllCtl;
-  const [previewHtml, setPreviewHtml] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(
     Object.fromEntries(COLUMN_DEFS.map((c) => [c.key, true])) as Record<ColumnKey, boolean>,
   );
@@ -336,7 +335,7 @@ const SalesSummaryReport = () => {
   const accountSummary = data?.accountSummary;
   const pagination = data?.pagination;
   const rows = data?.rows ?? [];
-  useRunWhenAllRowsReady(printAllCtl, printAll && !isFetching && !!data);
+  useRunWhenAllRowsReady(printAllCtl, printAll && !isFetching && !!data && !isError, printAll && !isFetching && isError);
 
   const filterChips: string[] = [];
   if (salesType) filterChips.push(salesTypeLabel[salesType] ?? salesType);
@@ -363,26 +362,6 @@ const SalesSummaryReport = () => {
   };
 
   const isThermal = pageFormat === "80mm";
-
-  // Snapshot the live A4/A5 sheet whenever the preview opens or the data
-  // behind it changes. The sheet's print-only pieces (letterhead, period row)
-  // are `hidden print:flex`, which would stay hidden inside the modal, so the
-  // copy strips those Tailwind gates to show the sheet as it will print.
-  useEffect(() => {
-    if (!previewOpen || isThermal || !printRef.current) return;
-    const html = printRef.current.innerHTML
-      .replace(/hidden print:flex/g, "flex")
-      .replace(/hidden print:block/g, "block")
-      .replace(/hidden print:table-cell/g, "table-cell")
-      .replace(/print:hidden/g, "hidden")
-      // The table is laid out for the screen: an overflow-x-auto wrapper and a
-      // min-w on the table itself, each with a print: counterpart that only
-      // unlocks under print media. Left as-is the copy would clip its last
-      // column, so apply the print widths here too.
-      .replace(/overflow-x-auto/g, "overflow-visible")
-      .replace(/min-w-\[\d+px\]/g, "min-w-0");
-    setPreviewHtml(html);
-  }, [previewOpen, isThermal, pageFormat, data, visibleColumns]);
 
 
   // Reactive print rules — printing runs straight off the live page (Ctrl+P or
@@ -476,10 +455,10 @@ const SalesSummaryReport = () => {
     };
   }, [pageFormat, isThermal]);
 
-  const handlePrint = () => printAllCtl.run(() => window.print());
+  const handlePrint = () => printAllCtl.print();
 
   const downloadPdfNow = async () => {
-    const source = isThermal ? thermalRef.current : printRef.current;
+    const source = printAllCtl.pdfSource(isThermal);
     if (!source) return;
     setPdfBusy(true);
     try {
@@ -1006,7 +985,7 @@ const SalesSummaryReport = () => {
               >
                 <div
                   className={`paper-preview-body p-[12mm] text-black ${pageFormat === "a5" ? "paper-a5" : ""}`}
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  ref={printAllCtl.previewRef}
                 />
               </div>
             </div>
@@ -1020,12 +999,10 @@ const SalesSummaryReport = () => {
             }
             onClick={(e) => previewOpen && isThermal && e.stopPropagation()}
           >
-        <div
-          ref={thermalRef}
-          className={`thermal-receipt w-[80mm] bg-white px-3 py-4 font-mono text-black ${
-            previewOpen && isThermal ? "relative shadow-lg" : "pointer-events-none fixed left-[-9999px] top-0"
-          }`}
-        >
+        {previewOpen && isThermal && (
+          <div ref={printAllCtl.thermalPreviewRef} className="thermal-receipt w-[80mm] bg-white px-3 py-4 font-mono text-black relative shadow-lg" />
+        )}
+        <div ref={thermalRef} className="thermal-receipt w-[80mm] bg-white px-3 py-4 font-mono text-black pointer-events-none fixed left-[-9999px] top-0">
           {/* Store header */}
           <div className="text-center">
             {header?.logo && (

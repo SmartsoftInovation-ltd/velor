@@ -213,9 +213,8 @@ const CustomerSalesProductReport = () => {
   const [pageFormat, setPageFormat] = useState<PageFormat>("a4");
   const [previewOpen, setPreviewOpen] = useState(false);
   // Preview, Print and PDF cover every row, not just this page
-  const printAllCtl = useReportPrintAll(previewOpen);
+  const printAllCtl = useReportPrintAll(previewOpen, { sheetRef: printRef, thermalRef });
   const { printAll } = printAllCtl;
-  const [previewHtml, setPreviewHtml] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(
     Object.fromEntries(COLUMN_DEFS.map((c) => [c.key, true])) as Record<ColumnKey, boolean>,
@@ -386,7 +385,7 @@ const CustomerSalesProductReport = () => {
   const invoiceTotals = data?.invoiceTotals;
   const pagination = data?.pagination;
   const rows = data?.rows ?? [];
-  useRunWhenAllRowsReady(printAllCtl, printAll && !isFetching && !!data);
+  useRunWhenAllRowsReady(printAllCtl, printAll && !isFetching && !!data && !isError, printAll && !isFetching && isError);
 
   const filterChips: string[] = [];
   if (customerId) {
@@ -434,22 +433,6 @@ const CustomerSalesProductReport = () => {
 
   const isThermal = pageFormat === "80mm";
 
-  // Snapshot the live A4/A5 sheet whenever the preview opens or the data
-  // behind it changes. The sheet's print-only pieces (letterhead, period row)
-  // are `hidden print:flex`, which would stay hidden inside the modal, so the
-  // copy strips those Tailwind gates to show the sheet as it will print.
-  useEffect(() => {
-    if (!previewOpen || isThermal || !printRef.current) return;
-    const html = printRef.current.innerHTML
-      .replace(/hidden print:flex/g, "flex")
-      .replace(/hidden print:block/g, "block")
-      .replace(/hidden print:table-cell/g, "table-cell")
-      .replace(/print:hidden/g, "hidden")
-      .replace(/overflow-x-auto/g, "overflow-visible")
-      .replace(/min-w-\[\d+px\]/g, "min-w-0");
-    setPreviewHtml(html);
-  }, [previewOpen, isThermal, pageFormat, data, visibleColumns]);
-
   // Reactive @page size — printing straight from the live page (Ctrl+P / the
   // Print button) uses the browser's own native print preview, so the sheet
   // must already be styled correctly in this document rather than copied into
@@ -474,10 +457,10 @@ const CustomerSalesProductReport = () => {
     };
   }, [pageFormat, isThermal]);
 
-  const handlePrint = () => printAllCtl.run(() => window.print());
+  const handlePrint = () => printAllCtl.print();
 
   const downloadPdfNow = async () => {
-    const source = isThermal ? thermalRef.current : printRef.current;
+    const source = printAllCtl.pdfSource(isThermal);
     if (!source) return;
     setPdfBusy(true);
     try {
@@ -896,11 +879,10 @@ const CustomerSalesProductReport = () => {
           </div>
         </div>
 
-        {/* Preview modal — an overlay showing either a live copy of the A4/A5
-            sheet (see the previewHtml effect above) or the thermal receipt
-            below, scaled to the selected page format. Print and PDF inside it
-            both act on the real sheet/receipt nodes, so what is previewed is
-            exactly what comes out. */}
+        {/* Preview modal — an overlay showing the snapshot of the A4/A5
+            sheet with every row (useReportPrintAll adds the rows as it
+            scrolls) or of the thermal receipt. Print and PDF inside it use
+            the same snapshot, so what is previewed is exactly what comes out. */}
         <div
           className={
             previewOpen
@@ -947,7 +929,7 @@ const CustomerSalesProductReport = () => {
               >
                 <div
                   className={`paper-preview-body p-[12mm] text-black ${pageFormat === "a5" ? "paper-a5" : ""}`}
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  ref={printAllCtl.previewRef}
                 />
               </div>
             </div>
@@ -965,12 +947,10 @@ const CustomerSalesProductReport = () => {
             html2canvas/print source when Format is set to 80mm Thermal. A wide
             data table can't fit 80mm no matter the font size, so this renders
             each invoice as a stacked block instead of columns. */}
-        <div
-          ref={thermalRef}
-          className={`w-[80mm] bg-white px-3 py-4 text-black ${
-            previewOpen && isThermal ? "relative shadow-lg" : "pointer-events-none fixed left-[-9999px] top-0"
-          }`}
-        >
+        {previewOpen && isThermal && (
+          <div ref={printAllCtl.thermalPreviewRef} className="w-[80mm] bg-white px-3 py-4 text-black relative shadow-lg" />
+        )}
+        <div ref={thermalRef} className="w-[80mm] bg-white px-3 py-4 text-black pointer-events-none fixed left-[-9999px] top-0">
           <div className="th-header">
             <div className="th-company">{header?.storeName ?? "—"}</div>
             <div className="th-subtitle">{header?.address}</div>

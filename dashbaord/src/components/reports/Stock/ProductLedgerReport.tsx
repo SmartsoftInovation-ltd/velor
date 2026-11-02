@@ -13,6 +13,7 @@ import { TbBook2 } from "react-icons/tb";
 import { LuFileDown } from "react-icons/lu";
 import ReportDateField from "../../form/ReportDateField";
 import { sheetToPdf } from "../../../utils/sheetPdf";
+import { useReportPrintAll, useRunWhenAllRowsReady } from "../../../hooks/useReportPrintAll";
 
 // ---------- Types ----------
 interface LedgerRow {
@@ -111,7 +112,8 @@ const ProductLedgerReport = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pageFormat, setPageFormat] = useState<PageFormat>("a4");
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState("");
+  // Preview, Print and PDF work from a snapshot of the sheet (see useReportPrintAll)
+  const printAllCtl = useReportPrintAll(previewOpen, { sheetRef: printRef, thermalRef });
   const [pdfBusy, setPdfBusy] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(
     Object.fromEntries(COLUMN_DEFS.map((c) => [c.key, true])) as Record<ColumnKey, boolean>,
@@ -169,7 +171,7 @@ const ProductLedgerReport = () => {
 
   const [productId, variantId] = itemKey.split(":");
 
-  const { data, isLoading, isError } = useQuery<ReportData>({
+  const { data, isLoading, isError, isFetching } = useQuery<ReportData>({
     queryKey: ["product-ledger", itemKey, startDate, endDate],
     queryFn: async () => {
       const res = await axiosSecure.post("/report/product-ledger", {
@@ -183,6 +185,12 @@ const ProductLedgerReport = () => {
     enabled: !!itemKey,
     placeholderData: keepPreviousData,
   });
+  // The ledger is not paged: the screen already has every row
+  useRunWhenAllRowsReady(
+    printAllCtl,
+    printAllCtl.printAll && !isFetching && !!data && !isError,
+    printAllCtl.printAll && !isFetching && isError,
+  );
 
   const header = data?.header;
   const totals = data?.totals;
@@ -201,18 +209,6 @@ const ProductLedgerReport = () => {
   const isThermal = pageFormat === "80mm";
 
   useEffect(() => {
-    if (!previewOpen || isThermal || !printRef.current) return;
-    const html = printRef.current.innerHTML
-      .replace(/hidden print:flex/g, "flex")
-      .replace(/hidden print:block/g, "block")
-      .replace(/hidden print:table-cell/g, "table-cell")
-      .replace(/print:hidden/g, "hidden")
-      .replace(/overflow-x-auto/g, "overflow-visible")
-      .replace(/min-w-\[\d+px\]/g, "min-w-0");
-    setPreviewHtml(html);
-  }, [previewOpen, isThermal, pageFormat, data, visibleColumns]);
-
-  useEffect(() => {
     const styleEl = document.createElement("style");
     styleEl.id = "report-print-page-size";
     const blankMarginBoxes = `
@@ -228,12 +224,10 @@ const ProductLedgerReport = () => {
     };
   }, [pageFormat, isThermal]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => printAllCtl.print();
 
-  const handleDownloadPdf = async () => {
-    const source = isThermal ? thermalRef.current : printRef.current;
+  const downloadPdfNow = async () => {
+    const source = printAllCtl.pdfSource(isThermal);
     if (!source) return;
     setPdfBusy(true);
     try {
@@ -248,6 +242,8 @@ const ProductLedgerReport = () => {
       setPdfBusy(false);
     }
   };
+
+  const handleDownloadPdf = () => printAllCtl.run(downloadPdfNow);
 
   const portalTarget = document.getElementById("app-content-portal-target");
   if (!portalTarget) return null;
@@ -600,7 +596,7 @@ const ProductLedgerReport = () => {
               >
                 <div
                   className={`paper-preview-body p-[12mm] text-black ${pageFormat === "a5" ? "paper-a5" : ""}`}
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  ref={printAllCtl.previewRef}
                 />
               </div>
             </div>
@@ -610,13 +606,11 @@ const ProductLedgerReport = () => {
             className={previewOpen && isThermal ? "no-scrollbar min-h-0 flex-1 overflow-y-auto" : "contents"}
             onClick={(e) => previewOpen && isThermal && e.stopPropagation()}
           >
-            {/* Thermal (80mm) receipt layout — off-screen unless previewing. */}
-            <div
-              ref={thermalRef}
-              className={`w-[80mm] bg-white px-3 py-4 text-black ${
-                previewOpen && isThermal ? "relative shadow-lg" : "pointer-events-none fixed left-[-9999px] top-0"
-              }`}
-            >
+            {/* Thermal (80mm) receipt layout — always off-screen; the preview shows its snapshot. */}
+            {previewOpen && isThermal && (
+              <div ref={printAllCtl.thermalPreviewRef} className="w-[80mm] bg-white px-3 py-4 text-black relative shadow-lg" />
+            )}
+            <div ref={thermalRef} className="w-[80mm] bg-white px-3 py-4 text-black pointer-events-none fixed left-[-9999px] top-0">
               <div className="th-header">
                 <div className="th-company">{header?.storeName ?? "—"}</div>
                 <div className="th-subtitle">{header?.address}</div>

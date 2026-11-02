@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import { renderBarcodeToSvg } from "../../../utils/barcodeRender";
 
 const StickerPreview = () => {

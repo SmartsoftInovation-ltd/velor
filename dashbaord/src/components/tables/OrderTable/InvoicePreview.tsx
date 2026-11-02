@@ -3,7 +3,7 @@
 // import axiosSecure from "../../../hooks/useAxiosSecure";
 // import moment from "moment";
 // import jsPDF from "jspdf";
-// import html2canvas from "html2canvas";
+// import html2canvas from "html2canvas-pro";
 // import Button from "../../ui/button/Button";
 
 // const InvoicePreview = () => {
@@ -154,7 +154,7 @@ import { useParams, useNavigate } from "react-router";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import moment from "moment";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import Button from "../../ui/button/Button";
 
 const InvoicePreview = () => {
