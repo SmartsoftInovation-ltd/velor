@@ -72,6 +72,22 @@ describe("storefront shopper accounts", () => {
   const SHOPPER = { name: "Rahim", email: "rahim@example.com", password: "Shopper-Pass1" };
 
   describe("store identity", () => {
+    it("gives each store its own brand color, and none until one is set", async () => {
+      await service.updateSection(velor.tenant._id, "general", { primaryColor: "#0F9D63" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
+
+      expect(fromVelor.body.data.primaryColor).toBe("#0F9D63");
+      expect(fromPizza.body.data.primaryColor).toBe("");
+    });
+
+    it("refuses a brand color that is not a plain hex value", async () => {
+      await expect(
+        service.updateSection(velor.tenant._id, "general", { primaryColor: "red}body{display:none" }),
+      ).rejects.toThrow();
+    });
+
     it("names the store whose domain the visitor arrived on", async () => {
       const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
       const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);

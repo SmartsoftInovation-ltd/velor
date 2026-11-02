@@ -19,8 +19,8 @@ const BANDS: Record<NavTone, string> = {
 // The delivery note is a chip, so it needs its own ground per band — a tint
 // that reads on sand looks muddy on the brand and inverse rows.
 const NOTES: Record<NavTone, string> = {
-  surface: "bg-brand-50 text-brand-600",
-  sunken: "bg-brand-50 text-brand-600",
+  surface: "bg-brand-50 text-text-brand",
+  sunken: "bg-brand-50 text-text-brand",
   brand: "bg-white/15 text-white",
   inverse: "bg-white/10 text-text-inverse",
 };

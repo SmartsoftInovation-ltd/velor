@@ -30,7 +30,7 @@ export function WishlistToolbar({
         <button
           type="button"
           onClick={onMoveAll}
-          className="shine relative flex h-9 items-center gap-1.5 rounded-md bg-brand-500 px-4 text-small font-medium text-white shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]"
+          className="shine relative flex h-9 items-center gap-1.5 rounded-md bg-brand-500 px-4 text-small font-medium text-on-brand shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]"
         >
           <span className="relative z-2 flex shrink-0 [&>svg]:size-4" aria-hidden="true">
             <CartIcon />

@@ -15,10 +15,14 @@ layer decides what that means under the current theme.
 
 ```
 Primitive  →  Semantic  →  Tailwind utility  →  Component
---orange-500   --color-brand-500   bg-brand-500     <button className="bg-brand-500">
+--brand-500   --color-brand-500   bg-brand-500     <button className="bg-brand-500">
 ```
 
-- **Primitives** (`--orange-500`, `--sand-700`) are raw values, defined once in
+- **Store color:** a seller's `primaryColor`, set in the Platform Console, replaces the
+  `--brand-*` ramp at render time (`src/lib/brand-theme.ts`). So never hardcode a brand
+  value, and put `text-on-brand`, not `text-white`, on a brand fill: a light store color
+  needs dark text.
+- **Primitives** (`--brand-500`, `--sand-700`) are raw values, defined once in
   `globals.css` and referenced only by the semantic layer. Never used directly.
 - **Semantics** (`--color-bg-surface`, `--color-text-secondary`) carry meaning,
   not appearance. These are what you use.

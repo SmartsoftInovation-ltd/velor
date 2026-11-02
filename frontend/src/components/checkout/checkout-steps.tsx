@@ -25,7 +25,7 @@ export function CheckoutSteps({ current = 2 }: { current?: number }) {
                   className={cn(
                     "flex size-6 shrink-0 items-center justify-center rounded-full text-micro font-semibold tabular transition-colors duration-150",
                     done && "bg-success-solid text-white",
-                    active && "bg-brand-500 text-white shadow-brand",
+                    active && "bg-brand-500 text-on-brand shadow-brand",
                     !done && !active && "bg-bg-sunken text-text-tertiary",
                   )}
                 >

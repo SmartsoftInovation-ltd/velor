@@ -56,7 +56,7 @@ export function OrderSummary({
             markup — so the link carries Button's own classes instead. */}
         <Link
           href="/checkout"
-          className="shine relative inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-brand-500 px-5 text-body font-medium whitespace-nowrap text-white shadow-brand transition-[background-color,box-shadow,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98] active:bg-brand-700"
+          className="shine relative inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-brand-500 px-5 text-body font-medium whitespace-nowrap text-on-brand shadow-brand transition-[background-color,box-shadow,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98] active:bg-brand-700"
         >
           Checkout
           <span className="relative z-2 flex shrink-0 [&>svg]:size-4" aria-hidden="true">

@@ -32,7 +32,7 @@ export function AuthAside({
         <div className="flex w-full max-w-md justify-center">{visual}</div>
         <div className="mt-10 max-w-sm text-center">
           <p className="text-h2 font-semibold tracking-tight text-text-primary">
-            {headline} <span className="text-brand-500">{script}</span>
+            {headline} <span className="text-text-brand">{script}</span>
           </p>
           <p className="mt-2 text-small text-text-secondary">{note}</p>
         </div>

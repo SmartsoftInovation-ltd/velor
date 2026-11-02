@@ -90,7 +90,7 @@ export async function AuthShell({
               <h1 className="text-h1 font-bold tracking-tight text-balance text-text-primary">
                 {title}
                 {titleAccent ? (
-                  <span className="text-brand-500"> {titleAccent}</span>
+                  <span className="text-text-brand"> {titleAccent}</span>
                 ) : null}
               </h1>
               <p className="text-body text-text-secondary">{description}</p>

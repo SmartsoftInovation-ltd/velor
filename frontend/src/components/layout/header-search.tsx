@@ -19,7 +19,7 @@ export function HeaderSearch({ className }: { className?: string }) {
       <button
         type="button"
         aria-label="Search"
-        className="absolute top-1/2 right-1.5 flex h-9 w-12 -translate-y-1/2 items-center justify-center rounded-md bg-brand-500 text-white shadow-brand transition-colors duration-150 ease-out hover:bg-brand-600"
+        className="absolute top-1/2 right-1.5 flex h-9 w-12 -translate-y-1/2 items-center justify-center rounded-md bg-brand-500 text-on-brand shadow-brand transition-colors duration-150 ease-out hover:bg-brand-600"
       >
         <SearchIcon className="size-[18px]" />
       </button>

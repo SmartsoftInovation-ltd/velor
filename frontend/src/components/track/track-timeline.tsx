@@ -53,7 +53,7 @@ export function TrackTimeline({
               className={cn(
                 "relative z-1 flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150",
                 done && "border-success-solid bg-success-solid text-white",
-                live && "border-brand-500 bg-brand-500 text-white shadow-brand",
+                live && "border-brand-500 bg-brand-500 text-on-brand shadow-brand",
                 !done && !live && "border-border-default bg-bg-surface text-text-disabled",
               )}
             >

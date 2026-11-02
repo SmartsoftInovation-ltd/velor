@@ -24,7 +24,7 @@ export function TrustBadges() {
               key={badge.id}
               className="group flex items-center gap-4 lg:border-l lg:border-border-subtle lg:pl-6 lg:first:border-l-0 lg:first:pl-0"
             >
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600 transition-transform duration-300 ease-[var(--ease-hover)] group-hover:scale-105">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-text-brand transition-transform duration-300 ease-[var(--ease-hover)] group-hover:scale-105">
                 <Icon className="size-6" />
               </span>
               <div className="space-y-0.5">

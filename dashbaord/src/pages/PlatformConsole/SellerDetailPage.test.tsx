@@ -95,6 +95,34 @@ describe("SellerDetailPage (Platform Console)", () => {
     await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { invoicePrefix: "PZS" }));
   });
 
+  it("lets the platform pick a suggested website color", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /website color/i }));
+
+    await userEvent.click(await screen.findByRole("button", { name: /use color #0f9d63/i }));
+    expect(screen.getByLabelText(/^website color$/i)).toHaveValue("#0f9d63");
+    await userEvent.click(screen.getByRole("button", { name: /save color/i }));
+
+    await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { primaryColor: "#0f9d63" }));
+  });
+
+  it("lets the platform set the website color, and refuses anything but a hex value", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /website color/i }));
+
+    const color = await screen.findByLabelText(/^website color$/i);
+    const save = screen.getByRole("button", { name: /save color/i });
+
+    await userEvent.type(color, "green");
+    expect(save).toBeDisabled();
+
+    await userEvent.clear(color);
+    await userEvent.type(color, "#0F9D63");
+    await userEvent.click(save);
+
+    await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { primaryColor: "#0F9D63" }));
+  });
+
   it("shows webhook URLs and the audit trail", async () => {
     renderPage();
     await userEvent.click(await screen.findByRole("tab", { name: /webhooks/i }));

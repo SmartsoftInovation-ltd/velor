@@ -1,14 +1,16 @@
 import { HelmetProvider, Helmet } from "react-helmet-async";
 
+// Every page's browser tab reads the same; `title` is no longer shown
+const APP_TITLE = "ECOMPOS MASTER | Smartsoft Innovation";
+
 const PageMeta = ({
-  title,
   description,
 }: {
-  title: string;
+  title?: string;
   description: string;
 }) => (
   <Helmet>
-    <title>{title}</title>
+    <title>{APP_TITLE}</title>
     <meta name="description" content={description} />
   </Helmet>
 );

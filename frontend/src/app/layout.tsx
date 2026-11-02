@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { headers } from "next/headers";
 import { ToastProvider } from "@/components/ui/toast";
+import { brandThemeCss } from "@/lib/brand-theme";
+import { getStore, storeHostFrom } from "@/lib/store-api";
 import "./globals.css";
 
 const geist = Geist({
@@ -35,7 +38,12 @@ const themeScript = `
 })();
 `;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Here rather than in the (shop) layout so the sign-in pages and the 404 wear
+  // the store's color too. Rendered on the server, so nothing flashes orange.
+  const store = await getStore(storeHostFrom(await headers()));
+  const brandCss = brandThemeCss(store?.primaryColor);
+
   return (
     // The inline script below sets data-theme before React hydrates, so the
     // server HTML and the live DOM necessarily differ on this element.
@@ -46,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
       </head>
       <body className="flex min-h-full flex-col">
         {/* A client boundary that only owns the toast stack — `children` stays

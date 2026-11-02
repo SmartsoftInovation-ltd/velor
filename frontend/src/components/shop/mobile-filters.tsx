@@ -26,7 +26,7 @@ export function MobileFilters({
       >
         Filters
         {activeCount ? (
-          <span className="flex size-5 items-center justify-center rounded-full bg-brand-500 text-micro font-semibold text-white">
+          <span className="flex size-5 items-center justify-center rounded-full bg-brand-500 text-micro font-semibold text-on-brand">
             {activeCount}
           </span>
         ) : null}

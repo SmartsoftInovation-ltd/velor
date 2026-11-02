@@ -69,7 +69,7 @@ export function MobileMenu({ signedIn = false }: { signedIn?: boolean }) {
             <Link
               href={signedIn ? "/account" : "/sign-in"}
               onClick={() => setOpen(false)}
-              className="mt-auto flex h-11 items-center justify-center gap-2 rounded-md bg-brand-500 text-body font-medium text-white shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600"
+              className="mt-auto flex h-11 items-center justify-center gap-2 rounded-md bg-brand-500 text-body font-medium text-on-brand shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600"
             >
               <UserIcon className="size-4" />
               {signedIn ? "My account" : "Log in"}

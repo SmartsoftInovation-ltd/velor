@@ -28,7 +28,7 @@ export function FilterCheckbox({
         className={cn(
           "flex size-4 shrink-0 items-center justify-center rounded-xs border transition-colors duration-150",
           checked
-            ? "border-brand-500 bg-brand-500 text-white"
+            ? "border-brand-500 bg-brand-500 text-on-brand"
             : "border-border-default group-hover:border-border-strong",
         )}
       >

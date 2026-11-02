@@ -13,16 +13,18 @@
   /* Brand — #FC630A is the one value carried over from the Figma file.
      The ramp is built around it: 50-300 are tints for surfaces and hover,
      600-900 are shades dark enough to carry white text. */
-  --orange-50: #fff5ed;
-  --orange-100: #ffe8d5;
-  --orange-200: #fecdaa;
-  --orange-300: #fdab74;
-  --orange-400: #fc7f3c;
-  --orange-500: #fc630a;
-  --orange-600: #ea4a06;
-  --orange-700: #c23507;
-  --orange-800: #9a2c0e;
-  --orange-900: #7c270f;
+  --brand-50: #fff5ed;
+  --brand-100: #ffe8d5;
+  --brand-200: #fecdaa;
+  --brand-300: #fdab74;
+  --brand-400: #fc7f3c;
+  --brand-500: #fc630a;
+  --brand-600: #ea4a06;
+  --brand-700: #c23507;
+  --brand-800: #9a2c0e;
+  --brand-900: #7c270f;
+  /* Brand text on a fixed white control, in either theme */
+  --brand-ink: var(--brand-700);
 
   /* Neutrals — a warm grey ramp. Every step carries a trace of the brand hue
      so orange never reads cold against it. This is the whole reason not to use
@@ -79,23 +81,27 @@
   --color-text-tertiary: var(--sand-500);
   --color-text-disabled: var(--sand-400);
   --color-text-inverse: var(--sand-0);
-  --color-text-brand: var(--orange-600);
+  --color-text-brand: var(--brand-600);
 
   --color-border-subtle: var(--sand-200);
   --color-border-default: var(--sand-300);
   --color-border-strong: var(--sand-400);
-  --color-border-brand: var(--orange-500);
+  --color-border-brand: var(--brand-500);
 
-  --color-brand-50: var(--orange-50);
-  --color-brand-100: var(--orange-100);
-  --color-brand-200: var(--orange-200);
-  --color-brand-300: var(--orange-300);
-  --color-brand-400: var(--orange-400);
-  --color-brand-500: var(--orange-500);
-  --color-brand-600: var(--orange-600);
-  --color-brand-700: var(--orange-700);
-  --color-brand-800: var(--orange-800);
-  --color-brand-900: var(--orange-900);
+  /* Text on a brand fill. White unless a store's color is too light to carry it
+     (see lib/brand-theme.ts). The same in both themes: the fill barely moves. */
+  --color-on-brand: #fff;
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
 
   /* Each status is a trio: a tint for backgrounds, a solid for fills and dots,
      and a text colour that clears 4.5:1 on its own tint. */
@@ -146,12 +152,12 @@
   --color-text-disabled: #605952;
   --color-text-inverse: var(--sand-900);
   /* 400 rather than 600: on a dark ground the darker shades fail contrast. */
-  --color-text-brand: var(--orange-400);
+  --color-text-brand: var(--brand-400);
 
   --color-border-subtle: #302c29;
   --color-border-default: #3d3835;
   --color-border-strong: #524c47;
-  --color-border-brand: var(--orange-500);
+  --color-border-brand: var(--brand-500);
 
   /* The brand ramp inverts so 100 stays the quiet tint and 800 the loud one in
      both themes. Write bg-brand-100 once; never reach for a dark: variant. */
@@ -160,11 +166,11 @@
   --color-brand-200: #5c2c0d;
   --color-brand-300: #8a3f0f;
   --color-brand-400: #d1520a;
-  --color-brand-500: var(--orange-500);
-  --color-brand-600: var(--orange-400);
-  --color-brand-700: var(--orange-300);
-  --color-brand-800: var(--orange-200);
-  --color-brand-900: var(--orange-100);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-400);
+  --color-brand-700: var(--brand-300);
+  --color-brand-800: var(--brand-200);
+  --color-brand-900: var(--brand-100);
 
   --color-success-subtle: #0d2818;
   --color-success-solid: #22c55e;
@@ -214,6 +220,7 @@
   --color-border-strong: var(--color-border-strong);
   --color-border-brand: var(--color-border-brand);
 
+  --color-on-brand: var(--color-on-brand);
   --color-brand-50: var(--color-brand-50);
   --color-brand-100: var(--color-brand-100);
   --color-brand-200: var(--color-brand-200);

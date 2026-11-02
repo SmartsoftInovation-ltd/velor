@@ -12,6 +12,8 @@ const SECTIONS = {
     isActive: () => true,
     fields: {
       invoicePrefix: { type: "string", pattern: /^[A-Z0-9]{2,8}$/, uppercase: true, default: "INV" },
+      // The storefront's brand color; empty keeps the storefront's own default
+      primaryColor: { type: "string", pattern: /^#[0-9a-fA-F]{6}$/, default: "" },
       orderHotline: { type: "string", pattern: /^(\+8801|01)\d{9}$/, default: "", ownerEditable: true },
       facebookUrl: { type: "uri", default: "", ownerEditable: true },
       storefrontUrl: { type: "uri", default: "" },

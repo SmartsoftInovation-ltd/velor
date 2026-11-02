@@ -11,7 +11,7 @@ export function VisualForgot() {
       <VisualCard className="relative">
         <span
           aria-hidden="true"
-          className="animate-float-y absolute -top-5 -right-4 flex size-12 items-center justify-center rounded-2xl bg-[var(--orange-500)] text-white shadow-[0_10px_24px_-8px_rgb(249_115_22/0.7)]"
+          className="animate-float-y absolute -top-5 -right-4 flex size-12 items-center justify-center rounded-2xl bg-[var(--brand-500)] text-on-brand shadow-[0_10px_24px_-8px_color-mix(in_srgb,var(--brand-500)_70%,transparent)]"
         >
           <MailIcon className="size-5" />
         </span>

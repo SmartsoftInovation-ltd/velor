@@ -34,7 +34,7 @@ export function CategoryCard({ category }: { category: ShopCategory }) {
         </span>
         <span
           aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white transition-transform duration-200 ease-[var(--ease-hover)] group-hover:translate-x-0.5"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-500 text-on-brand transition-transform duration-200 ease-[var(--ease-hover)] group-hover:translate-x-0.5"
         >
           <ArrowRightIcon className="size-4" />
         </span>

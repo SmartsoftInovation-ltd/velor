@@ -23,11 +23,11 @@ export function TrackStatusCard({ order }: { order: TrackedOrder }) {
 
   return (
     <section className="overflow-hidden rounded-xl border border-border-subtle bg-bg-surface shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4 bg-brand-500 p-5 text-white sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4 bg-brand-500 p-5 text-on-brand sm:p-6">
         <div className="min-w-0 space-y-1">
-          <p className="text-caption text-white/80">Invoice {order.invoice}</p>
+          <p className="text-caption text-on-brand/80">Invoice {order.invoice}</p>
           <h2 className="text-h2 font-semibold">In transit</h2>
-          <p className="text-small text-white/90">
+          <p className="text-small text-on-brand/90">
             Arriving by {formatDay(order.estimatedAt)}
           </p>
         </div>

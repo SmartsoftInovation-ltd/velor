@@ -21,7 +21,7 @@ export function EmptyWishlist() {
 
       <Link
         href="/shop"
-        className="shine relative mt-6 inline-flex h-11 items-center justify-center rounded-md bg-brand-500 px-6 text-body font-medium text-white shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]"
+        className="shine relative mt-6 inline-flex h-11 items-center justify-center rounded-md bg-brand-500 px-6 text-body font-medium text-on-brand shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]"
       >
         Browse the shop
       </Link>

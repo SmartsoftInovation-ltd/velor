@@ -35,7 +35,7 @@ export function HeaderIconButton({
         {children}
       </span>
       {typeof count === "number" ? (
-        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-micro font-semibold text-white ring-2 ring-bg-surface">
+        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-micro font-semibold text-on-brand ring-2 ring-bg-surface">
           {count}
         </span>
       ) : null}

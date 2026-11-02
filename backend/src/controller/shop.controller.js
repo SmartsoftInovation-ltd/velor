@@ -10,6 +10,7 @@ const { apiResponse } = require("../utils/apiResponse");
 const { signInIdentifier } = require("../utils/signInIdentifier.util");
 const { statusCodes, PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE } = require("../constant/constant");
 const { getTenantId } = require("../tenancy/context");
+const { getSettings } = require("../settings/settings.service");
 
 /**
  * Storefront accounts, as distinct from dashboard staff.
@@ -58,13 +59,17 @@ const issueSession = (user) => ({
  */
 exports.store = asynchandeler(async (req, res) => {
   requireStore();
-  const info = await StoreInformation.findOne().select("storeName image").lean();
+  const [info, settings] = await Promise.all([
+    StoreInformation.findOne().select("storeName image").lean(),
+    getSettings(getTenantId()),
+  ]);
   return apiResponse.sendSuccess(res, statusCodes.OK, "Store", {
     // The storefront keys the browser's cart and wishlist by it. Safe to show:
     // no storefront endpoint accepts it, the store always comes from the domain.
     id: String(getTenantId()),
     name: info?.storeName || req.tenant?.name || "",
     logo: info?.image?.url || "",
+    primaryColor: settings.general.primaryColor || "",
   });
 });
 

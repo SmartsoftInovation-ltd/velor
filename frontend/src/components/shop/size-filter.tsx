@@ -21,7 +21,7 @@ export function SizeFilter({ query, sizes }: { query: ShopQuery; sizes: string[]
                 className={cn(
                   "flex h-9 min-w-11 items-center justify-center rounded-md border px-2 text-small font-medium transition-colors duration-150",
                   checked
-                    ? "border-brand-500 bg-brand-500 text-white"
+                    ? "border-brand-500 bg-brand-500 text-on-brand"
                     : "border-border-default text-text-secondary hover:border-border-strong hover:bg-bg-hover hover:text-text-primary",
                 )}
               >

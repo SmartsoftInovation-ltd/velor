@@ -29,7 +29,7 @@ export function ViewToggle({ query }: { query: ShopQuery }) {
             className={cn(
               "flex size-9 items-center justify-center rounded-md transition-colors duration-150 ease-[var(--ease-hover)]",
               active
-                ? "bg-brand-500 text-white shadow-xs"
+                ? "bg-brand-500 text-on-brand shadow-xs"
                 : "border border-border-default bg-bg-surface text-text-tertiary hover:border-border-strong hover:text-text-primary",
             )}
           >

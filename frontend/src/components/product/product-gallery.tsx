@@ -103,7 +103,7 @@ export function ProductGallery({
         {discountPct ? (
           <span
             className={cn(
-              "absolute left-4 top-4 rounded-sm bg-brand-500 px-2 py-1 text-caption font-semibold text-white transition-opacity duration-200",
+              "absolute left-4 top-4 rounded-sm bg-brand-500 px-2 py-1 text-caption font-semibold text-on-brand transition-opacity duration-200",
               lens && "opacity-0",
             )}
           >

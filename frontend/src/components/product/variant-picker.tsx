@@ -36,7 +36,7 @@ export function VariantPicker({
                 className={cn(
                   "flex h-10 items-center justify-center rounded-md border px-3 text-small font-medium transition-colors duration-200 ease-[var(--ease-hover)]",
                   active
-                    ? "border-brand-500 bg-brand-500 text-white"
+                    ? "border-brand-500 bg-brand-500 text-on-brand"
                     : "border-border-default text-text-secondary hover:border-border-strong hover:bg-bg-hover hover:text-text-primary",
                   soldOut && !active && "border-border-subtle bg-bg-sunken text-text-tertiary line-through",
                 )}

@@ -6,7 +6,7 @@ export function EmptyCart() {
     <div className="flex min-h-[50vh] flex-col items-center justify-center py-16 text-center">
       <span
         aria-hidden="true"
-        className="mb-5 flex size-16 items-center justify-center rounded-full bg-brand-100 text-brand-600"
+        className="mb-5 flex size-16 items-center justify-center rounded-full bg-brand-100 text-text-brand"
       >
         <CartIcon className="size-7" />
       </span>
@@ -21,7 +21,7 @@ export function EmptyCart() {
 
       <Link
         href="/shop"
-        className="mt-6 inline-flex h-12 items-center justify-center rounded-md bg-brand-500 px-6 text-body font-medium text-white shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600"
+        className="mt-6 inline-flex h-12 items-center justify-center rounded-md bg-brand-500 px-6 text-body font-medium text-on-brand shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600"
       >
         Browse the shop
       </Link>

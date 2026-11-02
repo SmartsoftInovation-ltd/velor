@@ -38,7 +38,7 @@ export default function NotFound() {
       <div className="animate-rise-in mt-8 flex flex-wrap items-center justify-center gap-3 [animation-delay:220ms]">
         <Link
           href="/"
-          className="shine relative inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-500 px-6 text-body font-medium text-white shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]"
+          className="shine relative inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-500 px-6 text-body font-medium text-on-brand shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]"
         >
           Back to home
           <span className="relative z-2 flex shrink-0 [&>svg]:size-4" aria-hidden="true">
