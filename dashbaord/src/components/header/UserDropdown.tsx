@@ -5,12 +5,15 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import axiosSecure, { clearAccessToken } from "../../hooks/useAxiosSecure";
+import { useStoreBranding } from "../../hooks/useStoreBranding";
+import { TbBuildingStore } from "react-icons/tb";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, clearAuth } = useAuth();
   const { operator, signOut: signOutOfConsole } = usePlatformAuth();
   const navigate = useNavigate();
+  const branding = useStoreBranding();
 
   // Inside the Platform Console the person here is an operator, who may have no
   // store session at all: their account, and the way out, are the console's.
@@ -52,11 +55,17 @@ export default function UserDropdown() {
         className="dropdown-toggle flex items-center gap-2.5 rounded-xl p-1 pr-2 text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5"
       >
         <span className="relative block size-9 shrink-0">
-          <img
-            src="/images/user/owner.jpg"
-            alt="User"
-            className="size-9 rounded-lg border border-gray-200 object-cover dark:border-gray-700"
-          />
+          {branding?.logo ? (
+            <img
+              src={branding.logo}
+              alt={branding.storeName || "Store logo"}
+              className="size-9 rounded-lg border border-gray-200 object-cover dark:border-gray-700"
+            />
+          ) : (
+            <span className="flex size-9 items-center justify-center rounded-lg border border-gray-200 bg-accent-50 text-accent-600 dark:border-gray-700 dark:bg-accent-500/15 dark:text-accent-400">
+              <TbBuildingStore className="size-5" />
+            </span>
+          )}
           <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-gray-900" />
         </span>
 
