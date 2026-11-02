@@ -49,6 +49,7 @@ interface Sale {
   _id: string;
   invoiceNumber: string;
   date: string;
+  deliveryDate?: string;
   // Set by mongoose timestamps — the only field carrying the real sale time,
   // since `date` holds just the day the cashier picked.
   createdAt?: string;
@@ -563,6 +564,12 @@ const SalesInvoicePrint = () => {
                     : ""
                 }`}
               />
+              {sale.deliveryDate && (
+                <DetailRow
+                  label="Delivery Date:"
+                  value={moment(sale.deliveryDate).format("DD/MM/YYYY")}
+                />
+              )}
               <DetailRow
                 label="Sale Type:"
                 value={salesTypeLabel[sale.salesType] || sale.salesType}

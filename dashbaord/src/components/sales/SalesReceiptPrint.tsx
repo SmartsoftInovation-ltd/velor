@@ -48,6 +48,7 @@ interface Sale {
   _id: string;
   invoiceNumber: string;
   date: string;
+  deliveryDate?: string;
   // Set by mongoose timestamps — the only field carrying the real sale time,
   // since `date` holds just the day the cashier picked.
   createdAt?: string;
@@ -508,6 +509,12 @@ const SalesReceiptPrint = () => {
           {/* Meta — date and time kept on one line */}
           <div className="text-[9px]">
             <MetaRow label="Date:" value={dateTime} />
+            {sale.deliveryDate && (
+              <MetaRow
+                label="Delivery Date:"
+                value={moment(sale.deliveryDate).format("DD MMM YYYY")}
+              />
+            )}
           </div>
 
           {/* Customer / Cashier / Salesmen — three columns side by side */}
