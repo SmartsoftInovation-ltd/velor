@@ -53,6 +53,8 @@ interface PivotRow {
 interface FilterOption {
   id: string;
   name: string;
+  // A subcategory's parent category, so the list can follow the chosen category
+  categoryId?: string;
 }
 
 // ---------- Size columns ----------
@@ -313,15 +315,15 @@ const SizeColorWiseStockList = () => {
     if (!pivot?.length) return;
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     const catMap = new Map<string, string>();
-    const subcatMap = new Map<string, string>();
+    const subcatMap = new Map<string, { name: string; categoryId: string }>();
     const brandMap = new Map<string, string>();
     for (const r of pivot) {
       if (r.categoryId) catMap.set(r.categoryId, r.category);
-      if (r.subcategoryId) subcatMap.set(r.subcategoryId, r.subcategory);
+      if (r.subcategoryId) subcatMap.set(r.subcategoryId, { name: r.subcategory, categoryId: r.categoryId });
       if (r.brandId) brandMap.set(r.brandId, r.brand);
     }
     setCategories(Array.from(catMap.entries()).map(([id, name]) => ({ id, name })));
-    setSubcategories(Array.from(subcatMap.entries()).map(([id, name]) => ({ id, name })));
+    setSubcategories(Array.from(subcatMap.entries()).map(([id, v]) => ({ id, name: v.name, categoryId: v.categoryId })));
     setBrands(Array.from(brandMap.entries()).map(([id, name]) => ({ id, name })));
   }, [pageData]);
 
@@ -404,6 +406,15 @@ const SizeColorWiseStockList = () => {
 
   const totalStock = rows.reduce((s, r) => s + r.total, 0);
   const hasFilter = !!(search || categoryId || subcategoryId || brandId);
+
+  // Once a category is chosen, only its own subcategories are offered
+  const visibleSubcategories = categoryId ? subcategories.filter((o) => o.categoryId === categoryId) : subcategories;
+  const changeCategory = (v: string) => {
+    setCategoryId(v);
+    // A subcategory of another category no longer applies
+    const sub = subcategories.find((o) => o.id === subcategoryId);
+    if (v && sub && sub.categoryId !== v) setSubcategoryId("");
+  };
   const clearAll = () => {
     setSearch("");
     setCategoryId("");
@@ -482,8 +493,8 @@ const SizeColorWiseStockList = () => {
           )}
         </div>
 
-        <FilterDropdown options={categories} value={categoryId} onChange={setCategoryId} allLabel="All Categories" />
-        <FilterDropdown options={subcategories} value={subcategoryId} onChange={setSubcategoryId} allLabel="All Subcategories" />
+        <FilterDropdown options={categories} value={categoryId} onChange={changeCategory} allLabel="All Categories" />
+        <FilterDropdown options={visibleSubcategories} value={subcategoryId} onChange={setSubcategoryId} allLabel="All Subcategories" />
         <FilterDropdown options={brands} value={brandId} onChange={setBrandId} allLabel="All Brands" />
 
         <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap shrink-0">

@@ -85,6 +85,8 @@ interface StockRow {
 interface FilterOption {
   value: string;
   label: string;
+  // A subcategory's parent category, so the list can follow the chosen category
+  categoryId?: string;
 }
 
 // ---------- Helpers ----------
@@ -288,9 +290,10 @@ const CategoryStockDetailList = () => {
     queryFn: async (): Promise<FilterOption[]> => {
       const { data } = await axiosSecure.get("/subcategories");
       return (data.data?.subCategories ?? []).map(
-        (s: { _id: string; name: string }) => ({
+        (s: { _id: string; name: string; category?: string | { _id: string } | null }) => ({
           value: s._id,
           label: s.name,
+          categoryId: (s.category && typeof s.category === "object" ? s.category._id : s.category) || "",
         }),
       );
     },
@@ -371,6 +374,17 @@ const CategoryStockDetailList = () => {
       : 0;
 
   const activeFilters = [categoryId, subcategoryId].filter(Boolean).length;
+
+  // Once a category is chosen, only its own subcategories are offered
+  const visibleSubcategoryOpts = categoryId
+    ? subcategoryOpts.filter((o) => o.categoryId === categoryId)
+    : subcategoryOpts;
+  const changeCategory = (v: string) => {
+    setCategoryId(v);
+    // A subcategory of another category no longer applies
+    const sub = subcategoryOpts.find((o) => o.value === subcategoryId);
+    if (v && sub && sub.categoryId !== v) setSubcategoryId("");
+  };
   const totalStock = rows.reduce((sum, r) => sum + r.stock, 0);
 
   const clearAll = () => {
@@ -494,12 +508,12 @@ const CategoryStockDetailList = () => {
           <SearchableSelect
             options={categoryOpts}
             value={categoryId}
-            onChange={(v) => setCategoryId(v)}
+            onChange={changeCategory}
             placeholder="Filter by Category"
             searchPlaceholder="Search category..."
           />
           <SearchableSelect
-            options={subcategoryOpts}
+            options={visibleSubcategoryOpts}
             value={subcategoryId}
             onChange={(v) => setSubcategoryId(v)}
             placeholder="Filter by Subcategory"
