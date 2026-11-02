@@ -181,6 +181,19 @@ describe("sales routes (/api/v1/sales)", () => {
       await create(sale({ discountPercent: 10, payable: 900, paid: 900 }), limited).expect(201);
     });
 
+    it("lets a listed customer's regular discount through a lower seller limit, but no further", async () => {
+      const limited = await createUserIn(tenant, { grants: { "retail-sales": ["add"] }, discountLimit: 10 });
+      const vip = await f.customer.create({ regularDiscountPercent: 20 });
+      const listed = { type: "listed", customerId: vip._id.toString() };
+      // The customer's own 20% is given by the store, not the seller
+      await create(sale({ customerType: listed, discountPercent: 20, payable: 800, paid: 800 }), limited).expect(201);
+      // Above it, the higher of the two limits still applies
+      const over = await create(sale({ customerType: listed, discountPercent: 25, payable: 750, paid: 750 }), limited).expect(403);
+      expect(over.body.message).toMatch(/limit is 20%/i);
+      // A walking sale gets no such allowance
+      await create(sale({ discountPercent: 20, payable: 800, paid: 800 }), limited).expect(403);
+    });
+
     it.each([
       ["no salesman", undefined],
       ["an empty salesman", null],

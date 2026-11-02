@@ -625,6 +625,14 @@ export default function CreateRetailSalesForm({
   }, [hasItemDiscount, discount, lessTaka]);
 
 
+  // A listed customer's regular discount is set by the store, not the
+  // seller, so the seller's limit never blocks it: the seller may give up to
+  // whichever is higher. 0 = no limit. The API applies the same rule.
+  const customerRegularDiscount = isWalking
+    ? 0
+    : Number(customerList.find((c) => c.id === selectedCustomerId)?.regularDiscountPercent || 0);
+  const allowedDiscount = discountLimit > 0 ? Math.max(discountLimit, customerRegularDiscount) : 0;
+
   // The invoice discount % can never be typed above the seller's own limit.
   // 0 = no limit. Item-level product discounts are separate (they lock this
   // field entirely via hasItemDiscount instead of being summed in here).
@@ -633,13 +641,13 @@ export default function CreateRetailSalesForm({
     let n = parseFloat(raw);
     if (isNaN(n)) return;
     if (n < 0) n = 0;
-    const ceiling = discountLimit > 0 ? discountLimit : 100;
+    const ceiling = allowedDiscount > 0 ? allowedDiscount : 100;
     if (n > ceiling) n = ceiling;
     setDiscount(String(n));
   };
 
   // Total discount given, as a % of the gross line value, combining item-level
-  // discountLimit caps. 0 gross or 0 limit => no cap.
+  // allowedDiscount caps. 0 gross or 0 limit => no cap.
   // Only what the seller adds on top counts — the invoice discount% and
   // less-taka. A product's own discount comes from the catalogue, not the
   // seller, so it never counts against their limit (matching the backend).
@@ -650,8 +658,8 @@ export default function CreateRetailSalesForm({
   const effectiveDiscountPercent =
     grossTotal > 0 ? (totalDiscountAmt / grossTotal) * 100 : 0;
   const isDiscountLimitExceeded =
-    discountLimit > 0 &&
-    Math.round(effectiveDiscountPercent * 100) / 100 > discountLimit;
+    allowedDiscount > 0 &&
+    Math.round(effectiveDiscountPercent * 100) / 100 > allowedDiscount;
 
   // Debounced so a barcode scanner's rapid keystrokes (or fast typing) don't
   // fire an API request per character — only once input pauses.
@@ -1633,13 +1641,13 @@ export default function CreateRetailSalesForm({
             <span className="text-[11px] font-bold uppercase w-28 flex-shrink-0 tracking-wide text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1">
               DISCOUNT %
               <span className="text-[9px] font-semibold normal-case text-accent-600 dark:text-accent-400">
-                (max {discountLimit}%)
+                (max {allowedDiscount}%)
               </span>
             </span>
             <input
               type="number"
               min={0}
-              max={discountLimit > 0 ? discountLimit : undefined}
+              max={allowedDiscount > 0 ? allowedDiscount : undefined}
               value={discount}
               onChange={(e) => handleDiscountChange(e.target.value)}
               disabled={discountLocked}
@@ -1648,8 +1656,8 @@ export default function CreateRetailSalesForm({
                   ? "An item already has a product discount — extra invoice discount is disabled to prevent double discount."
                   : (parseFloat(lessTaka) || 0) > 0
                     ? "Less-taka is set — clear it to give a discount % instead."
-                    : discountLimit > 0
-                      ? `Max ${discountLimit}% allowed`
+                    : allowedDiscount > 0
+                      ? `Max ${allowedDiscount}% allowed`
                       : undefined
               }
               className={`${inputCls} flex-1 text-right ${
@@ -1660,7 +1668,7 @@ export default function CreateRetailSalesForm({
 
           {isDiscountLimitExceeded && (
             <p className="text-[11px] font-bold text-red-600 dark:text-red-400 mb-1.5 text-right">
-              Discount limit exceeded — {discountLimit}% allowed,{" "}
+              Discount limit exceeded — {allowedDiscount}% allowed,{" "}
               {effectiveDiscountPercent.toFixed(1)}% applied.
             </p>
           )}

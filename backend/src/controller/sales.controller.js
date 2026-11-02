@@ -48,9 +48,16 @@ const NS = "sales";
 // all summed and expressed as one effective percentage. discountLimit === 0
 // means "no limit" (consistent with the customer dueLimit convention).
 // The cap applies to every user, including superadmins.
-const enforceDiscountLimit = (user, body) => {
-  const limit = Number(user?.discountLimit || 0);
-  if (limit <= 0) return;
+//
+// A listed customer's regularDiscountPercent is set by the store, not the
+// seller, so it never counts against the seller's limit: the sale may carry up
+// to whichever is higher. A 10%-limit seller can bill a 20% customer at 20%,
+// but not above it. The customer's figure is read from the database by the
+// caller (customerRegularDiscount), never from the request.
+const enforceDiscountLimit = (user, body, customerRegular = 0) => {
+  const sellerLimit = Number(user?.discountLimit || 0);
+  if (sellerLimit <= 0) return;
+  const limit = Math.max(sellerLimit, Number(customerRegular || 0));
 
   const items = Array.isArray(body?.searchItem) ? body.searchItem : [];
 
@@ -84,6 +91,14 @@ const enforceDiscountLimit = (user, body) => {
       statusCodes.FORBIDDEN,
     );
   }
+};
+
+// The listed customer's regular discount %, from the database; 0 for a walking sale
+const customerRegularDiscount = async (customerType) => {
+  if (customerType?.type !== "listed" || !customerType?.customerId) return 0;
+  if (!mongoose.isValidObjectId(customerType.customerId)) return 0;
+  const customer = await customerModel.findById(customerType.customerId).select("regularDiscountPercent").lean();
+  return Number(customer?.regularDiscountPercent || 0);
 };
 
 // One discount per invoice (see .claude/rules/profit-calculation.md): a
@@ -530,7 +545,7 @@ const lineKey = (it) => String(it?.variantId || it?.productId || "");
 
 exports.createSales = asynchandeler(async (req, res) => {
   // Enforce the seller's discount limit and stamp who is accountable for it.
-  enforceDiscountLimit(req.user, req.body);
+  enforceDiscountLimit(req.user, req.body, await customerRegularDiscount(req.body?.customerType));
   enforceSingleDiscount(req.body);
   normalizeNetPaid(req.body);
   enforceWalkingPaidInFull(req.body);
@@ -1232,11 +1247,15 @@ exports.updateSales = asynchandeler(async (req, res) => {
       // Enforce the seller's discount limit on the effective (merged) sale —
       // an update may only send some fields, so fall back to the stored values
       // for anything not supplied before checking the combined discount.
-      enforceDiscountLimit(req.user, {
-        searchItem: req.body.searchItem ?? oldSale.searchItem,
-        discountPercent: req.body.discountPercent ?? oldSale.discountPercent,
-        lessTaka: req.body.lessTaka ?? oldSale.lessTaka,
-      });
+      enforceDiscountLimit(
+        req.user,
+        {
+          searchItem: req.body.searchItem ?? oldSale.searchItem,
+          discountPercent: req.body.discountPercent ?? oldSale.discountPercent,
+          lessTaka: req.body.lessTaka ?? oldSale.lessTaka,
+        },
+        await customerRegularDiscount(req.body.customerType ?? oldSale.customerType),
+      );
       enforceSingleDiscount({
         searchItem: req.body.searchItem ?? oldSale.searchItem,
         discountPercent: req.body.discountPercent ?? oldSale.discountPercent,
