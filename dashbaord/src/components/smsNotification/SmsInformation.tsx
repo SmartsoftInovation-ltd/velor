@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MdSms, MdOutlineRefresh } from "react-icons/md";
 import {
   FaCoins,
+  FaWallet,
   FaRegPaperPlane,
   FaExclamationTriangle,
   FaCircle,
@@ -62,7 +63,8 @@ const SmsInformation = () => {
     setError(null);
     try {
       const res = await axiosSecure.get(`/sms/sms-blance`);
-      setBalance(res.data?.data.balance || 0);
+      // BulkSMSBD can send the balance as a string
+      setBalance(Number(res.data?.data.balance) || 0);
     } catch {
       setError("Failed to load SMS balance");
     } finally {
@@ -78,6 +80,10 @@ const SmsInformation = () => {
   const smsQuantity =
     balance !== null ? Math.floor(balance / SMS_COST_PER_SMS) : 0;
   const isActive = balance !== null && balance > 0;
+  const balanceText = `৳${(balance ?? 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
   const isLow = balance !== null && balance < LOW_BALANCE_THRESHOLD;
 
   if (loading) {
@@ -147,7 +153,13 @@ const SmsInformation = () => {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="SMS Balance"
+          value={balanceText}
+          hint="Remaining in the BulkSMSBD account"
+          icon={<FaWallet className="size-3.5" />}
+        />
         <StatCard
           label="Cost Per SMS"
           value={`৳${SMS_COST_PER_SMS.toFixed(2)}`}
@@ -169,6 +181,7 @@ const SmsInformation = () => {
           </p>
         </div>
         <div className="px-4 py-1">
+          <InfoRow label="Balance">{balanceText}</InfoRow>
           <InfoRow label="Rate">৳{SMS_COST_PER_SMS.toFixed(2)} per SMS</InfoRow>
           <InfoRow label="Available SMS">
             {smsQuantity.toLocaleString()} messages
