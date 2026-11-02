@@ -70,6 +70,9 @@ exports.store = asynchandeler(async (req, res) => {
     name: info?.storeName || req.tenant?.name || "",
     logo: info?.image?.url || "",
     primaryColor: settings.general.primaryColor || "",
+    bannerLayout: settings.general.bannerLayout,
+    cardLayout: settings.general.cardLayout,
+    gridColumns: settings.general.gridColumns,
   });
 });
 

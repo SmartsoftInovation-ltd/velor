@@ -3,6 +3,12 @@
 /* Dark mode is driven by an explicit attribute on <html>, not the OS. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* A store's layout choices, set on <html> by the root layout. */
+@custom-variant banner-full (&:where([data-banner="full"] *));
+@custom-variant banner-boxed (&:where([data-banner="boxed"] *));
+@custom-variant card-minimal (&:where([data-card="minimal"] *));
+@custom-variant card-overlay (&:where([data-card="overlay"] *));
+
 /* ---------------------------------------------------------------------------
    PRIMITIVES
    Raw values. Referenced only by the semantic layer below — never used directly
@@ -623,4 +629,19 @@ select:focus-visible {
   background: white;
   width: 1.5rem;
   border-radius: 9999px;
+}
+
+/* A store's product columns. Left out of @layer so it beats the grid's own
+   lg:grid-cols-*. Beside the shop's filters there is less room, so that grid
+   only grows for the widest choice. */
+@media (min-width: 1024px) {
+  [data-grid="3"] .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  [data-grid="5"] .product-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  [data-grid="5"] .product-grid-filtered {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

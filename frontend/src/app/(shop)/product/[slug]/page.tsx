@@ -106,7 +106,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           <h2 className="mb-6 text-h2 font-semibold tracking-tight text-text-primary">
             You may also like
           </h2>
-          <ul className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+          <ul className="product-grid grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4 lg:gap-6">
             {related.map((item) => (
               <li key={item.id}>
                 <ProductCard product={item} />

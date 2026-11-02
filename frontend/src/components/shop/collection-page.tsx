@@ -36,7 +36,7 @@ export function CollectionPage({ title, description, action, products, empty }: 
       </div>
 
       {products.length ? (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+        <ul className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
           {products.map((product) => (
             <li key={`${product.id}:${product.href}`}>
               <ProductCard product={product} />

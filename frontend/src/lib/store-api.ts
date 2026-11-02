@@ -59,10 +59,18 @@ export async function apiFetch<T>(tenantHost: string, path: string, init: Reques
 }
 
 /** `id` is the tenant id: the browser keys its cart and wishlist by it */
-export type Store = { id: string; name: string; logo: string; primaryColor: string };
+export type Store = {
+  id: string;
+  name: string;
+  logo: string;
+  primaryColor: string;
+  bannerLayout: string;
+  cardLayout: string;
+  gridColumns: string;
+};
 
 /**
- * The store's name, logo and brand color, or null when the API cannot be reached or the
+ * The store's name, logo and look, or null when the API cannot be reached or the
  * domain belongs to no store. Deduplicated per render: header and footer both ask.
  */
 export const getStore = cache(async (tenantHost: string): Promise<Store | null> => {

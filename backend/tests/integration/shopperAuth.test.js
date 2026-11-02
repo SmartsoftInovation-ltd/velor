@@ -82,6 +82,20 @@ describe("storefront shopper accounts", () => {
       expect(fromPizza.body.data.primaryColor).toBe("");
     });
 
+    it("gives each store its own layout, and the defaults until one is set", async () => {
+      await service.updateSection(velor.tenant._id, "general", { bannerLayout: "full", cardLayout: "overlay", gridColumns: "5" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
+
+      expect(fromVelor.body.data).toMatchObject({ bannerLayout: "full", cardLayout: "overlay", gridColumns: "5" });
+      expect(fromPizza.body.data).toMatchObject({ bannerLayout: "split", cardLayout: "standard", gridColumns: "4" });
+    });
+
+    it("refuses a layout the storefront does not have", async () => {
+      await expect(service.updateSection(velor.tenant._id, "general", { cardLayout: "fancy" })).rejects.toThrow();
+    });
+
     it("refuses a brand color that is not a plain hex value", async () => {
       await expect(
         service.updateSection(velor.tenant._id, "general", { primaryColor: "red}body{display:none" }),

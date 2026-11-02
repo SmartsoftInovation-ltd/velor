@@ -22,7 +22,7 @@ export async function FlashSale() {
         action={<CountdownTimer endsAt={sale.endsAt} />}
       />
 
-      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+      <ul className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
         {sale.products.map((product) => (
           <li key={product.id}>
             <ProductCard product={product} />

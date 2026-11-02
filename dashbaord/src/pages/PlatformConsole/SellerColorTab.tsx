@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { FiCheck, FiExternalLink, FiGlobe, FiRefreshCw, FiRotateCcw } from "react-icons/fi";
+import { FiCheck, FiRotateCcw } from "react-icons/fi";
 import { errorMessage } from "../../platform/api";
-import { domainsApi, settingsApi } from "../../platform/endpoints";
+import { settingsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import { brandRamp, RAMP_STEPS } from "./brandRamp";
+import { useSellerPreviewUrl } from "./useSellerPreviewUrl";
+import WebsitePreview from "./WebsitePreview";
 import {
   cardClass,
   Field,
@@ -31,78 +32,6 @@ const SUGGESTED_COLORS = [
   { hex: "#ca8a04", name: "Gold" },
   { hex: "#1c1917", name: "Charcoal" },
 ];
-
-// The seller's real website, painted live with the color being tried
-const WebsiteFrame = ({ url, color }: { url: string; color: string }) => {
-  const frame = useRef<HTMLIFrameElement>(null);
-  const [path, setPath] = useState("/");
-  const [reloads, setReloads] = useState(0);
-  const origin = new URL(url).origin;
-
-  const paint = () =>
-    frame.current?.contentWindow?.postMessage({ type: "brand-preview:color", color }, origin);
-  const latestPaint = useRef(paint);
-  latestPaint.current = paint;
-
-  useEffect(paint, [color, origin]);
-
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== origin || event.source !== frame.current?.contentWindow) return;
-      if (event.data?.type !== "brand-preview:ready") return;
-      setPath(String(event.data.path ?? "/"));
-      latestPaint.current();
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [origin]);
-
-  return (
-    <>
-      <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-        <div className="flex gap-1.5" aria-hidden="true">
-          <span className="size-2.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-          <span className="size-2.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-          <span className="size-2.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-        </div>
-        <p className="min-w-0 flex-1 truncate rounded-lg bg-gray-100 px-3 py-1.5 font-mono text-xs text-gray-500 dark:bg-white/5 dark:text-gray-400">
-          {new URL(url).host}
-          {path === "/" ? "" : path}
-        </p>
-        <button
-          type="button"
-          title="Reload website"
-          aria-label="Reload website"
-          onClick={() => {
-            setPath("/");
-            setReloads((n) => n + 1);
-          }}
-          className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/5"
-        >
-          <FiRefreshCw className="size-4" />
-        </button>
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          title="Open website in a new tab"
-          aria-label="Open website in a new tab"
-          className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/5"
-        >
-          <FiExternalLink className="size-4" />
-        </a>
-      </div>
-      <iframe
-        key={reloads}
-        ref={frame}
-        src={url}
-        title="Seller website preview"
-        onLoad={paint}
-        className="h-[calc(100vh-10rem)] min-h-[640px] w-full bg-white"
-      />
-    </>
-  );
-};
 
 export const ColorStudio = ({
   saved,
@@ -262,23 +191,7 @@ export const ColorStudio = ({
         </div>
       </section>
 
-      <section className={`${cardClass} min-w-0 overflow-hidden`}>
-        {previewUrl ? (
-          <WebsiteFrame url={previewUrl} color={shown} />
-        ) : (
-          <div className="flex min-h-[640px] flex-col items-center justify-center gap-3 p-8 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400">
-              <FiGlobe className="size-5" />
-            </span>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No live website yet</p>
-            <p className="max-w-sm text-sm text-gray-500 dark:text-gray-400">
-              The preview shows this seller's real website, so it needs an active domain.
-              The color can still be saved now.
-            </p>
-            <Link to="?tab=domains" className={secondaryButtonClass}>Go to Domains</Link>
-          </div>
-        )}
-      </section>
+      <WebsitePreview url={previewUrl} message={{ type: "brand-preview:color", color: shown }} />
     </div>
   );
 };
@@ -290,10 +203,7 @@ const SellerColorTab = ({ tenantId }: { tenantId: string }) => {
     queryKey: ["platform", "settings", tenantId],
     queryFn: () => settingsApi.get(tenantId),
   });
-  const domains = useQuery({
-    queryKey: ["platform", "domains", tenantId],
-    queryFn: () => domainsApi.list(tenantId),
-  });
+  const previewUrl = useSellerPreviewUrl(tenantId);
 
   const save = useMutation({
     mutationFn: (primaryColor: string) =>
@@ -312,10 +222,6 @@ const SellerColorTab = ({ tenantId }: { tenantId: string }) => {
   }
   if (!current.data)
     return <p className="text-sm text-error-600">Could not load settings</p>;
-
-  const active = domains.data?.filter((domain) => domain.status === "active") ?? [];
-  const host = (active.find((domain) => domain.isPrimary) ?? active[0])?.host;
-  const previewUrl = import.meta.env.VITE_STOREFRONT_PREVIEW_URL || (host ? `https://${host}` : "");
 
   return (
     <ColorStudio

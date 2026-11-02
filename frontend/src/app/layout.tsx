@@ -60,6 +60,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geist.variable} h-full antialiased`}
+      data-banner={store?.bannerLayout}
+      data-card={store?.cardLayout}
+      data-grid={store?.gridColumns}
       suppressHydrationWarning
     >
       <head>

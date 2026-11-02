@@ -127,6 +127,27 @@ describe("SellerDetailPage (Platform Console)", () => {
     await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { primaryColor: "#0F9D63" }));
   });
 
+  it("saves the website design the platform picks", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /website design/i }));
+
+    const save = await screen.findByRole("button", { name: /save design/i });
+    expect(save).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: /banner: full image/i }));
+    await userEvent.click(screen.getByRole("button", { name: /product card: overlay/i }));
+    await userEvent.click(screen.getByRole("button", { name: /product grid: 5 per row/i }));
+    await userEvent.click(save);
+
+    await waitFor(() =>
+      expect(settings.update).toHaveBeenCalledWith("t1", "general", {
+        bannerLayout: "full",
+        cardLayout: "overlay",
+        gridColumns: "5",
+      }),
+    );
+  });
+
   it("shows webhook URLs and the audit trail", async () => {
     renderPage();
     await userEvent.click(await screen.findByRole("tab", { name: /webhooks/i }));

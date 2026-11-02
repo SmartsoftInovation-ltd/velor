@@ -17,8 +17,8 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
       : null;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-lg border border-border-subtle bg-bg-surface shadow-sm">
-      <div className="relative aspect-4/3 overflow-hidden bg-bg-sunken">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border-subtle bg-bg-surface shadow-sm card-minimal:rounded-none card-minimal:border-transparent card-minimal:bg-transparent card-minimal:shadow-none">
+      <div className="relative aspect-4/3 overflow-hidden bg-bg-sunken card-minimal:aspect-square card-minimal:rounded-lg card-overlay:aspect-3/4">
         {/* The link fills the well itself: a bare <Link> is `static`, so the
             `fill` image below would size against the card instead of it. */}
         <Link
@@ -56,12 +56,12 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-5">
+      <div className="flex flex-1 flex-col gap-4 p-5 card-minimal:gap-3 card-minimal:px-0 card-minimal:pb-0 card-minimal:pt-3 card-overlay:absolute card-overlay:inset-x-0 card-overlay:bottom-0 card-overlay:gap-3 card-overlay:bg-linear-to-t card-overlay:from-black/85 card-overlay:via-black/60 card-overlay:to-transparent card-overlay:p-4 card-overlay:pt-14">
         <div className="space-y-1.5">
-          <p className="text-micro font-medium tracking-wide text-text-tertiary uppercase">
+          <p className="text-micro font-medium tracking-wide text-text-tertiary uppercase card-minimal:hidden card-overlay:text-white/70">
             {product.brand}
           </p>
-          <h3 className="text-h3 font-semibold text-text-primary">
+          <h3 className="text-h3 font-semibold text-text-primary card-overlay:text-white">
             <Link href={product.href} title={product.name} className="block truncate">
               {product.name}
             </Link>
@@ -70,7 +70,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
           {product.rating > 0 ? (
             <div className="flex items-center gap-2">
               <Stars rating={product.rating} />
-              <span className="text-caption text-text-tertiary tabular">
+              <span className="text-caption text-text-tertiary tabular card-overlay:text-white/70">
                 {product.rating}
                 {product.reviews ? ` (${product.reviews})` : null}
               </span>
@@ -79,24 +79,26 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
         </div>
 
         <div className="flex items-baseline gap-2">
-          <span className="text-h3 font-semibold text-text-primary tabular">
+          <span className="text-h3 font-semibold text-text-primary tabular card-overlay:text-white">
             ৳{price.toLocaleString()}
           </span>
           {onSale && compareAtPrice !== undefined ? (
-            <span className="text-small text-text-tertiary line-through tabular">
+            <span className="text-small text-text-tertiary line-through tabular card-overlay:text-white/70">
               ৳{compareAtPrice.toLocaleString()}
             </span>
           ) : null}
         </div>
 
         <div className="mt-auto space-y-3">
-          {stock === "in" ? <StatusDot tone="success">In stock</StatusDot> : null}
-          {stock === "low" ? (
-            <StatusDot tone="warning">
-              {product.stockCount ? `Only ${product.stockCount} left` : "Low stock"}
-            </StatusDot>
-          ) : null}
-          {stock === "out" ? <StatusDot tone="danger">Out of stock</StatusDot> : null}
+          <div className="card-minimal:hidden card-overlay:hidden">
+            {stock === "in" ? <StatusDot tone="success">In stock</StatusDot> : null}
+            {stock === "low" ? (
+              <StatusDot tone="warning">
+                {product.stockCount ? `Only ${product.stockCount} left` : "Low stock"}
+              </StatusDot>
+            ) : null}
+            {stock === "out" ? <StatusDot tone="danger">Out of stock</StatusDot> : null}
+          </div>
 
           <div className="flex gap-2">
             <AddToCartButton item={product.item} fullWidth />
@@ -104,6 +106,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
               variant="secondary"
               aria-label={`Quick view ${product.name}`}
               icon={<EyeIcon />}
+              className="card-minimal:hidden card-overlay:hidden"
             />
           </div>
         </div>
