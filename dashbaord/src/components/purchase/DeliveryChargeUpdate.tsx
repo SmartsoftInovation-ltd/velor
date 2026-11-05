@@ -124,7 +124,7 @@ const DeliveryChargeUpdate = () => {
       <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-theme-sm w-full space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <Label htmlFor="name" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">Delivery Name</Label>
+            <Label htmlFor="name" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">Delivery Name <span className="text-red-500">*</span></Label>
             <Input
               type="text"
               id="name"
@@ -138,7 +138,7 @@ const DeliveryChargeUpdate = () => {
             )}
           </div>
           <div>
-            <Label htmlFor="deliveryCharge" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">Delivery Charge (৳)</Label>
+            <Label htmlFor="deliveryCharge" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">Delivery Charge (৳) <span className="text-red-500">*</span></Label>
             <Input
               type="text"
               id="deliveryCharge"

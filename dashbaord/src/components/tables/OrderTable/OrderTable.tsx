@@ -16,6 +16,7 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import { initSocket } from "../../../socket/socket";
 import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 import MobileCardList from "../../common/MobileCardList";
+import OrdersEmptyState from "./OrdersEmptyState";
 import OrderStatus from "./OrderStatus";
 import ShippingInfo from "./ShippingInfo";
 import { OrderItemDetails, OrderItemStack } from "./OrderItems";
@@ -221,6 +222,17 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
     }
   };
 
+  const emptyState = (
+    <OrdersEmptyState
+      filtered={Boolean(search) || channel !== "all" || payment !== "all"}
+      onClear={() => {
+        setSearch("");
+        setChannel("all");
+        setPayment("all");
+      }}
+    />
+  );
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -269,11 +281,12 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
           <p className="mb-4 font-semibold text-error-500">{getApiErrorMessage(error, "Error fetching orders")}</p>
           <Button size="sm" onClick={() => refetch()} className="!bg-accent-500 hover:!bg-accent-600 !text-white">Try Again</Button>
         </div>
+      ) : isMobile && rows.length === 0 ? (
+        emptyState
       ) : isMobile ? (
         <MobileCardList
           items={rows}
           getKey={(order) => order._id}
-          emptyMessage="No orders match these filters"
           renderCard={(order, index) => (
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
@@ -319,8 +332,8 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell className="px-4 py-16 text-center text-sm text-gray-500 dark:text-gray-400" colSpan={COLUMNS.length}>
-                      No orders match these filters.
+                    <TableCell className="px-0 py-0" colSpan={COLUMNS.length}>
+                      {emptyState}
                     </TableCell>
                   </TableRow>
                 ) : (

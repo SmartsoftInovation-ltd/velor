@@ -11,6 +11,7 @@ import {
   FiTrash2,
   FiTruck,
   FiUser,
+  FiPackage,
 } from "react-icons/fi";
 import { HiOutlineReceiptPercent } from "react-icons/hi2";
 import axiosSecure from "../../hooks/useAxiosSecure";
@@ -58,6 +59,7 @@ interface SearchHit {
   stock?: number;
   sku?: string;
   barCode?: string;
+  image?: { url?: string }[];
   // Variant-only
   resultType?: "product" | "variant";
   variantName?: string;
@@ -349,36 +351,65 @@ const CreateOrder = () => {
               </div>
 
               {search.trim() && (
-                <div className="absolute inset-x-5 z-20 mt-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+                <div className="absolute inset-x-5 z-20 mt-1.5 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
                   {searching && <p className="px-4 py-3 text-sm text-gray-500">Searching…</p>}
                   {!searching && hits.length === 0 && (
                     <p className="px-4 py-3 text-sm text-gray-500">No product found</p>
                   )}
-                  {hits.map((hit) => {
-                    const row = describe(hit);
-                    return (
-                      <button
-                        key={row.key}
-                        type="button"
-                        onClick={() => addLine(hit)}
-                        disabled={row.stock < 1}
-                        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition hover:bg-accent-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/5"
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium text-gray-800 dark:text-white/90">
-                            {row.name}
+                  {!searching && hits.length > 0 && (
+                    <p className="border-b border-gray-100 px-4 py-2 text-xs font-medium text-gray-400 dark:border-gray-800">
+                      {hits.length} {hits.length === 1 ? "result" : "results"}
+                    </p>
+                  )}
+                  <div className="no-scrollbar max-h-80 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+                    {hits.map((hit) => {
+                      const row = describe(hit);
+                      const option = isVariant(hit) && hit.product?.name ? hit.variantName : undefined;
+                      return (
+                        <button
+                          key={row.key}
+                          type="button"
+                          onClick={() => addLine(hit)}
+                          disabled={row.stock < 1}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-accent-50 focus-visible:bg-accent-50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent dark:hover:bg-accent-500/10 dark:focus-visible:bg-accent-500/10"
+                        >
+                          <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100 text-gray-400 dark:bg-white/5" aria-hidden="true">
+                            {hit.image?.[0]?.url ? (
+                              <img src={hit.image[0].url} alt="" loading="lazy" className="size-full object-cover" />
+                            ) : (
+                              <FiPackage className="size-4" />
+                            )}
                           </span>
-                          <span className="text-xs text-gray-500">
-                            {row.stock > 0 ? `Stock ${row.stock}` : "Out of stock"}
-                            {hit.barCode ? ` · ${hit.barCode}` : ""}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-gray-800 dark:text-white/90">
+                              {isVariant(hit) ? hit.product?.name ?? row.name : row.name}
+                            </span>
+                            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                              {option && <span className="truncate">{option}</span>}
+                              {option && hit.barCode && <span aria-hidden="true">·</span>}
+                              {hit.barCode && <span className="shrink-0 font-mono">{hit.barCode}</span>}
+                            </span>
                           </span>
-                        </span>
-                        <span className="shrink-0 text-sm font-semibold text-gray-900 tabular-nums dark:text-white/90">
-                          {money(row.retailPrice)}
-                        </span>
-                      </button>
-                    );
-                  })}
+                          <span className="flex shrink-0 flex-col items-end gap-1">
+                            <span className="text-sm font-bold text-gray-900 tabular-nums dark:text-white/90">
+                              {money(row.retailPrice)}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                row.stock < 1
+                                  ? "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400"
+                                  : row.stock <= 5
+                                    ? "bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-400"
+                                    : "bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400"
+                              }`}
+                            >
+                              {row.stock > 0 ? `${row.stock} in stock` : "Out of stock"}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

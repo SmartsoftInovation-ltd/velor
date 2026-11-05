@@ -256,7 +256,7 @@ layer(base);
 }
 
 @utility menu-item {
-  @apply shine flex items-center w-full gap-2.5 px-2 py-1.5 font-semibold rounded-lg text-[13px] leading-[18px] transition-all duration-150;
+  @apply shine flex items-center w-full gap-2.5 px-2 py-1.5 text-left font-semibold rounded-lg text-[13px] leading-[18px] transition-all duration-150;
 }
 
 @utility menu-item-active {

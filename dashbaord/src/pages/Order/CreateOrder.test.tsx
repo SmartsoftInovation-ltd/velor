@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { HelmetProvider } from "react-helmet-async";
@@ -71,5 +71,15 @@ describe("CreateOrder product search", () => {
     await search("polo");
 
     expect(await screen.findByText(/77012/)).toBeTruthy();
+  });
+
+  it("lists a result with its option, barcode, stock and price apart", async () => {
+    setup();
+    await search("77012");
+
+    const row = (await screen.findByText("77012")).closest("button") as HTMLElement;
+    expect(within(row).getByText("Polo Shirt")).toBeTruthy();
+    expect(within(row).getByText(/7 in stock/)).toBeTruthy();
+    expect(screen.getByText(/1 result/)).toBeTruthy();
   });
 });
