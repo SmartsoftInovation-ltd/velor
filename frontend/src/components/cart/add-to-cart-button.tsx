@@ -34,7 +34,7 @@ export function AddToCartButton({
 
   if (item.needsOption) {
     return (
-      <Link href={item.href} className={cn(buttonClassName(variant, size), fullWidth && "w-full", className)}>
+      <Link href={item.href} aria-label="Choose options" className={cn(buttonClassName(variant, size), fullWidth && "w-full", className)}>
         <span className="relative z-2">Choose options</span>
         <span className="relative z-2 flex shrink-0 [&>svg]:size-4" aria-hidden="true">
           <ArrowRightIcon />
@@ -64,6 +64,7 @@ export function AddToCartButton({
       size={size}
       fullWidth={fullWidth}
       className={className}
+      aria-label={soldOut ? "Sold out" : label}
       icon={<CartIcon />}
       disabled={soldOut}
       onClick={onAdd}

@@ -16,9 +16,9 @@ const SECTIONS = {
       primaryColor: { type: "string", pattern: /^#[0-9a-fA-F]{6}$/, default: "" },
       // How the storefront lays out its banner, product cards and product grids
       bannerLayout: { type: "enum", values: ["split", "full", "boxed"], default: "split" },
-      cardLayout: { type: "enum", values: ["standard", "minimal", "overlay"], default: "standard" },
+      cardLayout: { type: "enum", values: ["standard", "minimal", "overlay", "buy"], default: "standard" },
       gridColumns: { type: "enum", values: ["3", "4", "5"], default: "4" },
-      categoryLayout: { type: "enum", values: ["image", "round", "name"], default: "image" },
+      categoryLayout: { type: "enum", values: ["image", "round", "card", "name"], default: "image" },
       galleryPosition: { type: "enum", values: ["left", "right"], default: "left" },
       thumbnailPosition: { type: "enum", values: ["side", "bottom"], default: "side" },
       filterLayout: { type: "enum", values: ["left", "right", "popup"], default: "left" },

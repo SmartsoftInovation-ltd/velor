@@ -24,7 +24,7 @@ export async function FlashSale() {
 
       <ul className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
         {sale.products.map((product) => (
-          <li key={product.id}>
+          <li key={`${product.id}:${product.href}`}>
             <ProductCard product={product} />
           </li>
         ))}

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
-import StorefrontPrototype, { DEFAULT_DESIGN, designFrom, type StoreContent, type WebsiteDesign } from "./StorefrontPrototype";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import StorefrontPrototype, { DEFAULT_DESIGN, designFrom, SAMPLE_CONTENT, type StoreContent, type WebsiteDesign } from "./StorefrontPrototype";
 import { ColorStudio } from "./SellerColorTab";
 import { DesignStudio } from "./SellerDesignTab";
 
@@ -37,7 +37,7 @@ describe("StorefrontPrototype", () => {
     expect(part(`[data-banner="${bannerLayout}"]`)).toBeTruthy();
   });
 
-  it.each(["standard", "minimal", "overlay"])("draws %s product cards", (cardLayout) => {
+  it.each(["standard", "minimal", "overlay", "buy"])("draws %s product cards", (cardLayout) => {
     show({ cardLayout });
     expect(part(`[data-card="${cardLayout}"]`)).toBeTruthy();
   });
@@ -49,9 +49,47 @@ describe("StorefrontPrototype", () => {
     expect(grid.children).toHaveLength(Number(count));
   });
 
-  it.each(["image", "round", "name"])("draws %s categories", (categoryLayout) => {
+  it.each(["image", "round", "card", "name"])("draws %s categories", (categoryLayout) => {
     show({ categoryLayout });
     expect(part(`[data-category="${categoryLayout}"]`)).toBeTruthy();
+  });
+
+  it("draws each category as a card with a round photo and its name below", () => {
+    show({ categoryLayout: "card" });
+    const card = screen.getByText("Men").closest("[data-category-card]");
+    expect(card).toBeTruthy();
+    expect(card?.querySelector(".rounded-full")).toBeTruthy();
+  });
+
+  it("offers Add to cart and Buy Now side by side on the buy card", () => {
+    const content: StoreContent = {
+      ...SAMPLE_CONTENT,
+      products: [
+        { slug: "a", name: "In Stock", price: 10, stock: 9 },
+        { slug: "b", name: "With Options", price: 10, stock: 9, variants: [{}] },
+        { slug: "c", name: "None Left", price: 10, stock: 0 },
+      ],
+    };
+    render(<StorefrontPrototype url={URL_} color="#2563eb" design={{ ...DEFAULT_DESIGN, cardLayout: "buy" }} content={content} />);
+
+    const card = (name: string) => screen.getByText(name).closest("article") as HTMLElement;
+    expect(within(card("In Stock")).getByText("Add to cart")).toBeTruthy();
+    expect(within(card("In Stock")).getByText("Buy Now")).toBeTruthy();
+    // The pair stays on every card, whatever the product's state
+    expect(within(card("With Options")).getByText("Choose options")).toBeTruthy();
+    expect(within(card("With Options")).getByText("Buy Now")).toBeTruthy();
+    expect(within(card("None Left")).getByText("Sold out", { selector: "[data-buy-row] *" })).toBeTruthy();
+    expect(within(card("None Left")).getByText("Buy Now")).toBeTruthy();
+  });
+
+  it("groups the design choices under their sections, each keeping its options", () => {
+    render(<DesignStudio saved={DEFAULT_DESIGN} color="#dc2626" content={SAMPLE_CONTENT} previewUrl="" canEdit saving={false} onSave={() => {}} />);
+
+    const inSection = (name: string) => within(screen.getByRole("region", { name }));
+    expect(inSection("Header").getByRole("switch", { name: "Show the bar" })).toBeTruthy();
+    expect(inSection("Home page").getByRole("button", { name: "Category card: Card" })).toBeTruthy();
+    expect(inSection("Products").getByRole("button", { name: "Product card: Buy Now" })).toBeTruthy();
+    expect(inSection("Whole website").getByRole("group", { name: "Footer" })).toBeTruthy();
   });
 
   it("moves or hides the shop filters", () => {

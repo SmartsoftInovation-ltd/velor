@@ -23,7 +23,8 @@ export async function LimitedOffers() {
 
       <ul className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
         {products.map((product) => (
-          <li key={product.id}>
+          // Two offers can be variants of one product: only the link tells them apart
+          <li key={`${product.id}:${product.href}`}>
             <ProductCard product={product} />
           </li>
         ))}

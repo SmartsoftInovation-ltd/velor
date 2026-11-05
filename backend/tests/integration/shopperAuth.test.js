@@ -92,6 +92,20 @@ describe("storefront shopper accounts", () => {
       expect(fromPizza.body.data).toMatchObject({ bannerLayout: "split", cardLayout: "standard", gridColumns: "4" });
     });
 
+    it("accepts the Buy Now product card and sends it to the storefront", async () => {
+      await service.updateSection(velor.tenant._id, "general", { cardLayout: "buy" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      expect(fromVelor.body.data.cardLayout).toBe("buy");
+    });
+
+    it("accepts the round card category layout and sends it to the storefront", async () => {
+      await service.updateSection(velor.tenant._id, "general", { categoryLayout: "card" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      expect(fromVelor.body.data.categoryLayout).toBe("card");
+    });
+
     it("sends the rest of the design, and refuses an over-long announcement", async () => {
       await service.updateSection(velor.tenant._id, "general", {
         categoryLayout: "round",

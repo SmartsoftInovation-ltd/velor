@@ -7,9 +7,9 @@ import { brandThemeCss } from "@/lib/brand-theme";
 const STYLE_ID = "brand-preview";
 const LAYOUTS = {
   banner: /^(split|full|boxed)$/,
-  card: /^(standard|minimal|overlay)$/,
+  card: /^(standard|minimal|overlay|buy)$/,
   grid: /^[345]$/,
-  category: /^(image|round|name)$/,
+  category: /^(image|round|card|name)$/,
   gallery: /^(left|right)$/,
   thumbs: /^(side|bottom)$/,
   filter: /^(left|right|popup)$/,

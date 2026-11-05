@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { FiCheck, FiRotateCcw } from "react-icons/fi";
+import { FiCheck, FiGlobe, FiGrid, FiHome, FiMenu, FiRotateCcw } from "react-icons/fi";
 import { errorMessage } from "../../platform/api";
 import { settingsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
@@ -100,6 +100,20 @@ const CARDS = [
       </span>
     ),
   },
+  {
+    value: "buy",
+    label: "Buy Now",
+    hint: "Add to cart and Buy Now, side by side",
+    picture: (
+      <span className="flex h-full flex-col gap-1 rounded border border-gray-300 p-1 dark:border-gray-600">
+        <span className="flex-1 rounded-sm bg-gray-300 dark:bg-gray-600" />
+        <span className="flex gap-0.5">
+          <span className="block h-1.5 flex-1 rounded-full bg-gray-800 dark:bg-gray-200" />
+          <span className="block h-1.5 flex-1 rounded-full bg-accent-500" />
+        </span>
+      </span>
+    ),
+  },
 ];
 
 const GRIDS = ["3", "4", "5"].map((value) => ({
@@ -144,6 +158,24 @@ const CATEGORIES = [
           <span key={i} className="flex flex-1 flex-col items-center gap-1">
             <span className="block aspect-square w-full rounded-full bg-gray-300 dark:bg-gray-600" />
             <Bar className="w-2/3" />
+          </span>
+        ))}
+      </span>
+    ),
+  },
+  {
+    value: "card",
+    label: "Card",
+    hint: "Round photo in a white card, name below",
+    picture: (
+      <span className="flex h-full items-stretch gap-1">
+        {[0, 1].map((i) => (
+          <span
+            key={i}
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+          >
+            <span className="block size-3 rounded-full bg-gray-300 dark:bg-gray-600" />
+            <Bar className="w-1/2" />
           </span>
         ))}
       </span>
@@ -305,7 +337,7 @@ const menuPicture = (band: string, pill = "bg-accent-500") => (
 
 const MENU_COLORS = [
   { value: "sunken", label: "Soft", hint: "Light tint", picture: menuPicture("bg-gray-100 dark:bg-white/5") },
-  { value: "surface", label: "White", hint: "Same as the header", picture: menuPicture("border border-gray-200 dark:border-gray-700") },
+  { value: "surface", label: "White", hint: "Same as the header", picture: menuPicture("border border-gray-200 bg-white dark:border-gray-700") },
   { value: "brand", label: "Color", hint: "The website color", picture: menuPicture("bg-accent-500", "bg-white/40") },
   { value: "inverse", label: "Dark", hint: "Dark band", picture: menuPicture("bg-gray-800") },
 ];
@@ -327,11 +359,30 @@ const MENU_ALIGN = [
 
 const ANNOUNCEMENT_MAX = 120;
 
-const SectionLabel = ({ children }: { children: ReactNode }) => (
-  <p className="flex items-center gap-3 pt-2 text-xs font-semibold text-gray-900 dark:text-white/90">
+// One group of choices, set apart by a hairline
+const OptionSection = ({
+  icon,
+  title,
+  text,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+  children: ReactNode;
+}) => (
+  <section aria-label={title} className="space-y-4 border-t border-gray-100 pt-5 first:border-t-0 first:pt-0 dark:border-gray-800">
+    <div className="flex items-center gap-2.5">
+      <span className="shrink-0 text-gray-400 dark:text-gray-500 [&>svg]:size-4" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-gray-900 dark:text-white/90">{title}</span>
+        <span className="block truncate text-xs text-gray-500 dark:text-gray-400">{text}</span>
+      </span>
+    </div>
     {children}
-    <span className="h-px flex-1 bg-gray-100 dark:bg-gray-800" aria-hidden="true" />
-  </p>
+  </section>
 );
 
 const OptionGroup = ({
@@ -426,8 +477,8 @@ export const DesignStudio = ({
           </p>
         </div>
         {/* No scrollbar to look at, so the fade is what says more waits below */}
-        <div className="no-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [mask-image:linear-gradient(to_bottom,black_calc(100%-28px),transparent)]">
-          <SectionLabel>Header</SectionLabel>
+        <div className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto p-5 [mask-image:linear-gradient(to_bottom,black_calc(100%-28px),transparent)]">
+          <OptionSection icon={<FiMenu />} title="Header" text="Announcement bar and menu">
           <fieldset>
             <legend className="sr-only">Announcement bar</legend>
             <label className="flex cursor-pointer items-center justify-between gap-3">
@@ -446,7 +497,7 @@ export const DesignStudio = ({
               />
               <span
                 aria-hidden="true"
-                className="relative h-5 w-9 shrink-0 rounded-full bg-gray-200 transition peer-checked:bg-accent-500 peer-focus-visible:ring-2 peer-focus-visible:ring-accent-500/30 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-4 dark:bg-gray-700"
+                className="relative h-5 w-9 shrink-0 rounded-full bg-gray-200 transition peer-checked:bg-accent-500 dark:bg-gray-700 dark:peer-checked:bg-accent-500 peer-focus-visible:ring-2 peer-focus-visible:ring-accent-500/30 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-4"
               />
             </label>
             <input
@@ -465,20 +516,24 @@ export const DesignStudio = ({
           <OptionGroup title="Menu color" where="The menu row under the header" options={MENU_COLORS} value={design.menuColor} disabled={!canEdit} onChange={change("menuColor")} />
           <OptionGroup title="Menu position" where="Large screens" options={MENU_ALIGN} value={design.menuAlign} disabled={!canEdit} onChange={change("menuAlign")} />
 
-          <SectionLabel>Home page</SectionLabel>
+          </OptionSection>
+          <OptionSection icon={<FiHome />} title="Home page" text="Banner and category cards">
           <OptionGroup title="Banner" where="Top of the home page" options={BANNERS} value={design.bannerLayout} disabled={!canEdit} onChange={change("bannerLayout")} />
           <OptionGroup title="Category card" where="Shop by category, on the home page" options={CATEGORIES} value={design.categoryLayout} disabled={!canEdit} onChange={change("categoryLayout")} />
 
-          <SectionLabel>Products</SectionLabel>
+          </OptionSection>
+          <OptionSection icon={<FiGrid />} title="Products" text="Cards, grid and product page">
           <OptionGroup title="Product card" where="Home and Shop pages" options={CARDS} value={design.cardLayout} disabled={!canEdit} onChange={change("cardLayout")} />
           <OptionGroup title="Product grid" where="Large screens. Phones keep 2 per row." options={GRIDS} value={design.gridColumns} disabled={!canEdit} onChange={change("gridColumns")} />
           <OptionGroup title="Shop filters" where="Shop page, large screens" options={FILTERS} value={design.filterLayout} disabled={!canEdit} onChange={change("filterLayout")} />
           <OptionGroup title="Product gallery" where="Product page, large screens" options={GALLERY} value={design.galleryPosition} disabled={!canEdit} onChange={change("galleryPosition")} />
           <OptionGroup title="Thumbnails" where="Product page, when it has several photos" options={THUMBS} value={design.thumbnailPosition} disabled={!canEdit} onChange={change("thumbnailPosition")} />
 
-          <SectionLabel>Whole website</SectionLabel>
+          </OptionSection>
+          <OptionSection icon={<FiGlobe />} title="Whole website" text="Buttons and footer">
           <OptionGroup title="Buttons" where="Every page, cart and checkout too" options={BUTTONS} value={design.buttonStyle} disabled={!canEdit} onChange={change("buttonStyle")} />
           <OptionGroup title="Footer" where="Bottom of every shopping page" options={FOOTERS} value={design.footerLayout} disabled={!canEdit} onChange={change("footerLayout")} />
+          </OptionSection>
         </div>
 
         {canEdit && (

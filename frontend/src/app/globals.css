@@ -8,7 +8,9 @@
 @custom-variant banner-boxed (&:where([data-banner="boxed"] *));
 @custom-variant card-minimal (&:where([data-card="minimal"] *));
 @custom-variant card-overlay (&:where([data-card="overlay"] *));
+@custom-variant card-buy (&:where([data-card="buy"] *));
 @custom-variant category-round (&:where([data-category="round"] *));
+@custom-variant category-card (&:where([data-category="card"] *));
 @custom-variant category-name (&:where([data-category="name"] *));
 @custom-variant gallery-right (&:where([data-gallery="right"] *));
 @custom-variant thumbs-bottom (&:where([data-thumbs="bottom"] *));
@@ -69,6 +71,8 @@
   --amber-100: #fef3c7;
   --amber-500: #d97706;
   --amber-600: #b45309;
+  /* Buy Now on the buy product card: the same orange for every shop */
+  --buy-now: #ff6a0c;
   --blue-100: #dbeafe;
   --blue-500: #2563eb;
   --blue-600: #1d4ed8;

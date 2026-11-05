@@ -59,6 +59,7 @@ export const designFrom = (general?: Record<string, unknown>) =>
 export type StoreBanner = { title?: string; headLine?: string; description?: string; image?: string };
 export type StoreCategory = { name: string; image: string };
 export type StoreProduct = {
+  rating?: number;
   slug: string;
   name: string;
   brand?: { name: string } | null;
@@ -160,6 +161,7 @@ const SITE_THEME = {
   "--surface": "#ffffff",
   "--sunken": "#f5f3f0",
   "--inverse": "#1c1917",
+  "--buy-now": "#ff6a0c",
   "--line": "#e8e5e0",
   "--line-strong": "#d6d2cb",
   "--ink": "#1c1917",
@@ -421,7 +423,12 @@ const Categories = ({ categories, layout }: { categories: StoreCategory[]; layou
       ) : (
         <div className="grid grid-cols-6 gap-4">
           {categories.slice(0, 6).map(({ name, image }) =>
-            layout === "round" ? (
+            layout === "card" ? (
+              <div key={name} data-category-card className="rounded-2xl bg-[var(--surface)] p-4 text-center shadow-[0_1px_3px_rgb(0_0_0/0.08)]">
+                <Photo src={image} alt={name} className="mx-auto aspect-square w-full max-w-32 rounded-full" />
+                <p className="mt-3 truncate text-sm font-bold text-[var(--ink)]">{name}</p>
+              </div>
+            ) : layout === "round" ? (
               <div key={name} className="text-center">
                 <Photo src={image} alt={name} className="aspect-square w-full rounded-full" />
                 <p className="mt-2.5 text-sm font-semibold text-[var(--ink)]">{name}</p>
@@ -513,19 +520,43 @@ const ProductCard = ({
       </div>
       <div className={`flex flex-1 flex-col ${minimal ? "gap-2.5 pt-3" : "gap-3.5 p-4"}`}>
         <div>
-          {!minimal && (
+          {!minimal && layout !== "buy" && (
             <p className="truncate text-[11px] font-medium uppercase tracking-wide text-[var(--ink-3)]">{product.brand?.name}</p>
           )}
-          <h3 className="mt-1 truncate text-base font-semibold text-[var(--ink)]">{product.name}</h3>
+          <h3 className={`mt-1 truncate text-base text-[var(--ink)] ${layout === "buy" ? "font-bold" : "font-semibold"}`}>{product.name}</h3>
         </div>
         <div className="text-[var(--ink)]">{price}</div>
         <div className="mt-auto space-y-3">
-          {!minimal && <StockLine stock={product.stock} />}
-          <div className="flex gap-2">
-            <div className="min-w-0 flex-1">
-              <SiteButton style={button} wide disabled={soldOut}>{action}</SiteButton>
+          {layout === "buy" ? (
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              {product.rating ? (
+                <span className="flex items-center gap-1 text-xs text-[var(--ink-2)]">
+                  <FiStar className="size-3.5 fill-amber-400 text-amber-400" aria-hidden="true" /> {product.rating}
+                </span>
+              ) : null}
+              <span className="ml-auto"><StockLine stock={product.stock} /></span>
             </div>
-            {!minimal && (
+          ) : (
+            !minimal && <StockLine stock={product.stock} />
+          )}
+          <div className="flex gap-2">
+            {layout === "buy" ? (
+              <div data-buy-row className="@container flex min-w-0 flex-1 gap-2">
+                <span className={`inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--inverse)] px-2.5 text-[13px] font-semibold text-white shadow-md @max-[13rem]:w-10 @max-[13rem]:flex-none @max-[13rem]:px-0 ${soldOut ? "opacity-45" : ""}`}>
+                  {(soldOut || !hasOptions) && <FiShoppingCart className="size-4 shrink-0" aria-hidden="true" />}
+                  <span className="@max-[13rem]:hidden">{soldOut ? "Sold out" : hasOptions ? "Choose options" : "Add to cart"}</span>
+                  {!soldOut && hasOptions && <FiArrowRight className="size-4 shrink-0 @min-[13rem]:hidden" aria-hidden="true" />}
+                </span>
+                <span className={`inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full bg-[var(--buy-now)] px-2.5 text-[13px] font-semibold text-white shadow-md ${soldOut ? "opacity-45" : ""}`}>
+                  Buy Now
+                </span>
+              </div>
+            ) : (
+              <div className="min-w-0 flex-1">
+                <SiteButton style={button} wide disabled={soldOut}>{action}</SiteButton>
+              </div>
+            )}
+            {!minimal && layout !== "buy" && (
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--line-strong)] text-[var(--ink)]">
                 <FiEye className="size-4" aria-hidden="true" />
               </span>
