@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { apiFetch } from "@/lib/store-api";
 import type { Stock } from "@/lib/product";
-import { NO_IMAGE, toItemSnapshot, variantLabel } from "./item-snapshot";
+import { buyNowSnapshot, NO_IMAGE, toItemSnapshot, variantLabel } from "./item-snapshot";
 import type { CatalogProduct, Category, ColorOption, ProductVariant, Taxonomy } from "./types";
 
 /**
@@ -96,6 +96,7 @@ export function toCatalogProduct(p: ApiProduct): CatalogProduct {
       .filter(Boolean)
       .join(" "),
     item: toItemSnapshot(p),
+    buyNowItem: buyNowSnapshot(p),
   };
 }
 

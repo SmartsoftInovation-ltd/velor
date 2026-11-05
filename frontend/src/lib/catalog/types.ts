@@ -19,6 +19,8 @@ export type CatalogProduct = Product & {
   searchText?: string;
   /** What the cart and wishlist store for this card; see lib/cart/types.ts */
   item: ItemSnapshot;
+  /** What Buy Now adds when `item` still needs an option picked. */
+  buyNowItem?: ItemSnapshot;
 };
 
 /** One buyable option of a product, e.g. "Navy / M", with its own price and stock. */

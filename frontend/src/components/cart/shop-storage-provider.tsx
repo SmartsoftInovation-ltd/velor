@@ -3,11 +3,14 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { createPersistedList, type PersistedList } from "@/lib/cart/persisted-list";
 import { isCartLine, isWishlistItem, type CartLine, type WishlistItem } from "@/lib/cart/types";
+import { isCheckoutDraft, type CheckoutDraft } from "@/lib/checkout-draft";
 
 type ShopStorage = {
   tenantId: string;
   cart: PersistedList<CartLine>;
   wishlist: PersistedList<WishlistItem>;
+  /** Holds at most one draft; see lib/checkout-draft.ts */
+  checkoutDraft: PersistedList<CheckoutDraft>;
 };
 
 const ShopStorageContext = createContext<ShopStorage | null>(null);
@@ -23,6 +26,7 @@ export function ShopStorageProvider({ tenantId, children }: { tenantId: string; 
       tenantId,
       cart: createPersistedList(tenantId, "cart", isCartLine),
       wishlist: createPersistedList(tenantId, "wishlist", isWishlistItem),
+      checkoutDraft: createPersistedList(tenantId, "checkout-draft", isCheckoutDraft),
     }),
     [tenantId],
   );

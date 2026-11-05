@@ -27,6 +27,19 @@ export function toItemSnapshot(p: ApiProduct): ItemSnapshot {
 }
 
 /**
+ * What a card's Buy Now puts in the cart for a product with several variants:
+ * the cheapest one in stock, which is normally the price the card shows.
+ * Undefined when no choice is needed, or when every variant is sold out.
+ */
+export function buyNowSnapshot(p: ApiProduct): ItemSnapshot | undefined {
+  const item = toItemSnapshot(p);
+  if (!item.needsOption) return undefined;
+  const inStock = p.variants.filter((v) => v.stock > 0);
+  if (!inStock.length) return undefined;
+  return variantSnapshot(item, inStock.reduce((low, v) => (v.price < low.price ? v : low)));
+}
+
+/**
  * One cart line as the shop sells it now: the product, or its variant when
  * one is named. Null when the product or the variant is no longer sold.
  */

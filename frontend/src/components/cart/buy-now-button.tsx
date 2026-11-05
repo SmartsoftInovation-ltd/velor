@@ -9,8 +9,9 @@ import { useCart } from "./use-cart";
 
 /**
  * Adds one to the cart and goes there, as Buy now does on the product page.
- * With an option still to pick it opens the product page instead, and with no
- * stock it stays disabled.
+ * The card passes a variant for a product that has several (see buyNowSnapshot).
+ * An item that still needs an option, because every variant is sold out, opens
+ * the product page instead, and with no stock it stays disabled.
  */
 export function BuyNowButton({ item, className }: { item: ItemSnapshot; className?: string }) {
   const router = useRouter();

@@ -119,7 +119,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
               className="card-buy:w-auto! card-buy:min-w-0 card-buy:flex-1 card-buy:gap-1.5 card-buy:rounded-full card-buy:bg-bg-inverse! card-buy:px-2.5 card-buy:text-small card-buy:font-semibold card-buy:text-text-inverse! card-buy:shadow-md! card-buy:hover:opacity-90 card-buy:@max-[13rem]:flex-none card-buy:@max-[13rem]:w-10! card-buy:@max-[13rem]:px-0 card-buy:@max-[13rem]:[&>span:not(:has(svg))]:hidden card-buy:@min-[13rem]:[&:is(a)>span:has(svg)]:hidden"
             />
             <BuyNowButton
-              item={product.item}
+              item={product.buyNowItem ?? product.item}
               className="hidden! card-buy:inline-flex! card-buy:min-w-0 card-buy:flex-1 card-buy:rounded-full card-buy:bg-[var(--buy-now)]! card-buy:px-2.5 card-buy:text-small card-buy:font-semibold card-buy:text-white! card-buy:shadow-md! card-buy:hover:opacity-90"
             />
             <Button
