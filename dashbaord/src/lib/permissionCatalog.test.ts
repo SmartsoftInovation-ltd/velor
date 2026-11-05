@@ -22,6 +22,17 @@ describe("permission catalog", () => {
     expect(salesPurchase.slice(0, 3)).toEqual(["Product", "Variant", "Purchase"]);
   });
 
+  it("orders Sales, Discount & Coupon and Stock as the sidebar does", () => {
+    expect(group("Sales")).toEqual([
+      "Retail Sales", "Wholesale Sales", "Sales History", "Retail Sale Order", "Whole Sale Order", "Draft Order", "Sales Return",
+    ]);
+    expect(group("Discount & Coupon")).toEqual(["Discount", "Coupon"]);
+    expect(group("Coupon")).toEqual([]);
+    expect(group("Stock")).toEqual([
+      "View All Stock", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock", "Stock Adjustment",
+    ]);
+  });
+
   it("lists the screens that used to borrow another module's permission", () => {
     expect(group("Sales")).toEqual(expect.arrayContaining(["Sales Return", "Draft Order"]));
     expect(group("SMS Notification")).toContain("Due SMS");
@@ -72,6 +83,6 @@ describe("permission catalog", () => {
     const runs = MODULE_GROUPS.map((g) => g.section).filter((x, i, all) => i === 0 || all[i - 1] !== x);
     expect(runs).toEqual(sections);
     const website = MODULE_GROUPS.filter((g) => g.section === "Website Management").map((g) => g.label);
-    expect(website).toEqual(["Order", "Courier", "Delivery Charge", "Banner", "Limited Offer", "Promo Banner", "Flash Sale", "Coupon", "Size Chart"]);
+    expect(website).toEqual(["Order", "Courier", "Delivery Charge", "Banner", "Limited Offer", "Promo Banner", "Flash Sale", "Size Chart"]);
   });
 });

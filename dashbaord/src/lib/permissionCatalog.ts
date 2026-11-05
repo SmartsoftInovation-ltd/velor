@@ -153,16 +153,16 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   { section: "Sales Purchase", label: "Purchase", icon: TbBrandBootstrap, color: "from-orange-500 to-amber-600", modules: ["Purchase", "Purchase Return"] },
   {
     section: "Sales Purchase", label: "Sales", icon: MdSecurity, color: "from-emerald-500 to-green-700",
-    modules: ["Retail Sales", "Wholesale Sales", "Sales History", "Sales Return", "Retail Sale Order", "Whole Sale Order", "Draft Order"],
+    modules: ["Retail Sales", "Wholesale Sales", "Sales History", "Retail Sale Order", "Whole Sale Order", "Draft Order", "Sales Return"],
   },
 
   // Discount Management
-  { section: "Discount Management", label: "Discount", icon: TbRosetteDiscount, color: "from-pink-500 to-rose-600", modules: ["Discount"] },
+  { section: "Discount Management", label: "Discount & Coupon", icon: TbRosetteDiscount, color: "from-pink-500 to-rose-600", modules: ["Discount", "Coupon"] },
 
   // Stock Management
   {
     section: "Stock Management", label: "Stock", icon: TbPackage, color: "from-yellow-500 to-orange-500",
-    modules: ["View All Stock", "Stock Adjustment", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock"],
+    modules: ["View All Stock", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock", "Stock Adjustment"],
   },
 
   // Website Management
@@ -173,7 +173,6 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   { section: "Website Management", label: "Limited Offer", icon: TbRosetteDiscount, color: "from-rose-400 to-pink-600", modules: ["Limited Offer"] },
   { section: "Website Management", label: "Promo Banner", icon: TbRulerMeasure, color: "from-fuchsia-400 to-pink-600", modules: ["Discount Banner"] },
   { section: "Website Management", label: "Flash Sale", icon: TbRosetteDiscount, color: "from-amber-400 to-orange-600", modules: ["Flash Sale"] },
-  { section: "Website Management", label: "Coupon", icon: TbRosetteDiscount, color: "from-pink-400 to-rose-500", modules: ["Coupon"] },
   { section: "Website Management", label: "Size Chart", icon: HiOutlineAdjustments, color: "from-teal-400 to-cyan-600", modules: ["Size Chart"] },
 
   // Profile

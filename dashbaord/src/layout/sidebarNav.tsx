@@ -20,7 +20,6 @@ import {
   TbSparkles,
   TbBolt,
   TbSpeakerphone,
-  TbTicket,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
@@ -232,7 +231,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Discount",
+    name: "Discount & Coupon",
     icon: <TbRosetteDiscount />,
     subItems: [
       {
@@ -248,13 +247,6 @@ const navItems: NavItem[] = [
         module: PERMISSIONS.DISCOUNT,
         pro: false,
       },
-    ],
-  },
-  {
-    // Codes shoppers enter at the storefront checkout
-    name: "Coupon",
-    icon: <TbTicket />,
-    subItems: [
       {
         name: "Create Coupon",
         path: "/create-coupon",
@@ -400,18 +392,6 @@ const navItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Stock Adjustment",
-        path: "/stock-adjustment",
-        module: PERMISSIONS.STOCK_ADJUSTMENT,
-        pro: false,
-      },
-      {
-        name: "Stock Adjustment List",
-        path: "/stock-adjustment-list",
-        module: PERMISSIONS.STOCK_ADJUSTMENT,
-        pro: false,
-      },
-      {
         name: "Category Stock Detail",
         path: "/category-stock-detail",
         module: PERMISSIONS.CATEGORY_STOCK_DETAILS,
@@ -433,6 +413,18 @@ const navItems: NavItem[] = [
         name: "Low Stock",
         path: "/low-stock",
         module: PERMISSIONS.LOW_STOCK,
+        pro: false,
+      },
+      {
+        name: "Stock Adjustment",
+        path: "/stock-adjustment",
+        module: PERMISSIONS.STOCK_ADJUSTMENT,
+        pro: false,
+      },
+      {
+        name: "Stock Adjustment List",
+        path: "/stock-adjustment-list",
+        module: PERMISSIONS.STOCK_ADJUSTMENT,
         pro: false,
       },
     ],
@@ -809,19 +801,6 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Sales Return",
-        path: "/sales-return",
-        module: PERMISSIONS.SALES_RETURN,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Sales Return List",
-        path: "/sales-return-list",
-        module: PERMISSIONS.SALES_RETURN,
-        pro: false,
-      },
-      {
         name: "Add Retailsale Order",
         path: "/retail-sale-order",
         module: PERMISSIONS.RETAIL_SALES_ORDER,
@@ -850,6 +829,19 @@ const hrManage: NavItem[] = [
         module: PERMISSIONS.DRAFT_ORDER,
         pro: false,
       },
+      {
+        name: "Sales Return",
+        path: "/sales-return",
+        module: PERMISSIONS.SALES_RETURN,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Sales Return List",
+        path: "/sales-return-list",
+        module: PERMISSIONS.SALES_RETURN,
+        pro: false,
+      },
     ],
   },
 ];
@@ -865,7 +857,7 @@ const salesPurchaseItems: NavItem[] = [
 ];
 
 const discountManagementItems = navItems.filter(
-  (item) => item.name === "Discount",
+  (item) => item.name === "Discount & Coupon",
 );
 const stockManagementItems = navItems.filter((item) => item.name === "Stock");
 const websiteManagementItems: NavItem[] = [
@@ -877,8 +869,7 @@ const websiteManagementItems: NavItem[] = [
       item.name === "Banner" ||
       item.name === "Limited Offer" ||
       item.name === "Flash Sale" ||
-      item.name === "Promo Banner" ||
-      item.name === "Coupon",
+      item.name === "Promo Banner",
   ),
   // Size charts are shown on the storefront's product pages
   ...navItems.filter((item) => item.name === "Size Chart"),
@@ -1021,7 +1012,7 @@ export const useSidebarSections = (): SidebarSection[] => {
         item.name !== "Product" &&
         item.name !== "Variant" &&
         item.name !== "Purchase" &&
-        item.name !== "Discount" &&
+        item.name !== "Discount & Coupon" &&
         item.name !== "Stock" &&
         item.name !== "Courier" &&
         item.name !== "Delivery Charge" &&
@@ -1029,7 +1020,6 @@ export const useSidebarSections = (): SidebarSection[] => {
         item.name !== "Limited Offer" &&
         item.name !== "Flash Sale" &&
         item.name !== "Promo Banner" &&
-        item.name !== "Coupon" &&
         item.name !== "Order" &&
         item.name !== "Size Chart" &&
         item.name.trim() !== "All Accounts" &&

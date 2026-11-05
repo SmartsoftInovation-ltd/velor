@@ -36,6 +36,41 @@ describe("sidebar order", () => {
     expect(links("Purchase")).toEqual(["Create Purchase", "Purchase List", "Purchase Return", "Purchase Return List"]);
   });
 
+  it("lists Sales links by what they do, keeping their names", () => {
+    expect(links("Sales")).toEqual([
+      "Add Retail Sales",
+      "Add Wholesale Sales",
+      "Sales History",
+      "Add Retailsale Order",
+      "Add Wholesale Order",
+      "Order List",
+      "Draft Order List",
+      "Sales Return",
+      "Sales Return List",
+    ]);
+  });
+
+  it("puts discounts and coupons together under Discount Management", () => {
+    const { result } = renderHook(() => useSidebarSections());
+    const section = (label: string) => result.current.find((s) => s.label === label)?.items.map((i) => i.name);
+    expect(section("Discount Management")).toEqual(["Discount & Coupon"]);
+    expect(links("Discount & Coupon")).toEqual(["Create Discount", "Discount List", "Create Coupon", "Coupon List"]);
+    expect(section("Website Management")).not.toContain("Coupon");
+    expect(section("Menu") ?? []).not.toContain("Coupon");
+  });
+
+  it("lists Stock pages first, then adjustments", () => {
+    expect(links("Stock")).toEqual([
+      "View All Stock",
+      "Category Stock Detail",
+      "Color Wise Stock",
+      "Size Wise Stock",
+      "Low Stock",
+      "Stock Adjustment",
+      "Stock Adjustment List",
+    ]);
+  });
+
   it("keeps Product, Variant and Purchase next to each other", () => {
     const { result } = renderHook(() => useSidebarSections());
     const names = result.current.find((s) => s.label === "Sales Purchase")?.items.map((i) => i.name);
