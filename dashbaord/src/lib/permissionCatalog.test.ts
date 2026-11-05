@@ -33,6 +33,14 @@ describe("permission catalog", () => {
     ]);
   });
 
+  it("orders Profile and All Accounts as the sidebar does", () => {
+    expect(MODULE_GROUPS.filter((g) => g.section === "Profile").map((g) => g.label)).toEqual(["Customer", "Supplier", "Employee"]);
+    expect(group("Customer")).toEqual(["Customer", "Customer Payment", "Advance Payment", "Customer Type"]);
+    expect(group("Supplier")).toEqual(["Supplier", "Supplier Payment"]);
+    expect(group("Employee")).toEqual(["Employee", "Designation", "Department", "Section"]);
+    expect(group("All Accounts")).toEqual(["Add Transaction", "Money Transfer", "Money Handover", "Transaction Category", "Add Account"]);
+  });
+
   it("lists the screens that used to borrow another module's permission", () => {
     expect(group("Sales")).toEqual(expect.arrayContaining(["Sales Return", "Draft Order"]));
     expect(group("SMS Notification")).toContain("Due SMS");

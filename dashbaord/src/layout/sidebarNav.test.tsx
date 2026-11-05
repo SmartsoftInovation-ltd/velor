@@ -121,6 +121,59 @@ describe("sidebar order", () => {
     }
   });
 
+  it("groups Profile as Customer, Supplier and Employee", () => {
+    const { result } = renderHook(() => useSidebarSections());
+    expect(result.current.find((s) => s.label === "Profile")?.items.map((i) => i.name)).toEqual([
+      "Customer",
+      "Supplier",
+      "Employee",
+    ]);
+    expect(links("Customer")).toEqual([
+      "Create Customer",
+      "Customer List",
+      "Customer Payment Receive",
+      "Customer Payment Receive List",
+      "Customer Advance Payment",
+      "Customer Advance Payment List",
+      "Create Customer Type",
+      "Customer Type List",
+    ]);
+    expect(links("Supplier")).toEqual(["Create Supplier", "Supplier List", "Create Supplier Payment", "Supplier Payment List"]);
+    expect(links("Employee")).toEqual([
+      "Create Employee",
+      "Employee List",
+      "Create Designation",
+      "Designation List",
+      "Create Department",
+      "Department List",
+      "Create Section",
+      "Section List",
+    ]);
+  });
+
+  it("lists All Accounts with a create link beside each list", () => {
+    expect(links("All Accounts ")).toEqual([
+      "Create Transaction",
+      "Transaction List",
+      "Create Money Transfer",
+      "Money Transfer List",
+      "Create Money Handover",
+      "Money Handover List",
+      "Create Transaction Category",
+      "Transaction Category List",
+      "Create Account",
+      "Account List",
+    ]);
+  });
+
+  it("links the new create pages, only for people allowed to add", () => {
+    const { result } = renderHook(() => useSidebarSections());
+    const subs = result.current.flatMap((s) => s.items).flatMap((i) => i.subItems ?? []);
+    expect(subs.find((s) => s.name === "Create Customer Type")).toMatchObject({ path: "/create-customer-type", action: "add" });
+    expect(subs.find((s) => s.name === "Create Transaction Category")).toMatchObject({ path: "/add-transaction-category", action: "add" });
+    expect(subs.find((s) => s.name === "Create Account")).toMatchObject({ path: "/add-account", action: "add" });
+  });
+
   it("keeps Product, Variant and Purchase next to each other", () => {
     const { result } = renderHook(() => useSidebarSections());
     const names = result.current.find((s) => s.label === "Sales Purchase")?.items.map((i) => i.name);

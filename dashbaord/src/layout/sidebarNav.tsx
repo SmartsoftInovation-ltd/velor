@@ -438,7 +438,7 @@ const navItems: NavItem[] = [
     icon: <LuWallet />,
     subItems: [
       {
-        name: "Add Transaction",
+        name: "Create Transaction",
         path: "/add-transaction",
         module: PERMISSIONS.ADD_TRANSACTION,
         action: "add",
@@ -451,19 +451,7 @@ const navItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Transaction Category List",
-        path: "/transaction-category-list",
-        module: PERMISSIONS.TRANSACTION_CATEGORY,
-        pro: false,
-      },
-      {
-        name: "Account List",
-        path: "/account-list",
-        module: PERMISSIONS.ADD_ACCOUNT,
-        pro: false,
-      },
-      {
-        name: "Add Money Transfer",
+        name: "Create Money Transfer",
         path: "/add-money-transfer",
         module: PERMISSIONS.MONEY_TRANSFER,
         action: "add",
@@ -476,7 +464,7 @@ const navItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Money Handover",
+        name: "Create Money Handover",
         path: "/money-handover-description",
         module: PERMISSIONS.MONEY_HANDOVER,
         pro: false,
@@ -485,6 +473,32 @@ const navItems: NavItem[] = [
         name: "Money Handover List",
         path: "/money-handover-list",
         module: PERMISSIONS.MONEY_HANDOVER,
+        pro: false,
+      },
+      {
+        name: "Create Transaction Category",
+        path: "/add-transaction-category",
+        module: PERMISSIONS.TRANSACTION_CATEGORY,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Transaction Category List",
+        path: "/transaction-category-list",
+        module: PERMISSIONS.TRANSACTION_CATEGORY,
+        pro: false,
+      },
+      {
+        name: "Create Account",
+        path: "/add-account",
+        module: PERMISSIONS.ADD_ACCOUNT,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Account List",
+        path: "/account-list",
+        module: PERMISSIONS.ADD_ACCOUNT,
         pro: false,
       },
     ],
@@ -607,10 +621,10 @@ const othersItems: NavItem[] = [
 const hrManage: NavItem[] = [
   {
     icon: <TbUsersGroup />,
-    name: "Employee Management",
+    name: "Employee",
     subItems: [
       {
-        name: "Add New Employee",
+        name: "Create Employee",
         path: "/create-employee",
         module: PERMISSIONS.EMPLOYEE,
         action: "add",
@@ -623,7 +637,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Designation",
+        name: "Create Designation",
         path: "/create-designation",
         module: PERMISSIONS.DESIGNATION,
         action: "add",
@@ -636,7 +650,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Department",
+        name: "Create Department",
         path: "/create-department",
         module: PERMISSIONS.DEPARTMENT,
         action: "add",
@@ -649,7 +663,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Section",
+        name: "Create Section",
         path: "/create-section",
         module: PERMISSIONS.SECTION,
         action: "add",
@@ -668,7 +682,7 @@ const hrManage: NavItem[] = [
     name: "Supplier",
     subItems: [
       {
-        name: "Add Supplier",
+        name: "Create Supplier",
         path: "/create-supplier",
         module: PERMISSIONS.SUPPLIER,
         action: "add",
@@ -681,7 +695,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Supplier Payment",
+        name: "Create Supplier Payment",
         path: "/create-supplier-payment",
         module: PERMISSIONS.SUPPLIER_PAYMENT,
         action: "add",
@@ -700,13 +714,7 @@ const hrManage: NavItem[] = [
     name: "Customer",
     subItems: [
       {
-        name: "Customer Type List",
-        path: "/customer-type-list",
-        module: PERMISSIONS.CUSTOMER_TYPE,
-        pro: false,
-      },
-      {
-        name: "Add Customer",
+        name: "Create Customer",
         path: "/create-customer",
         module: PERMISSIONS.CUSTOMER,
         action: "add",
@@ -731,15 +739,28 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Advance Payment Receive",
+        name: "Customer Advance Payment",
         path: "/customer-advance-payment",
         module: PERMISSIONS.ADVANCE_PAYMENT,
         pro: false,
       },
       {
-        name: "Advance Payment Receive List",
+        name: "Customer Advance Payment List",
         path: "/advance-payment-list",
         module: PERMISSIONS.ADVANCE_PAYMENT,
+        pro: false,
+      },
+      {
+        name: "Create Customer Type",
+        path: "/create-customer-type",
+        module: PERMISSIONS.CUSTOMER_TYPE,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Customer Type List",
+        path: "/customer-type-list",
+        module: PERMISSIONS.CUSTOMER_TYPE,
         pro: false,
       },
     ],
@@ -836,11 +857,8 @@ const websiteManagementItems: NavItem[] = navItems.filter(
     item.name === "Limited Offer" ||
     item.name === "Flash Sale",
 );
-const profileItems = hrManage.filter(
-  (item) =>
-    item.name === "Customer" ||
-    item.name === "Supplier" ||
-    item.name === "Employee Management",
+const profileItems: NavItem[] = ["Customer", "Supplier", "Employee"].flatMap((name) =>
+  hrManage.filter((item) => item.name === name),
 );
 const accountManagementItems = navItems.filter(
   (item) => item.name.trim() === "All Accounts",
@@ -1011,7 +1029,7 @@ export const useSidebarSections = (): SidebarSection[] => {
         item.name !== "Sales" &&
         item.name !== "Customer" &&
         item.name !== "Supplier" &&
-        item.name !== "Employee Management",
+        item.name !== "Employee",
     ),
   );
 

@@ -176,14 +176,14 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   { section: "Website Management", label: "Flash Sale", icon: TbRosetteDiscount, color: "from-amber-400 to-orange-600", modules: ["Flash Sale"] },
 
   // Profile
-  { section: "Profile", label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600", modules: ["Customer Type", "Customer", "Customer Payment", "Advance Payment"] },
+  { section: "Profile", label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600", modules: ["Customer", "Customer Payment", "Advance Payment", "Customer Type"] },
   { section: "Profile", label: "Supplier", icon: MdSecurity, color: "from-lime-500 to-green-600", modules: ["Supplier", "Supplier Payment"] },
-  { section: "Profile", label: "Employee Management", icon: MdSecurity, color: "from-sky-500 to-blue-600", modules: ["Employee", "Designation", "Department", "Section"] },
+  { section: "Profile", label: "Employee", icon: MdSecurity, color: "from-sky-500 to-blue-600", modules: ["Employee", "Designation", "Department", "Section"] },
 
   // Accounts Management
   {
     section: "Accounts Management", label: "All Accounts", icon: TbPackage, color: "from-teal-500 to-cyan-600",
-    modules: ["Add Transaction", "Transaction Category", "Add Account", "Money Transfer", "Money Handover"],
+    modules: ["Add Transaction", "Money Transfer", "Money Handover", "Transaction Category", "Add Account"],
   },
 
   // Analytics & Users: Reports & Analytics (one group per report category), SMS, Role & Permission
