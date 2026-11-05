@@ -85,7 +85,6 @@ const variantSchema = new mongoose.Schema(
       trim: true,
       unique: true,
       sparse: true,
-      match: [/^\d+$/, "Barcode must contain only numbers"],
     },
 
     size: { type: String, trim: true, default: "N/A" },

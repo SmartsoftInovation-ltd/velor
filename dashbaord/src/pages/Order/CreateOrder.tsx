@@ -200,7 +200,7 @@ const CreateOrder = () => {
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const term = search.trim();
-    if (term.length < 2) {
+    if (!term) {
       setHits([]);
       return;
     }
@@ -348,7 +348,7 @@ const CreateOrder = () => {
                 />
               </div>
 
-              {search.trim().length >= 2 && (
+              {search.trim() && (
                 <div className="absolute inset-x-5 z-20 mt-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
                   {searching && <p className="px-4 py-3 text-sm text-gray-500">Searching…</p>}
                   {!searching && hits.length === 0 && (

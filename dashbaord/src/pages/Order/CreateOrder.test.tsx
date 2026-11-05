@@ -59,6 +59,13 @@ describe("CreateOrder product search", () => {
     expect(await screen.findByText(/77012/)).toBeTruthy();
   });
 
+  it("searches from the first character, for a 1-digit barcode", async () => {
+    setup();
+    await search("7");
+
+    expect(await screen.findByText(/77012/)).toBeTruthy();
+  });
+
   it("still finds a variant by name", async () => {
     setup();
     await search("polo");

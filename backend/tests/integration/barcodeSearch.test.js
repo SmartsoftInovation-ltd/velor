@@ -42,6 +42,27 @@ describe("barcode search finds an item whatever its barcode looks like", () => {
     }
   });
 
+  // Any barcode a seller has is accepted: no rule on its length or its characters
+  it.each(["7", "1234567890123456789012345678901234567890", "AB-12/x"])("a variant can be saved with the barcode %s and found by it", async (barCode) => {
+    const variantName = `Any ${barCode}`;
+    await as()
+      .post("/variant")
+      .send({ variants: [{ product: product._id.toString(), variantName, barCode, purchasePrice: 10, retailPrice: 20, size: "S", color: "Blue", unit: "Piece" }] })
+      .expect(201);
+
+    const scan = await as().get("/sales/get-sales-products").query({ q: barCode }).expect(200);
+    expect(found(scan, barCode)).toBe(true);
+    const typed = await as().get("/product/search-product").query({ name: barCode, barCode, sku: barCode }).expect(200);
+    expect(found(typed, barCode)).toBe(true);
+  });
+
+  it("two variants still cannot share a barcode", async () => {
+    await as()
+      .post("/variant")
+      .send({ variants: [{ product: product._id.toString(), variantName: "Copy", barCode: "54868", purchasePrice: 10, retailPrice: 20, size: "S", color: "Blue", unit: "Piece" }] })
+      .expect(400);
+  });
+
   // Reports echo the search under `filters`, which must not count as a result
   const found = (res, text) => {
     const { filters: _echoed, ...results } = res.body.data ?? {};

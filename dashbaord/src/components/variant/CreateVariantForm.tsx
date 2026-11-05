@@ -1202,9 +1202,11 @@ const CreateVariantForm = ({
                 autoComplete="off"
                 className="pl-9"
                 onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, "");
+                  const value = e.target.value;
                   handleInputChange(formIndex, "barCode", value);
-                  if (value.length >= 6) handleInputChange(formIndex, "sku", value.slice(-6));
+                  // A variant's SKU is numbers only, whatever its barcode holds
+                  const digits = value.replace(/\D/g, "");
+                  if (digits.length >= 6) handleInputChange(formIndex, "sku", digits.slice(-6));
                 }}
                 onKeyDown={(e) => {
                   // Scanners terminate input with Enter — confirm the scan

@@ -710,7 +710,7 @@ export default function CreateWholeSalesForm({
 
         setIsScanning(true);
         try {
-            const res = await axiosSecure.get(`/sales/get-sales-products?q=${query}`);
+            const res = await axiosSecure.get(`/sales/get-sales-products?q=${encodeURIComponent(query)}`);
             const results = res.data.data || [];
 
             if (results.length === 0) {
