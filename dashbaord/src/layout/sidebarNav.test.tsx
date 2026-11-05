@@ -71,6 +71,56 @@ describe("sidebar order", () => {
     ]);
   });
 
+  it("groups Website Management as Web Order, Courier & Merchant and Website Settings", () => {
+    const { result } = renderHook(() => useSidebarSections());
+    const items = result.current.find((s) => s.label === "Website Management")?.items.map((i) => i.name);
+    expect(items).toEqual(["Web Order", "Courier & Merchant", "Website Settings", "Limited Offer", "Flash Sale"]);
+    expect(links("Web Order")).toEqual(["Create Web Order", "Web Order List", "Incomplete Order List"]);
+    // Only pages that exist: there is no Courier Delivery List or Create Courier Return page yet
+    expect(links("Courier & Merchant")).toEqual([
+      "Create Courier Merchant",
+      "Courier Merchant List",
+      "Create Courier Delivery",
+      "Courier Return List",
+    ]);
+    expect(links("Website Settings")).toEqual([
+      "Create Website Info",
+      "Website Info List",
+      "Create Outlet Info",
+      "Outlet Info List",
+      "Create Web Banner",
+      "Web Banner List",
+      "Create Discount Banner",
+      "Discount Banner List",
+      "Create Size Chart",
+      "Size Chart List",
+      "Create Delivery Charge",
+      "Delivery Charge List",
+    ]);
+  });
+
+  it("leaves only store information under General Settings", () => {
+    const settings = links("Settings ");
+    expect(settings).toEqual(["Store Information"]);
+  });
+
+  it("still opens every moved page at its old address", () => {
+    const { result } = renderHook(() => useSidebarSections());
+    const paths = result.current
+      .flatMap((s) => s.items)
+      .flatMap((i) => i.subItems ?? [])
+      .map((s) => s.path);
+    for (const path of [
+      "/create-order", "/order-list", "/incomplete-order-list",
+      "/courier", "/courier-merchant-list", "/create-courier-delivery", "/courier-return-list",
+      "/add-site-info", "/site-info-list", "/add-outlet", "/outlet-list",
+      "/add-banner", "/banner-list", "/add-discount", "/discount-banner-list",
+      "/create-sizechart", "/sizechart-list", "/create-delivery-charge", "/delivery-charge-list",
+    ]) {
+      expect(paths).toContain(path);
+    }
+  });
+
   it("keeps Product, Variant and Purchase next to each other", () => {
     const { result } = renderHook(() => useSidebarSections());
     const names = result.current.find((s) => s.label === "Sales Purchase")?.items.map((i) => i.name);

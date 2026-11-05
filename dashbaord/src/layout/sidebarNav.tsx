@@ -7,19 +7,17 @@ import {
 } from "react-icons/md";
 import {
   TbRosetteDiscount,
-  TbRulerMeasure,
   TbShoppingCartPlus,
   TbReportAnalytics,
   TbBuildingWarehouse,
   TbUsersGroup,
   TbBuildingStore,
   TbSettings,
+  TbWorld,
   TbShieldLock,
   TbBuildingCommunity,
-  TbPhoto,
   TbSparkles,
   TbBolt,
-  TbSpeakerphone,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
@@ -181,25 +179,6 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Size Chart",
-    icon: <TbRulerMeasure />,
-    subItems: [
-      {
-        name: "Create Size Chart",
-        path: "/create-sizechart",
-        module: PERMISSIONS.SIZE_CHART,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Size Chart List",
-        path: "/sizechart-list",
-        module: PERMISSIONS.SIZE_CHART,
-        pro: false,
-      },
-    ],
-  },
-  {
     name: "Purchase",
     icon: <TbShoppingCartPlus />,
     subItems: [
@@ -263,23 +242,23 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Order",
+    name: "Web Order",
     icon: <LuClipboardList />,
     subItems: [
       {
-        name: "Create Order",
+        name: "Create Web Order",
         path: "/create-order",
         module: PERMISSIONS.ORDER,
         pro: false,
       },
       {
-        name: "Order List",
+        name: "Web Order List",
         path: "/order-list",
         module: PERMISSIONS.ORDER,
         pro: false,
       },
       {
-        name: "Incomplete Orders",
+        name: "Incomplete Order List",
         path: "/incomplete-order-list",
         module: PERMISSIONS.INCOMPLETE_ORDER,
         pro: false,
@@ -287,11 +266,11 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Courier",
+    name: "Courier & Merchant",
     icon: <MdOutlineLocalShipping />,
     subItems: [
       {
-        name: "Courier Merchant",
+        name: "Create Courier Merchant",
         path: "/courier",
         module: PERMISSIONS.COURIER_MERCHANT,
         pro: false,
@@ -318,9 +297,63 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Delivery Charge",
-    icon: <MdOutlineLocalShipping />,
+    name: "Website Settings",
+    icon: <TbWorld />,
     subItems: [
+      {
+        name: "Create Website Info",
+        path: "/add-site-info",
+        module: PERMISSIONS.SITE_INFORMATION,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Website Info List",
+        path: "/site-info-list",
+        module: PERMISSIONS.SITE_INFORMATION,
+        pro: false,
+      },
+      {
+        name: "Create Outlet Info",
+        path: "/add-outlet",
+        module: PERMISSIONS.OUTLET_INFORMATION,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Outlet Info List",
+        path: "/outlet-list",
+        module: PERMISSIONS.OUTLET_INFORMATION,
+        pro: false,
+      },
+      {
+        name: "Create Web Banner",
+        path: "/add-banner",
+        module: PERMISSIONS.CREATE_BANNER,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Web Banner List",
+        path: "/banner-list",
+        module: PERMISSIONS.CREATE_BANNER,
+        pro: false,
+      },
+      { name: "Create Discount Banner", path: "/add-discount", module: PERMISSIONS.DISCOUNT_BANNER, action: "add", pro: false },
+      { name: "Discount Banner List", path: "/discount-banner-list", module: PERMISSIONS.DISCOUNT_BANNER, pro: false },
+      {
+        name: "Create Size Chart",
+        path: "/create-sizechart",
+        module: PERMISSIONS.SIZE_CHART,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Size Chart List",
+        path: "/sizechart-list",
+        module: PERMISSIONS.SIZE_CHART,
+        pro: false,
+      },
       {
         name: "Create Delivery Charge",
         path: "/create-delivery-charge",
@@ -337,40 +370,11 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    // The storefront's home page slider
-    name: "Banner",
-    icon: <TbPhoto />,
-    subItems: [
-      {
-        name: "Add Banner",
-        path: "/add-banner",
-        module: PERMISSIONS.CREATE_BANNER,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Banner List",
-        path: "/banner-list",
-        module: PERMISSIONS.CREATE_BANNER,
-        pro: false,
-      },
-    ],
-  },
-  {
     // The storefront's "Limited offers" section
     name: "Limited Offer",
     icon: <TbSparkles />,
     path: "/limited-offer",
     module: PERMISSIONS.LIMITED_OFFER,
-  },
-  {
-    // The wide banner in the middle of the storefront home page
-    name: "Promo Banner",
-    icon: <TbSpeakerphone />,
-    subItems: [
-      { name: "Add Promo Banner", path: "/add-discount", module: PERMISSIONS.DISCOUNT_BANNER, action: "add", pro: false },
-      { name: "Promo Banner List", path: "/discount-banner-list", module: PERMISSIONS.DISCOUNT_BANNER, pro: false },
-    ],
   },
   {
     // Time-limited sale prices on the storefront
@@ -578,42 +582,6 @@ const othersItems: NavItem[] = [
     name: "Settings ",
     icon: <TbSettings />,
     subItems: [
-      {
-        name: "Site Information",
-        subSubItems: [
-          {
-            name: "Add Site Info",
-            path: "/add-site-info",
-            module: PERMISSIONS.SITE_INFORMATION,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Site Info List",
-            path: "/site-info-list",
-            module: PERMISSIONS.SITE_INFORMATION,
-            pro: false,
-          },
-        ],
-      },
-      {
-        name: "Outlet Information",
-        subSubItems: [
-          {
-            name: "Add Outlet",
-            path: "/add-outlet",
-            module: PERMISSIONS.OUTLET_INFORMATION,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Outlet List",
-            path: "/outlet-list",
-            module: PERMISSIONS.OUTLET_INFORMATION,
-            pro: false,
-          },
-        ],
-      },
       {
         name: "Store Information",
         subSubItems: [
@@ -860,20 +828,14 @@ const discountManagementItems = navItems.filter(
   (item) => item.name === "Discount & Coupon",
 );
 const stockManagementItems = navItems.filter((item) => item.name === "Stock");
-const websiteManagementItems: NavItem[] = [
-  ...navItems.filter(
-    (item) =>
-      item.name === "Courier" ||
-      item.name === "Order" ||
-      item.name === "Delivery Charge" ||
-      item.name === "Banner" ||
-      item.name === "Limited Offer" ||
-      item.name === "Flash Sale" ||
-      item.name === "Promo Banner",
-  ),
-  // Size charts are shown on the storefront's product pages
-  ...navItems.filter((item) => item.name === "Size Chart"),
-];
+const websiteManagementItems: NavItem[] = navItems.filter(
+  (item) =>
+    item.name === "Web Order" ||
+    item.name === "Courier & Merchant" ||
+    item.name === "Website Settings" ||
+    item.name === "Limited Offer" ||
+    item.name === "Flash Sale",
+);
 const profileItems = hrManage.filter(
   (item) =>
     item.name === "Customer" ||
@@ -1014,14 +976,11 @@ export const useSidebarSections = (): SidebarSection[] => {
         item.name !== "Purchase" &&
         item.name !== "Discount & Coupon" &&
         item.name !== "Stock" &&
-        item.name !== "Courier" &&
-        item.name !== "Delivery Charge" &&
-        item.name !== "Banner" &&
+        item.name !== "Courier & Merchant" &&
+        item.name !== "Website Settings" &&
         item.name !== "Limited Offer" &&
         item.name !== "Flash Sale" &&
-        item.name !== "Promo Banner" &&
-        item.name !== "Order" &&
-        item.name !== "Size Chart" &&
+        item.name !== "Web Order" &&
         item.name.trim() !== "All Accounts" &&
         item.name !== "Reports & Analytics",
     ),

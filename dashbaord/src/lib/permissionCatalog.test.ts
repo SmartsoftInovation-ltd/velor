@@ -42,7 +42,10 @@ describe("permission catalog", () => {
   });
 
   it("has a Settings module with every settings screen", () => {
-    expect(group("Settings")).toEqual(["Site Information", "Outlet Information", "Store Information"]);
+    expect(group("Settings")).toEqual(["Store Information"]);
+    expect(group("Website Settings")).toEqual([
+      "Site Information", "Outlet Information", "Create Banner", "Discount Banner", "Size Chart", "Delivery Charge",
+    ]);
   });
 
   it("gives Supplier Payment, Add Transaction and Money Transfer a Print action", () => {
@@ -83,6 +86,6 @@ describe("permission catalog", () => {
     const runs = MODULE_GROUPS.map((g) => g.section).filter((x, i, all) => i === 0 || all[i - 1] !== x);
     expect(runs).toEqual(sections);
     const website = MODULE_GROUPS.filter((g) => g.section === "Website Management").map((g) => g.label);
-    expect(website).toEqual(["Order", "Courier", "Delivery Charge", "Banner", "Limited Offer", "Promo Banner", "Flash Sale", "Size Chart"]);
+    expect(website).toEqual(["Web Order", "Courier & Merchant", "Website Settings", "Limited Offer", "Flash Sale"]);
   });
 });

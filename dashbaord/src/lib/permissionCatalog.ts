@@ -4,7 +4,7 @@
 // never list different modules. A permission only shows once it exists in the
 // platform's catalog (backend/src/seeder/permissionSeeder.js).
 import { MdOutlineInventory2, MdSecurity, MdDashboard } from "react-icons/md";
-import { TbBrandBootstrap, TbRosetteDiscount, TbRulerMeasure, TbReportAnalytics, TbPackage, TbSettings } from "react-icons/tb";
+import { TbBrandBootstrap, TbRosetteDiscount, TbReportAnalytics, TbPackage, TbSettings } from "react-icons/tb";
 import { HiOutlineAdjustments } from "react-icons/hi";
 
 export type Action = "view" | "add" | "edit" | "delete" | "print";
@@ -166,14 +166,14 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   },
 
   // Website Management
-  { section: "Website Management", label: "Order", icon: TbBrandBootstrap, color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order", "Chat"] },
-  { section: "Website Management", label: "Courier", icon: TbBrandBootstrap, color: "from-indigo-500 to-blue-700", modules: ["Courier Merchant", "Courier Delivery", "Courier Return"] },
-  { section: "Website Management", label: "Delivery Charge", icon: TbBrandBootstrap, color: "from-indigo-400 to-sky-600", modules: ["Delivery Charge"] },
-  { section: "Website Management", label: "Banner", icon: TbRulerMeasure, color: "from-gray-500 to-slate-600", modules: ["Create Banner"] },
+  { section: "Website Management", label: "Web Order", icon: TbBrandBootstrap, color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order", "Chat"] },
+  { section: "Website Management", label: "Courier & Merchant", icon: TbBrandBootstrap, color: "from-indigo-500 to-blue-700", modules: ["Courier Merchant", "Courier Delivery", "Courier Return"] },
+  {
+    section: "Website Management", label: "Website Settings", icon: TbSettings, color: "from-teal-400 to-cyan-600",
+    modules: ["Site Information", "Outlet Information", "Create Banner", "Discount Banner", "Size Chart", "Delivery Charge"],
+  },
   { section: "Website Management", label: "Limited Offer", icon: TbRosetteDiscount, color: "from-rose-400 to-pink-600", modules: ["Limited Offer"] },
-  { section: "Website Management", label: "Promo Banner", icon: TbRulerMeasure, color: "from-fuchsia-400 to-pink-600", modules: ["Discount Banner"] },
   { section: "Website Management", label: "Flash Sale", icon: TbRosetteDiscount, color: "from-amber-400 to-orange-600", modules: ["Flash Sale"] },
-  { section: "Website Management", label: "Size Chart", icon: HiOutlineAdjustments, color: "from-teal-400 to-cyan-600", modules: ["Size Chart"] },
 
   // Profile
   { section: "Profile", label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600", modules: ["Customer Type", "Customer", "Customer Payment", "Advance Payment"] },
@@ -194,5 +194,5 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   { section: "Analytics & Users", label: "Role & Permission", icon: MdDashboard, color: "from-violet-500 to-purple-600", modules: ["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"] },
 
   // General Settings
-  { section: "General Settings", label: "Settings", icon: TbSettings, color: "from-zinc-500 to-neutral-700", modules: ["Site Information", "Outlet Information", "Store Information"] },
+  { section: "General Settings", label: "Settings", icon: TbSettings, color: "from-zinc-500 to-neutral-700", modules: ["Store Information"] },
 ];
