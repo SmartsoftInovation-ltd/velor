@@ -43,8 +43,8 @@ describe("permission catalog", () => {
 
   it("lists the screens that used to borrow another module's permission", () => {
     expect(group("Sales")).toEqual(expect.arrayContaining(["Sales Return", "Draft Order"]));
-    expect(group("SMS Notification")).toContain("Due SMS");
-    expect(group("Role & Permission")).toEqual(
+    expect(group("SMS Notifications")).toEqual(["Send SMS", "Due SMS", "Send Bulk SMS", "SMS Info"]);
+    expect(group("User Role & Permission")).toEqual(
       expect.arrayContaining(["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"]),
     );
   });

@@ -116,6 +116,7 @@ const DeliveryChargeUpdate = lazy(
 // Components - Role & Permission
 const RoleUpdate = lazy(() => import("./components/rolepermission/RoleUpdate"));
 const CreateRole = lazy(() => import("./pages/RolePermission/CreateRole"));
+const RoleList = lazy(() => import("./pages/RolePermission/RoleList"));
 const CreateUserPermission = lazy(
   () => import("./pages/RolePermission/CreateUserPermission"),
 );
@@ -876,6 +877,7 @@ export default function App() {
 
                 {/* Role & Permission Layout */}
                 <Route path="/create-role" element={<ProtectedRoute module="create-role" action="add"><CreateRole /></ProtectedRoute>} />
+                <Route path="/role-list" element={<ProtectedRoute module="create-role" action="view"><RoleList /></ProtectedRoute>} />
                 <Route path="/update-role/:slug" element={<ProtectedRoute module="create-role" action="edit"><RoleUpdate /></ProtectedRoute>} />
                 <Route path="/userlist" element={<ProtectedRoute module="create-user" action="view"><UserList /></ProtectedRoute>} />
                 <Route path="/add-user" element={<ProtectedRoute module="create-user" action="add"><AddUser /></ProtectedRoute>} />

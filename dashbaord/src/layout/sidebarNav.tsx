@@ -519,12 +519,18 @@ const navItems: NavItem[] = [
 const othersItems: NavItem[] = [
   {
     icon: <MdOutlineSms />,
-    name: "SMS Notification",
+    name: "SMS Notifications",
     subItems: [
       {
         name: "Send SMS",
         path: "/sendsms",
         module: PERMISSIONS.SEND_SMS,
+        pro: false,
+      },
+      {
+        name: "Send Due SMS",
+        path: "/due-sms",
+        module: PERMISSIONS.DUE_SMS,
         pro: false,
       },
       {
@@ -539,17 +545,11 @@ const othersItems: NavItem[] = [
         module: PERMISSIONS.SMS_INFO,
         pro: false,
       },
-      {
-        name: "Due SMS",
-        path: "/due-sms",
-        module: PERMISSIONS.DUE_SMS,
-        pro: false,
-      },
     ],
   },
   {
     icon: <TbShieldLock />,
-    name: "Role & Permission",
+    name: "User Role & Permission",
     subItems: [
       {
         name: "Create User",
@@ -572,6 +572,12 @@ const othersItems: NavItem[] = [
         pro: false,
       },
       {
+        name: "Role List",
+        path: "/role-list",
+        module: PERMISSIONS.CREATE_ROLE,
+        pro: false,
+      },
+      {
         name: "Create User Permission",
         path: "/create-user-permission",
         module: PERMISSIONS.CREATE_PERMISSION,
@@ -585,7 +591,7 @@ const othersItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Audit Log",
+        name: "Audit User Log",
         path: "/audit-log",
         module: PERMISSIONS.AUDIT_LOG,
         pro: false,
@@ -597,22 +603,17 @@ const othersItems: NavItem[] = [
     icon: <TbSettings />,
     subItems: [
       {
-        name: "Store Information",
-        subSubItems: [
-          {
-            name: "Add Store Info",
-            path: "/add-store-info",
-            module: PERMISSIONS.STORE_INFORMATION,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Store Info List",
-            path: "/store-info-list",
-            module: PERMISSIONS.STORE_INFORMATION,
-            pro: false,
-          },
-        ],
+        name: "Create Store Information",
+        path: "/add-store-info",
+        module: PERMISSIONS.STORE_INFORMATION,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Store Information List",
+        path: "/store-info-list",
+        module: PERMISSIONS.STORE_INFORMATION,
+        pro: false,
       },
     ],
   },
@@ -867,7 +868,8 @@ const analyticsUsersItems: NavItem[] = [
   ...navItems.filter((item) => item.name === "Reports & Analytics"),
   ...othersItems.filter(
     (item) =>
-      item.name === "SMS Notification" || item.name === "Role & Permission",
+      item.name === "SMS Notifications" ||
+      item.name === "User Role & Permission",
   ),
 ];
 const generalSettingsItems = othersItems.filter(
@@ -876,8 +878,8 @@ const generalSettingsItems = othersItems.filter(
 const otherSidebarItems: NavItem[] = [
   ...othersItems.filter(
     (item) =>
-      item.name !== "SMS Notification" &&
-      item.name !== "Role & Permission" &&
+      item.name !== "SMS Notifications" &&
+      item.name !== "User Role & Permission" &&
       item.name.trim() !== "Settings",
   ),
 ];

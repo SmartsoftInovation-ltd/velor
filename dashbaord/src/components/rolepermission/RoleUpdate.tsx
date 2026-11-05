@@ -37,7 +37,7 @@ const RoleUpdate = () => {
         name: roleName,
       });
       toast.success("Role updated successfully");
-      navigate("/create-role");
+      navigate("/role-list");
     } catch (error) {
       showApiError(error, "Failed to update role");
       console.error("Update error:", error);

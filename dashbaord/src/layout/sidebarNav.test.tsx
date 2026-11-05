@@ -99,11 +99,6 @@ describe("sidebar order", () => {
     ]);
   });
 
-  it("leaves only store information under General Settings", () => {
-    const settings = links("Settings ");
-    expect(settings).toEqual(["Store Information"]);
-  });
-
   it("still opens every moved page at its old address", () => {
     const { result } = renderHook(() => useSidebarSections());
     const paths = result.current
@@ -172,6 +167,28 @@ describe("sidebar order", () => {
     expect(subs.find((s) => s.name === "Create Customer Type")).toMatchObject({ path: "/create-customer-type", action: "add" });
     expect(subs.find((s) => s.name === "Create Transaction Category")).toMatchObject({ path: "/add-transaction-category", action: "add" });
     expect(subs.find((s) => s.name === "Create Account")).toMatchObject({ path: "/add-account", action: "add" });
+  });
+
+  it("lists SMS Notifications, User Role & Permission and Settings", () => {
+    expect(links("SMS Notifications")).toEqual(["Send SMS", "Send Due SMS", "Send Bulk SMS", "SMS Info"]);
+    expect(links("User Role & Permission")).toEqual([
+      "Create User",
+      "User List",
+      "Create Role",
+      "Role List",
+      "Create User Permission",
+      "Assign Role Permission",
+      "Audit User Log",
+    ]);
+    expect(links("Settings ")).toEqual(["Create Store Information", "Store Information List"]);
+  });
+
+  it("opens the role list for anyone who may view roles", () => {
+    const { result } = renderHook(() => useSidebarSections());
+    const subs = result.current.flatMap((s) => s.items).flatMap((i) => i.subItems ?? []);
+    const roleList = subs.find((s) => s.name === "Role List");
+    expect(roleList).toMatchObject({ path: "/role-list", module: "create-role" });
+    expect(roleList?.action).toBeUndefined();
   });
 
   it("keeps Product, Variant and Purchase next to each other", () => {

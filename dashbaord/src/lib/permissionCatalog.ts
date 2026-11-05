@@ -190,8 +190,8 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   ...REPORT_GROUPS.map((g) => ({
     section: "Analytics & Users", label: g.label, icon: TbReportAnalytics, color: "from-slate-500 to-gray-700", modules: g.modules,
   })),
-  { section: "Analytics & Users", label: "SMS Notification", icon: MdSecurity, color: "from-fuchsia-500 to-purple-600", modules: ["Send SMS", "Send Bulk SMS", "SMS Info", "Due SMS"] },
-  { section: "Analytics & Users", label: "Role & Permission", icon: MdDashboard, color: "from-violet-500 to-purple-600", modules: ["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"] },
+  { section: "Analytics & Users", label: "SMS Notifications", icon: MdSecurity, color: "from-fuchsia-500 to-purple-600", modules: ["Send SMS", "Due SMS", "Send Bulk SMS", "SMS Info"] },
+  { section: "Analytics & Users", label: "User Role & Permission", icon: MdDashboard, color: "from-violet-500 to-purple-600", modules: ["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"] },
 
   // General Settings
   { section: "General Settings", label: "Settings", icon: TbSettings, color: "from-zinc-500 to-neutral-700", modules: ["Store Information"] },
