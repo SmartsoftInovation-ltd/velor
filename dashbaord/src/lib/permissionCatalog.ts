@@ -123,8 +123,18 @@ export const DASHBOARD_PARENT = "Dashboard";
 export const isDashboardWidget = (name: string): boolean =>
   DASHBOARD_MODULE_SET.has(name) && name !== DASHBOARD_PARENT;
 
+// Stock pages only show figures: nothing on them can be added, edited or deleted.
+// Stock Adjustment is left out on purpose, because that one changes stock.
+const VIEW_ONLY_STOCK_MODULES = new Set([
+  "View All Stock",
+  "Category Stock Details",
+  "Size & Color Wise Stock",
+  "Size Wise Stock",
+  "Low Stock",
+]);
+
 export const actionsForModule = (name: string): Action[] => {
-  if (DASHBOARD_MODULE_SET.has(name)) return VIEW_ONLY_ACTIONS;
+  if (DASHBOARD_MODULE_SET.has(name) || VIEW_ONLY_STOCK_MODULES.has(name)) return VIEW_ONLY_ACTIONS;
   if (REPORT_MODULES.has(name)) return REPORT_ACTIONS;
   if (PRINTABLE_MODULES.has(name)) return PRINTABLE_ACTIONS;
   return ALL_ACTIONS;

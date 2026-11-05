@@ -41,6 +41,16 @@ describe("permission catalog", () => {
     expect(group("All Accounts")).toEqual(["Add Transaction", "Money Transfer", "Money Handover", "Transaction Category", "Add Account"]);
   });
 
+  it("offers only View on the stock pages, which change nothing", () => {
+    for (const name of ["View All Stock", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock"]) {
+      expect(actionsForModule(name)).toEqual(["view"]);
+    }
+  });
+
+  it("keeps add, edit and delete on Stock Adjustment, which does change stock", () => {
+    expect(actionsForModule("Stock Adjustment")).toEqual(["view", "add", "edit", "delete"]);
+  });
+
   it("lists the screens that used to borrow another module's permission", () => {
     expect(group("Sales")).toEqual(expect.arrayContaining(["Sales Return", "Draft Order"]));
     expect(group("SMS Notifications")).toEqual(["Send SMS", "Due SMS", "Send Bulk SMS", "SMS Info"]);
