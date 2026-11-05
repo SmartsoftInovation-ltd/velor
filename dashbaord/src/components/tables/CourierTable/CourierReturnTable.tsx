@@ -32,7 +32,7 @@ interface Order {
   _id: any;
   guestId?: string | null;
   shippingInfo: any;
-  invoiceId: String;
+  invoiceId: string;
   finalAmount: number;
   discountAmount: number;
   deliveryCharge: {

@@ -5,6 +5,7 @@ import { FaDownload, FaPrint } from "react-icons/fa";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { getApiErrorMessage, showApiError } from "../../../utils/apiError";
 import { renderBarcodeToSvg } from "../../../utils/barcodeRender";
+import { printElement } from "../../../utils/printElement";
 import { useStoreInfo } from "../../print/printUtils";
 import { Modal } from "../../ui/modal";
 
@@ -24,24 +25,6 @@ export const collection = ({ finalAmount = 0, paymentMethod, paymentStatus }: Pa
 };
 
 const takaWhole = (n: number) => `৳${Number(n || 0).toLocaleString("en-IN")}`;
-
-// A sheet of its own, so nothing else on the page goes to the printer. The page's
-// stylesheets are copied over, and the sticker fills the label.
-const printSticker = (sticker: HTMLElement) => {
-  const frame = document.createElement("iframe");
-  frame.setAttribute("aria-hidden", "true");
-  frame.style.cssText = "position:fixed;width:0;height:0;border:0;left:-9999px";
-  const styles = [...document.querySelectorAll('style, link[rel="stylesheet"]')].map((node) => node.outerHTML).join("");
-  frame.onload = () => {
-    const printer = frame.contentWindow;
-    if (!printer) return;
-    printer.addEventListener("afterprint", () => frame.remove());
-    printer.focus();
-    printer.print();
-  };
-  frame.srcdoc = `<!doctype html><html><head>${styles}<style>@page{size:${STICKER_WIDTH_MM}mm ${STICKER_HEIGHT_MM}mm;margin:0}body{margin:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${sticker.outerHTML}</body></html>`;
-  document.body.appendChild(frame);
-};
 
 const OrderStickerModal = ({ orderId, onClose }: { orderId: string | null; onClose: () => void }) => {
   const stickerRef = useRef<HTMLDivElement>(null);
@@ -165,7 +148,7 @@ const OrderStickerModal = ({ orderId, onClose }: { orderId: string | null; onClo
         <button
           type="button"
           disabled={!order}
-          onClick={() => stickerRef.current && printSticker(stickerRef.current)}
+          onClick={() => stickerRef.current && printElement(stickerRef.current, `size:${STICKER_WIDTH_MM}mm ${STICKER_HEIGHT_MM}mm;margin:0`)}
           className="shine inline-flex h-10 items-center gap-2 rounded bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:opacity-50"
         >
           <FaPrint className="size-3.5" /> Print
