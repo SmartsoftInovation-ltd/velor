@@ -20,15 +20,15 @@ const LimitedOffer = () => {
       <PageMeta title="Limited Offer | Website Management" description="Choose the products shown as limited offers on the website" />
       <PageBreadcrumb pageTitle="Limited Offer" />
 
-      <div className="grid gap-5 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         {canAdd && (
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <div className="lg:sticky lg:top-24">
               <AddLimitedOfferForm />
             </div>
           </div>
         )}
-        <div className={canAdd ? "lg:col-span-3" : "lg:col-span-5"}>
+        <div className={`min-w-0 ${canAdd ? "lg:col-span-3" : "lg:col-span-5"}`}>
           <LimitedOfferList items={data} isLoading={isLoading} />
         </div>
       </div>

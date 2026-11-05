@@ -54,7 +54,7 @@ const PushSellingProducts = () => {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Push Selling Products</h3>
         <div className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-white/[0.03]">
           {([1, 2, 3] as TopSellingMonths[]).map((m) => (
@@ -62,7 +62,7 @@ const PushSellingProducts = () => {
               key={m}
               onClick={() => setMonths(m)}
               title={`Last ${m * 30} days`}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3 ${
                 months === m
                   ? "bg-brand-500 text-white shadow-sm"
                   : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5"
@@ -84,7 +84,7 @@ const PushSellingProducts = () => {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-[1fr_56px_56px] gap-3 border-b border-gray-100 pb-2 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          <div className="grid grid-cols-[1fr_40px_44px] gap-2 border-b sm:grid-cols-[1fr_56px_56px] sm:gap-3 border-gray-100 pb-2 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <span>Product</span>
             <span className="text-right">Sold</span>
             <span className="text-right">Stock</span>
@@ -96,7 +96,7 @@ const PushSellingProducts = () => {
                 .filter((part) => part && part !== "N/A")
                 .join(" · ");
               return (
-                <li key={row.variantId ?? row.productId} className="grid grid-cols-[1fr_56px_56px] items-center gap-3 py-2.5 text-sm">
+                <li key={row.variantId ?? row.productId} className="grid grid-cols-[1fr_40px_44px] items-center gap-2 py-2.5 sm:grid-cols-[1fr_56px_56px] sm:gap-3 text-sm">
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-gray-800 dark:text-white/90">{row.productName ?? "N/A"}</span>
                     {details && <span className="block truncate text-xs text-gray-500 dark:text-gray-400">{details}</span>}

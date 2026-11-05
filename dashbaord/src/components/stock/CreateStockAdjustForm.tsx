@@ -250,7 +250,7 @@ const SearchDropdown = ({ onSelect, selectedLabel, onClear, hasError }: SearchDr
           aria-autocomplete="list"
           autoComplete="off"
           placeholder="Select, or type a product name or barcode…"
-          className="flex-1 bg-transparent text-sm text-gray-700 dark:text-white placeholder:text-gray-400 outline-none"
+          className="min-w-0 flex-1 truncate bg-transparent text-sm text-gray-700 dark:text-white placeholder:text-gray-400 outline-none"
         />
         {query && (
           <button type="button" onClick={() => { setQuery(""); setDebQuery(""); }} aria-label="Clear search" className="text-gray-400 hover:text-red-500">

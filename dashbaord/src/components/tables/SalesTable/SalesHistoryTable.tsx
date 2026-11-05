@@ -101,7 +101,7 @@ function StatCard({
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 truncate">{label}</p>
+        <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-gray-400">{label}</p>
         <p className={`text-sm font-bold ${statValueTones[tone]}`}>{value}</p>
       </div>
     </div>
@@ -679,7 +679,7 @@ const SalesHistoryTable = ({
         <StatCard
           icon={<FiDollarSign className="size-4" />}
           tone="green"
-          label="TODAY_SALES"
+          label="TODAY SALES"
           value={money(stats.todayAmount)}
         />
         <StatCard

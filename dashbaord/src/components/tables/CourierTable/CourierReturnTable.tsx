@@ -117,7 +117,7 @@ export default function CourierReturnTable() {
   };
   return (
     <div>
-      <div className="w-[700px]">
+      <div className="w-full max-w-[700px]">
         <Input placeholder="Search by Invoice Id" className="mb-5" />
       </div>
 

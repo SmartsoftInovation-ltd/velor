@@ -119,7 +119,7 @@ export default function IncompleteOrderTable() {
 
   return (
     <div>
-      <div className="w-[700px]">
+      <div className="w-full max-w-[700px]">
         <Input placeholder="Search by Order Name" className="mb-5" />
       </div>
 

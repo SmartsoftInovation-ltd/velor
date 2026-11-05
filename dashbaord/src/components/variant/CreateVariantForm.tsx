@@ -1190,7 +1190,7 @@ const CreateVariantForm = ({
         <div className="flex flex-col">
           <Label>Barcode <span className="text-red-500">*</span></Label>
           <div className="flex gap-2">
-            <div className="flex-1 relative">
+            <div className="relative min-w-0 flex-1">
               <Input
                 ref={(el) => {
                   if (el) barcodeInputRefs.current.set(formIndex, el);
@@ -1275,7 +1275,7 @@ const CreateVariantForm = ({
           />
         </div>
 
-        <div className="md:col-span-4">
+        <div className="col-span-full">
           <Label>Specifications</Label>
           <div className="quill-container">
             <ReactQuill 
@@ -1293,7 +1293,7 @@ const CreateVariantForm = ({
         </div>
 
         {/* Pricing Sections - Following Product Form Sub-grid Pattern */}
-        <div className="md:col-span-4 space-y-6">
+        <div className="col-span-full space-y-6">
           {/* Purchase Price Row */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
             <div className="flex flex-col md:col-span-4">

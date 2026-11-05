@@ -132,6 +132,11 @@ const DashboardLoadError = ({
   );
 };
 
+// Five boxes a row on a desktop. On narrower screens the last box takes up the
+// space left in its row, so no row ends in a hole.
+const KPI_GRID =
+  "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 sm:max-lg:[&>*:last-child:nth-child(odd)]:col-span-2 lg:max-xl:[&>*:last-child:nth-child(3n+2)]:col-span-2 lg:max-xl:[&>*:last-child:nth-child(3n+1)]:col-span-3";
+
 const RANGE_LABEL: Record<DashboardRange, string> = {
   today: "today",
   "7d": "last 7 days",
@@ -167,7 +172,7 @@ const Card = ({
     className={`rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] ${className}`}
   >
     {(title || action) && (
-      <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         {typeof title === "string" ? (
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
             {title}
@@ -378,7 +383,7 @@ export default function InteractiveDashboard() {
           </div>
           <div className="h-9 w-48 animate-pulse rounded-xl bg-gray-100 dark:bg-white/[0.03]" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className={KPI_GRID}>
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
@@ -506,7 +511,7 @@ export default function InteractiveDashboard() {
       ) : (
         <>
           {/* ── Row 1 — Invoices / Sale / Transaction / Accounts / Inventory ── */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className={KPI_GRID}>
             {showBox(PERMISSIONS.DASHBOARD_TOTAL_INVOICES) && (
               <KpiCard
                 title="Total Invoices"
@@ -598,7 +603,7 @@ export default function InteractiveDashboard() {
           </div>
 
           {/* ── Row 2 — Employee / Supplier / Supplier pay / Customer / Customer due ── */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className={KPI_GRID}>
             {showBox(PERMISSIONS.DASHBOARD_EMPLOYEE) && (
               <KpiCard
                 title="Employee"
@@ -668,7 +673,7 @@ export default function InteractiveDashboard() {
           </div>
 
           {/* ── Row 3 — Purchase / Sold / Inventory value / Stock cost / Products ── */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className={KPI_GRID}>
             {showBox(PERMISSIONS.DASHBOARD_PURCHASE_ITEMS) && (
               <KpiCard
                 title="Purchase Items"
@@ -745,7 +750,7 @@ export default function InteractiveDashboard() {
             <Card
               title="Sales Progress"
               action={
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
                     {formatCurrency(trendData?.kpis?.revenue ?? 0)}
                   </span>
@@ -755,7 +760,7 @@ export default function InteractiveDashboard() {
                         key={r.value}
                         onClick={() => setTrendRange(r.value)}
                         title={r.title}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3 ${
                           trendRange === r.value
                             ? "bg-brand-500 text-white shadow-sm"
                             : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.06]"
@@ -887,7 +892,7 @@ export default function InteractiveDashboard() {
                         key={m}
                         onClick={() => setTopMonths(m)}
                         title={`Last ${m * 30} days`}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3 ${
                           topMonths === m
                             ? "bg-brand-500 text-white shadow-sm"
                             : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.06]"

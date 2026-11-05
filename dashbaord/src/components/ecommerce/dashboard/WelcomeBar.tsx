@@ -63,8 +63,8 @@ const WelcomeBar = ({ subtitle, toolbar }: { subtitle?: ReactNode; toolbar?: Rea
               ))}
             </nav>
           )}
-          {actions.length > 0 && toolbar && <span aria-hidden className="hidden h-8 w-px bg-gray-200 sm:block dark:bg-white/10" />}
-          {toolbar && <div className="flex flex-wrap items-center gap-2">{toolbar}</div>}
+          {actions.length > 0 && toolbar && <span aria-hidden className="hidden h-8 w-px bg-gray-200 xl:block dark:bg-white/10" />}
+          {toolbar && <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-wrap">{toolbar}</div>}
         </div>
       </div>
     </section>
