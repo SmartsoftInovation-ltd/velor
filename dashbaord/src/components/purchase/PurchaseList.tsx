@@ -26,7 +26,7 @@ const PurchaseList = () => {
           canAdd && (
             <Link to="/add-purchase">
               <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
-                Add Purchase
+                Create Purchase
               </Button>
             </Link>
           )

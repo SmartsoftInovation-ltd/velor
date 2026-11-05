@@ -148,7 +148,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   { section: "Menu", label: "Dashboard", icon: MdDashboard, color: "from-slate-500 to-gray-700", modules: DASHBOARD_MODULES },
 
   // Sales Purchase
-  { section: "Sales Purchase", label: "Product", icon: MdOutlineInventory2, color: "from-blue-500 to-blue-600", modules: ["Category", "Sub Category", "Brand", "Product", "Barcode Print"] },
+  { section: "Sales Purchase", label: "Product", icon: MdOutlineInventory2, color: "from-blue-500 to-blue-600", modules: ["Product", "Barcode Print", "Category", "Sub Category", "Brand"] },
   { section: "Sales Purchase", label: "Variant", icon: HiOutlineAdjustments, color: "from-cyan-500 to-teal-600", modules: ["Variant"] },
   { section: "Sales Purchase", label: "Purchase", icon: TbBrandBootstrap, color: "from-orange-500 to-amber-600", modules: ["Purchase", "Purchase Return"] },
   {

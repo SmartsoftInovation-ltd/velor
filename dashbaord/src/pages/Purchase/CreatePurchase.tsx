@@ -15,7 +15,7 @@ const CreatePurchase = () => {
       {/* Header row is just the trail and the list button — the card carries no
           second heading of its own. */}
       <PageBreadcrumb
-        pageTitle="Add Purchase"
+        pageTitle="Create Purchase"
         className="mb-3"
         hideTitle
         actions={

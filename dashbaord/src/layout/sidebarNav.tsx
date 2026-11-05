@@ -103,6 +103,25 @@ const navItems: NavItem[] = [
     icon: <MdOutlineInventory2 />,
     subItems: [
       {
+        name: "Create Product",
+        path: "/create-product",
+        module: PERMISSIONS.PRODUCT,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Product List",
+        path: "/product-list",
+        module: PERMISSIONS.PRODUCT,
+        pro: false,
+      },
+      {
+        name: "Barcode Print",
+        path: "/barcode-print",
+        module: PERMISSIONS.BARCODE_PRINT,
+        pro: false,
+      },
+      {
         name: "Create Category",
         path: "/create-category",
         module: PERMISSIONS.CATEGORY,
@@ -139,25 +158,6 @@ const navItems: NavItem[] = [
         name: "Brand List",
         path: "/brand-list",
         module: PERMISSIONS.BRAND,
-        pro: false,
-      },
-      {
-        name: "Create Product",
-        path: "/create-product",
-        module: PERMISSIONS.PRODUCT,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Product List",
-        path: "/product-list",
-        module: PERMISSIONS.PRODUCT,
-        pro: false,
-      },
-      {
-        name: "Barcode Print",
-        path: "/barcode-print",
-        module: PERMISSIONS.BARCODE_PRINT,
         pro: false,
       },
     ],
@@ -205,7 +205,7 @@ const navItems: NavItem[] = [
     icon: <TbShoppingCartPlus />,
     subItems: [
       {
-        name: "Add Purchase",
+        name: "Create Purchase",
         path: "/add-purchase",
         module: PERMISSIONS.PURCHASE,
         action: "add",

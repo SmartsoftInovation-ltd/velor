@@ -14,6 +14,14 @@ const slugOf = (name: string) =>
 const group = (label: string) => MODULE_GROUPS.find((g) => g.label === label)?.modules ?? [];
 
 describe("permission catalog", () => {
+  it("orders Product, Variant and Purchase as the sidebar does", () => {
+    expect(group("Product")).toEqual(["Product", "Barcode Print", "Category", "Sub Category", "Brand"]);
+    expect(group("Variant")).toEqual(["Variant"]);
+    expect(group("Purchase")).toEqual(["Purchase", "Purchase Return"]);
+    const salesPurchase = MODULE_GROUPS.filter((g) => g.section === "Sales Purchase").map((g) => g.label);
+    expect(salesPurchase.slice(0, 3)).toEqual(["Product", "Variant", "Purchase"]);
+  });
+
   it("lists the screens that used to borrow another module's permission", () => {
     expect(group("Sales")).toEqual(expect.arrayContaining(["Sales Return", "Draft Order"]));
     expect(group("SMS Notification")).toContain("Due SMS");
