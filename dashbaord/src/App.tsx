@@ -528,6 +528,9 @@ const CustomerAdvancePaymentEdit = lazy(
 const CustomerTypeList = lazy(
   () => import("./components/customer/CustomerTypeList.tsx"),
 );
+const CreateCustomerType = lazy(
+  () => import("./pages/Customer/CreateCustomerType.tsx"),
+);
 const CustomerView = lazy(() => import("./pages/Customer/CustomerView.tsx"));
 const CustomerProfilePrint = lazy(() => import("./components/customer/CustomerProfilePrint.tsx"));
 const AccountVoucherPrint = lazy(() => import("./components/account/AccountVoucherPrint.tsx"));
@@ -1535,6 +1538,7 @@ export default function App() {
                   path="/customer-type-list"
                   element={<CustomerTypeList />}
                 />
+                <Route path="/create-customer-type" element={<ProtectedRoute module="customer-type" action="add"><CreateCustomerType /></ProtectedRoute>} />
                 <Route path="/create-customer" element={<ProtectedRoute module="customer" action="add"><CreateCustomer /></ProtectedRoute>} />
                 <Route path="/customer-list" element={<ProtectedRoute module="customer" action="view"><CustomerList /></ProtectedRoute>} />
                 <Route

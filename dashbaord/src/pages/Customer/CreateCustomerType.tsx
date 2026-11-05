@@ -9,23 +9,25 @@ const CreateCustomerType = () => {
   return (
     <>
       <PageMeta
-        title="Baig Ecommerce Admin Dashboard"
-        description="This is React.js Ecommerce Dashboard page for Baig Digital"
+        title="Create Customer Type - Baig Ecommerce"
+        description="Add a new customer type"
       />
-      <PageBreadcrumb pageTitle="Create Customer Type" />
+      {/* Header row is just the trail and the list button — the card carries no
+          second heading of its own. */}
+      <PageBreadcrumb
+        pageTitle="Create Customer Type"
+        className="mb-3"
+        hideTitle
+        actions={
+          <Link to="/customer-type-list">
+            <Button className="!bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm px-4 py-2 rounded">
+              Customer Type List
+            </Button>
+          </Link>
+        }
+      />
       <div className="space-y-6">
-        <ComponentCard
-          title={
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Create Customer Type</h2>
-              <Link to="/customer-type-list">
-                <Button className="bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded">
-                  Customer Type List
-                </Button>
-              </Link>
-            </div>
-          }
-        >
+        <ComponentCard>
           <CreateCustomerTypeForm />
         </ComponentCard>
       </div>
@@ -33,4 +35,4 @@ const CreateCustomerType = () => {
   );
 };
 
-export default CreateCustomerType
+export default CreateCustomerType;
