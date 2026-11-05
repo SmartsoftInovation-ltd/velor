@@ -56,6 +56,7 @@ import RevenueTrendChart from "./RevenueTrendChart";
 import SalesTypeDonut from "./SalesTypeDonut";
 import TopProductsChart from "./TopProductsChart";
 import PushSellingProducts from "./PushSellingProducts";
+import RecentSalesTable from "./RecentSalesTable";
 
 // Why the overview failed, in words the user can act on
 const loadErrorText = (error: unknown, rangeLabel: string) => {
@@ -811,60 +812,7 @@ export default function InteractiveDashboard() {
                     No recent sales.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100 text-xs uppercase text-gray-400 dark:border-gray-800">
-                          <th className="py-2 pr-3 font-medium">Invoice</th>
-                          <th className="py-2 pr-3 font-medium">Customer</th>
-                          <th className="py-2 pr-3 text-right font-medium">
-                            Payable
-                          </th>
-                          <th className="py-2 pr-3 text-right font-medium">Paid</th>
-                          <th className="py-2 pr-3 text-right font-medium">Due</th>
-                          <th className="py-2 text-center font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data?.recentSales ?? []).map((r) => (
-                          <tr
-                            key={r.invoiceNumber}
-                            className="border-b border-gray-50 last:border-0 dark:border-gray-800/60"
-                          >
-                            <td className="py-2.5 pr-3 font-mono text-xs font-semibold text-gray-700 dark:text-gray-300">
-                              {r.invoiceNumber}
-                            </td>
-                            <td className="max-w-[140px] truncate py-2.5 pr-3 text-gray-600 dark:text-gray-400">
-                              {r.customerName}
-                            </td>
-                            <td className="py-2.5 pr-3 text-right font-semibold text-gray-800 dark:text-gray-200">
-                              {formatCurrency(r.payable)}
-                            </td>
-                            <td className="py-2.5 pr-3 text-right font-medium text-success-600 dark:text-success-400">
-                              {formatCurrency(r.paid)}
-                            </td>
-                            <td
-                              className={`py-2.5 pr-3 text-right font-medium ${r.presentDue > 0
-                                ? "text-error-500"
-                                : "text-gray-400"
-                                }`}
-                            >
-                              {formatCurrency(r.presentDue)}
-                            </td>
-                            <td className="py-2.5 text-center">
-                              <span
-                                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ${paymentBadge(
-                                  r.paymentStatus,
-                                )}`}
-                              >
-                                {r.paymentStatus}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <RecentSalesTable sales={data?.recentSales ?? []} />
                 )}
               </Card>
             )}
@@ -938,7 +886,7 @@ export default function InteractiveDashboard() {
                     {/* Flat merged feed — sales invoices, customer due payments,
                         customer advance payments, and cash-received account
                         transactions, one list, no section headings/subtotals */}
-                    <div className="max-h-96 divide-y divide-gray-50 overflow-y-auto rounded-lg border border-gray-100 dark:divide-gray-800/60 dark:border-gray-800">
+                    <div className="no-scrollbar max-h-96 divide-y divide-gray-50 overflow-y-auto rounded-lg border border-gray-100 dark:divide-gray-800/60 dark:border-gray-800">
                       {(inflowTransactionSummary?.salesInvoices ?? []).map((s, i) => (
                         <div
                           key={`sales-${s.invoiceNumber}-${i}`}
@@ -1070,7 +1018,7 @@ export default function InteractiveDashboard() {
                     {/* Flat merged feed — purchase payments, supplier due
                         payments, and cash-payment account transactions, one
                         list, no section headings/subtotals */}
-                    <div className="max-h-96 divide-y divide-gray-50 overflow-y-auto rounded-lg border border-gray-100 dark:divide-gray-800/60 dark:border-gray-800">
+                    <div className="no-scrollbar max-h-96 divide-y divide-gray-50 overflow-y-auto rounded-lg border border-gray-100 dark:divide-gray-800/60 dark:border-gray-800">
                       {(outflowTransactionSummary?.purchasePayments ?? []).map((p, i) => (
                         <div
                           key={`purchase-${p.invoiceNumber}-${i}`}
