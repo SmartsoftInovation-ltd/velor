@@ -43,6 +43,7 @@ function activeCount(query: ShopQuery) {
 }
 
 function heading(query: ShopQuery, categories: Category[]) {
+  if (query.q) return `Results for “${query.q}”`;
   const category = categories.find((item) => item.id === query.category);
   if (!category) return "All products";
   const sub = category.subcategories.find((item) => item.id === query.subcategory);
@@ -87,7 +88,9 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
             <p className="ml-auto text-small text-text-secondary">
               {result.total
                 ? `Showing ${from}–${to} of ${result.total}`
-                : "No products match these filters"}
+                : query.q
+                  ? `No products match “${query.q}”`
+                  : "No products match these filters"}
             </p>
 
             <ViewToggle query={query} />

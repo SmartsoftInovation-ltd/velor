@@ -84,6 +84,17 @@ export function toCatalogProduct(p: ApiProduct): CatalogProduct {
     sizes: p.sizes,
     createdAt: p.createdAt,
     sold: p.sold,
+    categoryName: p.category?.name,
+    searchText: [
+      p.name,
+      p.brand?.name,
+      p.category?.name,
+      p.subcategory?.name,
+      p.sku,
+      ...p.variants.flatMap((v) => [v.name, v.sku]),
+    ]
+      .filter(Boolean)
+      .join(" "),
     item: toItemSnapshot(p),
   };
 }

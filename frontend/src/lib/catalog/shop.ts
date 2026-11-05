@@ -1,3 +1,4 @@
+import { matchesSearch, rankBySearch } from "./product-search";
 import type {
   Availability,
   CatalogProduct,
@@ -19,6 +20,7 @@ const SORTERS: Record<SortOption, (a: CatalogProduct, b: CatalogProduct) => numb
 };
 
 function matches(product: CatalogProduct, query: ShopQuery) {
+  if (query.q && !matchesSearch(product, query.q)) return false;
   if (query.category && product.categoryId !== query.category) return false;
   if (query.subcategory && product.subcategoryId !== query.subcategory) return false;
   if (query.brands?.length && !query.brands.includes(product.brand)) return false;
@@ -57,7 +59,10 @@ function hasAvailability(product: CatalogProduct, wanted: Availability[]) {
  */
 export function searchProducts(all: CatalogProduct[], query: ShopQuery = {}): ShopResult {
   const filtered = all.filter((product) => matches(product, query));
-  const sorted = [...filtered].sort(SORTERS[query.sort ?? "relevance"]);
+  const sort = query.sort ?? "relevance";
+  // For a search, relevance means how well the text matched
+  const sorted =
+    query.q && sort === "relevance" ? rankBySearch(filtered, query.q) : [...filtered].sort(SORTERS[sort]);
 
   const page = Math.max(1, query.page ?? 1);
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));

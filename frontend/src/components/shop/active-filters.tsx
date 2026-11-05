@@ -21,6 +21,10 @@ function categoryLabel(query: ShopQuery, { categories }: Taxonomy) {
 function buildChips(query: ShopQuery, taxonomy: Taxonomy): Chip[] {
   const chips: Chip[] = [];
 
+  if (query.q) {
+    chips.push({ label: `“${query.q}”`, href: buildShopHref(query, { q: undefined }) });
+  }
+
   const category = categoryLabel(query, taxonomy);
   if (category) {
     chips.push({
