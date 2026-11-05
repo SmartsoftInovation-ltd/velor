@@ -1,81 +1,80 @@
-import { useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState, type ReactNode } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { FaArrowLeft, FaChevronDown, FaEdit, FaImage, FaSearch, FaToggleOff, FaToggleOn } from "react-icons/fa";
+import moment from "moment";
+import toast from "react-hot-toast";
 import axiosSecure from "../../hooks/useAxiosSecure";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import ComponentCard from "../../components/common/ComponentCard";
+import Loader from "../../components/common/Loader";
 import Button from "../../components/ui/button/Button";
-import Badge from "../../components/ui/badge/Badge";
 import { Modal } from "../../components/ui/modal";
-import toast from "react-hot-toast";
-import {
-  FaEdit, FaToggleOn, FaToggleOff, FaArrowLeft,
-  FaBarcode, FaTag, FaLayerGroup, FaBox,
-  FaMoneyBillWave, FaInfoCircle, FaGlobe,
-  FaSearch, FaRulerCombined, FaWeightHanging,
-  FaBoxes, FaExternalLinkAlt, FaChevronRight,
-  FaImage, FaCheckCircle, FaTimesCircle
-} from "react-icons/fa";
-import moment from "moment";
 import { showApiError } from "../../utils/apiError";
 
-const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
-  const [visible, setVisible] = useState(false);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const ref = useRef<HTMLDivElement>(null);
-  const handleMouseEnter = () => {
-    if (ref.current) {
-      const rect = ref.current.getBoundingClientRect();
-      setCoords({ x: rect.left + rect.width / 2, y: rect.top });
-      setVisible(true);
-    }
-  };
-  return (
-    <div ref={ref} className="inline-flex" onMouseEnter={handleMouseEnter} onMouseLeave={() => setVisible(false)}>
-      {children}
-      {visible && createPortal(
-        <div className="fixed z-[99999] pointer-events-none" style={{ left: coords.x, top: coords.y - 8, transform: "translate(-50%, -100%)" }}>
-          <div className="px-2.5 py-1 bg-gray-900 text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-lg">
-            {text}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
-          </div>
-        </div>, document.body
-      )}
-    </div>
-  );
-};
+const CARD = "rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900";
+const SECONDARY_BUTTON =
+  "!border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400";
 
-// InfoCard sub-component
-const InfoCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) => (
-  <div className="group bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-accent-200 dark:hover:border-accent-500/30 hover:shadow-md transition-all duration-200">
-    <div className="flex items-center gap-2 mb-2">
-      <span className="text-gray-400 group-hover:text-accent-500 transition-colors">{icon}</span>
-      <p className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label}</p>
-    </div>
-    <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{value}</div>
+const money = (value?: number) => `৳${(value ?? 0).toLocaleString("en-BD")}`;
+
+const Empty = () => <span className="text-gray-400 dark:text-gray-500">N/A</span>;
+
+const StatusPill = ({ isActive }: { isActive: boolean }) => (
+  <span
+    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
+      isActive
+        ? "bg-accent-50 text-accent-700 ring-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400"
+        : "bg-error-50 text-error-700 ring-error-500/20 dark:bg-error-500/15 dark:text-error-400"
+    }`}
+  >
+    <span className={`size-1.5 rounded-full ${isActive ? "bg-accent-500 animate-pulse" : "bg-error-500"}`} />
+    {isActive ? "Active" : "Inactive"}
+  </span>
+);
+
+const Stat = ({ label, value, emphasis, note }: { label: string; value: ReactNode; emphasis?: boolean; note?: ReactNode }) => (
+  <div className="min-w-0 bg-white px-4 py-3.5 dark:bg-gray-900">
+    <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
+    <dd
+      className={`mt-1 flex flex-wrap items-center gap-2 text-lg font-semibold tabular-nums ${
+        emphasis ? "text-accent-600 dark:text-accent-400" : "text-gray-900 dark:text-white"
+      }`}
+    >
+      {value}
+      {note}
+    </dd>
   </div>
 );
 
-// LinkCard for category/brand navigation
-const LinkCard = ({ icon, label, name, to }: { icon: React.ReactNode; label: string; name: string; to: string }) => (
-  <Link to={to} className="group block">
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 hover:border-accent-300 dark:hover:border-accent-500/40 hover:shadow-lg hover:shadow-accent-500/5 transition-all duration-200 cursor-pointer">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-gray-400 group-hover:text-accent-500 transition-colors">{icon}</span>
-          <p className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label}</p>
-        </div>
-        <FaExternalLinkAlt className="size-2.5 text-gray-300 group-hover:text-accent-400 transition-colors" />
-      </div>
-      <div className="flex items-center gap-1.5 mt-1">
-        <span className="text-sm font-bold text-gray-700 dark:text-gray-200 group-hover:text-accent-600 dark:group-hover:text-accent-400 transition-colors">{name}</span>
-        <FaChevronRight className="size-2.5 text-gray-300 group-hover:text-accent-400 translate-x-0 group-hover:translate-x-0.5 transition-all" />
-      </div>
-    </div>
-  </Link>
+const Section = ({ title, children }: { title: string; children: ReactNode }) => (
+  <section className={CARD}>
+    <h2 className="border-b border-gray-100 px-5 py-3.5 text-sm font-semibold text-gray-900 dark:border-gray-800 dark:text-white">
+      {title}
+    </h2>
+    <dl className="divide-y divide-gray-100 px-5 dark:divide-gray-800">{children}</dl>
+  </section>
 );
+
+const Row = ({ label, children, mono }: { label: string; children?: ReactNode; mono?: boolean }) => (
+  <div className="flex items-baseline justify-between gap-6 py-3 text-sm">
+    <dt className="shrink-0 text-gray-500 dark:text-gray-400">{label}</dt>
+    <dd className={`min-w-0 break-words text-right font-medium text-gray-800 dark:text-gray-200 ${mono ? "font-mono text-[13px]" : ""}`}>
+      {children === undefined || children === null || children === "" ? <Empty /> : children}
+    </dd>
+  </div>
+);
+
+// Plain text when there is nowhere to go, rather than a link to nothing
+const RecordLink = ({ name, to }: { name?: string; to: string; }) => {
+  if (!name) return <Empty />;
+  if (to.endsWith("/undefined")) return <>{name}</>;
+  return (
+    <Link to={to} className="text-accent-600 hover:underline dark:text-accent-400">
+      {name}
+    </Link>
+  );
+};
 
 const VariantView = () => {
   const { slug } = useParams();
@@ -89,10 +88,7 @@ const VariantView = () => {
     queryKey: ["variant-detail", slug],
     queryFn: async () => {
       const { data } = await axiosSecure.get(`/variant/${slug}`);
-      const v = data.data.variant;
-      if (v.image?.length > 0) setActiveImage(v.image[0].url);
-      else if (v.thumbnail?.url) setActiveImage(v.thumbnail.url);
-      return v;
+      return data.data.variant;
     },
     enabled: !!slug,
   });
@@ -117,25 +113,16 @@ const VariantView = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col justify-center items-center min-h-[400px] gap-4">
-        <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-accent-500" />
-        <p className="text-sm text-gray-400 animate-pulse">Loading variant details...</p>
-      </div>
-    );
-  }
+  if (isLoading) return <Loader />;
 
   if (isError || !variant) {
     return (
-      <div className="text-center py-20 min-h-[400px]">
-        <div className="size-24 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-400 mx-auto mb-6">
-          <FaSearch className="size-10" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Variant Not Found</h2>
-        <p className="text-gray-500 mb-8 text-sm">The variant you are looking for doesn't exist or has been removed.</p>
-        <Button size="sm" variant="outline" onClick={() => navigate("/variant-list")}>
-          <FaArrowLeft className="size-3" /> Go Back to List
+      <div className="flex min-h-[400px] flex-col items-center justify-center text-center">
+        <FaSearch className="mb-4 size-8 text-gray-300 dark:text-gray-600" />
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Variant not found</h2>
+        <p className="mb-6 mt-1 text-sm text-gray-500">It may have been removed, or the link is wrong.</p>
+        <Button size="sm" className={`rounded-md px-4 ${SECONDARY_BUTTON}`} onClick={() => navigate("/variant-list")}>
+          Back to variant list
         </Button>
       </div>
     );
@@ -148,299 +135,198 @@ const VariantView = () => {
       if (img.url && !allImages.includes(img.url)) allImages.push(img.url);
     });
   }
+  const shownImage = activeImage && allImages.includes(activeImage) ? activeImage : allImages[0];
 
-  const categorySlug = variant.product?.category?.slug;
-  const subcategorySlug = variant.product?.subcategory?.slug;
-  const brandSlug = variant.product?.brand?.slug;
+  const product = variant.product;
+  const stock = variant.stockVariant ?? 0;
+  // The same order the Low Stock list reads them in
+  const alertAt = variant.alertQuantity ?? variant.alertVariantStock ?? 0;
+  const { width, height, depth } = variant.dimensions ?? {};
+  const seo = variant.seo;
 
   return (
     <>
       <PageMeta title={`View Variant - ${variant.variantName}`} description="Variant details view" />
-      <PageBreadcrumb pageTitle="Variant Details" />
+      <PageBreadcrumb
+        pageTitle="Variant Details"
+        className="mb-3"
+        hideTitle
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => navigate(-1)}
+              size="sm"
+              variant="outline"
+              className={`size-9 p-0 !rounded-md ${SECONDARY_BUTTON}`}
+              title="Go back"
+              aria-label="Go back"
+            >
+              <FaArrowLeft className="size-3.5" />
+            </Button>
+            <Button
+              onClick={() => setShowConfirmModal(true)}
+              size="sm"
+              className={`h-9 !rounded-md px-3.5 text-sm font-semibold ${SECONDARY_BUTTON}`}
+            >
+              {variant.isActive ? <FaToggleOn className="size-4" /> : <FaToggleOff className="size-4" />}
+              {variant.isActive ? "Deactivate" : "Activate"}
+            </Button>
+            <Link to={`/update-variant/${variant.slug}`}>
+              <Button size="sm" className="h-9 !rounded-md !bg-accent-500 px-3.5 text-sm font-semibold !text-white hover:!bg-accent-600">
+                <FaEdit className="size-3.5" /> Edit
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
-      <div className="space-y-5">
-        {/* === HEADER CARD === */}
-        <ComponentCard
-          title={
-            <div className="flex justify-between items-center w-full flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
-                  <FaBox className="size-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-gray-800 dark:text-white">Variant Details</h2>
-                  <p className="text-[11px] text-gray-400">ID: <span className="font-mono">{variant._id?.slice(-8)}</span></p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Tooltip text="Go back">
-                  <Button onClick={() => navigate(-1)} variant="outline" size="sm" className="flex items-center gap-2 rounded-xl px-4">
-                    <FaArrowLeft className="size-3.5" /> Back
-                  </Button>
-                </Tooltip>
-                <Tooltip text="Edit variant">
-                  <Link to={`/update-variant/${variant.slug}`}>
-                    <Button size="sm" className="flex items-center gap-2 !bg-accent-500 hover:!bg-accent-600 !text-white rounded-lg px-4 shadow-md font-semibold">
-                      <FaEdit className="size-3.5" /> Edit
-                    </Button>
-                  </Link>
-                </Tooltip>
-                {variant.isActive ? (
-                  <Tooltip text="Deactivate">
-                    <Button onClick={() => setShowConfirmModal(true)} size="sm" className="flex items-center gap-2 rounded-xl px-4 border-none bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/25">
-                      <FaToggleOn className="size-4" /> Deactivate
-                    </Button>
-                  </Tooltip>
-                ) : (
-                  <Tooltip text="Activate">
-                    <Button onClick={() => setShowConfirmModal(true)} size="sm" className="flex items-center gap-2 rounded-xl px-4 border-none bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/25">
-                      <FaToggleOff className="size-4" /> Activate
-                    </Button>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
-          }
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* === LEFT: Image Gallery === */}
-            <div className="lg:col-span-5 space-y-4">
-              {/* Main Image */}
-              <div className="relative aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border-2 border-gray-100 dark:border-gray-800 group shadow-xl">
-                {allImages.length > 0 ? (
-                  <img
-                    src={activeImage || allImages[0]}
-                    alt={variant.variantName}
-                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
-                    <FaImage className="size-16 mb-3" />
-                    <p className="text-xs font-medium">No image available</p>
-                  </div>
-                )}
-                {/* Status Badge */}
-                <div className="absolute top-4 left-4">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider shadow-lg ${variant.isActive ? "bg-emerald-500 text-white shadow-emerald-500/30" : "bg-red-500 text-white shadow-red-500/30"}`}>
-                    {variant.isActive ? <FaCheckCircle className="size-3" /> : <FaTimesCircle className="size-3" />}
-                    {variant.isActive ? "ACTIVE" : "INACTIVE"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Thumbnail Strip */}
-              {allImages.length > 1 && (
-                <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-200">
-                  {allImages.map((url, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setActiveImage(url)}
-                      className={`size-[72px] flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-200 ${
-                        activeImage === url
-                          ? "border-accent-500 shadow-lg shadow-accent-500/20 scale-95"
-                          : "border-gray-100 dark:border-gray-700 opacity-60 hover:opacity-100 hover:border-gray-300"
-                      }`}
-                    >
-                      <img src={url} alt={`img-${i}`} className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Quick Badges */}
-              <div className="flex flex-wrap gap-2">
-                {variant.size && (
-                  <span className="px-3 py-1.5 bg-accent-50 dark:bg-accent-500/10 border border-accent-100 dark:border-accent-500/20 text-accent-600 dark:text-accent-400 rounded-xl text-[11px] font-bold uppercase tracking-wider">
-                    Size: {variant.size}
-                  </span>
-                )}
-                {variant.color && (
-                  <span className="px-3 py-1.5 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 text-purple-600 dark:text-purple-400 rounded-xl text-[11px] font-bold uppercase tracking-wider">
-                    Color: {variant.color}
-                  </span>
-                )}
-                {variant.unit && (
-                  <span className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[11px] font-bold uppercase tracking-wider">
-                    Unit: {variant.unit}
-                  </span>
-                )}
-                {variant.groupUnit && variant.groupUnitQuantity ? (
-                  <span className="px-3 py-1.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-[11px] font-bold uppercase tracking-wider">
-                    {variant.groupUnit}: {variant.groupUnitQuantity}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            {/* === RIGHT: Details === */}
-            <div className="lg:col-span-7 space-y-5">
-              {/* Name Banner */}
-              <div className="bg-gradient-to-br from-accent-50 to-accent-50 dark:from-accent-500/5 dark:to-accent-500/5 rounded-3xl p-6 border border-accent-100/60 dark:border-accent-500/10">
-                <p className="text-[10px] uppercase font-black tracking-[2.5px] text-orange-500 mb-1">Parent Product</p>
-                <p className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-3">
-                  {variant.product?.name || "N/A"}
-                </p>
-                <p className="text-[10px] uppercase font-black tracking-[2.5px] text-accent-500 mb-1">Variant Name</p>
-                <h1 className="text-2xl font-black text-gray-900 dark:text-white">{variant.variantName}</h1>
-              </div>
-
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <InfoCard icon={<FaBarcode className="size-3.5" />} label="Barcode" value={<span className="font-mono">{variant.barCode || "N/A"}</span>} />
-                <InfoCard icon={<FaTag className="size-3.5" />} label="SKU" value={<span className="font-mono">{variant.sku || "N/A"}</span>} />
-                <InfoCard icon={<FaBoxes className="size-3.5" />} label="Stock Variant" value={
-                  <div className="flex items-center gap-2">
-                    <span>{variant.stockVariant ?? 0}</span>
-                    {(variant.stockVariant ?? 0) <= (variant.alertQuantity ?? variant.alertVariantStock ?? 0) && (
-                      <span className="px-1.5 py-0.5 bg-red-50 text-red-500 text-[10px] font-bold rounded-md">LOW</span>
-                    )}
-                  </div>
-                } />
-                <InfoCard icon={<FaInfoCircle className="size-3.5" />} label="Alert Stock" value={variant.alertVariantStock ?? 0} />
-              </div>
-
-              {/* Pricing */}
-              <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
-                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                  <FaMoneyBillWave className="text-emerald-500 size-4" />
-                  <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest">Pricing</h3>
-                </div>
-                <div className="grid grid-cols-3 divide-x divide-gray-50 dark:divide-gray-800">
-                  <div className="p-4 text-center">
-                    <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Buy Rate</p>
-                    <p className="text-lg font-black text-gray-800 dark:text-white">{variant.purchasePrice ?? 0}<span className="text-xs text-gray-400 ml-0.5">TK</span></p>
-                  </div>
-                  <div className="p-4 text-center bg-emerald-50/60 dark:bg-emerald-500/5">
-                    <p className="text-[10px] uppercase font-bold text-emerald-600 mb-1">Retail</p>
-                    <p className="text-xl font-black text-emerald-600">{variant.retailPrice ?? 0}<span className="text-xs ml-0.5">TK</span></p>
-                  </div>
-                  <div className="p-4 text-center">
-                    <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Wholesale</p>
-                    <p className="text-lg font-black text-gray-800 dark:text-white">{variant.wholesalePrice ?? 0}<span className="text-xs text-gray-400 ml-0.5">TK</span></p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category / Subcategory / Brand — Clickable */}
-              <div>
-                <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-3 flex items-center gap-2">
-                  <FaLayerGroup className="size-3" /> Organization
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <LinkCard
-                    icon={<FaLayerGroup className="size-3.5" />}
-                    label="Category"
-                    name={variant.product?.category?.name || "N/A"}
-                    to={categorySlug ? `/category-view/${categorySlug}` : "#"}
-                  />
-                  <LinkCard
-                    icon={<FaChevronRight className="size-3.5" />}
-                    label="Subcategory"
-                    name={variant.product?.subcategory?.name || "N/A"}
-                    to={subcategorySlug ? `/subcategory-view/${subcategorySlug}` : "#"}
-                  />
-                  <LinkCard
-                    icon={<FaTag className="size-3.5" />}
-                    label="Brand"
-                    name={variant.product?.brand?.name || "N/A"}
-                    to={brandSlug ? `/brand-view/${brandSlug}` : "#"}
-                  />
-                </div>
-              </div>
-
-              {/* Dimensions & Weight */}
-              {(variant.dimensions || variant.weight !== undefined) && (
-                <div className="grid grid-cols-2 gap-3">
-                  {variant.dimensions && (
-                    <InfoCard
-                      icon={<FaRulerCombined className="size-3.5" />}
-                      label="Dimensions (W×H×D cm)"
-                      value={`${variant.dimensions.width ?? 0} × ${variant.dimensions.height ?? 0} × ${variant.dimensions.depth ?? 0}`}
-                    />
-                  )}
-                  {variant.weight !== undefined && (
-                    <InfoCard
-                      icon={<FaWeightHanging className="size-3.5" />}
-                      label="Weight"
-                      value={`${variant.weight} g`}
-                    />
-                  )}
+      <div className="space-y-4">
+        {/* Who it is and what it is worth, at a glance */}
+        <section className={`${CARD} grid gap-6 p-5 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)]`}>
+          <div className="space-y-2.5">
+            <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40">
+              {shownImage ? (
+                <img src={shownImage} alt={variant.variantName} className="h-full w-full object-contain" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500">
+                  <FaImage className="size-8" />
+                  <p className="text-xs">No image</p>
                 </div>
               )}
             </div>
+            {allImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allImages.map((url, i) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => setActiveImage(url)}
+                    aria-label={`Show image ${i + 1}`}
+                    aria-current={shownImage === url}
+                    className={`size-14 shrink-0 overflow-hidden rounded-md border-2 bg-gray-50 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-500/20 dark:bg-gray-800 ${
+                      shownImage === url ? "border-accent-500" : "border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* === BOTTOM SECTIONS === */}
-          <div className="mt-10 space-y-6 border-t border-gray-50 dark:border-gray-800 pt-8">
-            {/* Specifications */}
-            {variant.specifications && (
-              <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-                <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                  <FaInfoCircle className="text-accent-500 size-4" />
-                  <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest">Specifications</h3>
-                </div>
-                <div
-                  className="p-6 prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400"
-                  dangerouslySetInnerHTML={{ __html: variant.specifications }}
-                />
+          <div className="flex min-w-0 flex-col">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <RecordLink name={product?.name} to={`/product-view/${product?.slug}`} />
+                </p>
+                <h1 className="mt-0.5 break-words text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl">
+                  {variant.variantName}
+                </h1>
               </div>
-            )}
-
-            {/* SEO */}
-            {variant.seo && (
-              <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-                <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                  <FaGlobe className="text-accent-500 size-4" />
-                  <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest">SEO / Meta Information</h3>
-                </div>
-                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-                  {[
-                    { label: "Meta Title", value: variant.seo.metaTitle },
-                    { label: "Meta Description", value: variant.seo.metaDescription },
-                    { label: "Focus Keyword", value: variant.seo.focusKeyword },
-                    { label: "Canonical URL", value: variant.seo.canonicalUrl },
-                    { label: "Twitter Card", value: variant.seo.twitterCard },
-                    { label: "Meta Keywords", value: Array.isArray(variant.seo.metaKeywords) ? variant.seo.metaKeywords.join(", ") : variant.seo.metaKeywords },
-                  ].map(({ label, value }) => (
-                    <div key={label}>
-                      <p className="text-[9px] uppercase font-black tracking-widest text-gray-400 mb-1">{label}</p>
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 break-words">{value || <span className="italic text-gray-300">N/A</span>}</p>
-                    </div>
-                  ))}
-                  <div>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-gray-400 mb-1">NoIndex</p>
-                    <Badge color={variant.seo.noIndex ? "error" : "success"} variant="light" className="text-[10px]">{variant.seo.noIndex ? "Yes" : "No"}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase font-black tracking-widest text-gray-400 mb-1">NoFollow</p>
-                    <Badge color={variant.seo.noFollow ? "error" : "success"} variant="light" className="text-[10px]">{variant.seo.noFollow ? "Yes" : "No"}</Badge>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="flex flex-wrap justify-between items-center px-2 py-3 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 font-medium gap-3">
-              <p>ID: <span className="font-mono text-gray-500">{variant._id}</span></p>
-              <p>Created: <span className="text-gray-500">{moment(variant.createdAt).format("MMM DD, YYYY · HH:mm")}</span></p>
-              <p>Updated: <span className="text-gray-500">{moment(variant.updatedAt).format("MMM DD, YYYY · HH:mm")}</span></p>
+              <StatusPill isActive={!!variant.isActive} />
             </div>
+
+            <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
+              <span>Size <b className="font-medium text-gray-800 dark:text-gray-200">{variant.size || "N/A"}</b></span>
+              <span>Color <b className="font-medium text-gray-800 dark:text-gray-200">{variant.color || "N/A"}</b></span>
+              <span>Unit <b className="font-medium text-gray-800 dark:text-gray-200">{variant.unit || "N/A"}</b></span>
+            </p>
+
+            {/* The gap on a tinted grid draws the hairlines at every column count */}
+            <dl className="mt-5 grid grid-cols-2 md:mt-auto gap-px overflow-hidden rounded-lg border border-gray-100 bg-gray-100 sm:grid-cols-3 xl:grid-cols-5 dark:border-gray-800 dark:bg-gray-800">
+              <Stat
+                label="In stock"
+                value={stock}
+                note={
+                  stock <= alertAt && (
+                    <span className="rounded-full bg-error-50 px-2 py-0.5 text-xs font-semibold text-error-700 dark:bg-error-500/15 dark:text-error-400">
+                      Low
+                    </span>
+                  )
+                }
+              />
+              <Stat label="Alert at" value={alertAt} />
+              <Stat label="Buy price" value={money(variant.purchasePrice)} />
+              <Stat label="Retail price" value={money(variant.retailPrice)} emphasis />
+              <Stat label="Wholesale price" value={money(variant.wholesalePrice)} />
+            </dl>
           </div>
-        </ComponentCard>
+        </section>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Section title="Identification">
+            <Row label="Barcode" mono>{variant.barCode}</Row>
+            <Row label="SKU" mono>{variant.sku}</Row>
+            <Row label="Group unit">
+              {variant.groupUnit && variant.groupUnitQuantity ? `${variant.groupUnit} of ${variant.groupUnitQuantity}` : undefined}
+            </Row>
+            <Row label="Dimensions (W × H × D)">{width || height || depth ? `${width ?? 0} × ${height ?? 0} × ${depth ?? 0} cm` : undefined}</Row>
+            <Row label="Weight">{variant.weight ? `${variant.weight} g` : undefined}</Row>
+          </Section>
+
+          <Section title="Organization">
+            <Row label="Category">
+              <RecordLink name={product?.category?.name} to={`/category-view/${product?.category?.slug}`} />
+            </Row>
+            <Row label="Subcategory">
+              <RecordLink name={product?.subcategory?.name} to={`/subcategory-view/${product?.subcategory?.slug}`} />
+            </Row>
+            <Row label="Brand">
+              <RecordLink name={product?.brand?.name} to={`/brand-view/${product?.brand?.slug}`} />
+            </Row>
+            <Row label="Created">{moment(variant.createdAt).format("MMM DD, YYYY · HH:mm")}</Row>
+            <Row label="Last updated">{moment(variant.updatedAt).format("MMM DD, YYYY · HH:mm")}</Row>
+          </Section>
+        </div>
+
+        {variant.specifications && (
+          <section className={CARD}>
+            <h2 className="border-b border-gray-100 px-5 py-3.5 text-sm font-semibold text-gray-900 dark:border-gray-800 dark:text-white">
+              Specifications
+            </h2>
+            <div
+              className="prose prose-sm max-w-none px-5 py-4 text-gray-600 dark:prose-invert dark:text-gray-400"
+              dangerouslySetInnerHTML={{ __html: variant.specifications }}
+            />
+          </section>
+        )}
+
+        {/* Rarely read while managing stock, so it stays folded */}
+        {seo && (
+          <details className={`${CARD} group`}>
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl px-5 py-3.5 text-sm font-semibold text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 dark:text-white [&::-webkit-details-marker]:hidden">
+              SEO information
+              <FaChevronDown className="size-3 text-gray-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <dl className="divide-y divide-gray-100 border-t border-gray-100 px-5 dark:divide-gray-800 dark:border-gray-800">
+              <Row label="Meta title">{seo.metaTitle}</Row>
+              <Row label="Meta description">{seo.metaDescription}</Row>
+              <Row label="Focus keyword">{seo.focusKeyword}</Row>
+              <Row label="Meta keywords">{Array.isArray(seo.metaKeywords) ? seo.metaKeywords.join(", ") : seo.metaKeywords}</Row>
+              <Row label="Canonical URL">{seo.canonicalUrl}</Row>
+              <Row label="Twitter card">{seo.twitterCard}</Row>
+              <Row label="Hidden from search (noindex)">{seo.noIndex ? "Yes" : "No"}</Row>
+              <Row label="Links not followed (nofollow)">{seo.noFollow ? "Yes" : "No"}</Row>
+            </dl>
+          </details>
+        )}
+
+        <p className="px-1 font-mono text-xs text-gray-400 dark:text-gray-500">ID {variant._id}</p>
       </div>
 
       {/* === CONFIRM MODAL === */}
       <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} className="!w-full !max-w-sm">
         <div className="p-8">
-          <div className={`flex items-center justify-center size-16 rounded-full mb-5 mx-auto ${variant.isActive ? "bg-red-50 dark:bg-red-500/10" : "bg-emerald-50 dark:bg-emerald-500/10"}`}>
-            {variant.isActive ? <FaToggleOn className="size-8 text-red-500" /> : <FaToggleOff className="size-8 text-emerald-500" />}
+          <div className={`flex items-center justify-center size-16 rounded-full mb-5 mx-auto ${variant.isActive ? "bg-gray-100 dark:bg-white/5" : "bg-accent-50 dark:bg-accent-500/15"}`}>
+            {variant.isActive ? <FaToggleOn className="size-8 text-gray-500" /> : <FaToggleOff className="size-8 text-accent-500" />}
           </div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
             {variant.isActive ? "Deactivate Variant?" : "Activate Variant?"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed">
             Are you sure you want to{" "}
-            <span className={`font-semibold ${variant.isActive ? "text-red-500" : "text-emerald-500"}`}>
+            <span className={`font-semibold ${variant.isActive ? "text-gray-800 dark:text-gray-100" : "text-accent-600"}`}>
               {variant.isActive ? "deactivate" : "activate"}
             </span>{" "}
             <span className="font-semibold text-gray-700 dark:text-gray-200">"{variant.variantName}"</span>?
