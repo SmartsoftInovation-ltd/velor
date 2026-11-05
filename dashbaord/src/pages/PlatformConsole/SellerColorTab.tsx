@@ -7,7 +7,8 @@ import { settingsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import { brandRamp, RAMP_STEPS } from "./brandRamp";
 import { useSellerPreviewUrl } from "./useSellerPreviewUrl";
-import WebsitePreview from "./WebsitePreview";
+import { useStorefrontContent } from "./useStorefrontContent";
+import StorefrontPrototype, { designFrom, STOREFRONT_DEFAULT_COLOR, type StoreContent, type WebsiteDesign } from "./StorefrontPrototype";
 import {
   cardClass,
   Field,
@@ -16,9 +17,6 @@ import {
   secondaryButtonClass,
 } from "./ui";
 
-// What the storefront wears when a store has picked nothing (its stylesheet's
-// own --brand-500).
-const STOREFRONT_DEFAULT_COLOR = "#fc630a";
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 const SUGGESTED_COLORS = [
@@ -35,12 +33,16 @@ const SUGGESTED_COLORS = [
 
 export const ColorStudio = ({
   saved,
+  design,
+  content,
   previewUrl,
   canEdit,
   saving,
   onSave,
 }: {
   saved: string;
+  design: WebsiteDesign;
+  content?: StoreContent;
   previewUrl: string;
   canEdit: boolean;
   saving: boolean;
@@ -191,7 +193,7 @@ export const ColorStudio = ({
         </div>
       </section>
 
-      <WebsitePreview url={previewUrl} message={{ type: "brand-preview:color", color: shown }} />
+      <StorefrontPrototype url={previewUrl} color={shown} design={design} content={content} />
     </div>
   );
 };
@@ -204,6 +206,7 @@ const SellerColorTab = ({ tenantId }: { tenantId: string }) => {
     queryFn: () => settingsApi.get(tenantId),
   });
   const previewUrl = useSellerPreviewUrl(tenantId);
+  const content = useStorefrontContent(tenantId);
 
   const save = useMutation({
     mutationFn: (primaryColor: string) =>
@@ -226,6 +229,8 @@ const SellerColorTab = ({ tenantId }: { tenantId: string }) => {
   return (
     <ColorStudio
       saved={String(current.data.settings.general?.primaryColor ?? "")}
+      design={designFrom(current.data.settings.general)}
+      content={content}
       previewUrl={previewUrl}
       canEdit={isSuperadmin}
       saving={save.isPending}

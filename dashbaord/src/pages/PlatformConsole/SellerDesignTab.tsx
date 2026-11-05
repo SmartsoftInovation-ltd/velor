@@ -6,25 +6,17 @@ import { errorMessage } from "../../platform/api";
 import { settingsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import { useSellerPreviewUrl } from "./useSellerPreviewUrl";
-import WebsitePreview from "./WebsitePreview";
+import { useStorefrontContent } from "./useStorefrontContent";
+import StorefrontPrototype, {
+  DEFAULT_DESIGN,
+  designFrom,
+  STOREFRONT_DEFAULT_COLOR,
+  type StoreContent,
+  type WebsiteDesign,
+} from "./StorefrontPrototype";
 import { cardClass, inputClass, primaryButtonClass, secondaryButtonClass } from "./ui";
 
-const DEFAULT_DESIGN = {
-  bannerLayout: "split",
-  cardLayout: "standard",
-  gridColumns: "4",
-  categoryLayout: "image",
-  galleryPosition: "left",
-  thumbnailPosition: "side",
-  filterLayout: "left",
-  footerLayout: "full",
-  buttonStyle: "solid",
-  menuColor: "sunken",
-  menuAlign: "left",
-  announcementEnabled: "off",
-  announcementText: "",
-};
-export type WebsiteDesign = typeof DEFAULT_DESIGN;
+export type { WebsiteDesign };
 
 const Bar = ({ className = "" }: { className?: string }) => (
   <span className={`block h-1 rounded-full bg-gray-300 dark:bg-gray-600 ${className}`} />
@@ -394,12 +386,16 @@ const OptionGroup = ({
 
 export const DesignStudio = ({
   saved,
+  color,
+  content,
   previewUrl,
   canEdit,
   saving,
   onSave,
 }: {
   saved: WebsiteDesign;
+  color: string;
+  content?: StoreContent;
   previewUrl: string;
   canEdit: boolean;
   saving: boolean;
@@ -421,8 +417,7 @@ export const DesignStudio = ({
           <div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white/90">Website design</h3>
             <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              Try a layout and it changes in the preview. Open the page named under each option
-              to see it. Shoppers see it only after you save.
+              Try a layout and it changes in the preview. Shoppers see it only after you save.
             </p>
           </div>
 
@@ -506,25 +501,7 @@ export const DesignStudio = ({
         )}
       </section>
 
-      <WebsitePreview
-        url={previewUrl}
-        message={{
-          type: "brand-preview:design",
-          banner: design.bannerLayout,
-          card: design.cardLayout,
-          grid: design.gridColumns,
-          category: design.categoryLayout,
-          gallery: design.galleryPosition,
-          thumbs: design.thumbnailPosition,
-          filter: design.filterLayout,
-          footer: design.footerLayout,
-          button: design.buttonStyle,
-          menu: design.menuColor,
-          "menu-align": design.menuAlign,
-          announcement: design.announcementText.trim() ? design.announcementEnabled : "off",
-          announcementText: design.announcementText,
-        }}
-      />
+      <StorefrontPrototype url={previewUrl} color={color} design={design} content={content} />
     </div>
   );
 };
@@ -537,6 +514,7 @@ const SellerDesignTab = ({ tenantId }: { tenantId: string }) => {
     queryFn: () => settingsApi.get(tenantId),
   });
   const previewUrl = useSellerPreviewUrl(tenantId);
+  const content = useStorefrontContent(tenantId);
 
   const save = useMutation({
     mutationFn: (design: WebsiteDesign) => settingsApi.update(tenantId, "general", design),
@@ -556,11 +534,9 @@ const SellerDesignTab = ({ tenantId }: { tenantId: string }) => {
   const general = current.data.settings.general;
   return (
     <DesignStudio
-      saved={
-        Object.fromEntries(
-          Object.entries(DEFAULT_DESIGN).map(([field, fallback]) => [field, String(general?.[field] ?? fallback)]),
-        ) as WebsiteDesign
-      }
+      saved={designFrom(general)}
+      color={String(general?.primaryColor || STOREFRONT_DEFAULT_COLOR)}
+      content={content}
       previewUrl={previewUrl}
       canEdit={isSuperadmin}
       saving={save.isPending}
