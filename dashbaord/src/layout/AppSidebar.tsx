@@ -197,7 +197,7 @@ const AppSidebar: React.FC = () => {
                 {nav.icon}
               </span>
               {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="min-w-0 leading-tight">{nav.name}</span>
+                <span className="min-w-0 truncate" title={nav.name}>{nav.name}</span>
               )}
               {(isExpanded || isHovered || isMobileOpen) && !ALWAYS_OPEN.includes(menuType) && (
                 <ChevronDownIcon
@@ -232,7 +232,7 @@ const AppSidebar: React.FC = () => {
                   {nav.icon}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className="min-w-0 leading-tight">{nav.name}</span>
+                  <span className="min-w-0 truncate" title={nav.name}>{nav.name}</span>
                 )}
               </Link>
             )
