@@ -104,7 +104,7 @@ describe("SellerDetailPage (Platform Console)", () => {
     await userEvent.click(await screen.findByRole("tab", { name: /website color/i }));
 
     await userEvent.click(await screen.findByRole("button", { name: /use color #0f9d63/i }));
-    expect(screen.getByLabelText(/^website color$/i)).toHaveValue("#0f9d63");
+    expect(screen.getByLabelText(/^custom color$/i)).toHaveValue("#0f9d63");
     await userEvent.click(screen.getByRole("button", { name: /save color/i }));
 
     await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { primaryColor: "#0f9d63" }));
@@ -114,7 +114,7 @@ describe("SellerDetailPage (Platform Console)", () => {
     renderPage();
     await userEvent.click(await screen.findByRole("tab", { name: /website color/i }));
 
-    const color = await screen.findByLabelText(/^website color$/i);
+    const color = await screen.findByLabelText(/^custom color$/i);
     const save = screen.getByRole("button", { name: /save color/i });
 
     await userEvent.type(color, "green");

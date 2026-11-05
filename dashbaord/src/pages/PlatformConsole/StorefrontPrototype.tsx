@@ -811,7 +811,7 @@ const StorefrontPrototype = ({
     if (!element || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(([entry]) =>
       // Whole steps of a percent, so a sub-pixel change cannot keep it moving
-      setZoom(Math.min(1, Math.floor((entry.contentRect.width / SITE_WIDTH) * 100) / 100)),
+      setZoom(Math.max(0.1, Math.floor((entry.contentRect.width / SITE_WIDTH) * 100) / 100)),
     );
     observer.observe(element);
     return () => observer.disconnect();

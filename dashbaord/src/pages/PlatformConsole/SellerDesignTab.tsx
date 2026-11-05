@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { FiRotateCcw } from "react-icons/fi";
+import { FiCheck, FiRotateCcw } from "react-icons/fi";
 import { errorMessage } from "../../platform/api";
 import { settingsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
@@ -328,8 +328,9 @@ const MENU_ALIGN = [
 const ANNOUNCEMENT_MAX = 120;
 
 const SectionLabel = ({ children }: { children: ReactNode }) => (
-  <p className="border-t border-gray-100 pt-5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 first:border-t-0 first:pt-0 dark:border-gray-800">
+  <p className="flex items-center gap-3 pt-2 text-xs font-semibold text-gray-900 dark:text-white/90">
     {children}
+    <span className="h-px flex-1 bg-gray-100 dark:bg-gray-800" aria-hidden="true" />
   </p>
 );
 
@@ -349,8 +350,8 @@ const OptionGroup = ({
   onChange: (value: string) => void;
 }) => (
   <fieldset>
-    <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">{title}</legend>
-    <p className="mb-2.5 text-xs text-gray-500 dark:text-gray-400">{where}</p>
+    <legend className="text-[13px] font-medium text-gray-800 dark:text-gray-200">{title}</legend>
+    <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{where}</p>
     <div className={`grid gap-2 ${options.length === 4 ? "grid-cols-4" : options.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
       {options.map((option) => {
         const selected = value === option.value;
@@ -363,20 +364,25 @@ const OptionGroup = ({
             title={option.hint}
             disabled={disabled}
             onClick={() => onChange(option.value)}
-            className={`rounded-xl border p-1.5 text-left transition disabled:cursor-not-allowed ${
+            className={`group relative rounded-lg border p-1 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-accent-500/30 disabled:cursor-not-allowed ${
               selected
-                ? "border-accent-500 bg-accent-50 dark:bg-accent-500/15"
-                : "border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500"
+                ? "border-accent-500 ring-1 ring-accent-500"
+                : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
             }`}
           >
-            <span className="block h-14 rounded-lg bg-white p-1 dark:bg-gray-900">{option.picture}</span>
+            <span className="block h-11 rounded-md bg-gray-50 p-1 dark:bg-white/5">{option.picture}</span>
             <span
-              className={`mt-1 block px-0.5 text-xs font-medium ${
+              className={`block truncate py-1 text-[11px] font-medium ${
                 selected ? "text-accent-600 dark:text-accent-400" : "text-gray-600 dark:text-gray-400"
               }`}
             >
               {option.label}
             </span>
+            {selected && (
+              <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-accent-500 text-white" aria-hidden="true">
+                <FiCheck className="size-2.5" />
+              </span>
+            )}
           </button>
         );
       })}
@@ -413,31 +419,39 @@ export const DesignStudio = ({
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
       <section className={`${cardClass} flex flex-col overflow-hidden xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)]`}>
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white/90">Website design</h3>
-            <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              Try a layout and it changes in the preview. Shoppers see it only after you save.
-            </p>
-          </div>
-
+        <div className="border-b border-gray-100 p-5 dark:border-gray-800">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white/90">Website design</h3>
+          <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+            Try a layout and see it in the preview. Shoppers see it after you save.
+          </p>
+        </div>
+        {/* No scrollbar to look at, so the fade is what says more waits below */}
+        <div className="no-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [mask-image:linear-gradient(to_bottom,black_calc(100%-28px),transparent)]">
           <SectionLabel>Header</SectionLabel>
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">Announcement bar</legend>
-            <p className="mb-2.5 text-xs text-gray-500 dark:text-gray-400">Above the header, on every shopping page</p>
-            <label className="mb-2 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <legend className="sr-only">Announcement bar</legend>
+            <label className="flex cursor-pointer items-center justify-between gap-3">
+              <span>
+                <span className="block text-[13px] font-medium text-gray-800 dark:text-gray-200">Announcement bar</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">Above the header, on every shopping page</span>
+              </span>
               <input
                 type="checkbox"
-                className="size-4 accent-accent-500"
+                role="switch"
+                aria-label="Show the bar"
+                className="peer sr-only"
                 checked={design.announcementEnabled === "on"}
                 disabled={!canEdit}
                 onChange={(e) => change("announcementEnabled")(e.target.checked ? "on" : "off")}
               />
-              Show the bar
+              <span
+                aria-hidden="true"
+                className="relative h-5 w-9 shrink-0 rounded-full bg-gray-200 transition peer-checked:bg-accent-500 peer-focus-visible:ring-2 peer-focus-visible:ring-accent-500/30 after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-4 dark:bg-gray-700"
+              />
             </label>
             <input
               aria-label="Announcement text"
-              className={inputClass}
+              className={`${inputClass} mt-2`}
               placeholder="Free delivery on orders over ৳2,000"
               maxLength={ANNOUNCEMENT_MAX}
               value={design.announcementText}
