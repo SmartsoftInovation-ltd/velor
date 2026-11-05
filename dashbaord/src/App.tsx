@@ -160,9 +160,6 @@ const IncompleteOrderList = lazy(
 const InvoicePreview = lazy(
   () => import("./components/tables/OrderTable/InvoicePreview"),
 );
-const StickerPreview = lazy(
-  () => import("./components/tables/OrderTable/StickerPreview"),
-);
 
 // Components - Variant
 const UpdateVariant = lazy(() => import("./components/variant/UpdateVariant"));
@@ -772,7 +769,6 @@ export default function App() {
                   element={<IncompleteOrderList />}
                 />
                 <Route path="/invoice/:id" element={<InvoicePreview />} />
-                <Route path="/sticker/:id" element={<StickerPreview />} />
 
                 {/* Courier */}
                 <Route

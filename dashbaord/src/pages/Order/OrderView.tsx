@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import moment from "moment";
@@ -12,6 +13,7 @@ import { getApiErrorMessage } from "../../utils/apiError";
 import OrderStatus from "../../components/tables/OrderTable/OrderStatus";
 import { ChannelTag, PaymentPill } from "../../components/tables/OrderTable/orderUi";
 import { Field, ItemsTable, Section, Totals } from "../../components/order/OrderViewParts";
+import OrderStickerModal from "../../components/tables/OrderTable/OrderStickerModal";
 
 const when = (date?: string | null) => (date ? moment(date).format("DD MMM YYYY, HH:mm") : undefined);
 const SOFT = "shine inline-flex h-9 items-center gap-2 rounded px-3 text-sm font-medium transition-all active:scale-95 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10";
@@ -20,6 +22,7 @@ const SOFT = "shine inline-flex h-9 items-center gap-2 rounded px-3 text-sm font
 const OrderView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [stickerOpen, setStickerOpen] = useState(false);
 
   const { data: order, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["order", id],
@@ -81,7 +84,7 @@ const OrderView = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/order-list" className={SOFT}><FaArrowLeft className="size-3.5" /> Orders</Link>
-          <Link to={`/sticker/${order._id}`} className={SOFT}><TbSticker2 className="size-4" /> Sticker</Link>
+          <button type="button" onClick={() => setStickerOpen(true)} className={SOFT}><TbSticker2 className="size-4" /> Sticker</button>
           <Link to={`/invoice/${order._id}`} className="shine inline-flex h-9 items-center gap-2 rounded bg-accent-500 px-3 text-sm font-semibold text-white transition-all hover:bg-accent-600 active:scale-95">
             <IoIosPrint className="size-4" /> Print invoice
           </Link>
@@ -165,6 +168,8 @@ const OrderView = () => {
           </Section>
         </div>
       </div>
+
+      <OrderStickerModal orderId={stickerOpen ? order._id : null} onClose={() => setStickerOpen(false)} />
     </>
   );
 };

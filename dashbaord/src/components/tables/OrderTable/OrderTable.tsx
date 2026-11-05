@@ -18,6 +18,7 @@ import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 import MobileCardList from "../../common/MobileCardList";
 import OrdersEmptyState from "./OrdersEmptyState";
 import OrderStatus from "./OrderStatus";
+import OrderStickerModal from "./OrderStickerModal";
 import ShippingInfo from "./ShippingInfo";
 import { OrderItemDetails, OrderItemStack } from "./OrderItems";
 import { ChannelTag, PaymentPill } from "./orderUi";
@@ -114,14 +115,14 @@ const InvoiceCell = ({ order, index }: { order: Order; index: number }) => (
   </div>
 );
 
-const Actions = ({ order, canDelete, onDelete }: { order: Order; canDelete: boolean; onDelete: (id: string) => void }) => (
+const Actions = ({ order, canDelete, onDelete, onSticker }: { order: Order; canDelete: boolean; onDelete: (id: string) => void; onSticker: (id: string) => void }) => (
   <div className="flex items-center justify-end gap-1.5">
     <Link to={`/orderdetails/${order._id}`} aria-label="View order" title="View order" className={`${ACTION} ${VIEW_TONE}`}>
       <FaEye className="size-4" />
     </Link>
-    <Link to={`/sticker/${order._id}`} aria-label="Print sticker" title="Sticker" className={`${ACTION} ${VIEW_TONE}`}>
+    <button type="button" onClick={() => onSticker(order._id)} aria-label="Print sticker" title="Sticker" className={`${ACTION} ${VIEW_TONE}`}>
       <TbSticker2 className="size-4" />
-    </Link>
+    </button>
     <Link to={`/invoice/${order._id}`} aria-label="Print invoice" title="Invoice" className={`${ACTION} ${VIEW_TONE}`}>
       <IoIosPrint className="size-4" />
     </Link>
@@ -157,6 +158,7 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
   const [payment, setPayment] = useState<Segment>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [stickerId, setStickerId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -302,7 +304,7 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
                 <ChannelTag channel={order.channel} source={order.orderFrom} />
               </div>
               <div className="border-t border-gray-100 pt-3 dark:border-white/[0.05]">
-                <Actions order={order} canDelete={canDelete} onDelete={setDeleteId} />
+                <Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} />
               </div>
             </div>
           )}
@@ -350,7 +352,7 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
                         <TableCell className={CELL}><PaymentPill method={order.paymentMethod} status={order.paymentStatus} /></TableCell>
                         <TableCell className={CELL}><ChannelTag channel={order.channel} source={order.orderFrom} /></TableCell>
                         <TableCell className={CELL}><OrderStatus order={order} onChanged={changed} /></TableCell>
-                        <TableCell className={CELL}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} /></TableCell>
+                        <TableCell className={CELL}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} /></TableCell>
                       </TableRow>
                       {expanded.has(order._id) ? (
                         <TableRow className="bg-gray-50/70 dark:bg-white/[0.02]">
@@ -367,6 +369,8 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
           </div>
         </div>
       )}
+
+      <OrderStickerModal orderId={stickerId} onClose={() => setStickerId(null)} />
 
       <Modal isOpen={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
         <div className="p-8">
