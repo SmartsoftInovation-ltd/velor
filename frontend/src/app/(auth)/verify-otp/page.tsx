@@ -3,8 +3,10 @@ import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { VisualOtp } from "@/components/auth/visual-otp";
 import { OtpForm } from "@/components/auth/otp-form";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Verify code",
   description: "Enter the 6-digit code sent to your email to continue.",
 };

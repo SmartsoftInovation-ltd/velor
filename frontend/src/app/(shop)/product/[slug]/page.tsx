@@ -16,7 +16,8 @@ import {
   getRelatedProducts,
   getReviews,
 } from "@/lib/catalog/product-detail";
-import { productJsonLd, shareDescription } from "@/lib/catalog/product-share";
+import { JsonLd } from "@/components/ui/json-ld";
+import { breadcrumbJsonLd, productJsonLd, shareDescription } from "@/lib/catalog/product-share";
 import { shareImage } from "@/lib/share-image";
 import { getStore, requestOrigin, storeHostFrom } from "@/lib/store-api";
 
@@ -75,11 +76,8 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
   return (
     <main className="container py-6">
-      {/* "<" escaped so text a seller typed cannot close this script tag */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, origin)).replace(/</g, "\\u003c") }}
-      />
+      <JsonLd data={productJsonLd(product, origin)} />
+      <JsonLd data={breadcrumbJsonLd(product, origin)} />
 
       <div className="mb-6">
         <Breadcrumb

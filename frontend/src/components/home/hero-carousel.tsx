@@ -40,9 +40,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     {slide.eyebrow}
                   </span>
                 )}
-                <h1 className="max-w-md text-h1 font-extrabold text-on-brand sm:text-display banner-full:text-white">
+                <h2 className="max-w-md text-h1 font-extrabold text-on-brand sm:text-display banner-full:text-white">
                   {slide.title}
-                </h1>
+                </h2>
                 <p className="max-w-sm text-body text-on-brand/90 banner-full:text-white/90">
                   {slide.description}
                 </p>
@@ -71,6 +71,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                   fill
                   sizes="(min-width: 640px) 45vw, 100vw"
                   loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : undefined}
                   className="object-cover"
                 />
               </div>

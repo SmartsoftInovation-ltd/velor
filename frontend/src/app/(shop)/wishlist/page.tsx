@@ -3,8 +3,10 @@ import Link from "next/link";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
 import { ArrowRightIcon } from "@/components/ui/icons";
 import { WishlistView } from "@/components/wishlist/wishlist-view";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Wishlist",
   description: "Everything you have saved for later.",
 };

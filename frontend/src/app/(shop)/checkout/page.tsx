@@ -5,8 +5,10 @@ import { CheckoutSteps } from "@/components/checkout/checkout-steps";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
 import { getDeliveryOptions } from "@/lib/checkout";
 import { storeHostFrom } from "@/lib/store-api";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Checkout",
   description: "Confirm your details and place your order.",
 };

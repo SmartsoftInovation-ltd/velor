@@ -9,20 +9,28 @@ import { NewArrivals } from "@/components/home/new-arrivals";
 import { PromoBanner } from "@/components/home/promo-banner";
 import { TrustBadges } from "@/components/home/trust-badges";
 import { getHeroSlides } from "@/lib/hero-slides";
-import { storeHostFrom } from "@/lib/store-api";
+import { JsonLd } from "@/components/ui/json-ld";
+import { storeJsonLd } from "@/lib/seo";
+import { getStore, requestOrigin, storeHostFrom } from "@/lib/store-api";
 
+// The store's name and description come from the root layout
 export const metadata: Metadata = {
-  title: "Home",
-  description: "Modern clothing, from everyday staples to limited drops.",
+  alternates: { canonical: "/" },
 };
 
 // Rendered per request, never prerendered: the banners belong to whichever
 // store's domain the visitor is on, so no single build-time page fits them all.
 export default async function Home() {
-  const slides = await getHeroSlides(storeHostFrom(await headers()));
+  const requestHeaders = await headers();
+  const host = storeHostFrom(requestHeaders);
+  const [slides, store] = await Promise.all([getHeroSlides(host), getStore(host)]);
+  const name = store?.name || "Online shop";
 
   return (
     <main>
+      <JsonLd data={storeJsonLd(name, requestOrigin(requestHeaders) ?? "", store?.logo)} />
+      {/* The one h1: the slides are promotions, there may be several or none */}
+      <h1 className="sr-only">{name}</h1>
       {slides.length > 0 && <HeroCarousel slides={slides} />}
       <TrustBadges />
       <CategoryGrid />

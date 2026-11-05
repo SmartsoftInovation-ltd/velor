@@ -7,8 +7,10 @@ import { AccountShortcuts } from "@/components/account/account-shortcuts";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
 import { getMe, SESSION_COOKIE } from "@/lib/shopper-auth";
 import { ApiError, getStore, storeHostFrom } from "@/lib/store-api";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "My account",
   description: "Your details at this shop.",
 };

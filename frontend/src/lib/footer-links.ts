@@ -8,9 +8,9 @@ export const FOOTER_LINK_GROUPS: FooterLinkGroup[] = [
     title: "Quick Links",
     links: [
       { label: "Shop", href: "/shop" },
-      { label: "New Arrivals", href: "/shop" },
+      { label: "New Arrivals", href: "/shop/new-arrivals" },
       { label: "Best Sellers", href: "/shop" },
-      { label: "Discount Offer", href: "/shop" },
+      { label: "Discount Offer", href: "/shop/offers" },
     ],
   },
   {

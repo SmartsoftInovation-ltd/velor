@@ -25,6 +25,14 @@ export function plainText(html: string) {
     .trim();
 }
 
+/** The same description as paragraphs, so a page can show it without printing its tags. */
+export function descriptionBlocks(html: string) {
+  return html
+    .split(/<br\s*\/?>|<\/(?:p|div|li|h[1-6]|blockquote)>/i)
+    .map(plainText)
+    .filter(Boolean);
+}
+
 function truncate(text: string, length: number) {
   if (text.length <= length) return text;
   const cut = text.slice(0, length - 1);
@@ -40,6 +48,23 @@ export function shareDescription(product: ProductDetail, storeName: string) {
   const about = plainText(product.description) || `Buy ${product.name} from ${storeName}.`;
   const price = priceLabel(product);
   return `${price} · ${truncate(about, DESCRIPTION_LENGTH - price.length - 3)}`;
+}
+
+/** schema.org breadcrumb trail, which search results show in place of the URL. */
+export function breadcrumbJsonLd(product: ProductDetail, origin: string) {
+  const trail = [
+    { name: "Home", item: `${origin}/` },
+    { name: "Shop", item: `${origin}/shop` },
+    ...(product.categoryId
+      ? [{ name: product.categoryName, item: `${origin}/shop?category=${encodeURIComponent(product.categoryId)}` }]
+      : []),
+    { name: product.name, item: `${origin}/product/${product.id}` },
+  ];
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: trail.map((crumb, index) => ({ "@type": "ListItem", position: index + 1, ...crumb })),
+  };
 }
 
 /** schema.org Product, for search results. Absolute image URLs only. */

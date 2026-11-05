@@ -6,6 +6,7 @@ import { getFlashSale } from "@/lib/catalog/featured";
 import { storeHostFrom } from "@/lib/store-api";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/shop/offers" },
   title: "Offers",
   description: "Products on sale right now.",
 };

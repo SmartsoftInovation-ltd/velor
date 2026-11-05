@@ -68,6 +68,7 @@ export function ProductGallery({
           fill
           sizes="(min-width: 640px) 30rem, 100vw"
           loading="eager"
+          fetchPriority="high"
           className="object-cover"
         />
 

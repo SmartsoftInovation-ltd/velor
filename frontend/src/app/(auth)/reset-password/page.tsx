@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRightIcon, ShieldLockIcon } from "@/components/ui/icons-auth";
 import { LockIcon } from "@/components/ui/icons-nav";
 import { PasswordInput } from "@/components/ui/password-input";
+import { NO_INDEX } from "@/lib/seo";
 
 const RULES = [
   "At least 8 characters",
@@ -14,8 +15,9 @@ const RULES = [
 ];
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Reset password",
-  description: "Choose a new password for your ShoPzio account.",
+  description: "Choose a new password for your account.",
 };
 
 export default function ResetPasswordPage() {

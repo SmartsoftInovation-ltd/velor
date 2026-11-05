@@ -6,8 +6,10 @@ import { SignInForm } from "@/components/auth/sign-in-form";
 import { SignInHeading } from "@/components/auth/sign-in-heading";
 import { VisualSignIn } from "@/components/auth/visual-sign-in";
 import { getStore, storeHostFrom } from "@/lib/store-api";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Sign in",
   description: "Sign in to track your orders and check out faster.",
 };

@@ -1,13 +1,22 @@
 import { Stars } from "@/components/ui/stars";
+import { descriptionBlocks } from "@/lib/catalog/product-share";
 import type { ProductDetail, Review } from "@/lib/catalog/types";
 import { ReviewForm } from "./review-form";
 
 export function DescriptionPanel({ product }: { product: ProductDetail }) {
+  // The dashboard saves rich-text HTML. Shown as plain paragraphs rather than
+  // injected, so nothing a seller pasted in can run on the shop's page.
+  const blocks = descriptionBlocks(product.description);
+
   return (
     <div className="space-y-5">
-      <p className="max-w-2xl text-body text-text-secondary">
-        {product.description || "The seller has not added a description for this product yet."}
-      </p>
+      <div className="max-w-2xl space-y-3 text-body text-text-secondary">
+        {blocks.length ? (
+          blocks.map((block, index) => <p key={index}>{block}</p>)
+        ) : (
+          <p>The seller has not added a description for this product yet.</p>
+        )}
+      </div>
       <ul className="space-y-2">
         {product.highlights.map((point) => (
           <li key={point} className="flex items-start gap-2.5 text-small text-text-secondary">

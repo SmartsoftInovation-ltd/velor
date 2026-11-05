@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { ArrowRightIcon } from "@/components/ui/icons-auth";
 import { MailIcon } from "@/components/ui/icons-footer";
 import { Input } from "@/components/ui/input";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Forgot password",
-  description: "Send a reset code to the email on your ShoPzio account.",
+  description: "Send a reset code to the email on your account.",
 };
 
 export default function ForgotPasswordPage() {

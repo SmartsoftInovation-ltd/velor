@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { PaymentResult } from "@/components/checkout/payment-result";
 import { trackOrder } from "@/lib/checkout";
 import { storeHostFrom } from "@/lib/store-api";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Order status",
   description: "The result of your order and payment.",
 };

@@ -12,12 +12,23 @@ import { parseShopQuery } from "@/lib/catalog/query-params";
 import { getFacetCounts, PAGE_SIZE, searchProducts } from "@/lib/catalog/shop";
 import { buildTaxonomy, getStoreProducts, toCatalogProduct } from "@/lib/catalog/storefront";
 import type { Category, ShopQuery } from "@/lib/catalog/types";
-import { storeHostFrom } from "@/lib/store-api";
+import { shopPageSeo } from "@/lib/catalog/shop-seo";
+import { getStore, storeHostFrom } from "@/lib/store-api";
 
-export const metadata: Metadata = {
-  title: "Shop",
-  description: "Every product in the shop, filtered how you like it.",
-};
+export async function generateMetadata({ searchParams }: PageProps<"/shop">): Promise<Metadata> {
+  const query = parseShopQuery(await searchParams);
+  const host = storeHostFrom(await headers());
+  const [apiProducts, store] = await Promise.all([getStoreProducts(host), getStore(host)]);
+  const result = searchProducts(apiProducts.map(toCatalogProduct), query);
+  const seo = shopPageSeo(query, buildTaxonomy(apiProducts), result.total, result.pageCount, store?.name || "our shop");
+
+  return {
+    title: seo.title,
+    description: seo.description,
+    alternates: { canonical: seo.canonical },
+    robots: seo.indexable ? undefined : { index: false, follow: true },
+  };
+}
 
 function crumbs(query: ShopQuery, categories: Category[]): Crumb[] {
   const trail: Crumb[] = [{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }];
