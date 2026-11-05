@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import SignInForm from "./SignInForm";
@@ -53,6 +53,17 @@ describe("SignInForm", () => {
   it("prefills the workspace from a deep link, then from the remembered value", () => {
     renderAt("/signin?workspace=PizzaShop");
     expect(screen.getByLabelText(/^workspace/i)).toHaveValue("pizzashop");
+  });
+
+  it("shows the store address only as a placeholder, gone once typing starts", () => {
+    renderAt("/signin");
+    const input = screen.getByLabelText(/^workspace/i);
+    expect(input).toHaveAttribute("placeholder", "your-store.ecompos.app");
+
+    fireEvent.change(input, { target: { name: "workspace", value: "velor" } });
+
+    expect(input).toHaveValue("velor");
+    expect(screen.queryByText(/ecompos\.app/)).toBeNull();
   });
 
   it("prefills the remembered workspace", () => {
