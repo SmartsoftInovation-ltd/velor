@@ -349,7 +349,7 @@ export default function BrandTable({
                       <TableCell className="px-4 py-3 flex items-center justify-center">
                         <div 
                           className="w-14 h-14 overflow-hidden rounded-2xl border-2 border-white dark:border-gray-800 shadow-md bg-gray-100 cursor-zoom-in transition-transform hover:scale-110"
-                          onMouseEnter={(e) => setHoveredImage({ url: brand?.image?.url, name: brand?.name || "Brand", x: e.clientX + 20, y: e.clientY - 150 })}
+                          onMouseEnter={(e) => brand?.image?.url && setHoveredImage({ url: brand.image.url, name: brand.name || "Brand", x: e.clientX + 20, y: e.clientY - 150 })}
                           onMouseMove={(e) => setHoveredImage(prev => prev ? ({ ...prev, x: e.clientX + 20, y: e.clientY - 150 }) : null)}
                           onMouseLeave={() => setHoveredImage(null)}
                         >

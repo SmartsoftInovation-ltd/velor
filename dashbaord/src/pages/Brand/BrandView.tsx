@@ -6,6 +6,7 @@ import axiosSecure from "../../hooks/useAxiosSecure";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ComponentCard from "../../components/common/ComponentCard";
+import ImageWithFallback from "../../components/common/ImageWithFallback";
 import Loader from "../../components/common/Loader";
 import Button from "../../components/ui/button/Button";
 import Badge from "../../components/ui/badge/Badge";
@@ -193,7 +194,7 @@ const BrandView = () => {
                 {/* Brand Image */}
                 <div className="flex-shrink-0 w-full md:w-auto flex flex-col items-center">
                   <div className="w-50 h-52 rounded-[32px] overflow-hidden border-4 border-white dark:border-gray-800 shadow-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center p-2">
-                    <img
+                    <ImageWithFallback
                       src={brand.image?.url}
                       alt={brand.name}
                       className="max-w-full max-h-full bg-gray-50 dark:bg-gray-800 rounded-lg object-contain transition-transform duration-500 hover:scale-110"

@@ -26,18 +26,22 @@ exports.createBrand = asynchandeler(async (req, res) => {
 
   const brand = await Brand.create({
     name,
-    image: {
-      status: "pending",
-      localPath: image.path,
-    },
+    image: image
+      ? {
+          status: "pending",
+          localPath: image.path,
+        }
+      : undefined,
   });
 
   // Enqueue image upload
-  await imageQueue.add("create-brand-image", {
-    modelName: NS,
-    documentId: brand._id,
-    localPath: image.path,
-  });
+  if (image) {
+    await imageQueue.add("create-brand-image", {
+      modelName: NS,
+      documentId: brand._id,
+      localPath: image.path,
+    });
+  }
 
   // Invalidate cache
   await bumpNsVersion(NS);

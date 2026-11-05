@@ -96,12 +96,15 @@ describe("catalogue routes: categories, subcategories, brands, discounts", () =>
       expect(await inTenant(() => Subcategory.countDocuments())).toBe(0);
     });
 
-    it("brand: needs an image; creates, rejects duplicates, deactivates, searches, deletes", async () => {
+    it("brand: image is optional; creates, rejects duplicates, deactivates, searches, deletes", async () => {
       const uploads = tempUploadTracker();
       uploads.snapshot();
       try {
         await enableCloudinary(tenant);
-        await as().post("/brand").send({ name: "No Logo" }).expect(400);
+        await as().post("/brand").send({ name: "No Logo" }).expect(201);
+        const noLogo = await inTenant(() => Brand.findOne({ slug: "no-logo" }).lean());
+        expect(noLogo.image.localPath).toBe("");
+        await as().post("/brand").send({}).expect(400);
         await as().post("/brand").field("name", "Acme Wear").attach("image", PNG, "logo.png").expect(201);
         await as().post("/brand").field("name", "Acme Wear").attach("image", PNG, "logo.png").expect(400);
       } finally {

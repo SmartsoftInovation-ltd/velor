@@ -158,7 +158,7 @@ const SubCategoryUpdate = () => {
               {/* Category Select */}
               <div>
                 <Label htmlFor="category" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">
-                  Parent Category
+                  Parent Category <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative group">
                   <select
@@ -195,7 +195,7 @@ const SubCategoryUpdate = () => {
               {/* Subcategory Name */}
               <div>
                 <Label htmlFor="subcategory-name" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">
-                  Subcategory Name
+                  Subcategory Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   value={subCategoryName}
