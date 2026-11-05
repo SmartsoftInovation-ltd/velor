@@ -4,7 +4,9 @@ import { headers } from "next/headers";
 import { BrandPreviewListener } from "@/components/brand-preview-listener";
 import { ToastProvider } from "@/components/ui/toast";
 import { brandThemeCss } from "@/lib/brand-theme";
-import { getStore, storeHostFrom } from "@/lib/store-api";
+import { shareImage } from "@/lib/share-image";
+import { getStore, requestOrigin, storeHostFrom } from "@/lib/store-api";
+import { storeIcons } from "@/lib/store-icons";
 import "./globals.css";
 
 const geist = Geist({
@@ -13,11 +15,35 @@ const geist = Geist({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "ShoPzio — Design System",
-  description:
-    "Design tokens extracted from the ShoPzio Figma file.",
-};
+/**
+ * Every page's defaults, in the store's name. The favicon is its logo, so it has
+ * to be set here: do not put an icon file back in app/, file-based icons override
+ * this for every store. metadataBase is what lets a page give a relative URL for
+ * its share card, on whichever domain the store is on.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const store = await getStore(storeHostFrom(requestHeaders));
+  const origin = requestOrigin(requestHeaders);
+  const name = store?.name || "ShoPzio";
+  const description = `Shop online at ${name}.`;
+  const image = shareImage(store?.logo, name);
+
+  return {
+    metadataBase: origin ? new URL(origin) : undefined,
+    title: { default: name, template: `%s | ${name}` },
+    description,
+    icons: storeIcons(store?.logo),
+    openGraph: {
+      type: "website",
+      siteName: name,
+      title: name,
+      description,
+      images: image ? [image] : undefined,
+    },
+    twitter: { card: image ? "summary_large_image" : "summary", title: name, description },
+  };
+}
 
 /**
  * Applies the stored theme before first paint so dark mode never flashes

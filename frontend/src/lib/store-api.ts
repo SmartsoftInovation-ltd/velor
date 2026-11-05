@@ -25,6 +25,23 @@ export function storeHostFrom(requestHeaders: Headers): string {
   return host;
 }
 
+/**
+ * The address this request came in on, for links that must be absolute. Unlike
+ * storeHostFrom it stays on localhost in development. The proxy says whether the
+ * shopper used https; with no proxy in front, a real domain still means https.
+ */
+export function requestOrigin(requestHeaders: Headers): string | undefined {
+  const host = requestHeaders.get("host")?.toLowerCase();
+  if (!host) return undefined;
+  const local = LOCAL_HOSTS.has(host.replace(/:\d+$/, ""));
+  const proto = requestHeaders.get("x-forwarded-proto")?.split(",")[0].trim() || (local ? "http" : "https");
+  try {
+    return new URL(`${proto}://${host}`).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
