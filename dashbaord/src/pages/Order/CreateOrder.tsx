@@ -104,13 +104,6 @@ interface Quote {
 
 const money = (value: number) => `৳${value.toLocaleString("en-BD", { minimumFractionDigits: 0 })}`;
 
-/**
- * A scanned barcode goes to the dedicated `barCode` query so the backend matches
- * the field directly instead of running it through the name regex. Scanners
- * emit 8–14 digits, which is what distinguishes a scan from someone typing.
- */
-const searchParam = (term: string) => (/^\d{8,14}$/.test(term) ? "barCode" : "name");
-
 // A hit is a standalone variant, not a product, when it has no variantType of
 // its own but does carry variant-only fields.
 const isVariant = (hit: SearchHit) =>
@@ -215,9 +208,10 @@ const CreateOrder = () => {
     searchTimer.current = setTimeout(async () => {
       setSearching(true);
       try {
-        // Matches both products and variants, by name or by scanned barcode
+        // Barcodes vary in length, so one box can't tell a scan from a name: the
+        // term is sent as all three and a match on any of them counts
         const res = await axiosSecure.get("/product/search-product", {
-          params: { [searchParam(term)]: term },
+          params: { name: term, barCode: term, sku: term },
         });
         const found = res.data?.data?.products ?? [];
         setHits(Array.isArray(found) ? found.slice(0, 8) : []);

@@ -7,6 +7,7 @@ import {
 } from "react-icons/fa";
 import { MdOutlineQrCodeScanner } from "react-icons/md";
 import axiosSecure from "../../../hooks/useAxiosSecure";
+import { fetchAllVariants } from "./fetchAllVariants";
 import toast from "react-hot-toast";
 
 // ---------- Types ----------
@@ -30,6 +31,8 @@ interface MultiVariant {
 interface PivotRow {
   key: string;
   barcode: string;
+  // Every variant in the row: a scan can read any of them
+  barcodes: string[];
   category: string;
   categoryId: string;
   subcategory: string;
@@ -67,7 +70,9 @@ const SIZE_COLS = [
   { label: "8XL/50", keys: ["8XL", "50"] },
 ];
 
-const PAGE_LIMIT = 100;
+// One array for "not loaded yet": a new [] each render would re-run the filter
+// effect, whose setRows renders again, and so on until the request answers.
+const NO_ROWS: never[] = [];
 const ROW_H      = 48;
 
 // ---------- Helpers ----------
@@ -94,6 +99,7 @@ const buildPivotRows = (variants: MultiVariant[]): PivotRow[] => {
       map.set(key, {
         key,
         barcode:       v.product.barCode || v.barCode || v.sku || "-",
+        barcodes: [],
         category:      v.product.category?.name    || "-",
         categoryId:    v.product.category?._id     || "",
         subcategory:   v.product.subcategory?.name || "-",
@@ -106,6 +112,7 @@ const buildPivotRows = (variants: MultiVariant[]): PivotRow[] => {
       });
     }
     const row = map.get(key)!;
+    if (v.barCode) row.barcodes.push(v.barCode.toLowerCase());
     if (size && size !== "N/A") {
       const nk = normSize(size);
       row.sizeStock[nk] = (row.sizeStock[nk] ?? 0) + v.stockVariant;
@@ -256,11 +263,9 @@ const SizeWiseStockList = () => {
   interface PageData { pivot: PivotRow[]; total: number; totalPages: number }
 
   const { data: pageData, isFetching: isLoading, isError, refetch } = useQuery({
-    queryKey: ["size-wise-stock-v2", page] as const,
+    queryKey: ["size-wise-stock-v2"] as const,
     queryFn: async (): Promise<PageData> => {
-      const res = await axiosSecure.get(`/stock/getallmultiplevariant?page=${page}&limit=${PAGE_LIMIT}`);
-      const raw = res.data?.data ?? {};
-      const variants = Array.isArray(raw) ? raw : (raw.variants ?? []);
+      const variants = await fetchAllVariants<MultiVariant>();
       // This page shows multi-variant products only — the endpoint's
       // total/totalPages include single-variant products too, so derive
       // counts from the filtered pivot instead of trusting the server totals.
@@ -273,7 +278,7 @@ const SizeWiseStockList = () => {
 
   useEffect(() => { if (isError) toast.error("Failed to fetch stock data"); }, [isError]);
 
-  const allRows    = pageData?.pivot      ?? [];
+  const allRows    = pageData?.pivot      ?? NO_ROWS;
   const total      = pageData?.total      ?? 0;
   const totalPages = pageData?.totalPages ?? 1;
 
@@ -329,11 +334,12 @@ const SizeWiseStockList = () => {
         const localMatch =
           x.productName.toLowerCase().includes(lq) ||
           x.barcode.toLowerCase().includes(lq) ||
+          x.barcodes.some((code) => code.includes(lq)) ||
           x.category.toLowerCase().includes(lq) ||
           x.subcategory.toLowerCase().includes(lq) ||
           x.brand.toLowerCase().includes(lq);
         if (searchMatched) {
-          return searchMatched.has(x.productName.toLowerCase()) || searchMatched.has(x.barcode.toLowerCase()) || localMatch;
+          return searchMatched.has(x.productName.toLowerCase()) || (searchMatched.has(x.barcode.toLowerCase()) || x.barcodes.some((code) => searchMatched.has(code))) || localMatch;
         }
         return localMatch;
       });

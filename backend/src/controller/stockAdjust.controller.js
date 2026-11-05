@@ -328,7 +328,8 @@ exports.getAllVariants = asynchandeler(async (req, res, next) => {
     Variant.find()
       .populate({ path: "product", populate: [{ path: "category", select: "name _id" }, { path: "subcategory", select: "name _id" }, { path: "brand", select: "name _id" }] })
       .select("variantName barCode sku size color stockVariant product")
-      .sort({ createdAt: -1 })
+      // _id settles equal dates, or paging could repeat one variant and skip another
+      .sort({ createdAt: -1, _id: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),

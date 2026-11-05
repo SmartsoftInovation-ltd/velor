@@ -122,12 +122,11 @@ const formatGroupQty = (
   return parts.join(" ").trim() || "N/A";
 };
 
-// A scanned barcode goes to the dedicated `barCode` query so the backend can
-// match the field directly, the way ProductList already does.
+// Barcodes vary in length, so one box can't tell a scan from a name: the term
+// is sent as all three and a match on any of them counts.
 const searchEndpoint = (q: string): string => {
-  const term = q.trim();
-  const param = /^\d{8,14}$/.test(term) ? "barCode" : "name";
-  return `/product/search-product?${param}=${encodeURIComponent(term)}`;
+  const term = encodeURIComponent(q.trim());
+  return `/product/search-product?name=${term}&barCode=${term}&sku=${term}`;
 };
 
 // A search hit is a standalone variant, not a product, when it has no

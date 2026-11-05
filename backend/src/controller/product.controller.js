@@ -126,6 +126,17 @@ const pagedProducts = async (req, base, { select, populate = true } = {}) => {
     ];
     const byName = nameContainsFilter(search, "name");
     if (byName) conditions.unshift(byName);
+    // A multi-variant product's barcodes live on its variants
+    const scanned = await Variant.find({
+      $or: [
+        { barCode: { $regex: `^${escapeRegex(search)}` } },
+        { sku: { $regex: `^${escapeRegex(search)}` } },
+      ],
+    })
+      .select("product")
+      .limit(MAX_LIMIT)
+      .lean();
+    if (scanned.length) conditions.push({ _id: { $in: scanned.map((v) => v.product) } });
     query._id = { $in: await idsMatchingAny(Product, conditions, MAX_LIMIT) };
   }
 

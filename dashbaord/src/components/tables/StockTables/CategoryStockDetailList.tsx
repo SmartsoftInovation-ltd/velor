@@ -61,6 +61,11 @@ interface Product {
   purchaseQuantityStock?: number;
   purchaseReturnStock?: number;
   salesReturnStock?: number;
+  // /product/search-product also answers with standalone variants, which carry
+  // their parent product embedded instead of a name and variantType of their own.
+  resultType?: "product" | "variant";
+  variantName?: string;
+  product?: { _id?: string; name?: string };
 }
 
 interface StockRow {
@@ -119,50 +124,73 @@ const calcStock = (
   courierReturn -
   (posSold + sold + adjMinus + buyReturn);
 
+const variantRow = (
+  v: Variant,
+  key: string,
+  productName: string,
+  subcategory: string,
+  fallbackBarcode?: string,
+): StockRow => {
+  const opening = num(v.initialStock);
+  const buyQty = num(v.purchaseQuantityStock);
+  const adjPlus = num(v.stockAdjustmentPlus);
+  const adjMinus = num(v.stockAdjustmentMinus);
+  const sold = num(v.totalSales);
+  const buyReturn = num(v.purchaseReturnStock);
+  const salesReturn = num(v.salesReturnStock);
+  const courierReturn = num(v.totalSalesReturnQuantity);
+  const posSold = num(v.posSold);
+  return {
+    key,
+    barcode: v.barCode || v.sku || fallbackBarcode || "-",
+    subcategory,
+    productName,
+    size: strVal(v.size),
+    color: strVal(v.color),
+    opening,
+    buyQty,
+    adjPlus,
+    adjMinus,
+    sold,
+    posSold,
+    buyReturn,
+    salesReturn,
+    courierReturn,
+    stock: calcStock(
+      opening,
+      buyQty,
+      adjPlus,
+      adjMinus,
+      sold,
+      posSold,
+      buyReturn,
+      salesReturn,
+      courierReturn,
+    ),
+  };
+};
+
 const flattenProducts = (products: Product[]): StockRow[] => {
-  const rows: StockRow[] = [];
+  const rows = new Map<string, StockRow>();
+  // A name search returns a variant twice: nested in its product and on its own
+  const push = (row: StockRow) => {
+    if (!rows.has(row.key)) rows.set(row.key, row);
+  };
   for (const item of products) {
-    if (item.variantType === "multipleVariant") {
-      const variants = item.variant ?? [];
-      if (variants.length === 0) continue;
-      for (const v of variants) {
-        const opening = num(v.initialStock);
-        const buyQty = num(v.purchaseQuantityStock);
-        const adjPlus = num(v.stockAdjustmentPlus);
-        const adjMinus = num(v.stockAdjustmentMinus);
-        const sold = num(v.totalSales);
-        const buyReturn = num(v.purchaseReturnStock);
-        const salesReturn = num(v.salesReturnStock);
-        const courierReturn = num(v.totalSalesReturnQuantity);
-        const posSold = num(v.posSold);
-        rows.push({
-          key: `${item._id}-${v._id}`,
-          barcode: v.barCode || v.sku || item.barCode || "-",
-          subcategory: item.subcategory?.name || "-",
-          productName: item.name,
-          size: strVal(v.size),
-          color: strVal(v.color),
-          opening,
-          buyQty,
-          adjPlus,
-          adjMinus,
-          sold,
-          posSold,
-          buyReturn,
-          salesReturn,
-          courierReturn,
-          stock: calcStock(
-            opening,
-            buyQty,
-            adjPlus,
-            adjMinus,
-            sold,
-            posSold,
-            buyReturn,
-            salesReturn,
-            courierReturn,
-          ),
-        });
+    const subcategory = item.subcategory?.name || "-";
+    if (item.resultType === "variant") {
+      const parentId = item.product?._id ?? "variant";
+      push(
+        variantRow(
+          item,
+          `${parentId}-${item._id}`,
+          item.product?.name || item.variantName || "-",
+          subcategory,
+        ),
+      );
+    } else if (item.variantType === "multipleVariant") {
+      for (const v of item.variant ?? []) {
+        push(variantRow(v, `${item._id}-${v._id}`, item.name, subcategory, item.barCode));
       }
     } else {
       const opening = num(item.initialStock);
@@ -174,10 +202,10 @@ const flattenProducts = (products: Product[]): StockRow[] => {
       const salesReturn = num(item.salesReturnStock);
       const courierReturn = num(item.totalSalesReturnQuantity);
       const posSold = num(item.posSold);
-      rows.push({
+      push({
         key: item._id,
         barcode: item.barCode || item.sku || "-",
-        subcategory: item.subcategory?.name || "-",
+        subcategory,
         productName: item.name,
         size: strVal(item.size),
         color: strVal(item.color),
@@ -204,7 +232,7 @@ const flattenProducts = (products: Product[]): StockRow[] => {
       });
     }
   }
-  return rows;
+  return [...rows.values()];
 };
 
 // ---------- Columns ----------
@@ -308,7 +336,12 @@ const CategoryStockDetailList = () => {
 
   // ── Fetch products with cache ──────────────────────────────────────────────
   const buildEndpoint = (q: string, cat: string, sub: string) => {
-    if (q) return `/product/search-product?name=${encodeURIComponent(q)}`;
+    // Barcodes vary in length, so one box can't tell a scan from a name: the
+    // term is sent as all three and a match on any of them counts
+    if (q) {
+      const term = encodeURIComponent(q.trim());
+      return `/product/search-product?name=${term}&barCode=${term}&sku=${term}`;
+    }
     const params = new URLSearchParams();
     if (cat) params.set("category", cat);
     if (sub) params.set("subcategory", sub);
