@@ -1,11 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { FiCornerDownLeft, FiFileText, FiSearch } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebarSections } from "../../layout/sidebarNav";
 import { allowedReportCategories } from "../reports/reportCategories";
 import { buildSearchEntries, searchEntries } from "./globalSearch";
 
 const LIST_ID = "global-search-results";
+
+// Marks the first place the typed words appear in a page's name
+const Highlighted = ({ text, query }: { text: string; query: string }) => {
+  const term = query.trim().toLowerCase();
+  const at = term ? text.toLowerCase().indexOf(term) : -1;
+  if (at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark className="rounded-[3px] bg-accent-100 text-inherit dark:bg-accent-500/30">{text.slice(at, at + term.length)}</mark>
+      {text.slice(at + term.length)}
+    </>
+  );
+};
+
+const Key = ({ children }: { children: React.ReactNode }) => (
+  <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-gray-200 bg-white px-1 font-sans text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-white/5 dark:text-gray-400">
+    {children}
+  </kbd>
+);
 
 export default function GlobalSearch() {
   const navigate = useNavigate();
@@ -128,40 +149,74 @@ export default function GlobalSearch() {
         </button>
 
         {showList && (
-          <div className="absolute left-0 right-0 z-99999 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark">
+          <div className="absolute left-0 right-0 z-99999 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
             {results.length === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                No page found for "{query.trim()}"
-              </p>
+              <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                <span className="flex size-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5">
+                  <FiSearch className="size-4" aria-hidden="true" />
+                </span>
+                <p className="text-sm text-gray-500 dark:text-gray-400">No page found for "{query.trim()}"</p>
+              </div>
             ) : (
-              <ul ref={listRef} id={LIST_ID} role="listbox" className="max-h-96 overflow-y-auto p-1.5">
-                {results.map((entry, index) => (
-                  <li
-                    key={entry.path}
-                    id={`${LIST_ID}-${index}`}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    // Keeps focus in the input, whose blur would close the list before the click lands
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onClick={() => openPage(entry.path)}
-                    className={`cursor-pointer rounded-lg px-3 py-2 ${
-                      index === activeIndex ? "bg-accent-50 dark:bg-accent-500/15" : ""
-                    }`}
-                  >
-                    <p
-                      className={`text-sm font-medium ${
-                        index === activeIndex
-                          ? "text-accent-600 dark:text-accent-400"
-                          : "text-gray-800 dark:text-gray-200"
-                      }`}
-                    >
-                      {entry.name}
-                    </p>
-                    <p className="truncate text-xs text-gray-500 dark:text-gray-400">{entry.trail}</p>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <p className="border-b border-gray-100 px-4 py-2 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                  {results.length} {results.length === 1 ? "page" : "pages"}
+                </p>
+                {/* No scrollbar to look at, so the fade is what says more waits below */}
+                <ul
+                  ref={listRef}
+                  id={LIST_ID}
+                  role="listbox"
+                  className={`no-scrollbar max-h-80 overflow-y-auto p-1.5 ${
+                    results.length > 6 ? "[mask-image:linear-gradient(to_bottom,black_calc(100%-20px),transparent)]" : ""
+                  }`}
+                >
+                  {results.map((entry, index) => {
+                    const active = index === activeIndex;
+                    return (
+                      <li
+                        key={entry.path}
+                        id={`${LIST_ID}-${index}`}
+                        role="option"
+                        aria-selected={active}
+                        // Keeps focus in the input, whose blur would close the list before the click lands
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onClick={() => openPage(entry.path)}
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 ${
+                          active ? "bg-accent-50 dark:bg-accent-500/15" : ""
+                        }`}
+                      >
+                        <span
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                            active
+                              ? "bg-accent-500 text-white"
+                              : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400"
+                          }`}
+                        >
+                          <FiFileText className="size-4" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={`block truncate text-sm font-medium ${
+                              active ? "text-accent-700 dark:text-accent-300" : "text-gray-800 dark:text-gray-200"
+                            }`}
+                          >
+                            <Highlighted text={entry.name} query={query} />
+                          </span>
+                          <span className="block truncate text-xs text-gray-500 dark:text-gray-400">{entry.trail}</span>
+                        </span>
+                        {active && <FiCornerDownLeft className="size-3.5 shrink-0 text-accent-600 dark:text-accent-400" aria-hidden="true" />}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="flex items-center gap-4 border-t border-gray-100 bg-gray-50 px-4 py-2 text-[11px] text-gray-500 dark:border-gray-800 dark:bg-white/[0.02] dark:text-gray-400">
+                  <span className="flex items-center gap-1"><Key>↑</Key><Key>↓</Key><span>navigate</span></span>
+                  <span className="flex items-center gap-1"><Key>↵</Key><span>open</span></span>
+                  <span className="flex items-center gap-1"><Key>esc</Key><span>close</span></span>
+                </div>
+              </>
             )}
           </div>
         )}
