@@ -3,6 +3,8 @@ interface MobileCardListProps<T> {
   renderCard: (item: T, index: number) => React.ReactNode;
   getKey: (item: T, index: number) => string | number;
   emptyMessage?: string;
+  /** Replaces the plain empty message, e.g. with a ListEmptyState */
+  empty?: React.ReactNode;
 }
 
 // Stacked card fallback for dense tables below md. Not virtualized — mobile
@@ -13,8 +15,10 @@ function MobileCardList<T>({
   renderCard,
   getKey,
   emptyMessage = "No records found",
+  empty,
 }: MobileCardListProps<T>) {
   if (!items.length) {
+    if (empty) return <>{empty}</>;
     return (
       <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
         {emptyMessage}

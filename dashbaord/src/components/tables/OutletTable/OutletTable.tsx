@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { FaEye } from "react-icons/fa";
+import { FaEye, FaStore } from "react-icons/fa";
 import { FiEdit2 } from "react-icons/fi";
 import { MdDelete } from "react-icons/md";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import Input from "../../form/input/InputField";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import ListEmptyState from "../../common/ListEmptyState";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
 
@@ -143,16 +144,15 @@ const OutletInfoTable = () => {
       )}
 
       {!loading && filtered.length === 0 && (
-        <div className="py-10 text-center text-sm text-gray-500">
-          {search
-            ? `No results for "${search}".`
-            : "No outlet information found. "}
-          {!search && canAdd && (
-            <Link to="/add-outlet" className="text-accent-600 hover:underline">
-              Create one
-            </Link>
-          )}
-        </div>
+        <ListEmptyState
+          icon={<FaStore />}
+          title="No outlets yet"
+          hint="Add your shop's physical outlets so shoppers can find and visit them."
+          search={search}
+          onClearSearch={() => setSearch("")}
+          createTo={canAdd ? "/add-outlet" : undefined}
+          createLabel="Add outlet"
+        />
       )}
 
       {!loading && filtered.length > 0 && isMobile ? (
