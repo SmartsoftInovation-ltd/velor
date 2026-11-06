@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const { sendEmail } = require("../helpers/nodemailer");
 const { getGeneralConfig } = require("../integrations/config");
 const { getTenantId, runAsPlatform } = require("../tenancy/context");
-const { sendSMS } = require("../helpers/sms");
+const { RESET_CODE_TTL_SECONDS, findByEmailOrPhone, sendResetCode, checkResetCode } = require("../service/passwordReset.service");
 const { getTenantById, assertTenantActive } = require("../tenancy/tenantResolver");
 const { getFeatures } = require("../settings/settings.service");
 const rbac = require("../tenancy/rbac");
@@ -26,7 +26,6 @@ const {
   PASSWORD_MIN_MESSAGE,
 } = require("../constant/constant");
 const { imageQueue } = require("@/queues/image.queue");
-const { cache: redis } = require("@/config/redis.config");
 const { logAudit } = require("@/service/audit.service");
 const {
   getCache,
@@ -366,44 +365,8 @@ exports.verifyEmail = asynchandeler(async (req, res) => {
 //forgot password: a one-time code by SMS, sent with the store's own SMS settings
 // (set by the platform on the seller's page). The platform SMS account is only for messages to a store
 // owner who has no store yet, such as the sign-in details for a new store.
-// The code lives in Redis with a TTL, so it is gone from the backend the moment
-// it expires; nothing is written to the user document.
-const RESET_CODE_TTL_SECONDS = 3 * 60;
-const RESET_CODE_MAX_ATTEMPTS = 5;
+// The code itself is handled in service/passwordReset.service.js.
 const RESET_CODE_SENT_MESSAGE = "A reset code has been sent by SMS to the phone number on the account";
-
-// Only a keyed hash of the code is stored, bound to the account
-const hashResetCode = (user, code) =>
-  crypto.createHmac("sha256", process.env.ACCESS_TOKEN_SECRET || "reset-code").update(`${user._id}:${code}`).digest("hex");
-
-const resetCodeKey = (user) => `pwreset:${user.tenantId}:${user._id}`;
-const resetTriesKey = (user) => `${resetCodeKey(user)}:tries`;
-
-const clearResetCode = (user) => Promise.all([redis.del(resetCodeKey(user)), redis.del(resetTriesKey(user))]);
-
-// Bangladeshi numbers are saved as 01XXXXXXXXX, but older accounts may carry
-// the 880 / +880 prefix, so look the account up under every form
-const phoneForms = (phone) => {
-  const local = phone.replace(/[\s-]/g, "").replace(/^\+?880/, "0");
-  return [...new Set([phone, local, `880${local.slice(1)}`, `+880${local.slice(1)}`])];
-};
-
-const findByEmailOrPhone = (body) => {
-  const email = body.email?.trim().toLowerCase();
-  const phone = body.phone?.trim();
-  if (email) return User.findOne({ email });
-  return phone ? User.findOne({ phone: { $in: phoneForms(phone) } }) : null;
-};
-
-const maskPhone = (phone) => String(phone).replace(/^(.*)(\d{3})$/, (_, head, tail) => `${head.slice(0, 3)}${"*".repeat(Math.max(0, head.length - 3))}${tail}`);
-
-// BulkSMSBD answers HTTP 200 even when it rejects a message (unlisted IP, no
-// balance, bad sender ID); its own response_code 202 is the only "accepted"
-const assertSmsAccepted = (data) => {
-  if (data?.response_code !== undefined && Number(data.response_code) !== 202) {
-    throw new Error(data.error_message || `SMS provider responded with ${data.response_code}`);
-  }
-};
 
 exports.forgotPassword = asynchandeler(async (req, res) => {
   const tenantId = getTenantId();
@@ -441,24 +404,12 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
   }
 
   // A new code replaces the previous one, and its 3 minutes start again
-  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
-  await redis.set(resetCodeKey(user), hashResetCode(user, code), "EX", RESET_CODE_TTL_SECONDS);
-  await redis.set(resetTriesKey(user), "0", "EX", RESET_CODE_TTL_SECONDS);
-
-  const store = req.tenant?.name ? `${req.tenant.name} ` : "";
-  // Status lines for the terminal; the code itself is never logged
-  const tag = `[forgot-password] store=${req.workspace || user.tenantId} user=${user._id} phone=${maskPhone(user.phone)}`;
-  console.log(`${tag} sending reset code by SMS (expires in ${RESET_CODE_TTL_SECONDS}s)`);
   try {
-    const data = await sendSMS(
-      user.phone,
-      `Your ${store}password reset code is ${code}. It expires in 3 minutes. Do not share this code with anyone.`,
-    );
-    assertSmsAccepted(data);
-    console.log(`${tag} SMS accepted by provider:`, data);
-  } catch (error) {
-    await clearResetCode(user);
-    console.error(`${tag} SMS failed, code discarded:`, error.response?.data || error.message);
+    await sendResetCode(user, {
+      storeName: req.tenant?.name,
+      tag: `[forgot-password] store=${req.workspace || user.tenantId}`,
+    });
+  } catch {
     throw new customError(
       "The reset code could not be sent by SMS. Please try again, or ask the platform team to check this store's SMS account.",
       statusCodes.SERVICE_UNAVAILABLE,
@@ -479,20 +430,11 @@ exports.resetPassword = asynchandeler(async (req, res) => {
     throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
   }
 
-  const invalid = () => new customError("Invalid or expired code", statusCodes.BAD_REQUEST);
   const user = await findByEmailOrPhone(req.body);
-  const stored = user && (await redis.get(resetCodeKey(user)));
-  if (!stored) throw invalid();
-
-  const expected = Buffer.from(stored, "hex");
-  const given = Buffer.from(hashResetCode(user, code), "hex");
-  if (!/^\d{6}$/.test(code) || !crypto.timingSafeEqual(expected, given)) {
-    // A few guesses only: after that the code is burned and a new one is needed
-    if ((await redis.incr(resetTriesKey(user))) >= RESET_CODE_MAX_ATTEMPTS) await clearResetCode(user);
-    throw invalid();
+  if (!(await checkResetCode(user, code, { consume: true }))) {
+    throw new customError("Invalid or expired code", statusCodes.BAD_REQUEST);
   }
 
-  await clearResetCode(user);
   user.password = newPassword;
   // A reset is how an account is recovered after a compromise, so end every
   // session the previous password left open.

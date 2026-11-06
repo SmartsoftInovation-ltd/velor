@@ -381,4 +381,27 @@ describe("storefront shopper accounts", () => {
       await refresh(VELOR, staff.generateJwtRefreshToken()).expect(401);
     });
   });
+
+  describe("sign-up by mobile number alone", () => {
+    it("creates accounts with no email, and signs them in by phone", async () => {
+      const first = await register(VELOR, { name: "Rahim", phone: "01711000001", password: "Shopper-Pass1" }).expect(201);
+      // A second phone-only shopper must not collide on the missing email
+      await register(VELOR, { name: "Karim", phone: "01711000002", password: "Shopper-Pass1", email: "  " }).expect(201);
+      expect(first.body.data.user.email).toBeUndefined();
+
+      const stored = await runForTenant(velor.tenant._id, () => User.find({ phone: /^0171100000/ }).lean());
+      expect(stored.every((user) => !("email" in user))).toBe(true);
+
+      await login(VELOR, { phone: "01711000001", password: "Shopper-Pass1" }).expect(200);
+    });
+
+    it("still keeps emails and phones unique within a store", async () => {
+      await register(VELOR, { name: "Rahim", phone: "01711000001", password: "Shopper-Pass1" }).expect(201);
+      await register(VELOR, { name: "Again", phone: "01711000001", password: "Shopper-Pass1" }).expect(409);
+      await register(VELOR, SHOPPER).expect(201);
+      await register(VELOR, { ...SHOPPER, name: "Copy" }).expect(409);
+      // The same number is a separate account at another store
+      await register(PIZZA, { name: "Rahim", phone: "01711000001", password: "Shopper-Pass1" }).expect(201);
+    });
+  });
 });

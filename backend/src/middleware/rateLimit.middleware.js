@@ -85,6 +85,22 @@ const resetSubmitLimiter = rateLimit({
   handler: tooMany("Too many attempts. Please try again in 15 minutes."),
 });
 
+// Storefront code checks (verify and reset). Every shopper reaches the API
+// through the one storefront server, so counting by IP alone would let one
+// shopper's typos lock out everyone; this counts per IP and phone instead.
+// Each code also dies after a few wrong guesses on its own.
+const shopResetSubmitLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `shop-reset-submit:${clientIp(req)}:${accountKey(req)}`,
+  handler: tooMany("Too many attempts. Please try again in 15 minutes."),
+});
+
 // Self-serve registration, per IP. Stops automated account creation without
 // getting in the way of a real person signing up.
 const registerLimiter = rateLimit({
@@ -238,6 +254,7 @@ module.exports = {
   loginLimiter,
   passwordResetLimiter,
   resetSubmitLimiter,
+  shopResetSubmitLimiter,
   registerLimiter,
   changePasswordLimiter,
 };

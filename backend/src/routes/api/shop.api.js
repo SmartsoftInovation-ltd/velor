@@ -5,7 +5,7 @@ const shopOrderController = require("../../controller/shopOrder.controller");
 const shopCatalogController = require("../../controller/shopCatalog.controller");
 const shopCartController = require("../../controller/shopCart.controller");
 const { guestOrAuth } = require("../../middleware/guestOrAuth");
-const { loginLimiter, registerLimiter, couponLimiter } = require("../../middleware/rateLimit.middleware");
+const { loginLimiter, registerLimiter, couponLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
 
 /**
  * Storefront customer accounts.
@@ -27,6 +27,9 @@ _.get("/products/:slug", shopCatalogController.product);
 _.post("/auth/register", registerLimiter, shopController.register);
 _.post("/auth/login", loginLimiter, shopController.login);
 _.post("/auth/refresh", shopController.refresh);
+_.post("/auth/forgot-password", passwordResetLimiter, shopController.forgotPassword);
+_.post("/auth/verify-reset-code", shopResetSubmitLimiter, shopController.verifyResetCode);
+_.post("/auth/reset-password", shopResetSubmitLimiter, shopController.resetPassword);
 
 _.get("/me", shopperGuard, shopController.me);
 _.get("/orders", shopperGuard, shopController.myOrders);

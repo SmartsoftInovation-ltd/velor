@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { VisualReset } from "@/components/auth/visual-reset";
-import { Button } from "@/components/ui/button";
-import { ArrowRightIcon, ShieldLockIcon } from "@/components/ui/icons-auth";
-import { LockIcon } from "@/components/ui/icons-nav";
-import { PasswordInput } from "@/components/ui/password-input";
+import { readResetProgress, RESET_COOKIE } from "@/lib/password-reset";
 import { NO_INDEX } from "@/lib/seo";
-
-const RULES = [
-  "At least 8 characters",
-  "One number or symbol",
-  "Different from your last password",
-];
 
 export const metadata: Metadata = {
   robots: NO_INDEX,
@@ -20,12 +14,15 @@ export const metadata: Metadata = {
   description: "Choose a new password for your account.",
 };
 
-export default function ResetPasswordPage() {
+export default async function ResetPasswordPage() {
+  // Only after the code has been checked
+  if (!readResetProgress((await cookies()).get(RESET_COOKIE)?.value)?.otp) redirect("/forgot-password");
+
   return (
     <AuthShell
       title="Set a new"
       titleAccent="password"
-      description="Choose a password you haven't used on this account before."
+      description="Choose a new password. You'll be signed out everywhere and sign in again with it."
       aside={{
         headline: "One strong password,",
         script: "used nowhere else",
@@ -41,45 +38,7 @@ export default function ResetPasswordPage() {
         </Link>
       }
     >
-      {/* Design only — no action, no validation. */}
-      <form className="space-y-3">
-        <PasswordInput
-          id="reset-password"
-          aria-label="New password"
-          autoComplete="new-password"
-          placeholder="New password"
-          icon={<LockIcon />}
-        />
-
-        <PasswordInput
-          id="reset-password-confirm"
-          aria-label="Confirm new password"
-          autoComplete="new-password"
-          placeholder="Confirm new password"
-          icon={<LockIcon />}
-        />
-
-        <div className="rounded-md bg-bg-sunken p-3">
-          <p className="mb-2 flex items-center gap-2 text-caption font-medium text-text-secondary">
-            <ShieldLockIcon className="size-4 text-text-tertiary" />
-            Your password should have
-          </p>
-          <ul className="space-y-1 pl-6">
-            {RULES.map((rule) => (
-              <li
-                key={rule}
-                className="relative text-caption text-text-tertiary before:absolute before:-left-3 before:top-2 before:size-1 before:rounded-full before:bg-text-tertiary"
-              >
-                {rule}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <Button type="submit" size="lg" fullWidth iconEnd={<ArrowRightIcon />}>
-          Reset password
-        </Button>
-      </form>
+      <ResetPasswordForm />
     </AuthShell>
   );
 }

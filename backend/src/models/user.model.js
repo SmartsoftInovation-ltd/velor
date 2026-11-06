@@ -28,7 +28,14 @@ const imageSchema = new mongoose.Schema(
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    /**
+     * Unique per store, but optional: a storefront shopper may sign up with a
+     * mobile number alone. Staff always have one; their sign-up and the
+     * dashboard's user form require it (user.validation.js). `sparse` makes
+     * the tenant plugin build a partial index, so accounts without an email
+     * never collide. Leave the field out rather than saving null or "".
+     */
+    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     image: {
       type: imageSchema,

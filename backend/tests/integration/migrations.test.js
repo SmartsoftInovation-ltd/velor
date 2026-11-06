@@ -109,6 +109,8 @@ describe("Velor migration", () => {
         ["014-phase2-indexes", "applied"],
         ["015-backfill-search-words", "applied"],
         ["016-backfill-invoice-serial", "applied"],
+        ["017-split-module-permissions", "applied"],
+        ["018-optional-user-email", "applied"],
       ]);
     });
 

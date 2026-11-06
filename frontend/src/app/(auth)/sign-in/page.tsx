@@ -16,9 +16,14 @@ export const metadata: Metadata = {
 };
 
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
-  const { next, expired } = await searchParams;
+  const { next, expired, reset } = await searchParams;
   const returnTo = safeReturnPath(next);
-  const notice = expired === "1" ? "Your session has expired. Sign in again to continue." : undefined;
+  const notice =
+    reset === "1"
+      ? "Your password has been changed. Sign in with your new password."
+      : expired === "1"
+        ? "Your session has expired. Sign in again to continue."
+        : undefined;
   const store = await getStore(storeHostFrom(await headers()));
   const storeName = store?.name || "this shop";
 
