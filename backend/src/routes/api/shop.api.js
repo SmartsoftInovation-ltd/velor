@@ -26,6 +26,7 @@ _.get("/flash-sale", shopCatalogController.flashSale);
 _.get("/products/:slug", shopCatalogController.product);
 _.post("/auth/register", registerLimiter, shopController.register);
 _.post("/auth/login", loginLimiter, shopController.login);
+_.post("/auth/refresh", shopController.refresh);
 
 _.get("/me", shopperGuard, shopController.me);
 _.get("/orders", shopperGuard, shopController.myOrders);

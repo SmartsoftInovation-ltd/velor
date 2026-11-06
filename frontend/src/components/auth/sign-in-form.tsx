@@ -14,9 +14,10 @@ import { FieldLabel } from "./field-label";
 /**
  * Signs in through a Server Action, against the store this domain belongs to.
  * A failed submit keeps the email or number and says what went wrong; the
- * password is never sent back.
+ * password is never sent back. `returnTo` is where to land after; `notice`
+ * says why the shopper was sent here, until they submit.
  */
-export function SignInForm() {
+export function SignInForm({ returnTo = "/", notice }: { returnTo?: string; notice?: string }) {
   const [state, action, pending] = useActionState<SignInState, FormData>(signInAction, {});
   const errors = state.fieldErrors ?? {};
   // A new key per failed submit remounts the inputs with the returned values
@@ -24,6 +25,12 @@ export function SignInForm() {
 
   return (
     <form action={action} className="space-y-4" noValidate>
+      <input type="hidden" name="next" value={returnTo} />
+      {notice && !state.error && !state.fieldErrors ? (
+        <p role="status" className="rounded-md border border-border-default bg-bg-sunken px-3 py-2.5 text-small text-text-secondary">
+          {notice}
+        </p>
+      ) : null}
       {state.error ? (
         <p role="alert" className="rounded-md border border-danger-solid/30 bg-danger-subtle px-3 py-2.5 text-small text-danger-text">
           {state.error}

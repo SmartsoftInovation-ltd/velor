@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ApiError, storeHostFrom } from "@/lib/store-api";
 import {
@@ -9,11 +9,10 @@ import {
   loginShopper,
   normalizePhone,
   passwordProblems,
-  REFRESH_COOKIE,
   registerShopper,
-  SESSION_COOKIE,
-  type ShopperSession,
+  safeReturnPath,
 } from "@/lib/shopper-auth";
+import { clearSession, storeSession } from "@/lib/actions/shopper-identity";
 
 export type SignUpState = {
   error?: string;
@@ -27,8 +26,6 @@ export type SignInState = {
   fieldErrors?: Partial<Record<"contact" | "password", string>>;
   values?: { contact: string; method: "email" | "phone" };
 };
-
-const DAY = 24 * 60 * 60;
 
 /**
  * Creates a shopper account in the store this domain belongs to. The store
@@ -71,7 +68,7 @@ export async function signUpAction(_prev: SignUpState, form: FormData): Promise<
     return { error: "We could not create your account just now. Please try again.", values };
   }
 
-  await saveSession(session, true);
+  await storeSession(session, true);
   redirect("/?welcome=1");
 }
 
@@ -110,26 +107,12 @@ export async function signInAction(_prev: SignInState, form: FormData): Promise<
     return { error: "We could not sign you in just now. Please try again.", values };
   }
 
-  await saveSession(session, form.get("remember") === "on");
-  redirect("/");
+  await storeSession(session, form.get("remember") === "on");
+  redirect(safeReturnPath(form.get("next")));
 }
 
 /** Ends the session on this shop's domain only; other shops keep theirs. */
 export async function signOutAction() {
-  const jar = await cookies();
-  jar.delete(SESSION_COOKIE);
-  jar.delete(REFRESH_COOKIE);
+  await clearSession();
   redirect("/sign-in");
-}
-
-/**
- * Stores the tokens in httpOnly cookies on the shop's domain. Without
- * "keep me signed in" they carry no expiry, so the browser drops them when it closes.
- */
-async function saveSession(session: ShopperSession, remember: boolean) {
-  const jar = await cookies();
-  const secure = process.env.NODE_ENV === "production";
-  const base = { httpOnly: true, sameSite: "lax", secure, path: "/" } as const;
-  jar.set(SESSION_COOKIE, session.accessToken, remember ? { ...base, maxAge: DAY } : base);
-  jar.set(REFRESH_COOKIE, session.refreshToken, remember ? { ...base, maxAge: 7 * DAY } : base);
 }

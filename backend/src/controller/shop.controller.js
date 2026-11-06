@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const StoreInformation = require("../models/storeInformation.model");
 const Banner = require("../models/banner.model");
@@ -217,6 +218,43 @@ exports.login = asynchandeler(async (req, res) => {
     user: shopperSummary(user),
     ...issueSession(user),
   });
+});
+
+/**
+ * Swaps a shopper's refresh token for a fresh pair, so a storefront session
+ * outlives the one-day access token. The storefront server sends the token in
+ * the body; it lives in an httpOnly cookie on the shop's domain, which the
+ * browser never sends here.
+ *
+ * Nothing is stored: the token is checked by signature and expiry, and is
+ * revoked the same way access tokens are, by bumping `tokenVersion` (password
+ * change or reset, deactivation). A token is honoured only in the store it was
+ * issued for, only for a shopper, and only while the account is active. Every
+ * refusal answers 401 alike, so the storefront simply asks the shopper to
+ * sign in again.
+ */
+exports.refresh = asynchandeler(async (req, res) => {
+  const tenantId = requireStore();
+  const token = typeof req.body?.refreshToken === "string" ? req.body.refreshToken.trim() : "";
+  const refused = new customError("Session expired. Please sign in again.", statusCodes.UNAUTHORIZED);
+  if (!token) throw refused;
+
+  let claims;
+  try {
+    claims = jwt.verify(token, process.env.REFRESH_TOKEN_SCCERET);
+  } catch {
+    throw refused;
+  }
+
+  // Tokens without an audience predate shopper sessions and belong to staff
+  if (claims.aud !== "shopper" || !claims.sub || String(claims.tid) !== String(tenantId)) throw refused;
+
+  // Scoped to this store by the tenancy plugin
+  const user = await User.findById(claims.sub).populate("roles");
+  if (!user || user.roles?.length || user.isBlocked || !user.isActive) throw refused;
+  if ((claims.tv ?? 0) !== (user.tokenVersion ?? 0)) throw refused;
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Session renewed", issueSession(user));
 });
 
 exports.me = asynchandeler(async (req, res) =>

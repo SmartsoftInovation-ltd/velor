@@ -1,8 +1,9 @@
 "use server";
 
 import { headers } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import { saveCartAction, type CheckoutLine } from "@/lib/actions/cart";
-import { shopperIdentity } from "@/lib/actions/shopper-identity";
+import { callAsShopper, shopperIdentity } from "@/lib/actions/shopper-identity";
 import {
   checkoutProblems,
   isGatewayUrl,
@@ -47,13 +48,17 @@ export async function previewCouponAction(
   if ("error" in shopper) return { error: shopper.error };
 
   try {
-    const data = await apiFetch<{ code: string; discountAmount: number }>(shopper.host, "/shop/coupon/preview", {
-      method: "POST",
-      headers: { "content-type": "application/json", ...shopper.who },
-      body: JSON.stringify({ couponCode: code, deliveryChargeId: ID.test(deliveryChargeId) ? deliveryChargeId : undefined }),
-    });
+    const body = JSON.stringify({ couponCode: code, deliveryChargeId: ID.test(deliveryChargeId) ? deliveryChargeId : undefined });
+    const data = await callAsShopper(shopper.host, shopper.who, (as) =>
+      apiFetch<{ code: string; discountAmount: number }>(shopper.host, "/shop/coupon/preview", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...as },
+        body,
+      }),
+    );
     return { code: data.code, discountAmount: data.discountAmount };
   } catch (error) {
+    unstable_rethrow(error);
     return { error: message(error, "The coupon could not be checked just now. Please try again.") };
   }
 }
@@ -89,16 +94,19 @@ export async function placeOrderAction(
   if ("error" in shopper) return { error: shopper.error };
 
   try {
-    const data = await apiFetch<{ order: { invoiceId: string }; gatewayUrl: string | null }>(shopper.host, "/shop/order", {
-      method: "POST",
-      headers: { "content-type": "application/json", ...shopper.who },
-      body: JSON.stringify({
-        shippingInfo: shippingInfoOf(input),
-        paymentMethod: input.paymentMethod,
-        deliveryChargeId: input.deliveryChargeId || undefined,
-        couponCode: input.couponCode || undefined,
-      }),
+    const body = JSON.stringify({
+      shippingInfo: shippingInfoOf(input),
+      paymentMethod: input.paymentMethod,
+      deliveryChargeId: input.deliveryChargeId || undefined,
+      couponCode: input.couponCode || undefined,
     });
+    const data = await callAsShopper(shopper.host, shopper.who, (as) =>
+      apiFetch<{ order: { invoiceId: string }; gatewayUrl: string | null }>(shopper.host, "/shop/order", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...as },
+        body,
+      }),
+    );
 
     if (input.paymentMethod === "sslcommerz") {
       // Never send the shopper anywhere but the payment gateway itself
@@ -107,6 +115,7 @@ export async function placeOrderAction(
     }
     return { invoiceId: data.order.invoiceId };
   } catch (error) {
+    unstable_rethrow(error);
     return { error: message(error, "Your order could not be placed just now. Please try again.") };
   }
 }

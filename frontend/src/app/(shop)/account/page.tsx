@@ -5,8 +5,8 @@ import { AccountDetails } from "@/components/account/account-details";
 import { AccountProfile } from "@/components/account/account-profile";
 import { AccountShortcuts } from "@/components/account/account-shortcuts";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
-import { getMe, SESSION_COOKIE } from "@/lib/shopper-auth";
-import { ApiError, getStore, storeHostFrom } from "@/lib/store-api";
+import { currentShopper, expiredSignInHref, REFRESH_COOKIE, SESSION_COOKIE } from "@/lib/shopper-auth";
+import { getStore, storeHostFrom } from "@/lib/store-api";
 import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -18,20 +18,16 @@ export const metadata: Metadata = {
 /**
  * The signed-in shopper's own page. The token stays in its httpOnly cookie and
  * is sent from this server; the browser never sees it. No session, or one the
- * API no longer accepts, goes to sign-in.
+ * API no longer accepts even after renewing it, goes to sign-in.
  */
 export default async function AccountPage() {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const jar = await cookies();
+  const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) redirect("/sign-in");
 
   const host = storeHostFrom(await headers());
-  const [user, store] = await Promise.all([
-    getMe(host, token).catch((error: unknown) => {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) redirect("/sign-in");
-      throw error;
-    }),
-    getStore(host),
-  ]);
+  const [user, store] = await Promise.all([currentShopper(host, token, jar.get(REFRESH_COOKIE)?.value), getStore(host)]);
+  if (!user) redirect(expiredSignInHref("/account"));
 
   return (
     <main className="container py-6">
