@@ -16,7 +16,6 @@ import {
   TbWorld,
   TbShieldLock,
   TbBuildingCommunity,
-  TbSparkles,
   TbBolt,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
@@ -341,6 +340,8 @@ const navItems: NavItem[] = [
       },
       { name: "Create Discount Banner", path: "/add-discount", module: PERMISSIONS.DISCOUNT_BANNER, action: "add", pro: false },
       { name: "Discount Banner List", path: "/discount-banner-list", module: PERMISSIONS.DISCOUNT_BANNER, pro: false },
+      // The storefront's "Limited offers" section
+      { name: "Limited Offer", path: "/limited-offer", module: PERMISSIONS.LIMITED_OFFER, pro: false },
       {
         name: "Create Size Chart",
         path: "/create-sizechart",
@@ -368,13 +369,6 @@ const navItems: NavItem[] = [
         pro: false,
       },
     ],
-  },
-  {
-    // The storefront's "Limited offers" section
-    name: "Limited Offer",
-    icon: <TbSparkles />,
-    path: "/limited-offer",
-    module: PERMISSIONS.LIMITED_OFFER,
   },
   {
     // Time-limited sale prices on the storefront

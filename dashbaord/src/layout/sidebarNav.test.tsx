@@ -74,7 +74,7 @@ describe("sidebar order", () => {
   it("groups Website Management as Web Order, Courier & Merchant and Website Settings", () => {
     const { result } = renderHook(() => useSidebarSections());
     const items = result.current.find((s) => s.label === "Website Management")?.items.map((i) => i.name);
-    expect(items).toEqual(["Web Order", "Courier & Merchant", "Website Settings", "Limited Offer", "Flash Sale"]);
+    expect(items).toEqual(["Web Order", "Courier & Merchant", "Website Settings", "Flash Sale"]);
     expect(links("Web Order")).toEqual(["Create Web Order", "Web Order List", "Incomplete Order List"]);
     // Only pages that exist: there is no Courier Delivery List or Create Courier Return page yet
     expect(links("Courier & Merchant")).toEqual([
@@ -92,6 +92,7 @@ describe("sidebar order", () => {
       "Web Banner List",
       "Create Discount Banner",
       "Discount Banner List",
+      "Limited Offer",
       "Create Size Chart",
       "Size Chart List",
       "Create Delivery Charge",
