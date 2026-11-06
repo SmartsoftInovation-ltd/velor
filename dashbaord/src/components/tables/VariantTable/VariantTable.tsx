@@ -22,7 +22,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
-import LoadMoreButton from "../../common/LoadMoreButton";
+import InfiniteScrollTrigger from "../../common/InfiniteScrollTrigger";
 import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 
 // Portal-based Tooltip
@@ -189,6 +189,20 @@ const VariantTable = () => {
     virtualRows.length > 0
       ? totalSize - (virtualRows?.[virtualRows.length - 1]?.end || 0)
       : 0;
+
+  // Infinite scroll: fetch the next page once the last rendered row is within
+  // a few rows of the end of what is loaded.
+  const lastRenderedIndex = virtualRows[virtualRows.length - 1]?.index ?? -1;
+  useEffect(() => {
+    if (
+      hasNextPage &&
+      !isFetchingNextPage &&
+      rawVariants.length > 0 &&
+      lastRenderedIndex >= rawVariants.length - 5
+    ) {
+      fetchNextPage();
+    }
+  }, [lastRenderedIndex, rawVariants.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleDeleteModal = (slug: string) => {
     setSelectedVariantSlug(slug);
@@ -637,7 +651,14 @@ const VariantTable = () => {
       </div>
 
       {/* Delete Confirmation Modal */}
-      <LoadMoreButton hasMore={hasNextPage} loading={isFetchingNextPage} onClick={() => fetchNextPage()} />
+      {/* Desktop loads from the virtualizer above; the mobile cards grow the page */}
+      <InfiniteScrollTrigger
+        watch={isMobile}
+        hasMore={hasNextPage}
+        loading={isFetchingNextPage}
+        onLoadMore={fetchNextPage}
+        label="Loading more variants…"
+      />
       <Modal isOpen={showDeleteModal} onClose={closeModal} className="!w-full !max-w-sm">
         <div className="p-8">
           <div className="flex items-center justify-center size-16 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 mb-5 mx-auto">

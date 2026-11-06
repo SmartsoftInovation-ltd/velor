@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import InfiniteScrollTrigger from "../../common/InfiniteScrollTrigger";
 import MobileCardRow from "../../common/MobileCardRow";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -845,24 +846,14 @@ const SalesHistoryTable = ({
       </div>
       )}
 
-      {/* The next page of the server-side list */}
-      {!loading && !isError && nextCursor && (
-        <div className="mt-4 flex justify-center">
-          <Button
-            onClick={() => fetchSales(false)}
-            disabled={loadingMore}
-            className="!bg-accent-500 hover:!bg-accent-600 !text-white !rounded font-semibold px-5 py-2 text-sm"
-          >
-            {loadingMore ? (
-              <span className="flex items-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Loading…
-              </span>
-            ) : (
-              "Load more"
-            )}
-          </Button>
-        </div>
+      {/* The next page of the server-side list, loaded as the end scrolls into view */}
+      {!loading && !isError && (
+        <InfiniteScrollTrigger
+          hasMore={!!nextCursor}
+          loading={loadingMore}
+          onLoadMore={() => fetchSales(false)}
+          label="Loading more sales…"
+        />
       )}
       <Modal isOpen={showDeleteModal} onClose={closeModal}>
         <div className="p-8">
