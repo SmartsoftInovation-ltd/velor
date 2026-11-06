@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
-import LoadMoreButton from "../../common/LoadMoreButton";
+import InfiniteScrollTrigger from "../../common/InfiniteScrollTrigger";
 
 // ---------- Types ----------
 
@@ -261,6 +261,15 @@ const LowStockList = () => {
   const paddingBottom = virtualItems.length > 0
     ? totalVH - (virtualItems[virtualItems.length - 1]?.end ?? 0)
     : 0;
+
+  // Infinite scroll: fetch the next page once the last rendered row is within
+  // a few rows of the end of what is loaded
+  const lastRenderedIndex = virtualItems[virtualItems.length - 1]?.index ?? -1;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && rows.length > 0 && lastRenderedIndex >= rows.length - 5) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, rows.length, lastRenderedIndex, fetchNextPage]);
 
   // The whole list's figures, from the server (not only the loaded pages)
   const lowCount    = totals?.count ?? rows.length;
@@ -522,7 +531,14 @@ const LowStockList = () => {
       </div>
       )}
 
-      <LoadMoreButton hasMore={hasNextPage} loading={isFetchingNextPage} onClick={() => fetchNextPage()} />
+      {/* Desktop loads from the virtualizer above; the mobile cards grow the page */}
+      <InfiniteScrollTrigger
+        watch={isMobile}
+        hasMore={hasNextPage}
+        loading={isFetchingNextPage}
+        onLoadMore={fetchNextPage}
+        label="Loading more items…"
+      />
     </div>
   );
 };

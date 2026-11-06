@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FaSync, FaChevronLeft, FaChevronRight, FaTimes, FaBoxOpen, FaLayerGroup } from "react-icons/fa";
+import { FaSync, FaTimes, FaBoxOpen, FaLayerGroup } from "react-icons/fa";
 import { MdOutlineQrCodeScanner } from "react-icons/md";
 import SearchableSelect from "../../form/SearchableSelect";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import InfiniteScrollTrigger from "../../common/InfiniteScrollTrigger";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
 
@@ -253,6 +254,8 @@ const ViewAllStockList = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal]           = useState(0);
   const [isLoading, setIsLoading]   = useState(false);
+  // A later page is loading below the rows already shown
+  const [loadingMore, setLoadingMore] = useState(false);
   const [totalQty, setTotalQty]     = useState(0);
 
   // search
@@ -358,7 +361,11 @@ const ViewAllStockList = () => {
     brand: string,
   ) => {
     const requestId = ++requestRef.current;
-    setIsLoading(true);
+    // Only the plain browse is paged; page 1 replaces the rows, later pages
+    // append to them (infinite scroll). Search and filters answer in one go.
+    const append = p > 1 && !q && !(cat || sub || brand);
+    if (append) setLoadingMore(true);
+    else setIsLoading(true);
     try {
       let endpoint: string;
 
@@ -381,14 +388,18 @@ const ViewAllStockList = () => {
       if (requestId !== requestRef.current) return;
       const data = res.data.data;
       const products: Product[] = data?.products ?? [];
-      setRows(flattenProducts(products));
+      const flat = flattenProducts(products);
+      setRows((prev) => (append ? [...prev, ...flat] : flat));
       setTotal(data?.total ?? products.length);
       setTotalPages(data?.totalPages ?? 1);
-      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      if (!append && scrollRef.current) scrollRef.current.scrollTop = 0;
     } catch (error) {
       if (requestId === requestRef.current) showApiError(error, "Failed to fetch products");
     } finally {
-      if (requestId === requestRef.current) setIsLoading(false);
+      if (requestId === requestRef.current) {
+        setIsLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, []);
 
@@ -441,6 +452,16 @@ const ViewAllStockList = () => {
   const paddingBottom = virtualItems.length > 0
     ? totalVH - (virtualItems[virtualItems.length - 1]?.end ?? 0)
     : 0;
+
+  // Infinite scroll over the plain browse: ask for the next page once the last
+  // rendered row is within a few rows of the end of what is loaded
+  const hasMore = !hasFilter && !debSearch && page < totalPages;
+  const lastRenderedIndex = virtualItems[virtualItems.length - 1]?.index ?? -1;
+  useEffect(() => {
+    if (hasMore && !isLoading && !loadingMore && rows.length > 0 && lastRenderedIndex >= rows.length - 5) {
+      setPage((p) => p + 1);
+    }
+  }, [hasMore, isLoading, loadingMore, rows.length, lastRenderedIndex]);
 
   const activeFilters = [categoryId, subcategoryId, brandId].filter(Boolean).length;
 
@@ -551,7 +572,7 @@ const ViewAllStockList = () => {
               </button>
             )}
             <button
-              onClick={() => fetchPage(page, debSearch, categoryId, subcategoryId, brandId)}
+              onClick={() => (page === 1 ? fetchPage(1, debSearch, categoryId, subcategoryId, brandId) : setPage(1))}
               disabled={isLoading}
               aria-label="Refresh"
               className="shine size-10 flex items-center justify-center rounded-md border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-all active:scale-90 disabled:opacity-50"
@@ -753,48 +774,14 @@ const ViewAllStockList = () => {
       </div>
       )}
 
-      {/* ── Pagination (only when no filter/search active) ── */}
-      {totalPages > 1 && !hasFilter && !debSearch && (
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            Page {page} of {totalPages} · {total} total products
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1 || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-accent-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
-            >
-              <FaChevronLeft size={11} />
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const start = Math.max(1, Math.min(page - 2, totalPages - 4));
-              const p = start + i;
-              return (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  disabled={isLoading}
-                  className={`size-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors disabled:opacity-40 ${
-                    p === page
-                      ? "bg-accent-500 text-white"
-                      : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-400"
-                  }`}
-                >
-                  {p}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-accent-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
-            >
-              <FaChevronRight size={11} />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Desktop loads from the virtualizer above; the mobile cards grow the page */}
+      <InfiniteScrollTrigger
+        watch={isMobile}
+        hasMore={hasMore}
+        loading={loadingMore}
+        onLoadMore={() => setPage((p) => p + 1)}
+        label="Loading more products…"
+      />
     </div>
   );
 };
