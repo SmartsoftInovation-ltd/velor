@@ -108,12 +108,16 @@ const removePrintHost = () => {
   document.body.classList.remove("print-snapshot");
 };
 
-export async function printSnapshot(snap: ReportSnapshot) {
+// thermal: print the 80mm receipt instead of the sheet. The print host is the
+// only body child left on paper, so it has to carry whichever one is wanted —
+// the 80mm print rules hide everything but .thermal-receipt, so printing the
+// sheet there comes out as a blank page.
+export async function printSnapshot(snap: ReportSnapshot, thermal = false) {
   removePrintHost();
   const host = document.createElement("div");
   host.id = PRINT_HOST_ID;
-  host.className = snap.className;
-  host.innerHTML = fullSheetHtml(snap);
+  host.className = thermal ? snap.thermalClassName : snap.className;
+  host.innerHTML = thermal ? snap.thermalHtml : fullSheetHtml(snap);
   document.body.appendChild(host);
   document.body.classList.add("print-snapshot");
   window.addEventListener("afterprint", removePrintHost, { once: true });
@@ -265,7 +269,7 @@ export function useReportPrintAll(previewOpen: boolean, { sheetRef, thermalRef, 
     previewRef,
     thermalPreviewRef,
     run,
-    print: () => run(() => (snapRef.current ? printSnapshot(snapRef.current) : undefined)),
+    print: (thermal = false) => run(() => (snapRef.current ? printSnapshot(snapRef.current, thermal) : undefined)),
     // An off-screen copy of the snapshot for the PDF builder, removed once the PDF is done
     pdfSource: (thermal: boolean): HTMLElement | null => {
       const snap = snapRef.current;
