@@ -9,6 +9,7 @@ const ROWS_SLOT = `${ROWS_ATTR}=""></tbody>`;
 // Rows added to the preview per step as it scrolls
 const PREVIEW_CHUNK = 300;
 const PRINT_HOST_ID = "report-print-snapshot";
+const ROLL_PAGE_ID = "report-print-roll-page";
 const COVER_CLASS = "report-capture-cover";
 
 // Reports show one page of rows on screen, but Preview, Print and PDF must
@@ -105,6 +106,7 @@ const imagesReady = (root: HTMLElement) =>
 
 const removePrintHost = () => {
   document.getElementById(PRINT_HOST_ID)?.remove();
+  document.getElementById(ROLL_PAGE_ID)?.remove();
   document.body.classList.remove("print-snapshot");
 };
 
@@ -122,8 +124,24 @@ export async function printSnapshot(snap: ReportSnapshot, thermal = false) {
   document.body.classList.add("print-snapshot");
   window.addEventListener("afterprint", removePrintHost, { once: true });
   await imagesReady(host);
+  if (thermal) sizeRollPage(host);
   window.print();
 }
+
+// Chrome rejects `size: 80mm auto`, so the reports' own 80mm @page rule is
+// dropped and the receipt lands on the printer's default A4/Letter page. Give
+// the page the receipt's measured height instead: one 80mm-wide page that
+// holds the whole receipt. Added after the report's rule, so it wins.
+const sizeRollPage = (host: HTMLElement) => {
+  host.style.display = "block";
+  const heightMm = Math.ceil((host.offsetHeight * 25.4) / 96) + 2;
+  host.style.display = "";
+  if (heightMm <= 2) return;
+  const style = document.createElement("style");
+  style.id = ROLL_PAGE_ID;
+  style.textContent = `@page { size: 80mm ${heightMm}mm; margin: 0; }`;
+  document.head.appendChild(style);
+};
 
 // Fills the preview with the shell and the first rows, then adds the next
 // rows each time the last one comes within reach of the view
