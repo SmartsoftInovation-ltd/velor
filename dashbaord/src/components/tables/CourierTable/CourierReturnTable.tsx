@@ -21,6 +21,7 @@ import { Link } from "react-router";
 import { IoIosPrint } from "react-icons/io";
 import { TbSticker2 } from "react-icons/tb";
 import OrderStatus from "../OrderTable/OrderStatus";
+import OrderStickerModal from "../OrderTable/OrderStickerModal";
 import ShippingInfo from "../OrderTable/ShippingInfo";
 import { showApiError } from "../../../utils/apiError";
 
@@ -31,7 +32,7 @@ interface Order {
   _id: any;
   guestId?: string | null;
   shippingInfo: any;
-  invoiceId: String;
+  invoiceId: string;
   finalAmount: number;
   discountAmount: number;
   deliveryCharge: {
@@ -53,6 +54,7 @@ export default function CourierReturnTable() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [stickerId, setStickerId] = useState<string | null>(null);
   // const tableData: Order[] = orders ?? [];
   const tableData: Order[] = (orders ?? []).filter(
     (order: any) => order.orderType === "complete"
@@ -117,7 +119,7 @@ export default function CourierReturnTable() {
   };
   return (
     <div>
-      <div className="w-[700px]">
+      <div className="w-full max-w-[700px]">
         <Input placeholder="Search by Invoice Id" className="mb-5" />
       </div>
 
@@ -298,10 +300,8 @@ export default function CourierReturnTable() {
                   </TableCell>
                   <TableCell className="px-4 py-3 text-theme-sm text-center">
                     <div className="flex items-center justify-center space-x-2">
-                      <Button size="sm" variant="secondary">
-                        <Link to={`/sticker/${order._id}`}>
-                          <TbSticker2 />
-                        </Link>
+                      <Button size="sm" variant="secondary" aria-label="Print sticker" onClick={() => setStickerId(order._id)}>
+                        <TbSticker2 />
                       </Button>
                       <Button size="sm">
                         <Link to={`/invoice/${order._id}`}>
@@ -323,6 +323,8 @@ export default function CourierReturnTable() {
           </Table>
         </div>
       </div>
+      <OrderStickerModal orderId={stickerId} onClose={() => setStickerId(null)} />
+
       <Modal isOpen={showDeleteModal} onClose={closeModal}>
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <h2 className="text-lg font-bold">Confirm Deletion</h2>

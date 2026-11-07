@@ -1,340 +1,174 @@
-// import { useEffect, useState, useRef } from "react";
-// import { useParams, useNavigate } from "react-router"; // <-- import useNavigate
-// import axiosSecure from "../../../hooks/useAxiosSecure";
-// import moment from "moment";
-// import jsPDF from "jspdf";
-// import html2canvas from "html2canvas-pro";
-// import Button from "../../ui/button/Button";
-
-// const InvoicePreview = () => {
-//   const { id } = useParams();
-//   const navigate = useNavigate(); // <-- initialize navigate
-//   const [order, setOrder] = useState<any>(null);
-//   const printRef = useRef<HTMLDivElement>(null);
-
-//   useEffect(() => {
-//     const fetchOrder = async () => {
-//       try {
-//         const { data } = await axiosSecure.get(`/order/single-order/${id}`);
-//         setOrder(data.data);
-//       } catch (error) {
-//         console.error("Failed to fetch order:", error);
-//       }
-//     };
-//     if (id) fetchOrder();
-//   }, [id]);
-
-//   if (!order) return <p className="text-center mt-10">Loading invoice...</p>;
-
-//   const handleDownload = async () => {
-//     if (!printRef.current) return;
-
-//     const canvas = await html2canvas(printRef.current, { scale: 2 });
-//     const imgData = canvas.toDataURL("image/png");
-//     const pdf = new jsPDF("p", "mm", "a4");
-//     const pdfWidth = pdf.internal.pageSize.getWidth();
-//     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-//     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-//     pdf.save(`invoice-${order.invoiceId || "0000"}.pdf`);
-//   };
-
-//   return (
-//     <div className="max-w-5xl mx-auto bg-white shadow p-6 rounded mt-8">
-//       <div className="mb-6 flex justify-center gap-4 print:hidden">
-//         <Button
-//           onClick={() => navigate(-1)} // <-- go back to previous page
-//           className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-//         >
-//           ← Go Back
-//         </Button>
-
-//         <Button
-//           onClick={() => window.print()}
-//           className="bg-accent-500 hover:bg-accent-600 text-white rounded"
-//         >
-//           🖨️ Print
-//         </Button>
-
-//         <Button
-//           onClick={handleDownload}
-// className="bg-[#D5F0E3] hover:bg-[#B8E4CF] text-[#0A6B43] rounded"
-//         >
-//           💾 Download
-//         </Button>
-//       </div>
-//       <div ref={printRef}>
-//         {/* Header */}
-//         <div className="text-center mb-4">
-//           <h1 className="text-xl font-bold uppercase">Baig Digital</h1>
-//           <p className="text-sm">Fixed Price</p>
-//           <p className="text-sm">Shop #1, Mirpur 10</p>
-//           <p className="text-sm">013500000</p>
-//           <hr className="my-2" />
-//         </div>
-
-//         {/* Invoice Info */}
-//         <div className="grid grid-cols-2 text-sm mb-4 gap-y-1">
-//           <p>
-//             <strong>Invoice#:</strong> {order.invoiceId || "N/A"}
-//           </p>
-//           <p>
-//             <strong>Date:</strong>{" "}
-//             {moment(order.createdAt).format("YYYY-MM-DD")}
-//           </p>
-//           <p>
-//             <strong>Name:</strong> {order.shippingInfo?.name || "N/A"}
-//           </p>
-//           <p>
-//             <strong>Time:</strong> {moment(order.createdAt).format("HH:mm")}
-//           </p>
-//           <p>
-//             <strong>Mobile:</strong> {order.shippingInfo?.phone || "N/A"}
-//           </p>
-//           <p>
-//             <strong>Cashier:</strong> Baig's Collection
-//           </p>
-//         </div>
-
-//         {/* Products Table */}
-//         <table className="w-full text-sm mt-4 border border-gray-300 border-collapse">
-//           <thead>
-//             <tr className="bg-gray-100">
-//               <th className="px-2 py-1 text-left border">ITEM</th>
-//               <th className="px-2 py-1 text-center border">COLOR</th>
-//               <th className="px-2 py-1 text-center border">SIZE</th>
-//               <th className="px-2 py-1 text-center border">QTY.</th>
-//               <th className="px-2 py-1 text-right border">PRICE</th>
-//               <th className="px-2 py-1 text-right border">DISCOUNT</th>
-//               <th className="px-2 py-1 text-right border">AMOUNT</th>
-//             </tr>
-//           </thead>
-//           <tbody>
-//             {order.items?.map((item: any, i: number) => (
-//               <tr key={i} className="border-b border-gray-200">
-//                 <td className="px-2 py-1 text-left">
-//                   {item.product?.name} {item.variant?.variantName || ""}
-//                 </td>
-//                 <td className="px-2 py-1 text-center">{item.color || "N/A"}</td>
-//                 <td className="px-2 py-1 text-center">{item.size || "N/A"}</td>
-//                 <td className="px-2 py-1 text-center">{item.quantity}</td>
-//                 <td className="px-2 py-1 text-right">{item.retailPrice}</td>
-//                 <td className="px-2 py-1 text-right">
-//                   {item.discountAmount || "N/A"}
-//                 </td>
-//                 <td className="px-2 py-1 text-right">{item.totalPrice}</td>
-//               </tr>
-//             ))}
-//           </tbody>
-//         </table>
-
-//         {/* Totals */}
-//         <div className="mt-4 text-sm space-y-1 text-right pr-2">
-//           <p>
-//             <strong>Total:</strong> ৳{order.totalAmount}
-//           </p>
-//           <p>
-//             <strong>Delivery:</strong> ৳
-//             {order.deliveryCharge?.deliveryCharge || 0}
-//           </p>
-//           <p className="font-bold text-lg border-t pt-2">
-//             Payable: ৳{order.finalAmount}
-//           </p>
-//         </div>
-//       </div>
-
-//       {/* Buttons */}
-//     </div>
-//   );
-// };
-
-// export default InvoicePreview;
-
-import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router";
-import axiosSecure from "../../../hooks/useAxiosSecure";
+import { useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import moment from "moment";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas-pro";
-import Button from "../../ui/button/Button";
+import { FaArrowLeft, FaDownload, FaPrint } from "react-icons/fa";
+import axiosSecure from "../../../hooks/useAxiosSecure";
+import { getApiErrorMessage, showApiError } from "../../../utils/apiError";
+import { printElement } from "../../../utils/printElement";
+import { useStoreInfo } from "../../print/printUtils";
+import { collection } from "./OrderStickerModal";
+
+type InvoiceItem = {
+  product?: { name?: string } | null;
+  variant?: { variantName?: string } | null;
+  color?: string;
+  size?: string;
+  quantity?: number;
+  retailPrice?: number;
+  totalPrice?: number;
+};
+
+const money = (n?: number) => `৳${Number(n || 0).toLocaleString("en-IN")}`;
+const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-gray-500";
+const SOFT_BUTTON =
+  "shine inline-flex h-10 items-center gap-2 rounded border border-accent-100 bg-accent-50 px-4 text-sm font-semibold text-accent-600 transition hover:bg-accent-100 disabled:opacity-50 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400";
 
 const InvoicePreview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [order, setOrder] = useState<any>(null);
-  const printRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { data: store } = useStoreInfo();
+  const { data: order, isLoading, error } = useQuery({
+    queryKey: ["order", id],
+    queryFn: async () => (await axiosSecure.get(`/order/single-order/${id}`)).data.data,
+    enabled: Boolean(id),
+  });
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const { data } = await axiosSecure.get(`/order/single-order/${id}`);
-        setOrder(data.data);
-      } catch (error) {
-        console.error("Failed to fetch order:", error);
-      }
-    };
-    if (id) fetchOrder();
-  }, [id]);
-
-  if (!order) return <p className="text-center mt-10">Loading invoice...</p>;
-
-  const handleDownload = async () => {
-    if (!printRef.current) return;
-
-    const canvas = await html2canvas(printRef.current, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`invoice-${order.invoiceId || "0000"}.pdf`);
+  const download = async () => {
+    if (isDownloading || !sheetRef.current) return;
+    setIsDownloading(true);
+    try {
+      const [{ default: html2canvas }, { default: JsPdf }] = await Promise.all([import("html2canvas-pro"), import("jspdf")]);
+      const canvas = await html2canvas(sheetRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const pdf = new JsPdf("p", "mm", "a4");
+      const width = pdf.internal.pageSize.getWidth();
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, width, (canvas.height * width) / canvas.width);
+      pdf.save(`invoice-${order?.invoiceId || id}.pdf`);
+    } catch (downloadError) {
+      showApiError(downloadError, "Could not make the invoice PDF. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  if (isLoading) {
+    return <div className="mx-auto mt-4 h-[32rem] max-w-3xl animate-pulse rounded-2xl bg-gray-100 dark:bg-white/5" aria-busy="true" />;
+  }
+  if (!order) {
+    return <p className="mt-10 text-center text-sm font-medium text-error-500">{getApiErrorMessage(error, "Could not load this invoice")}</p>;
+  }
+
+  const shipping = order.shippingInfo ?? {};
+  const address = [shipping.address, shipping.city, shipping.postalCode].filter(Boolean).join(", ");
+  const payment = collection(order);
+  const delivery = order.deliveryCharge?.deliveryCharge ?? 0;
 
   return (
-    <>
-      <style>{`
-        @media print {
-          @page {
-            margin: 0;
-            size: auto;
-          }
-          
-          body {
-            margin: 0;
-            padding: 10mm;
-          }
-          
-          /* Hide everything except the invoice */
-          body * {
-            visibility: hidden;
-          }
-          
-          #printable-invoice,
-          #printable-invoice * {
-            visibility: visible;
-          }
-          
-          #printable-invoice {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-        }
-      `}</style>
-
-      <div className="max-w-5xl mx-auto bg-white shadow p-6 rounded mt-8">
-        <div className="mb-6 flex justify-center gap-4 print:hidden">
-          <Button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 !rounded !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm"
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <button type="button" onClick={() => navigate(-1)} className={SOFT_BUTTON}>
+          <FaArrowLeft className="size-3.5" /> Back
+        </button>
+        <div className="flex gap-2">
+          <button type="button" disabled={isDownloading} onClick={download} className={SOFT_BUTTON}>
+            <FaDownload className="size-3.5" /> {isDownloading ? "Downloading…" : "Download"}
+          </button>
+          <button
+            type="button"
+            onClick={() => sheetRef.current && printElement(sheetRef.current, "size:A4;margin:12mm")}
+            className="shine inline-flex h-10 items-center gap-2 rounded bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600"
           >
-            ← Go Back
-          </Button>
-
-          <Button
-            onClick={handlePrint}
-            className="px-4 py-2 !rounded !bg-accent-500 hover:!bg-accent-600 !text-white font-semibold text-sm"
-          >
-            Print
-          </Button>
-
-          <Button
-            onClick={handleDownload}
-            className="px-4 py-2 !rounded !border !border-accent-100 !bg-accent-50 hover:!bg-accent-100 !text-accent-600 dark:!border-accent-500/20 dark:!bg-accent-500/15 dark:!text-accent-400 font-semibold text-sm"
-          >
-            Download
-          </Button>
+            <FaPrint className="size-3.5" /> Print
+          </button>
         </div>
+      </div>
 
-        <div className="px-5 pt-10" ref={printRef} id="printable-invoice">
-          {/* Header */}
-          <div className="text-center mb-4">
-            <h1 className="text-xl font-bold uppercase">Baig Digital</h1>
-            <p className="text-sm">Fixed Price</p>
-            <p className="text-sm">Shop #1, Mirpur 10</p>
-            <p className="text-sm">013500000</p>
-            <hr className="my-2" />
+      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+        {/* Stays white in the dark theme: this is what comes out of the printer */}
+        <div ref={sheetRef} className="min-w-[36rem] bg-white p-8 text-gray-900">
+          <div className="flex items-start justify-between gap-6 border-b-2 border-gray-900 pb-5">
+            <div className="flex min-w-0 items-center gap-3">
+              {store?.image?.url && <img src={store.image.url} alt="" crossOrigin="anonymous" className="size-14 shrink-0 object-contain" />}
+              <div className="min-w-0">
+                <p className="text-xl font-bold leading-tight">{store?.storeName || "Your store"}</p>
+                {store?.adress && <p className="mt-0.5 text-xs leading-snug text-gray-600">{store.adress}</p>}
+                <p className="text-xs text-gray-600">{[store?.phone, store?.email].filter(Boolean).join(" · ")}</p>
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-2xl font-bold tracking-tight">INVOICE</p>
+              <p className="mt-1 font-mono text-sm font-semibold">{order.invoiceId || "—"}</p>
+              <p className="text-xs text-gray-600">{moment(order.createdAt).format("DD MMM YYYY, hh:mm A")}</p>
+            </div>
           </div>
 
-          {/* Invoice Info */}
-          <div className="grid grid-cols-2 text-sm mb-4 gap-y-1">
-            <p>
-              <strong>Invoice#:</strong> {order.invoiceId || "N/A"}
-            </p>
-            <p>
-              <strong>Date:</strong>{" "}
-              {moment(order.createdAt).format("YYYY-MM-DD")}
-            </p>
-            <p>
-              <strong>Name:</strong> {order.shippingInfo?.name || "N/A"}
-            </p>
-            <p>
-              <strong>Time:</strong> {moment(order.createdAt).format("HH:mm")}
-            </p>
-            <p>
-              <strong>Mobile:</strong> {order.shippingInfo?.phone || "N/A"}
-            </p>
-            <p>
-              <strong>Cashier:</strong> Baig's Collection
-            </p>
+          <div className="mt-5 grid grid-cols-2 gap-6">
+            <div>
+              <p className={LABEL}>Bill to</p>
+              <p className="mt-1 text-sm font-semibold">{shipping.fullName || "Customer"}</p>
+              {shipping.phone && <p className="text-sm">{shipping.phone}</p>}
+              {address && <p className="text-sm leading-snug text-gray-600">{address}</p>}
+            </div>
+            <div className="text-right">
+              <p className={LABEL}>Payment</p>
+              <p className="mt-1 text-sm font-semibold">{payment.label}</p>
+            </div>
           </div>
 
-          {/* Products Table */}
-          <table className="w-full text-sm mt-4 border border-gray-300 border-collapse">
+          <table className="mt-6 w-full text-sm">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="px-2 py-1 text-left border">ITEM</th>
-                <th className="px-2 py-1 text-center border">COLOR</th>
-                <th className="px-2 py-1 text-center border">SIZE</th>
-                <th className="px-2 py-1 text-center border">QTY.</th>
-                <th className="px-2 py-1 text-right border">PRICE</th>
-                <th className="px-2 py-1 text-right border">DISCOUNT</th>
-                <th className="px-2 py-1 text-right border">AMOUNT</th>
+              <tr className="border-b border-gray-900 text-left">
+                <th className={`${LABEL} py-2 pr-3`}>Item</th>
+                <th className={`${LABEL} px-3 py-2 text-right`}>Qty</th>
+                <th className={`${LABEL} px-3 py-2 text-right`}>Price</th>
+                <th className={`${LABEL} py-2 pl-3 text-right`}>Amount</th>
               </tr>
             </thead>
             <tbody>
-              {order.items?.map((item: any, i: number) => (
-                <tr key={i} className="border-b border-gray-200">
-                  <td className="px-2 py-1 text-left">
-                    {item.product?.name} {item.variant?.variantName || ""}
-                  </td>
-                  <td className="px-2 py-1 text-center">
-                    {item.color || "N/A"}
-                  </td>
-                  <td className="px-2 py-1 text-center">
-                    {item.size || "N/A"}
-                  </td>
-                  <td className="px-2 py-1 text-center">{item.quantity}</td>
-                  <td className="px-2 py-1 text-right">{item.retailPrice}</td>
-                  <td className="px-2 py-1 text-right">
-                    {item.discountAmount || "N/A"}
-                  </td>
-                  <td className="px-2 py-1 text-right">{item.totalPrice}</td>
-                </tr>
-              ))}
+              {(order.items ?? []).map((item: InvoiceItem, index: number) => {
+                const details = [item.variant?.variantName, item.color, item.size].filter(Boolean).join(" · ");
+                return (
+                  <tr key={index} className="border-b border-gray-200">
+                    <td className="py-2.5 pr-3">
+                      <p className="font-medium">{item.product?.name || item.variant?.variantName || "Item"}</p>
+                      {details && <p className="text-xs text-gray-500">{details}</p>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{item.quantity}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{money(item.retailPrice)}</td>
+                    <td className="py-2.5 pl-3 text-right font-medium tabular-nums">{money(item.totalPrice)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
-          {/* Totals */}
-          <div className="mt-4 text-sm space-y-1 text-right pr-2">
-            <p>
-              <strong>Total:</strong> ৳{order.totalAmount}
-            </p>
-            <p>
-              <strong>Delivery:</strong> ৳
-              {order.deliveryCharge?.deliveryCharge || 0}
-            </p>
-            <p className="font-bold text-lg border-t pt-2">
-              Payable: ৳{order.finalAmount}
-            </p>
+          <div className="ml-auto mt-4 w-64 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="tabular-nums">{money(order.totalAmount)}</span>
+            </div>
+            {order.discountAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Discount</span>
+                <span className="tabular-nums">−{money(order.discountAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-gray-600">Delivery</span>
+              <span className="tabular-nums">{money(delivery)}</span>
+            </div>
+            <div className="flex items-center justify-between border-t-2 border-gray-900 pt-2 text-base font-bold">
+              <span>Total</span>
+              <span className="tabular-nums">{money(order.finalAmount)}</span>
+            </div>
           </div>
+
+          {store?.footer && <p className="mt-8 border-t border-gray-200 pt-3 text-center text-xs text-gray-500">{store.footer}</p>}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

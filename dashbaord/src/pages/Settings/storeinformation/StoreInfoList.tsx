@@ -177,7 +177,7 @@ const StoreInfoList = () => {
           {!loading && stores.length > 0 && (
             <>
               <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-                <div className="w-full">
+                <div className="w-full overflow-x-auto">
                   <Table>
                     <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                       <TableRow className="uppercase">

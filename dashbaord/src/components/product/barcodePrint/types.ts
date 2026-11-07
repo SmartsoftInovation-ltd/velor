@@ -40,6 +40,11 @@ export interface QueueItem {
   quantity: number;
 }
 
+// One label per unit in stock. Out-of-stock items still get one label, because
+// the queue's minimum is 1 and a selected item must show up in the preview.
+export const labelsForStock = (stock?: number) =>
+  Math.max(1, Math.floor(stock ?? 0));
+
 export interface ProductLite {
   _id: string;
   slug: string;
@@ -66,6 +71,7 @@ export interface VariantLite {
   wholesalePrice?: number;
   size?: string;
   color?: string;
+  stockVariant?: number;
   product?: { name?: string } | null;
 }
 

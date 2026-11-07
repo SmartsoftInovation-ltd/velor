@@ -700,7 +700,7 @@ export default function CreateRetailSalesForm({
 
     setIsScanning(true);
     try {
-      const res = await axiosSecure.get(`/sales/get-sales-products?q=${query}`);
+      const res = await axiosSecure.get(`/sales/get-sales-products?q=${encodeURIComponent(query)}`);
       const results = res.data.data || [];
 
       if (results.length === 0) {
@@ -1186,7 +1186,7 @@ export default function CreateRetailSalesForm({
           </div>
 
           {/* Customer Info Row */}
-          <div className="flex flex-col sm:flex-row sm:flex-wrap md:flex-nowrap gap-2 items-stretch sm:items-center bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap gap-2 items-stretch sm:items-center bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg p-2">
             <input
               placeholder="Customer Name"
               value={customerName}
@@ -1327,7 +1327,7 @@ export default function CreateRetailSalesForm({
           </div>
 
           {/* Table */}
-          <div className="flex-1 min-h-[55vh] md:min-h-0 overflow-auto bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="@container flex-1 min-h-[55vh] md:min-h-0 overflow-auto bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
             <table className={`w-full min-w-[900px] md:min-w-0 border-collapse text-xs bg-white dark:bg-gray-800 dark:bg-gray-200 dark:text-white ${tableProducts.length === 0 ? "h-full" : ""}`}>
               <thead className="sticky top-0 z-20 bg-accent-600">
                 <tr className="bg-accent-600 text-white">

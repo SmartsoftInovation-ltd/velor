@@ -9,7 +9,7 @@ import Badge from "../../ui/badge/Badge";
 import Button from "../../ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
-import type { Role } from "../../../pages/RolePermission/CreateRole";
+import type { Role } from "../../../pages/RolePermission/RoleList";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import { showApiError } from "../../../utils/apiError";

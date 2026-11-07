@@ -3,8 +3,10 @@ import Link from "next/link";
 import { CartView } from "@/components/cart/cart-view";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
 import { ArrowRightIcon } from "@/components/ui/icons";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Cart",
   description: "Review the items in your bag before checking out.",
 };

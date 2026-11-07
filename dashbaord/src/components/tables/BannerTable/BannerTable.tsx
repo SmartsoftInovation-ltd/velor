@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import { FaEdit, FaEye, FaSearch, FaSync, FaTimes } from "react-icons/fa";
+import { FaEdit, FaEye, FaImage, FaSearch, FaSync, FaTimes } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,8 @@ import Button from "../../ui/button/Button";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import ListEmptyState from "../../common/ListEmptyState";
+import { usePermission } from "../../../hooks/usePermission";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
 
@@ -122,6 +124,20 @@ export default function BannerTable({
     }
   };
 
+
+  const canAdd = usePermission("create-banner", "add");
+  const emptyState = (
+    <ListEmptyState
+      icon={<FaImage />}
+      title="No banners yet"
+      hint="Banners run across the top of your storefront's home page."
+      search={searchTerm}
+      onClearSearch={() => setSearchTerm("")}
+      createTo={canAdd ? "/add-banner" : undefined}
+      createLabel="Add banner"
+    />
+  );
+
   return (
     <div className="w-full space-y-4">
       {/* Toolbar */}
@@ -165,6 +181,7 @@ export default function BannerTable({
           items={tableData}
           getKey={(banner) => banner._id}
           emptyMessage="No banners found"
+          empty={emptyState}
           renderCard={(banner) => (
             <div className="space-y-1">
               <div className="mb-2 flex items-center gap-3 border-b border-gray-100 pb-2 dark:border-white/[0.05]">
@@ -245,18 +262,7 @@ export default function BannerTable({
           style={{ maxHeight: 650 }}
         >
           {tableData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 min-h-[400px] text-gray-400 dark:text-gray-500">
-              <FaSearch className="size-8 mb-4 text-gray-300 dark:text-gray-600" />
-              <p className="text-sm font-medium">No banners found</p>
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="mt-2 text-xs text-accent-500 hover:underline"
-                >
-                  Clear search
-                </button>
-              )}
-            </div>
+            emptyState
           ) : (
             <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {

@@ -112,12 +112,12 @@ export default function KpiCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <p className="min-w-0 text-[11px] font-semibold uppercase leading-tight tracking-wide text-gray-500 dark:text-gray-400">
               {title}
             </p>
             {headerAction}
           </div>
-          <h4 className="text-xl font-bold tracking-tight text-gray-800 dark:text-white/90">
+          <h4 className="text-lg font-bold tracking-tight text-gray-800 [overflow-wrap:anywhere] xl:text-[15px] min-[1440px]:text-lg 2xl:text-xl dark:text-white/90">
             {value.startsWith("৳") ? (
               <>
                 <span>৳</span>
@@ -162,11 +162,11 @@ export default function KpiCard({
             key={s.label}
             className={`px-1 ${i > 0 ? "border-l border-gray-100 dark:border-gray-800" : ""}`}
           >
-            <p className="truncate text-[10px] font-medium text-gray-400 dark:text-gray-500">
+            <p className="text-[10px] font-medium leading-tight text-gray-400 dark:text-gray-500">
               {s.label}
             </p>
             <p
-              className={`truncate text-sm font-bold tabular-nums ${STAT_COLOR[s.color ?? "default"]}`}
+              className={`text-[13px] font-bold tabular-nums [overflow-wrap:anywhere] xl:text-[11px] min-[1440px]:text-[13px] 2xl:text-sm ${STAT_COLOR[s.color ?? "default"]}`}
             >
               {s.value}
             </p>

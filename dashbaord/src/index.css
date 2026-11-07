@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap")
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Geist:wght@100..900&display=swap")
 layer(base);
 
 @import "tailwindcss";
@@ -256,7 +256,7 @@ layer(base);
 }
 
 @utility menu-item {
-  @apply shine flex items-center w-full gap-2.5 px-2 py-1.5 font-semibold rounded-lg text-[13px] leading-[18px] transition-all duration-150;
+  @apply shine flex items-center w-full gap-2.5 px-2 py-1.5 text-left font-semibold rounded-lg text-[13px] leading-[18px] transition-all duration-150;
 }
 
 @utility menu-item-active {
@@ -1388,23 +1388,6 @@ body.printing-report.sheet-a5 th,
   -webkit-text-fill-color: rgb(255 255 255 / 0.9);
   caret-color: rgb(255 255 255 / 0.9);
 }
-
-/* Input that grows with its content (workspace field). Browsers without
-   field-sizing get a fixed width close to a typical store slug. */
-.auth-autosize {
-  flex: none;
-  width: 10ch;
-  max-width: 70%;
-}
-
-@supports (field-sizing: content) {
-  .auth-autosize {
-    field-sizing: content;
-    width: auto;
-    min-width: 1ch;
-  }
-}
-
 
 /* Integration settings drawer */
 @keyframes drawer-in {

@@ -22,7 +22,7 @@ const SUBTLE: Record<Tone, string> = {
 
 const SOLID: Record<Tone, string> = {
   neutral: "bg-bg-inverse text-text-inverse",
-  brand: "bg-brand-500 text-white",
+  brand: "bg-brand-500 text-on-brand",
   success: "bg-success-solid text-white",
   danger: "bg-danger-solid text-white",
   warning: "bg-warning-solid text-white",

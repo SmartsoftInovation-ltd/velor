@@ -8,6 +8,7 @@ import { Breadcrumb } from "@/components/shop/breadcrumb";
 import { CURRENT_STAGE, TRACKED_ORDER } from "@/lib/catalog/order-fixture";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/track-order" },
   title: "Track order",
   description:
     "Follow your parcel from our warehouse to your door using an invoice or phone number.",

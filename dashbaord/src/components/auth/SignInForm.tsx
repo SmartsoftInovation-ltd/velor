@@ -15,7 +15,7 @@ import { PLATFORM_WORKSPACES } from "../../platform/visibility";
 import type { OtpChallenge } from "../../platform/endpoints";
 import PlatformOtpStep from "./PlatformOtpStep";
 
-// Shown after the workspace input, e.g. "baig-digital.ecompos.app"
+// Part of the workspace placeholder, e.g. "your-store.ecompos.app"
 const WORKSPACE_DOMAIN = import.meta.env.VITE_WORKSPACE_DOMAIN || "ecompos.app";
 type Errors = {
   workspace?: string;
@@ -187,22 +187,17 @@ export default function SignInForm() {
           </label>
           <div className={fieldShell(Boolean(errors.workspace))}>
             <HiOutlineBuildingOffice2 aria-hidden className="size-4 shrink-0 text-gray-400" />
-            {/* auth-autosize: the input is exactly as wide as its text, so the
-                domain suffix sits right after the workspace name */}
-            <span className="flex h-full min-w-0 flex-1 items-center">
-              <input
-                id="signin-workspace"
-                name="workspace"
-                autoComplete="organization"
-                autoCapitalize="none"
-                spellCheck={false}
-                className={`${inputClass} auth-autosize`}
-                value={formData.workspace}
-                onChange={handleChange}
-                placeholder="your-store"
-              />
-              <span aria-hidden className="min-w-0 truncate text-sm text-gray-400 dark:text-white/30">.{WORKSPACE_DOMAIN}</span>
-            </span>
+            <input
+              id="signin-workspace"
+              name="workspace"
+              autoComplete="organization"
+              autoCapitalize="none"
+              spellCheck={false}
+              className={inputClass}
+              value={formData.workspace}
+              onChange={handleChange}
+              placeholder={`your-store.${WORKSPACE_DOMAIN}`}
+            />
           </div>
           {errors.workspace && <p className="mt-1.5 text-xs text-error-500">{errors.workspace}</p>}
         </div>

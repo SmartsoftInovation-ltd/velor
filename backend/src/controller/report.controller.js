@@ -1323,18 +1323,15 @@ exports.getStockReport = asynchandeler(async (req, res) => {
   ];
 
   if (searchTerm) {
-    // Digits scan as a barcode; anything else matches the product or variant name.
-    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    // A barcode of any length is found the same way as a name
     pipeline.push({
-      $match: isBarcode
-        ? { "stockRows.barcode": searchTerm }
-        : {
-            $or: [
-              { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { "stockRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { "stockRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
-            ],
-          },
+      $match: {
+        $or: [
+          { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { "stockRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { "stockRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
+        ],
+      },
     });
   }
 
@@ -1604,17 +1601,15 @@ exports.getStockDetailsReport = asynchandeler(async (req, res) => {
   ];
 
   if (searchTerm) {
-    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    // A barcode of any length is found the same way as a name
     pipeline.push({
-      $match: isBarcode
-        ? { "detailRows.barcode": searchTerm }
-        : {
-            $or: [
-              { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { "detailRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { "detailRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
-            ],
-          },
+      $match: {
+        $or: [
+          { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { "detailRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { "detailRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
+        ],
+      },
     });
   }
 
@@ -2183,17 +2178,15 @@ exports.getSizeColorStockReport = asynchandeler(async (req, res) => {
   ];
 
   if (searchTerm) {
-    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    // A barcode of any length is found the same way as a name
     pipeline.push({
-      $match: isBarcode
-        ? { $or: [{ barCode: searchTerm }, { "productInfo.barCode": searchTerm }] }
-        : {
-            $or: [
-              { "productInfo.name": { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { variantName: { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { barCode: { $regex: escapeRegex(searchTerm), $options: "i" } },
-            ],
-          },
+      $match: {
+        $or: [
+          { "productInfo.name": { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { variantName: { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { barCode: { $regex: escapeRegex(searchTerm), $options: "i" } },
+        ],
+      },
     });
   }
 
@@ -2444,17 +2437,15 @@ exports.getStockAdjustmentReport = asynchandeler(async (req, res) => {
   if (Object.keys(classMatch).length > 0) pipeline.push({ $match: classMatch });
 
   if (searchTerm) {
-    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    // A barcode of any length is found the same way as a name
     pipeline.push({
-      $match: isBarcode
-        ? { rowBarcode: searchTerm }
-        : {
-            $or: [
-              { rowProductName: { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { rowBarcode: { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { adjustReason: { $regex: escapeRegex(searchTerm), $options: "i" } },
-            ],
-          },
+      $match: {
+        $or: [
+          { rowProductName: { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { rowBarcode: { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { adjustReason: { $regex: escapeRegex(searchTerm), $options: "i" } },
+        ],
+      },
     });
   }
 
@@ -2595,17 +2586,15 @@ exports.getLowStockReport = asynchandeler(async (req, res) => {
   const pipeline = buildLowStockStages(match);
 
   if (searchTerm) {
-    const isBarcode = /^\d{6,20}$/.test(searchTerm);
+    // A barcode of any length is found the same way as a name
     pipeline.push({
-      $match: isBarcode
-        ? { "stockRows.barcode": searchTerm }
-        : {
-            $or: [
-              { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { "stockRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
-              { "stockRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
-            ],
-          },
+      $match: {
+        $or: [
+          { name: { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { "stockRows.variantName": { $regex: escapeRegex(searchTerm), $options: "i" } },
+          { "stockRows.barcode": { $regex: escapeRegex(searchTerm), $options: "i" } },
+        ],
+      },
     });
   }
 

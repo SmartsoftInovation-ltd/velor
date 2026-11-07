@@ -116,6 +116,7 @@ const DeliveryChargeUpdate = lazy(
 // Components - Role & Permission
 const RoleUpdate = lazy(() => import("./components/rolepermission/RoleUpdate"));
 const CreateRole = lazy(() => import("./pages/RolePermission/CreateRole"));
+const RoleList = lazy(() => import("./pages/RolePermission/RoleList"));
 const CreateUserPermission = lazy(
   () => import("./pages/RolePermission/CreateUserPermission"),
 );
@@ -158,9 +159,6 @@ const IncompleteOrderList = lazy(
 );
 const InvoicePreview = lazy(
   () => import("./components/tables/OrderTable/InvoicePreview"),
-);
-const StickerPreview = lazy(
-  () => import("./components/tables/OrderTable/StickerPreview"),
 );
 
 // Components - Variant
@@ -528,6 +526,9 @@ const CustomerAdvancePaymentEdit = lazy(
 const CustomerTypeList = lazy(
   () => import("./components/customer/CustomerTypeList.tsx"),
 );
+const CreateCustomerType = lazy(
+  () => import("./pages/Customer/CreateCustomerType.tsx"),
+);
 const CustomerView = lazy(() => import("./pages/Customer/CustomerView.tsx"));
 const CustomerProfilePrint = lazy(() => import("./components/customer/CustomerProfilePrint.tsx"));
 const AccountVoucherPrint = lazy(() => import("./components/account/AccountVoucherPrint.tsx"));
@@ -768,7 +769,6 @@ export default function App() {
                   element={<IncompleteOrderList />}
                 />
                 <Route path="/invoice/:id" element={<InvoicePreview />} />
-                <Route path="/sticker/:id" element={<StickerPreview />} />
 
                 {/* Courier */}
                 <Route
@@ -873,6 +873,7 @@ export default function App() {
 
                 {/* Role & Permission Layout */}
                 <Route path="/create-role" element={<ProtectedRoute module="create-role" action="add"><CreateRole /></ProtectedRoute>} />
+                <Route path="/role-list" element={<ProtectedRoute module="create-role" action="view"><RoleList /></ProtectedRoute>} />
                 <Route path="/update-role/:slug" element={<ProtectedRoute module="create-role" action="edit"><RoleUpdate /></ProtectedRoute>} />
                 <Route path="/userlist" element={<ProtectedRoute module="create-user" action="view"><UserList /></ProtectedRoute>} />
                 <Route path="/add-user" element={<ProtectedRoute module="create-user" action="add"><AddUser /></ProtectedRoute>} />
@@ -1535,6 +1536,7 @@ export default function App() {
                   path="/customer-type-list"
                   element={<CustomerTypeList />}
                 />
+                <Route path="/create-customer-type" element={<ProtectedRoute module="customer-type" action="add"><CreateCustomerType /></ProtectedRoute>} />
                 <Route path="/create-customer" element={<ProtectedRoute module="customer" action="add"><CreateCustomer /></ProtectedRoute>} />
                 <Route path="/customer-list" element={<ProtectedRoute module="customer" action="view"><CustomerList /></ProtectedRoute>} />
                 <Route

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { FaEye } from "react-icons/fa";
+import { FaEye, FaGlobe } from "react-icons/fa";
 import { FiEdit2 } from "react-icons/fi";
 import { MdDelete } from "react-icons/md";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import Input from "../../form/input/InputField";
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import ListEmptyState from "../../common/ListEmptyState";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
 
@@ -118,10 +119,15 @@ const SiteInfoTable = () => {
       {loading && <p className="py-10 text-center text-sm text-gray-500">Loading…</p>}
 
       {!loading && filtered.length === 0 && (
-        <div className="py-10 text-center text-sm text-gray-500">
-          {search ? `No results for "${search}".` : "No site information found. "}
-          {!search && canAdd && <Link to="/add-site-info" className="text-accent-600 hover:underline">Create one</Link>}
-        </div>
+        <ListEmptyState
+          icon={<FaGlobe />}
+          title="No site information yet"
+          hint="Add your shop's name, logo and contact details to show them on the storefront."
+          search={search}
+          onClearSearch={() => setSearch("")}
+          createTo={canAdd ? "/add-site-info" : undefined}
+          createLabel="Add site information"
+        />
       )}
 
       {!loading && filtered.length > 0 && isMobile ? (

@@ -65,7 +65,7 @@ function ParcelGlyph() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="size-20 text-brand-500 drop-shadow-lg sm:size-28"
+      className="size-20 text-text-brand drop-shadow-lg sm:size-28"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.4"

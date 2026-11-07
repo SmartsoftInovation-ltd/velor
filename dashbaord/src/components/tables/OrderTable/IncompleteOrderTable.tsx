@@ -21,6 +21,7 @@ import { initSocket } from "../../../socket/socket";
 import { Modal } from "../../ui/modal";
 import EditShippingInfoModal from "./EditShippingInfoModal";
 import { showApiError } from "../../../utils/apiError";
+import OrdersEmptyState from "./OrdersEmptyState";
 
 interface Order {
   createdAt: string;
@@ -29,7 +30,7 @@ interface Order {
   _id: any;
   guestId?: string | null;
   shippingInfo: any;
-  invoiceId: String;
+  invoiceId: string;
   finalAmount: number;
   discountAmount: number;
   deliveryCharge: {
@@ -47,6 +48,8 @@ interface Order {
 }
 export default function IncompleteOrderTable() {
   const [orders, setOrders] = useState([]);
+  // Hold the empty state back until the first answer, so it never flashes
+  const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -59,6 +62,8 @@ export default function IncompleteOrderTable() {
       setOrders(data.data);
     } catch (error) {
       showApiError(error, "Error fetching orders");
+    } finally {
+      setLoading(false);
     }
   };
   useEffect(() => {
@@ -119,7 +124,7 @@ export default function IncompleteOrderTable() {
 
   return (
     <div>
-      <div className="w-[700px]">
+      <div className="w-full max-w-[700px]">
         <Input placeholder="Search by Order Name" className="mb-5" />
       </div>
 
@@ -329,12 +334,19 @@ export default function IncompleteOrderTable() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    //@ts-ignore
-                    colSpan={7}
-                    className="px-4 py-3 text-theme-sm text-center"
-                  >
-                    No incomplete orders found.
+                  <TableCell colSpan={7} className="px-0 py-0">
+                    {loading ? (
+                      <div className="flex min-h-[220px] items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span className="size-4 animate-spin rounded-full border-2 border-accent-500/30 border-t-accent-500" />
+                        Loading incomplete orders…
+                      </div>
+                    ) : (
+                      <OrdersEmptyState
+                        filtered={false}
+                        title="No incomplete orders"
+                        hint="Checkouts a shopper starts but does not finish will show up here."
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               )}

@@ -12,7 +12,7 @@ export function SiteFooter() {
       <div className="container">
         <FooterNewsletter />
 
-        <div className="grid gap-10 py-12 lg:grid-cols-[1.4fr_repeat(3,1fr)_1.2fr]">
+        <div className="grid gap-10 py-12 lg:grid-cols-[1.4fr_repeat(3,1fr)_1.2fr] footer-compact:hidden">
           <FooterBrand />
           {FOOTER_LINK_GROUPS.map((group) => (
             <FooterLinkColumn key={group.title} group={group} />
@@ -20,7 +20,7 @@ export function SiteFooter() {
           <FooterContact />
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border-subtle py-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-border-subtle py-6 sm:flex-row sm:items-center sm:justify-between footer-compact:border-t-0">
           <p className="text-caption font-medium text-text-tertiary">
             We accept
           </p>

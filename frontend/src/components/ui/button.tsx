@@ -14,7 +14,7 @@ const BASE =
    that only appears on hover reads as text, not as something clickable. */
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-brand-500 text-white shadow-brand hover:bg-brand-600 active:bg-brand-700",
+    "bg-brand-500 text-on-brand shadow-brand hover:bg-brand-600 active:bg-brand-700",
   secondary:
     "border border-border-default bg-bg-surface text-text-primary shadow-xs hover:border-border-strong hover:bg-bg-hover",
   subtle:
@@ -26,7 +26,7 @@ const VARIANTS: Record<Variant, string> = {
      text token — `text-brand` flips to a light orange in dark mode and would
      vanish here. */
   onBrand:
-    "shine-dark bg-white text-[var(--orange-700)] shadow-md hover:bg-white/90",
+    "shine-dark bg-white text-[var(--brand-ink)] shadow-md hover:bg-white/90",
 };
 
 const SIZES: Record<Size, string> = {

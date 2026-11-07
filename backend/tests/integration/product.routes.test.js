@@ -209,6 +209,23 @@ describe("product and variant routes", () => {
       expect(JSON.stringify(inside.body.data)).toContain("Linen Shirt");
     });
 
+    it("GET /product/search-product finds a barcode scan sent as name, barCode and sku together", async () => {
+      const product = await f.product.create({ name: "Polo Shirt", variantType: "multipleVariant" });
+      const variant = await f.variant.create({ product: product._id, variantName: "Polo Red L", barCode: "77012", sku: "55012" });
+      const ids = (res) => res.body.data.products.map((p) => p._id);
+
+      const byName = await anonymous().get("/product/search-product").query({ name: "77012" }).expect(200);
+      expect(ids(byName)).not.toContain(variant._id.toString());
+
+      const scan = await anonymous().get("/product/search-product").query({ name: "77012", barCode: "77012", sku: "77012" }).expect(200);
+      const hit = scan.body.data.products.find((p) => p._id === variant._id.toString());
+      expect(hit).toMatchObject({ resultType: "variant", barCode: "77012" });
+      expect(hit.product.name).toBe("Polo Shirt");
+
+      const bySku = await anonymous().get("/product/search-product").query({ name: "55012", barCode: "55012", sku: "55012" }).expect(200);
+      expect(ids(bySku)).toContain(variant._id.toString());
+    });
+
     it("GET /product/productperpage paginates for staff", async () => {
       await f.product.createList(3);
       const page = await as().get("/product/productperpage").query({ page: 2, limit: 3 }).expect(200);

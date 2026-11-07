@@ -21,7 +21,7 @@ import { usePermission } from "../../../hooks/usePermission";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
-import LoadMoreButton from "../../common/LoadMoreButton";
+import InfiniteScrollTrigger from "../../common/InfiniteScrollTrigger";
 import { showApiError } from "../../../utils/apiError";
 
 
@@ -160,6 +160,21 @@ export default function ProductTable({
     virtualRows.length > 0
       ? totalSize - (virtualRows?.[virtualRows.length - 1]?.end || 0)
       : 0;
+
+  // Infinite scroll: fetch the next page once the last rendered row is within
+  // a few rows of the end of what is loaded.
+  const lastRenderedIndex = virtualRows[virtualRows.length - 1]?.index ?? -1;
+  useEffect(() => {
+    if (
+      onLoadMore &&
+      hasMore &&
+      !loadingMore &&
+      products.length > 0 &&
+      lastRenderedIndex >= products.length - 5
+    ) {
+      onLoadMore();
+    }
+  }, [lastRenderedIndex, products.length, hasMore, loadingMore, onLoadMore]);
 
   const handleDeleteModal = (slug: string) => {
     setSelectedProduct(slug);
@@ -557,7 +572,14 @@ export default function ProductTable({
       )}
       </div>
 
-      {onLoadMore && <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={onLoadMore} />}
+      {/* Desktop loads from the virtualizer above; the mobile cards grow the page */}
+      <InfiniteScrollTrigger
+        watch={isMobile}
+        hasMore={hasMore}
+        loading={loadingMore}
+        onLoadMore={onLoadMore}
+        label="Loading more products…"
+      />
       <Modal isOpen={showDeleteModal} onClose={closeModal} className="!w-full !max-w-sm">
         <div className="p-8">
           <div className="flex items-center justify-center size-16 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 mb-5 mx-auto">

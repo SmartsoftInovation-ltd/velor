@@ -46,23 +46,24 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         <div className="relative flex items-center gap-3">
           <BrandMark className="size-7 rounded-lg" />
-          <span className="text-sm font-semibold tracking-wide">ECOMPOS</span>
+          <span className="text-sm font-semibold tracking-wide">ECOMPOS MASTER</span>
         </div>
 
-        <div className="relative flex flex-1 flex-col justify-center">
-          <h2 className="max-w-[26rem] text-[32px] font-bold leading-[1.15] tracking-tight">
-            Everything you need to run the store, in one clean dashboard.
+        <div className="relative flex flex-1 flex-col justify-center py-12">
+          <h2 className="max-w-[34rem] text-[38px] font-bold leading-[1.1] tracking-tight xl:text-[44px]">
+            Everything you need to run the store, <span className="text-emerald-400">in one clean dashboard.</span>
           </h2>
 
-          <ul className="mt-6 flex flex-col gap-2.5">
+          <ul className="mt-10 grid border-t border-white/10 xl:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex items-center gap-3.5 rounded-xl border border-white/[0.07] bg-white/[0.035] px-4 py-3.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
-                  <Icon className="size-4" />
-                </span>
+              <li
+                key={title}
+                className="flex gap-3 border-b border-white/10 py-4 last:border-b-0 xl:flex-col xl:border-b-0 xl:border-l xl:px-5 xl:py-5 xl:first:border-l-0 xl:first:pl-0 xl:last:pr-0"
+              >
+                <Icon className="mt-0.5 size-4 shrink-0 text-emerald-400" />
                 <span>
-                  <span className="block text-sm font-semibold text-white">{title}</span>
-                  <span className="block text-xs text-white/50">{text}</span>
+                  <span className="block text-sm font-semibold leading-snug text-white">{title}</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-white/50">{text}</span>
                 </span>
               </li>
             ))}

@@ -4,8 +4,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   FaSync,
   FaTimes,
-  FaChevronLeft,
-  FaChevronRight,
   FaEye,
   FaEdit,
 } from "react-icons/fa";
@@ -18,6 +16,7 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
 import MobileCardRow from "../../common/MobileCardRow";
 import { showApiError } from "../../../utils/apiError";
+import InfiniteScrollTrigger from "../../common/InfiniteScrollTrigger";
 
 // ---------- Types ----------
 
@@ -130,6 +129,8 @@ const StockAdjustmentList = () => {
   const [search, setSearch] = useState("");
   const [debSearch, setDebSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // A later page is loading below the rows already shown
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // delete only
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -175,9 +176,12 @@ const StockAdjustmentList = () => {
     }, 150);
   };
 
+  // Page 1 replaces the list; later pages append to it (infinite scroll)
   const fetchPage = useCallback(async (p: number, q: string) => {
     const requestId = ++requestRef.current;
-    setIsLoading(true);
+    const append = p > 1;
+    if (append) setLoadingMore(true);
+    else setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(p),
@@ -186,16 +190,26 @@ const StockAdjustmentList = () => {
       if (q) params.set("q", q);
       const { data } = await axiosSecure.get(`/stock/stock-adjust?${params}`);
       if (requestId !== requestRef.current) return;
-      setList(data.data.stockAdjusts ?? []);
+      const rows: StockAdjustment[] = data.data.stockAdjusts ?? [];
+      setList((prev) => (append ? [...prev, ...rows] : rows));
       setTotal(data.data.total ?? 0);
       setTotalPages(data.data.totalPages ?? 1);
-      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      if (!append && scrollRef.current) scrollRef.current.scrollTop = 0;
     } catch (error) {
       if (requestId === requestRef.current) showApiError(error, "Failed to fetch stock adjustments");
     } finally {
-      if (requestId === requestRef.current) setIsLoading(false);
+      if (requestId === requestRef.current) {
+        setIsLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, []);
+
+  // Start again from the newest record (refresh, or after a delete)
+  const reload = () => {
+    if (page === 1) fetchPage(1, debSearch);
+    else setPage(1);
+  };
 
   // The spinner replaces the list only on the first load; after that the
   // current rows stay and dim while a search or page loads
@@ -214,7 +228,7 @@ const StockAdjustmentList = () => {
       await axiosSecure.delete(`/stock/deletestockadjust/${deleteId}`);
       toast.success("Stock adjustment deleted");
       setDeleteId(null);
-      fetchPage(page, debSearch);
+      reload();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to delete");
     } finally {
@@ -236,6 +250,16 @@ const StockAdjustmentList = () => {
     virtualItems.length > 0
       ? totalVH - (virtualItems[virtualItems.length - 1]?.end ?? 0)
       : 0;
+
+  // Infinite scroll: ask for the next page once the last rendered row is
+  // within a few rows of the end of what is loaded
+  const hasMore = page < totalPages;
+  const lastRenderedIndex = virtualItems[virtualItems.length - 1]?.index ?? -1;
+  useEffect(() => {
+    if (hasMore && !isLoading && !loadingMore && list.length > 0 && lastRenderedIndex >= list.length - 5) {
+      setPage((p) => p + 1);
+    }
+  }, [hasMore, isLoading, loadingMore, list.length, lastRenderedIndex]);
 
   return (
     <div className="space-y-4">
@@ -297,7 +321,7 @@ const StockAdjustmentList = () => {
           {total} record{total !== 1 ? "s" : ""}
         </span>
         <button
-          onClick={() => fetchPage(page, debSearch)}
+          onClick={reload}
           disabled={isLoading}
           aria-label="Refresh"
           className="shine size-10 flex items-center justify-center rounded-md border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 transition-all active:scale-90 disabled:opacity-50"
@@ -323,7 +347,7 @@ const StockAdjustmentList = () => {
                 : "No stock adjustments yet"
             }
             renderCard={(item, i) => {
-              const index = (page - 1) * PAGE_LIMIT + i;
+              const index = i;
               const isVar = !item.productId && !!item.variantId;
               const barcode =
                 item.productId?.barCode ??
@@ -508,7 +532,7 @@ const StockAdjustmentList = () => {
 
                 {virtualItems.map((vi) => {
                   const item = list[vi.index];
-                  const index = (page - 1) * PAGE_LIMIT + vi.index;
+                  const index = vi.index;
                   const isEven = vi.index % 2 === 0;
                   const isVar = !item.productId && !!item.variantId;
 
@@ -671,48 +695,14 @@ const StockAdjustmentList = () => {
       </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            Page {page} of {totalPages} · {total} records
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1 || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-accent-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
-            >
-              <FaChevronLeft size={11} />
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const start = Math.max(1, Math.min(page - 2, totalPages - 4));
-              const p = start + i;
-              return (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  disabled={isLoading}
-                  className={`size-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors disabled:opacity-40 ${
-                    p === page
-                      ? "bg-accent-500 text-white"
-                      : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-400"
-                  }`}
-                >
-                  {p}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages || isLoading}
-              className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-accent-500 transition-colors disabled:opacity-40 dark:border-white/[0.08] dark:bg-white/[0.03]"
-            >
-              <FaChevronRight size={11} />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Desktop loads from the virtualizer above; the mobile cards grow the page */}
+      <InfiniteScrollTrigger
+        watch={isMobile}
+        hasMore={hasMore}
+        loading={loadingMore}
+        onLoadMore={() => setPage((p) => p + 1)}
+        label="Loading more adjustments…"
+      />
 
       {/* Delete confirm modal */}
       <Modal

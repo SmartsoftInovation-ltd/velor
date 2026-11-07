@@ -2,11 +2,12 @@ import { CheckoutSection, Field } from "@/components/checkout/checkout-section";
 import { FieldError } from "@/components/checkout/field-error";
 import { Input } from "@/components/ui/input";
 import type { CheckoutField } from "@/lib/checkout";
+import type { CheckoutDraft } from "@/lib/checkout-draft";
 
 type Errors = Partial<Record<CheckoutField, string>>;
 
 /** Plain inputs read by the checkout form on submit; errors come back from the server. */
-export function ContactForm({ errors = {} }: { errors?: Errors }) {
+export function ContactForm({ errors = {}, draft }: { errors?: Errors; draft?: CheckoutDraft | null }) {
   return (
     <CheckoutSection
       step={1}
@@ -19,6 +20,7 @@ export function ContactForm({ errors = {} }: { errors?: Errors }) {
             id="checkout-email"
             name="email"
             type="email"
+            defaultValue={draft?.email}
             aria-invalid={Boolean(errors.email)}
             autoComplete="email"
             placeholder="you@example.com"
@@ -30,6 +32,7 @@ export function ContactForm({ errors = {} }: { errors?: Errors }) {
           <Input
             id="checkout-first-name"
             name="firstName"
+            defaultValue={draft?.firstName}
             required
             autoComplete="given-name"
             placeholder="Taufik"
@@ -39,7 +42,7 @@ export function ContactForm({ errors = {} }: { errors?: Errors }) {
         </Field>
 
         <Field label="Last name" htmlFor="checkout-last-name">
-          <Input id="checkout-last-name" name="lastName" autoComplete="family-name" placeholder="Islam" />
+          <Input id="checkout-last-name" name="lastName" defaultValue={draft?.lastName} autoComplete="family-name" placeholder="Islam" />
         </Field>
 
         <Field
@@ -53,6 +56,7 @@ export function ContactForm({ errors = {} }: { errors?: Errors }) {
             name="phone"
             required
             type="tel"
+            defaultValue={draft?.phone}
             aria-invalid={Boolean(errors.phone)}
             autoComplete="tel"
             placeholder="01XXXXXXXXX"

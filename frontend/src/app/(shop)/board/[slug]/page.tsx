@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BoardPreview } from "@/components/design-system/board-preview";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { NO_INDEX } from "@/lib/seo";
+
+export const metadata: Metadata = { title: "Board", robots: NO_INDEX };
 
 /**
  * Placeholder so the design-system page's "Open the shop" link resolves.

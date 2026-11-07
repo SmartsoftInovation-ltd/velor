@@ -31,7 +31,11 @@ vi.mock("../../platform/endpoints", () => {
   // Resolved lazily: the mock factory is hoisted above the mocks it forwards to
   const forward = (pick: () => Record<string, (...a: unknown[]) => unknown>) =>
     new Proxy({}, { get: (_, key: string) => (...args: unknown[]) => pick()[key](...args) });
-  return { tenantsApi: forward(() => tenants as never), settingsApi: forward(() => settings as never) };
+  return {
+    tenantsApi: forward(() => tenants as never),
+    settingsApi: forward(() => settings as never),
+    domainsApi: { list: async () => [] },
+  };
 });
 vi.mock("../../platform/PlatformAuthContext", () => ({ usePlatformAuth: () => ({ isSuperadmin: true }) }));
 vi.mock("react-hot-toast", () => ({ default: { success: vi.fn(), error: vi.fn() } }));
@@ -93,6 +97,69 @@ describe("SellerDetailPage (Platform Console)", () => {
     await userEvent.click(screen.getByRole("button", { name: /save prefix/i }));
 
     await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { invoicePrefix: "PZS" }));
+  });
+
+  it("lets the platform pick a suggested website color", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /website color/i }));
+
+    await userEvent.click(await screen.findByRole("button", { name: /use color #0f9d63/i }));
+    expect(screen.getByLabelText(/^custom color$/i)).toHaveValue("#0f9d63");
+    await userEvent.click(screen.getByRole("button", { name: /save color/i }));
+
+    await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { primaryColor: "#0f9d63" }));
+  });
+
+  it("lets the platform set the website color, and refuses anything but a hex value", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /website color/i }));
+
+    const color = await screen.findByLabelText(/^custom color$/i);
+    const save = screen.getByRole("button", { name: /save color/i });
+
+    await userEvent.type(color, "green");
+    expect(save).toBeDisabled();
+
+    await userEvent.clear(color);
+    await userEvent.type(color, "#0F9D63");
+    await userEvent.click(save);
+
+    await waitFor(() => expect(settings.update).toHaveBeenCalledWith("t1", "general", { primaryColor: "#0F9D63" }));
+  });
+
+  it("saves the website design the platform picks", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: /website design/i }));
+
+    const save = await screen.findByRole("button", { name: /save design/i });
+    expect(save).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: /banner: full image/i }));
+    await userEvent.click(screen.getByRole("button", { name: /product card: overlay/i }));
+    await userEvent.click(screen.getByRole("button", { name: /product grid: 5 per row/i }));
+
+    await userEvent.click(screen.getByRole("button", { name: /menu color: color/i }));
+    await userEvent.click(screen.getByRole("button", { name: /shop filters: popup/i }));
+    await userEvent.click(screen.getByLabelText(/show the bar/i));
+    await userEvent.type(screen.getByLabelText(/announcement text/i), " Eid sale ");
+    await userEvent.click(save);
+
+    await waitFor(() =>
+      expect(settings.update).toHaveBeenCalledWith(
+        "t1",
+        "general",
+        expect.objectContaining({
+          bannerLayout: "full",
+          cardLayout: "overlay",
+          gridColumns: "5",
+          menuColor: "brand",
+          filterLayout: "popup",
+          announcementEnabled: "on",
+          announcementText: "Eid sale",
+          footerLayout: "full",
+        }),
+      ),
+    );
   });
 
   it("shows webhook URLs and the audit trail", async () => {

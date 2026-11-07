@@ -12,12 +12,23 @@ import { parseShopQuery } from "@/lib/catalog/query-params";
 import { getFacetCounts, PAGE_SIZE, searchProducts } from "@/lib/catalog/shop";
 import { buildTaxonomy, getStoreProducts, toCatalogProduct } from "@/lib/catalog/storefront";
 import type { Category, ShopQuery } from "@/lib/catalog/types";
-import { storeHostFrom } from "@/lib/store-api";
+import { shopPageSeo } from "@/lib/catalog/shop-seo";
+import { getStore, storeHostFrom } from "@/lib/store-api";
 
-export const metadata: Metadata = {
-  title: "Shop",
-  description: "Every product in the shop, filtered how you like it.",
-};
+export async function generateMetadata({ searchParams }: PageProps<"/shop">): Promise<Metadata> {
+  const query = parseShopQuery(await searchParams);
+  const host = storeHostFrom(await headers());
+  const [apiProducts, store] = await Promise.all([getStoreProducts(host), getStore(host)]);
+  const result = searchProducts(apiProducts.map(toCatalogProduct), query);
+  const seo = shopPageSeo(query, buildTaxonomy(apiProducts), result.total, result.pageCount, store?.name || "our shop");
+
+  return {
+    title: seo.title,
+    description: seo.description,
+    alternates: { canonical: seo.canonical },
+    robots: seo.indexable ? undefined : { index: false, follow: true },
+  };
+}
 
 function crumbs(query: ShopQuery, categories: Category[]): Crumb[] {
   const trail: Crumb[] = [{ label: "Home", href: "/" }, { label: "Shop", href: "/shop" }];
@@ -43,6 +54,7 @@ function activeCount(query: ShopQuery) {
 }
 
 function heading(query: ShopQuery, categories: Category[]) {
+  if (query.q) return `Results for “${query.q}”`;
   const category = categories.find((item) => item.id === query.category);
   if (!category) return "All products";
   const sub = category.subcategories.find((item) => item.id === query.subcategory);
@@ -71,8 +83,8 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
         <Breadcrumb items={crumbs(query, taxonomy.categories)} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[17rem_1fr]">
-        <div className="hidden lg:block">
+      <div className="grid gap-6 lg:grid-cols-[17rem_1fr] filter-right:lg:grid-cols-[1fr_17rem] filter-popup:lg:grid-cols-1">
+        <div className="hidden lg:block filter-right:lg:order-2 filter-popup:lg:hidden">
           <FilterSidebar query={query} counts={counts} taxonomy={taxonomy} />
         </div>
 
@@ -87,7 +99,9 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
             <p className="ml-auto text-small text-text-secondary">
               {result.total
                 ? `Showing ${from}–${to} of ${result.total}`
-                : "No products match these filters"}
+                : query.q
+                  ? `No products match “${query.q}”`
+                  : "No products match these filters"}
             </p>
 
             <ViewToggle query={query} />

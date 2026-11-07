@@ -3,20 +3,33 @@
 import { useEffect, useState } from "react";
 import { ClockIcon } from "@/components/ui/icons-auth";
 
-const WINDOW_SECONDS = 5 * 60;
-
 function format(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 /**
- * The five-minute validity window. It counts down from mount, and once it
- * reaches zero the resend link takes over — the code is dead by then, so
- * leaving a stale timer on screen would be a lie.
+ * How long the code has left. Once it reaches zero the resend link takes
+ * over: the code is dead by then, so a stale timer would be a lie. A new
+ * `restartKey` (a resend) starts it again from `seconds`.
  */
-export function OtpCountdown() {
-  const [left, setLeft] = useState(WINDOW_SECONDS);
+export function OtpCountdown({
+  seconds,
+  restartKey,
+  onResend,
+  resending,
+}: {
+  seconds: number;
+  restartKey?: number;
+  onResend: () => void;
+  resending: boolean;
+}) {
+  const [left, setLeft] = useState(seconds);
+  const [shownKey, setShownKey] = useState(restartKey);
+  if (shownKey !== restartKey) {
+    setShownKey(restartKey);
+    setLeft(seconds);
+  }
 
   useEffect(() => {
     if (left <= 0) return;
@@ -49,11 +62,11 @@ export function OtpCountdown() {
 
       <button
         type="button"
-        onClick={() => setLeft(WINDOW_SECONDS)}
-        disabled={!expired}
+        onClick={onResend}
+        disabled={!expired || resending}
         className="text-caption font-medium text-text-brand transition-opacity duration-150 hover:opacity-80 disabled:text-text-disabled disabled:hover:opacity-100"
       >
-        Resend code
+        {resending ? "Sending…" : "Resend code"}
       </button>
     </div>
   );

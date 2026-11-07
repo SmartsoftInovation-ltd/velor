@@ -13,7 +13,7 @@ export function VisualReset() {
   return (
     <VisualCard>
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-[var(--orange-100)] text-[var(--orange-600)]">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-[var(--brand-100)] text-text-brand">
           <ShieldLockIcon className="size-5" />
         </span>
         <div>

@@ -14,16 +14,56 @@ const slugOf = (name: string) =>
 const group = (label: string) => MODULE_GROUPS.find((g) => g.label === label)?.modules ?? [];
 
 describe("permission catalog", () => {
+  it("orders Product, Variant and Purchase as the sidebar does", () => {
+    expect(group("Product")).toEqual(["Product", "Barcode Print", "Category", "Sub Category", "Brand"]);
+    expect(group("Variant")).toEqual(["Variant"]);
+    expect(group("Purchase")).toEqual(["Purchase", "Purchase Return"]);
+    const salesPurchase = MODULE_GROUPS.filter((g) => g.section === "Sales Purchase").map((g) => g.label);
+    expect(salesPurchase.slice(0, 3)).toEqual(["Product", "Variant", "Purchase"]);
+  });
+
+  it("orders Sales, Discount & Coupon and Stock as the sidebar does", () => {
+    expect(group("Sales")).toEqual([
+      "Retail Sales", "Wholesale Sales", "Sales History", "Retail Sale Order", "Whole Sale Order", "Draft Order", "Sales Return",
+    ]);
+    expect(group("Discount & Coupon")).toEqual(["Discount", "Coupon"]);
+    expect(group("Coupon")).toEqual([]);
+    expect(group("Stock")).toEqual([
+      "View All Stock", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock", "Stock Adjustment",
+    ]);
+  });
+
+  it("orders Profile and All Accounts as the sidebar does", () => {
+    expect(MODULE_GROUPS.filter((g) => g.section === "Profile").map((g) => g.label)).toEqual(["Customer", "Supplier", "Employee"]);
+    expect(group("Customer")).toEqual(["Customer", "Customer Payment", "Advance Payment", "Customer Type"]);
+    expect(group("Supplier")).toEqual(["Supplier", "Supplier Payment"]);
+    expect(group("Employee")).toEqual(["Employee", "Designation", "Department", "Section"]);
+    expect(group("All Accounts")).toEqual(["Add Transaction", "Money Transfer", "Money Handover", "Transaction Category", "Add Account"]);
+  });
+
+  it("offers only View on the stock pages, which change nothing", () => {
+    for (const name of ["View All Stock", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock"]) {
+      expect(actionsForModule(name)).toEqual(["view"]);
+    }
+  });
+
+  it("keeps add, edit and delete on Stock Adjustment, which does change stock", () => {
+    expect(actionsForModule("Stock Adjustment")).toEqual(["view", "add", "edit", "delete"]);
+  });
+
   it("lists the screens that used to borrow another module's permission", () => {
     expect(group("Sales")).toEqual(expect.arrayContaining(["Sales Return", "Draft Order"]));
-    expect(group("SMS Notification")).toContain("Due SMS");
-    expect(group("Role & Permission")).toEqual(
+    expect(group("SMS Notifications")).toEqual(["Send SMS", "Due SMS", "Send Bulk SMS", "SMS Info"]);
+    expect(group("User Role & Permission")).toEqual(
       expect.arrayContaining(["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"]),
     );
   });
 
   it("has a Settings module with every settings screen", () => {
-    expect(group("Settings")).toEqual(["Site Information", "Outlet Information", "Store Information"]);
+    expect(group("Settings")).toEqual(["Store Information"]);
+    expect(group("Website Settings")).toEqual([
+      "Site Information", "Outlet Information", "Create Banner", "Discount Banner", "Size Chart", "Delivery Charge",
+    ]);
   });
 
   it("gives Supplier Payment, Add Transaction and Money Transfer a Print action", () => {
@@ -64,6 +104,6 @@ describe("permission catalog", () => {
     const runs = MODULE_GROUPS.map((g) => g.section).filter((x, i, all) => i === 0 || all[i - 1] !== x);
     expect(runs).toEqual(sections);
     const website = MODULE_GROUPS.filter((g) => g.section === "Website Management").map((g) => g.label);
-    expect(website).toEqual(["Order", "Courier", "Delivery Charge", "Banner", "Limited Offer", "Promo Banner", "Flash Sale", "Coupon", "Size Chart"]);
+    expect(website).toEqual(["Web Order", "Courier & Merchant", "Website Settings", "Limited Offer", "Flash Sale"]);
   });
 });

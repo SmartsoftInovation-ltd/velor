@@ -16,7 +16,7 @@ const LayoutContent: React.FC = () => {
       </div>
       <div
         id="app-content-column"
-        className={`flex-1 transition-all duration-300 ease-in-out ${
+        className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${
           isExpanded || isHovered ? "lg:ml-[232px]" : "lg:ml-[72px]"
         } ${isMobileOpen ? "ml-0" : ""}`}
       >

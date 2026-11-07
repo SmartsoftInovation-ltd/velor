@@ -3,6 +3,23 @@
 /* Dark mode is driven by an explicit attribute on <html>, not the OS. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* A store's layout choices, set on <html> by the root layout. */
+@custom-variant banner-full (&:where([data-banner="full"] *));
+@custom-variant banner-boxed (&:where([data-banner="boxed"] *));
+@custom-variant card-minimal (&:where([data-card="minimal"] *));
+@custom-variant card-overlay (&:where([data-card="overlay"] *));
+@custom-variant card-buy (&:where([data-card="buy"] *));
+@custom-variant category-round (&:where([data-category="round"] *));
+@custom-variant category-card (&:where([data-category="card"] *));
+@custom-variant category-name (&:where([data-category="name"] *));
+@custom-variant gallery-right (&:where([data-gallery="right"] *));
+@custom-variant thumbs-bottom (&:where([data-thumbs="bottom"] *));
+@custom-variant filter-right (&:where([data-filter="right"] *));
+@custom-variant filter-popup (&:where([data-filter="popup"] *));
+@custom-variant footer-compact (&:where([data-footer="compact"] *));
+@custom-variant menu-center (&:where([data-menu-align="center"] *));
+@custom-variant announcement-on (&:where([data-announcement="on"] *));
+
 /* ---------------------------------------------------------------------------
    PRIMITIVES
    Raw values. Referenced only by the semantic layer below — never used directly
@@ -13,16 +30,18 @@
   /* Brand — #FC630A is the one value carried over from the Figma file.
      The ramp is built around it: 50-300 are tints for surfaces and hover,
      600-900 are shades dark enough to carry white text. */
-  --orange-50: #fff5ed;
-  --orange-100: #ffe8d5;
-  --orange-200: #fecdaa;
-  --orange-300: #fdab74;
-  --orange-400: #fc7f3c;
-  --orange-500: #fc630a;
-  --orange-600: #ea4a06;
-  --orange-700: #c23507;
-  --orange-800: #9a2c0e;
-  --orange-900: #7c270f;
+  --brand-50: #fff5ed;
+  --brand-100: #ffe8d5;
+  --brand-200: #fecdaa;
+  --brand-300: #fdab74;
+  --brand-400: #fc7f3c;
+  --brand-500: #fc630a;
+  --brand-600: #ea4a06;
+  --brand-700: #c23507;
+  --brand-800: #9a2c0e;
+  --brand-900: #7c270f;
+  /* Brand text on a fixed white control, in either theme */
+  --brand-ink: var(--brand-700);
 
   /* Neutrals — a warm grey ramp. Every step carries a trace of the brand hue
      so orange never reads cold against it. This is the whole reason not to use
@@ -52,6 +71,8 @@
   --amber-100: #fef3c7;
   --amber-500: #d97706;
   --amber-600: #b45309;
+  /* Buy Now on the buy product card: the same orange for every shop */
+  --buy-now: #ff6a0c;
   --blue-100: #dbeafe;
   --blue-500: #2563eb;
   --blue-600: #1d4ed8;
@@ -79,23 +100,27 @@
   --color-text-tertiary: var(--sand-500);
   --color-text-disabled: var(--sand-400);
   --color-text-inverse: var(--sand-0);
-  --color-text-brand: var(--orange-600);
+  --color-text-brand: var(--brand-600);
 
   --color-border-subtle: var(--sand-200);
   --color-border-default: var(--sand-300);
   --color-border-strong: var(--sand-400);
-  --color-border-brand: var(--orange-500);
+  --color-border-brand: var(--brand-500);
 
-  --color-brand-50: var(--orange-50);
-  --color-brand-100: var(--orange-100);
-  --color-brand-200: var(--orange-200);
-  --color-brand-300: var(--orange-300);
-  --color-brand-400: var(--orange-400);
-  --color-brand-500: var(--orange-500);
-  --color-brand-600: var(--orange-600);
-  --color-brand-700: var(--orange-700);
-  --color-brand-800: var(--orange-800);
-  --color-brand-900: var(--orange-900);
+  /* Text on a brand fill. White unless a store's color is too light to carry it
+     (see lib/brand-theme.ts). The same in both themes: the fill barely moves. */
+  --color-on-brand: #fff;
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
 
   /* Each status is a trio: a tint for backgrounds, a solid for fills and dots,
      and a text colour that clears 4.5:1 on its own tint. */
@@ -146,12 +171,12 @@
   --color-text-disabled: #605952;
   --color-text-inverse: var(--sand-900);
   /* 400 rather than 600: on a dark ground the darker shades fail contrast. */
-  --color-text-brand: var(--orange-400);
+  --color-text-brand: var(--brand-400);
 
   --color-border-subtle: #302c29;
   --color-border-default: #3d3835;
   --color-border-strong: #524c47;
-  --color-border-brand: var(--orange-500);
+  --color-border-brand: var(--brand-500);
 
   /* The brand ramp inverts so 100 stays the quiet tint and 800 the loud one in
      both themes. Write bg-brand-100 once; never reach for a dark: variant. */
@@ -160,11 +185,11 @@
   --color-brand-200: #5c2c0d;
   --color-brand-300: #8a3f0f;
   --color-brand-400: #d1520a;
-  --color-brand-500: var(--orange-500);
-  --color-brand-600: var(--orange-400);
-  --color-brand-700: var(--orange-300);
-  --color-brand-800: var(--orange-200);
-  --color-brand-900: var(--orange-100);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-400);
+  --color-brand-700: var(--brand-300);
+  --color-brand-800: var(--brand-200);
+  --color-brand-900: var(--brand-100);
 
   --color-success-subtle: #0d2818;
   --color-success-solid: #22c55e;
@@ -214,6 +239,7 @@
   --color-border-strong: var(--color-border-strong);
   --color-border-brand: var(--color-border-brand);
 
+  --color-on-brand: var(--color-on-brand);
   --color-brand-50: var(--color-brand-50);
   --color-brand-100: var(--color-brand-100);
   --color-brand-200: var(--color-brand-200);
@@ -390,6 +416,34 @@ select:focus-visible {
 [data-nav-tone="brand"] nav a:not([role="menu"] *)::after,
 [data-nav-tone="inverse"] nav a:not([role="menu"] *)::after {
   background-color: var(--nav-accent);
+}
+
+/* The header search's results: they rise into place, and on the rare screen too
+   short for them they scroll with no visible bar. */
+@keyframes search-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-panel {
+  animation: search-panel-in 160ms var(--ease-out);
+  scrollbar-width: none;
+}
+
+.search-panel::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-panel {
+    animation: none;
+  }
 }
 
 /* Toasts slide up from the corner they stack in. */
@@ -616,4 +670,91 @@ select:focus-visible {
   background: white;
   width: 1.5rem;
   border-radius: 9999px;
+}
+
+/* A store's product columns. Left out of @layer so it beats the grid's own
+   lg:grid-cols-*. Beside the shop's filters there is less room, so that grid
+   only grows for the widest choice. */
+@media (min-width: 1024px) {
+  [data-grid="3"] .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  [data-grid="5"] .product-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  [data-grid="5"] .product-grid-filtered {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* With the filters in a popup, the shop's grid has the whole width */
+  [data-filter="popup"] .product-grid-filtered {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  [data-filter="popup"][data-grid="3"] .product-grid-filtered {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  [data-filter="popup"][data-grid="5"] .product-grid-filtered {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* A store's button style. Every solid brand button is a link or button carrying
+   these two utilities; badges and chips are spans, so they keep their fill. */
+[data-button="flat"] :is(a, button).bg-brand-500.text-on-brand {
+  box-shadow: none;
+}
+
+[data-button="outline"] :is(a, button).bg-brand-500.text-on-brand {
+  background-color: transparent;
+  color: var(--color-text-brand);
+  box-shadow: inset 0 0 0 1.5px var(--color-brand-500);
+}
+
+[data-button="outline"] :is(a, button).bg-brand-500.text-on-brand:hover {
+  background-color: var(--color-brand-500);
+  color: var(--color-on-brand);
+}
+
+/* A store's menu band. Only the storefront's own header carries data-nav-bar, so
+   the design-system page keeps showing its fixed tones. */
+[data-menu="surface"] [data-nav-bar] [data-nav-tone] {
+  background-color: var(--color-bg-surface);
+}
+
+[data-menu="brand"] [data-nav-bar] [data-nav-tone] {
+  --menu-ink: var(--color-on-brand);
+  --menu-strong: var(--color-on-brand);
+  background-color: var(--color-brand-500);
+  border-top-color: transparent;
+}
+
+[data-menu="inverse"] [data-nav-bar] [data-nav-tone] {
+  --menu-ink: var(--color-text-inverse);
+  /* The sliding pill stays brand here, so the word on it follows the brand */
+  --menu-strong: var(--color-on-brand);
+  background-color: var(--color-bg-inverse);
+  border-top-color: transparent;
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav :is(a, button):not([role="menu"] *) {
+  color: color-mix(in srgb, var(--menu-ink) 80%, transparent);
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav :is(a, button):not([role="menu"] *):hover,
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav a[aria-current="page"]:not([role="menu"] *) {
+  color: var(--menu-strong);
+}
+
+[data-menu="brand"] [data-nav-bar] nav [aria-hidden="true"].bg-brand-500 {
+  background-color: color-mix(in srgb, var(--menu-ink) 18%, transparent);
+  box-shadow: none;
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] [data-nav-tone] > div > p {
+  background-color: color-mix(in srgb, var(--menu-ink) 14%, transparent);
+  color: var(--menu-ink);
+}
+
+:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] [data-nav-tone] > div > span {
+  background-color: color-mix(in srgb, var(--menu-ink) 25%, transparent);
 }

@@ -6,8 +6,10 @@ import { SignUpForm } from "@/components/auth/sign-up-form";
 import { SignUpHeading } from "@/components/auth/sign-up-heading";
 import { VisualSignUp } from "@/components/auth/visual-sign-up";
 import { getStore, storeHostFrom } from "@/lib/store-api";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Create account",
   description: "Create an account to check out faster and track your orders.",
 };

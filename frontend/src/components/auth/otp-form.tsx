@@ -1,17 +1,22 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { resendResetCodeAction, verifyResetCodeAction, type ResetFormState } from "@/lib/actions/password-reset";
+import { OTP_LENGTH as LENGTH } from "@/lib/password-reset";
+import { FormAlert } from "./form-alert";
 import { OtpCountdown } from "./otp-countdown";
-
-const LENGTH = 6;
 
 /**
  * Six single-character inputs rather than one field: it makes the expected
  * length obvious and lets each digit be corrected in place. Paste is handled
- * on the first box, which is where a pasted code lands.
+ * on the first box, which is where a pasted code lands. The digits post as
+ * one `otp` field. `secondsLeft` is what the code had when the page rendered.
  */
-export function OtpForm() {
+export function OtpForm({ secondsLeft }: { secondsLeft: number }) {
+  const [state, action, pending] = useActionState<ResetFormState, FormData>(verifyResetCodeAction, {});
+  const [resent, setResent] = useState<ResetFormState>({});
+  const [resending, startResend] = useTransition();
   const [digits, setDigits] = useState<string[]>(Array(LENGTH).fill(""));
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -52,9 +57,22 @@ export function OtpForm() {
   };
 
   const complete = digits.every(Boolean);
+  const error = resent.error ?? state.error ?? state.fieldErrors?.otp;
+
+  const resend = () =>
+    startResend(async () => {
+      const answer = await resendResetCodeAction();
+      setResent(answer);
+      if (!answer.error) {
+        setDigits(Array(LENGTH).fill(""));
+        focus(0);
+      }
+    });
 
   return (
-    <form className="space-y-5">
+    <form action={action} className="space-y-5">
+      {error ? <FormAlert>{error}</FormAlert> : resent.sentAt ? <FormAlert tone="info">A new code is on its way.</FormAlert> : null}
+      <input type="hidden" name="otp" value={digits.join("")} />
       <fieldset>
         <legend className="sr-only">Verification code</legend>
         <div className="flex justify-between gap-2">
@@ -78,10 +96,15 @@ export function OtpForm() {
         </div>
       </fieldset>
 
-      <OtpCountdown />
+      <OtpCountdown
+        seconds={resent.expiresIn ?? secondsLeft}
+        restartKey={resent.sentAt}
+        onResend={resend}
+        resending={resending}
+      />
 
-      <Button type="submit" size="lg" fullWidth disabled={!complete}>
-        Verify code
+      <Button type="submit" size="lg" fullWidth disabled={!complete || pending}>
+        {pending ? "Checking…" : "Verify code"}
       </Button>
     </form>
   );

@@ -7,20 +7,16 @@ import {
 } from "react-icons/md";
 import {
   TbRosetteDiscount,
-  TbRulerMeasure,
   TbShoppingCartPlus,
   TbReportAnalytics,
   TbBuildingWarehouse,
   TbUsersGroup,
   TbBuildingStore,
   TbSettings,
+  TbWorld,
   TbShieldLock,
   TbBuildingCommunity,
-  TbPhoto,
-  TbSparkles,
   TbBolt,
-  TbSpeakerphone,
-  TbTicket,
 } from "react-icons/tb";
 import { FiUsers } from "react-icons/fi";
 import { LuClipboardList, LuWallet } from "react-icons/lu";
@@ -103,6 +99,25 @@ const navItems: NavItem[] = [
     icon: <MdOutlineInventory2 />,
     subItems: [
       {
+        name: "Create Product",
+        path: "/create-product",
+        module: PERMISSIONS.PRODUCT,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Product List",
+        path: "/product-list",
+        module: PERMISSIONS.PRODUCT,
+        pro: false,
+      },
+      {
+        name: "Barcode Print",
+        path: "/barcode-print",
+        module: PERMISSIONS.BARCODE_PRINT,
+        pro: false,
+      },
+      {
         name: "Create Category",
         path: "/create-category",
         module: PERMISSIONS.CATEGORY,
@@ -141,25 +156,6 @@ const navItems: NavItem[] = [
         module: PERMISSIONS.BRAND,
         pro: false,
       },
-      {
-        name: "Create Product",
-        path: "/create-product",
-        module: PERMISSIONS.PRODUCT,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Product List",
-        path: "/product-list",
-        module: PERMISSIONS.PRODUCT,
-        pro: false,
-      },
-      {
-        name: "Barcode Print",
-        path: "/barcode-print",
-        module: PERMISSIONS.BARCODE_PRINT,
-        pro: false,
-      },
     ],
   },
   {
@@ -182,30 +178,11 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Size Chart",
-    icon: <TbRulerMeasure />,
-    subItems: [
-      {
-        name: "Create Size Chart",
-        path: "/create-sizechart",
-        module: PERMISSIONS.SIZE_CHART,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Size Chart List",
-        path: "/sizechart-list",
-        module: PERMISSIONS.SIZE_CHART,
-        pro: false,
-      },
-    ],
-  },
-  {
     name: "Purchase",
     icon: <TbShoppingCartPlus />,
     subItems: [
       {
-        name: "Add Purchase",
+        name: "Create Purchase",
         path: "/add-purchase",
         module: PERMISSIONS.PURCHASE,
         action: "add",
@@ -232,7 +209,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Discount",
+    name: "Discount & Coupon",
     icon: <TbRosetteDiscount />,
     subItems: [
       {
@@ -248,13 +225,6 @@ const navItems: NavItem[] = [
         module: PERMISSIONS.DISCOUNT,
         pro: false,
       },
-    ],
-  },
-  {
-    // Codes shoppers enter at the storefront checkout
-    name: "Coupon",
-    icon: <TbTicket />,
-    subItems: [
       {
         name: "Create Coupon",
         path: "/create-coupon",
@@ -271,23 +241,23 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Order",
+    name: "Web Order",
     icon: <LuClipboardList />,
     subItems: [
       {
-        name: "Create Order",
+        name: "Create Web Order",
         path: "/create-order",
         module: PERMISSIONS.ORDER,
         pro: false,
       },
       {
-        name: "Order List",
+        name: "Web Order List",
         path: "/order-list",
         module: PERMISSIONS.ORDER,
         pro: false,
       },
       {
-        name: "Incomplete Orders",
+        name: "Incomplete Order List",
         path: "/incomplete-order-list",
         module: PERMISSIONS.INCOMPLETE_ORDER,
         pro: false,
@@ -295,11 +265,11 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Courier",
+    name: "Courier & Merchant",
     icon: <MdOutlineLocalShipping />,
     subItems: [
       {
-        name: "Courier Merchant",
+        name: "Create Courier Merchant",
         path: "/courier",
         module: PERMISSIONS.COURIER_MERCHANT,
         pro: false,
@@ -326,9 +296,65 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Delivery Charge",
-    icon: <MdOutlineLocalShipping />,
+    name: "Website Settings",
+    icon: <TbWorld />,
     subItems: [
+      {
+        name: "Create Website Info",
+        path: "/add-site-info",
+        module: PERMISSIONS.SITE_INFORMATION,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Website Info List",
+        path: "/site-info-list",
+        module: PERMISSIONS.SITE_INFORMATION,
+        pro: false,
+      },
+      {
+        name: "Create Outlet Info",
+        path: "/add-outlet",
+        module: PERMISSIONS.OUTLET_INFORMATION,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Outlet Info List",
+        path: "/outlet-list",
+        module: PERMISSIONS.OUTLET_INFORMATION,
+        pro: false,
+      },
+      {
+        name: "Create Web Banner",
+        path: "/add-banner",
+        module: PERMISSIONS.CREATE_BANNER,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Web Banner List",
+        path: "/banner-list",
+        module: PERMISSIONS.CREATE_BANNER,
+        pro: false,
+      },
+      { name: "Create Discount Banner", path: "/add-discount", module: PERMISSIONS.DISCOUNT_BANNER, action: "add", pro: false },
+      { name: "Discount Banner List", path: "/discount-banner-list", module: PERMISSIONS.DISCOUNT_BANNER, pro: false },
+      // The storefront's "Limited offers" section
+      { name: "Limited Offer", path: "/limited-offer", module: PERMISSIONS.LIMITED_OFFER, pro: false },
+      {
+        name: "Create Size Chart",
+        path: "/create-sizechart",
+        module: PERMISSIONS.SIZE_CHART,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Size Chart List",
+        path: "/sizechart-list",
+        module: PERMISSIONS.SIZE_CHART,
+        pro: false,
+      },
       {
         name: "Create Delivery Charge",
         path: "/create-delivery-charge",
@@ -342,42 +368,6 @@ const navItems: NavItem[] = [
         module: PERMISSIONS.DELIVERY_CHARGE,
         pro: false,
       },
-    ],
-  },
-  {
-    // The storefront's home page slider
-    name: "Banner",
-    icon: <TbPhoto />,
-    subItems: [
-      {
-        name: "Add Banner",
-        path: "/add-banner",
-        module: PERMISSIONS.CREATE_BANNER,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Banner List",
-        path: "/banner-list",
-        module: PERMISSIONS.CREATE_BANNER,
-        pro: false,
-      },
-    ],
-  },
-  {
-    // The storefront's "Limited offers" section
-    name: "Limited Offer",
-    icon: <TbSparkles />,
-    path: "/limited-offer",
-    module: PERMISSIONS.LIMITED_OFFER,
-  },
-  {
-    // The wide banner in the middle of the storefront home page
-    name: "Promo Banner",
-    icon: <TbSpeakerphone />,
-    subItems: [
-      { name: "Add Promo Banner", path: "/add-discount", module: PERMISSIONS.DISCOUNT_BANNER, action: "add", pro: false },
-      { name: "Promo Banner List", path: "/discount-banner-list", module: PERMISSIONS.DISCOUNT_BANNER, pro: false },
     ],
   },
   {
@@ -397,18 +387,6 @@ const navItems: NavItem[] = [
         name: "View All Stock",
         path: "/view-all-stock",
         module: PERMISSIONS.VIEW_ALL_STOCK,
-        pro: false,
-      },
-      {
-        name: "Stock Adjustment",
-        path: "/stock-adjustment",
-        module: PERMISSIONS.STOCK_ADJUSTMENT,
-        pro: false,
-      },
-      {
-        name: "Stock Adjustment List",
-        path: "/stock-adjustment-list",
-        module: PERMISSIONS.STOCK_ADJUSTMENT,
         pro: false,
       },
       {
@@ -435,6 +413,18 @@ const navItems: NavItem[] = [
         module: PERMISSIONS.LOW_STOCK,
         pro: false,
       },
+      {
+        name: "Stock Adjustment",
+        path: "/stock-adjustment",
+        module: PERMISSIONS.STOCK_ADJUSTMENT,
+        pro: false,
+      },
+      {
+        name: "Stock Adjustment List",
+        path: "/stock-adjustment-list",
+        module: PERMISSIONS.STOCK_ADJUSTMENT,
+        pro: false,
+      },
     ],
   },
   {
@@ -442,7 +432,7 @@ const navItems: NavItem[] = [
     icon: <LuWallet />,
     subItems: [
       {
-        name: "Add Transaction",
+        name: "Create Transaction",
         path: "/add-transaction",
         module: PERMISSIONS.ADD_TRANSACTION,
         action: "add",
@@ -455,19 +445,7 @@ const navItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Transaction Category List",
-        path: "/transaction-category-list",
-        module: PERMISSIONS.TRANSACTION_CATEGORY,
-        pro: false,
-      },
-      {
-        name: "Account List",
-        path: "/account-list",
-        module: PERMISSIONS.ADD_ACCOUNT,
-        pro: false,
-      },
-      {
-        name: "Add Money Transfer",
+        name: "Create Money Transfer",
         path: "/add-money-transfer",
         module: PERMISSIONS.MONEY_TRANSFER,
         action: "add",
@@ -480,7 +458,7 @@ const navItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Money Handover",
+        name: "Create Money Handover",
         path: "/money-handover-description",
         module: PERMISSIONS.MONEY_HANDOVER,
         pro: false,
@@ -489,6 +467,32 @@ const navItems: NavItem[] = [
         name: "Money Handover List",
         path: "/money-handover-list",
         module: PERMISSIONS.MONEY_HANDOVER,
+        pro: false,
+      },
+      {
+        name: "Create Transaction Category",
+        path: "/add-transaction-category",
+        module: PERMISSIONS.TRANSACTION_CATEGORY,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Transaction Category List",
+        path: "/transaction-category-list",
+        module: PERMISSIONS.TRANSACTION_CATEGORY,
+        pro: false,
+      },
+      {
+        name: "Create Account",
+        path: "/add-account",
+        module: PERMISSIONS.ADD_ACCOUNT,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Account List",
+        path: "/account-list",
+        module: PERMISSIONS.ADD_ACCOUNT,
         pro: false,
       },
     ],
@@ -509,12 +513,18 @@ const navItems: NavItem[] = [
 const othersItems: NavItem[] = [
   {
     icon: <MdOutlineSms />,
-    name: "SMS Notification",
+    name: "SMS Notifications",
     subItems: [
       {
         name: "Send SMS",
         path: "/sendsms",
         module: PERMISSIONS.SEND_SMS,
+        pro: false,
+      },
+      {
+        name: "Send Due SMS",
+        path: "/due-sms",
+        module: PERMISSIONS.DUE_SMS,
         pro: false,
       },
       {
@@ -529,17 +539,11 @@ const othersItems: NavItem[] = [
         module: PERMISSIONS.SMS_INFO,
         pro: false,
       },
-      {
-        name: "Due SMS",
-        path: "/due-sms",
-        module: PERMISSIONS.DUE_SMS,
-        pro: false,
-      },
     ],
   },
   {
     icon: <TbShieldLock />,
-    name: "Role & Permission",
+    name: "User Role & Permission",
     subItems: [
       {
         name: "Create User",
@@ -562,6 +566,12 @@ const othersItems: NavItem[] = [
         pro: false,
       },
       {
+        name: "Role List",
+        path: "/role-list",
+        module: PERMISSIONS.CREATE_ROLE,
+        pro: false,
+      },
+      {
         name: "Create User Permission",
         path: "/create-user-permission",
         module: PERMISSIONS.CREATE_PERMISSION,
@@ -575,7 +585,7 @@ const othersItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Audit Log",
+        name: "Audit User Log",
         path: "/audit-log",
         module: PERMISSIONS.AUDIT_LOG,
         pro: false,
@@ -587,58 +597,17 @@ const othersItems: NavItem[] = [
     icon: <TbSettings />,
     subItems: [
       {
-        name: "Site Information",
-        subSubItems: [
-          {
-            name: "Add Site Info",
-            path: "/add-site-info",
-            module: PERMISSIONS.SITE_INFORMATION,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Site Info List",
-            path: "/site-info-list",
-            module: PERMISSIONS.SITE_INFORMATION,
-            pro: false,
-          },
-        ],
+        name: "Create Store Information",
+        path: "/add-store-info",
+        module: PERMISSIONS.STORE_INFORMATION,
+        action: "add",
+        pro: false,
       },
       {
-        name: "Outlet Information",
-        subSubItems: [
-          {
-            name: "Add Outlet",
-            path: "/add-outlet",
-            module: PERMISSIONS.OUTLET_INFORMATION,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Outlet List",
-            path: "/outlet-list",
-            module: PERMISSIONS.OUTLET_INFORMATION,
-            pro: false,
-          },
-        ],
-      },
-      {
-        name: "Store Information",
-        subSubItems: [
-          {
-            name: "Add Store Info",
-            path: "/add-store-info",
-            module: PERMISSIONS.STORE_INFORMATION,
-            action: "add",
-            pro: false,
-          },
-          {
-            name: "Store Info List",
-            path: "/store-info-list",
-            module: PERMISSIONS.STORE_INFORMATION,
-            pro: false,
-          },
-        ],
+        name: "Store Information List",
+        path: "/store-info-list",
+        module: PERMISSIONS.STORE_INFORMATION,
+        pro: false,
       },
     ],
   },
@@ -647,10 +616,10 @@ const othersItems: NavItem[] = [
 const hrManage: NavItem[] = [
   {
     icon: <TbUsersGroup />,
-    name: "Employee Management",
+    name: "Employee",
     subItems: [
       {
-        name: "Add New Employee",
+        name: "Create Employee",
         path: "/create-employee",
         module: PERMISSIONS.EMPLOYEE,
         action: "add",
@@ -663,7 +632,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Designation",
+        name: "Create Designation",
         path: "/create-designation",
         module: PERMISSIONS.DESIGNATION,
         action: "add",
@@ -676,7 +645,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Department",
+        name: "Create Department",
         path: "/create-department",
         module: PERMISSIONS.DEPARTMENT,
         action: "add",
@@ -689,7 +658,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Section",
+        name: "Create Section",
         path: "/create-section",
         module: PERMISSIONS.SECTION,
         action: "add",
@@ -708,7 +677,7 @@ const hrManage: NavItem[] = [
     name: "Supplier",
     subItems: [
       {
-        name: "Add Supplier",
+        name: "Create Supplier",
         path: "/create-supplier",
         module: PERMISSIONS.SUPPLIER,
         action: "add",
@@ -721,7 +690,7 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Add Supplier Payment",
+        name: "Create Supplier Payment",
         path: "/create-supplier-payment",
         module: PERMISSIONS.SUPPLIER_PAYMENT,
         action: "add",
@@ -740,13 +709,7 @@ const hrManage: NavItem[] = [
     name: "Customer",
     subItems: [
       {
-        name: "Customer Type List",
-        path: "/customer-type-list",
-        module: PERMISSIONS.CUSTOMER_TYPE,
-        pro: false,
-      },
-      {
-        name: "Add Customer",
+        name: "Create Customer",
         path: "/create-customer",
         module: PERMISSIONS.CUSTOMER,
         action: "add",
@@ -771,15 +734,28 @@ const hrManage: NavItem[] = [
         pro: false,
       },
       {
-        name: "Advance Payment Receive",
+        name: "Customer Advance Payment",
         path: "/customer-advance-payment",
         module: PERMISSIONS.ADVANCE_PAYMENT,
         pro: false,
       },
       {
-        name: "Advance Payment Receive List",
+        name: "Customer Advance Payment List",
         path: "/advance-payment-list",
         module: PERMISSIONS.ADVANCE_PAYMENT,
+        pro: false,
+      },
+      {
+        name: "Create Customer Type",
+        path: "/create-customer-type",
+        module: PERMISSIONS.CUSTOMER_TYPE,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Customer Type List",
+        path: "/customer-type-list",
+        module: PERMISSIONS.CUSTOMER_TYPE,
         pro: false,
       },
     ],
@@ -806,19 +782,6 @@ const hrManage: NavItem[] = [
         name: "Sales History",
         path: "/sales-history",
         module: PERMISSIONS.SALES_HISTORY,
-        pro: false,
-      },
-      {
-        name: "Sales Return",
-        path: "/sales-return",
-        module: PERMISSIONS.SALES_RETURN,
-        action: "add",
-        pro: false,
-      },
-      {
-        name: "Sales Return List",
-        path: "/sales-return-list",
-        module: PERMISSIONS.SALES_RETURN,
         pro: false,
       },
       {
@@ -850,6 +813,19 @@ const hrManage: NavItem[] = [
         module: PERMISSIONS.DRAFT_ORDER,
         pro: false,
       },
+      {
+        name: "Sales Return",
+        path: "/sales-return",
+        module: PERMISSIONS.SALES_RETURN,
+        action: "add",
+        pro: false,
+      },
+      {
+        name: "Sales Return List",
+        path: "/sales-return-list",
+        module: PERMISSIONS.SALES_RETURN,
+        pro: false,
+      },
     ],
   },
 ];
@@ -865,29 +841,19 @@ const salesPurchaseItems: NavItem[] = [
 ];
 
 const discountManagementItems = navItems.filter(
-  (item) => item.name === "Discount",
+  (item) => item.name === "Discount & Coupon",
 );
 const stockManagementItems = navItems.filter((item) => item.name === "Stock");
-const websiteManagementItems: NavItem[] = [
-  ...navItems.filter(
-    (item) =>
-      item.name === "Courier" ||
-      item.name === "Order" ||
-      item.name === "Delivery Charge" ||
-      item.name === "Banner" ||
-      item.name === "Limited Offer" ||
-      item.name === "Flash Sale" ||
-      item.name === "Promo Banner" ||
-      item.name === "Coupon",
-  ),
-  // Size charts are shown on the storefront's product pages
-  ...navItems.filter((item) => item.name === "Size Chart"),
-];
-const profileItems = hrManage.filter(
+const websiteManagementItems: NavItem[] = navItems.filter(
   (item) =>
-    item.name === "Customer" ||
-    item.name === "Supplier" ||
-    item.name === "Employee Management",
+    item.name === "Web Order" ||
+    item.name === "Courier & Merchant" ||
+    item.name === "Website Settings" ||
+    item.name === "Limited Offer" ||
+    item.name === "Flash Sale",
+);
+const profileItems: NavItem[] = ["Customer", "Supplier", "Employee"].flatMap((name) =>
+  hrManage.filter((item) => item.name === name),
 );
 const accountManagementItems = navItems.filter(
   (item) => item.name.trim() === "All Accounts",
@@ -896,7 +862,8 @@ const analyticsUsersItems: NavItem[] = [
   ...navItems.filter((item) => item.name === "Reports & Analytics"),
   ...othersItems.filter(
     (item) =>
-      item.name === "SMS Notification" || item.name === "Role & Permission",
+      item.name === "SMS Notifications" ||
+      item.name === "User Role & Permission",
   ),
 ];
 const generalSettingsItems = othersItems.filter(
@@ -905,8 +872,8 @@ const generalSettingsItems = othersItems.filter(
 const otherSidebarItems: NavItem[] = [
   ...othersItems.filter(
     (item) =>
-      item.name !== "SMS Notification" &&
-      item.name !== "Role & Permission" &&
+      item.name !== "SMS Notifications" &&
+      item.name !== "User Role & Permission" &&
       item.name.trim() !== "Settings",
   ),
 ];
@@ -1021,17 +988,13 @@ export const useSidebarSections = (): SidebarSection[] => {
         item.name !== "Product" &&
         item.name !== "Variant" &&
         item.name !== "Purchase" &&
-        item.name !== "Discount" &&
+        item.name !== "Discount & Coupon" &&
         item.name !== "Stock" &&
-        item.name !== "Courier" &&
-        item.name !== "Delivery Charge" &&
-        item.name !== "Banner" &&
+        item.name !== "Courier & Merchant" &&
+        item.name !== "Website Settings" &&
         item.name !== "Limited Offer" &&
         item.name !== "Flash Sale" &&
-        item.name !== "Promo Banner" &&
-        item.name !== "Coupon" &&
-        item.name !== "Order" &&
-        item.name !== "Size Chart" &&
+        item.name !== "Web Order" &&
         item.name.trim() !== "All Accounts" &&
         item.name !== "Reports & Analytics",
     ),
@@ -1062,7 +1025,7 @@ export const useSidebarSections = (): SidebarSection[] => {
         item.name !== "Sales" &&
         item.name !== "Customer" &&
         item.name !== "Supplier" &&
-        item.name !== "Employee Management",
+        item.name !== "Employee",
     ),
   );
 

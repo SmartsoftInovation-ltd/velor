@@ -1,4 +1,5 @@
 import InfiniteSearchList from "./InfiniteSearchList";
+import { labelsForStock } from "./types";
 import type { ProductLite, QueueItem } from "./types";
 
 interface ProductsSourceTabProps {
@@ -20,7 +21,7 @@ const ProductsSourceTab: React.FC<ProductsSourceTabProps> = ({
     price: p.retailPrice ?? 0,
     size: p.size,
     color: p.color,
-    quantity: 1,
+    quantity: labelsForStock(p.stock),
   });
 
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BoardPreview } from "@/components/design-system/board-preview";
 import { Media } from "@/components/design-system/media";
@@ -11,6 +12,9 @@ import { RadiusAndElevation } from "@/components/design-system/elevation";
 import { Buttons, FormControls } from "@/components/design-system/surfaces";
 import { TypeScale } from "@/components/design-system/typography";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { NO_INDEX } from "@/lib/seo";
+
+export const metadata: Metadata = { title: "Design system", robots: NO_INDEX };
 
 /**
  * Design-system reference page. Every value below is a token — nothing is

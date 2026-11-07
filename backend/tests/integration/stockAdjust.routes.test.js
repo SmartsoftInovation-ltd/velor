@@ -175,6 +175,25 @@ describe("stock adjustment routes (/api/v1/stock)", () => {
       await as().get("/stock/stock-adjust/subcategory/0123456789abcdef01234567").expect(404);
     });
 
+    it("GET /stock/getallmultiplevariant pages through variants saved at the same moment without repeats", async () => {
+      const when = new Date("2026-01-01T00:00:00Z");
+      const owned = await f.product.create({ variantType: "multipleVariant" });
+      const ids = [];
+      for (let i = 0; i < 7; i += 1) {
+        const { _id } = await f.variant.create({ product: owned._id });
+        ids.push(_id);
+      }
+      await runForTenant(tenant._id, () => Variant.collection.updateMany({ _id: { $in: ids } }, { $set: { createdAt: when } }));
+
+      const seen = [];
+      for (let page = 1; page <= 4; page += 1) {
+        const res = await as().get("/stock/getallmultiplevariant").query({ page, limit: 2 }).expect(200);
+        seen.push(...res.body.data.variants.map((v) => v._id));
+      }
+      const expected = ids.map(String);
+      expect(seen.filter((id) => expected.includes(id)).sort()).toEqual([...expected].sort());
+    });
+
     it("lists variants and single-variant products together", async () => {
       await f.variant.create({ product: product._id });
       const res = await as().get("/stock/getallmultiplevariant").expect(200);

@@ -27,7 +27,7 @@ export function SectionHeading({
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="space-y-2">
         {eyebrow ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-caption font-semibold tracking-wide text-brand-600 uppercase [&>svg]:size-4">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-caption font-semibold tracking-wide text-text-brand uppercase [&>svg]:size-4">
             {icon}
             {eyebrow}
           </span>

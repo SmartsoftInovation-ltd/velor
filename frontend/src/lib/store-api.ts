@@ -25,6 +25,23 @@ export function storeHostFrom(requestHeaders: Headers): string {
   return host;
 }
 
+/**
+ * The address this request came in on, for links that must be absolute. Unlike
+ * storeHostFrom it stays on localhost in development. The proxy says whether the
+ * shopper used https; with no proxy in front, a real domain still means https.
+ */
+export function requestOrigin(requestHeaders: Headers): string | undefined {
+  const host = requestHeaders.get("host")?.toLowerCase();
+  if (!host) return undefined;
+  const local = LOCAL_HOSTS.has(host.replace(/:\d+$/, ""));
+  const proto = requestHeaders.get("x-forwarded-proto")?.split(",")[0].trim() || (local ? "http" : "https");
+  try {
+    return new URL(`${proto}://${host}`).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -59,10 +76,28 @@ export async function apiFetch<T>(tenantHost: string, path: string, init: Reques
 }
 
 /** `id` is the tenant id: the browser keys its cart and wishlist by it */
-export type Store = { id: string; name: string; logo: string };
+export type Store = {
+  id: string;
+  name: string;
+  logo: string;
+  primaryColor: string;
+  bannerLayout: string;
+  cardLayout: string;
+  gridColumns: string;
+  categoryLayout: string;
+  galleryPosition: string;
+  thumbnailPosition: string;
+  filterLayout: string;
+  footerLayout: string;
+  buttonStyle: string;
+  menuColor: string;
+  menuAlign: string;
+  announcementEnabled: string;
+  announcementText: string;
+};
 
 /**
- * The store's name and logo, or null when the API cannot be reached or the
+ * The store's name, logo and look, or null when the API cannot be reached or the
  * domain belongs to no store. Deduplicated per render: header and footer both ask.
  */
 export const getStore = cache(async (tenantHost: string): Promise<Store | null> => {

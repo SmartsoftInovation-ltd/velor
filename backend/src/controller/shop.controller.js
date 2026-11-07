@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const StoreInformation = require("../models/storeInformation.model");
 const Banner = require("../models/banner.model");
@@ -10,6 +11,8 @@ const { apiResponse } = require("../utils/apiResponse");
 const { signInIdentifier } = require("../utils/signInIdentifier.util");
 const { statusCodes, PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE } = require("../constant/constant");
 const { getTenantId } = require("../tenancy/context");
+const { getSettings, getFeatures } = require("../settings/settings.service");
+const { RESET_CODE_TTL_SECONDS, findByEmailOrPhone, sendResetCode, checkResetCode } = require("../service/passwordReset.service");
 
 /**
  * Storefront accounts, as distinct from dashboard staff.
@@ -56,15 +59,37 @@ const issueSession = (user) => ({
  * the name and logo the seller set in Store Information. Public, because the
  * shop header needs it before anyone signs in, and limited to branding.
  */
+// The look a seller picked in the Platform Console; the storefront reads it here
+const STOREFRONT_DESIGN_FIELDS = [
+  "bannerLayout",
+  "cardLayout",
+  "gridColumns",
+  "categoryLayout",
+  "galleryPosition",
+  "thumbnailPosition",
+  "filterLayout",
+  "footerLayout",
+  "buttonStyle",
+  "menuColor",
+  "menuAlign",
+  "announcementEnabled",
+  "announcementText",
+];
+
 exports.store = asynchandeler(async (req, res) => {
   requireStore();
-  const info = await StoreInformation.findOne().select("storeName image").lean();
+  const [info, settings] = await Promise.all([
+    StoreInformation.findOne().select("storeName image").lean(),
+    getSettings(getTenantId()),
+  ]);
   return apiResponse.sendSuccess(res, statusCodes.OK, "Store", {
     // The storefront keys the browser's cart and wishlist by it. Safe to show:
     // no storefront endpoint accepts it, the store always comes from the domain.
     id: String(getTenantId()),
     name: info?.storeName || req.tenant?.name || "",
     logo: info?.image?.url || "",
+    primaryColor: settings.general.primaryColor || "",
+    ...Object.fromEntries(STOREFRONT_DESIGN_FIELDS.map((field) => [field, settings.general[field]])),
   });
 });
 
@@ -128,8 +153,9 @@ exports.register = asynchandeler(async (req, res) => {
   requireStore();
 
   const name = req.body.name?.trim();
-  const email = req.body.email?.trim().toLowerCase();
-  const phone = req.body.phone?.trim();
+  // Blank becomes absent: the unique email index only skips accounts with no email at all
+  const email = req.body.email?.trim().toLowerCase() || undefined;
+  const phone = req.body.phone?.trim() || undefined;
   const { password } = req.body;
 
   if (!name || !password || (!email && !phone)) {
@@ -194,6 +220,126 @@ exports.login = asynchandeler(async (req, res) => {
     user: shopperSummary(user),
     ...issueSession(user),
   });
+});
+
+/**
+ * Swaps a shopper's refresh token for a fresh pair, so a storefront session
+ * outlives the one-day access token. The storefront server sends the token in
+ * the body; it lives in an httpOnly cookie on the shop's domain, which the
+ * browser never sends here.
+ *
+ * Nothing is stored: the token is checked by signature and expiry, and is
+ * revoked the same way access tokens are, by bumping `tokenVersion` (password
+ * change or reset, deactivation). A token is honoured only in the store it was
+ * issued for, only for a shopper, and only while the account is active. Every
+ * refusal answers 401 alike, so the storefront simply asks the shopper to
+ * sign in again.
+ */
+exports.refresh = asynchandeler(async (req, res) => {
+  const tenantId = requireStore();
+  const token = typeof req.body?.refreshToken === "string" ? req.body.refreshToken.trim() : "";
+  const refused = new customError("Session expired. Please sign in again.", statusCodes.UNAUTHORIZED);
+  if (!token) throw refused;
+
+  let claims;
+  try {
+    claims = jwt.verify(token, process.env.REFRESH_TOKEN_SCCERET);
+  } catch {
+    throw refused;
+  }
+
+  // Tokens without an audience predate shopper sessions and belong to staff
+  if (claims.aud !== "shopper" || !claims.sub || String(claims.tid) !== String(tenantId)) throw refused;
+
+  // Scoped to this store by the tenancy plugin
+  const user = await User.findById(claims.sub).populate("roles");
+  if (!user || user.roles?.length || user.isBlocked || !user.isActive) throw refused;
+  if ((claims.tv ?? 0) !== (user.tokenVersion ?? 0)) throw refused;
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Session renewed", issueSession(user));
+});
+
+/**
+ * Forgotten password, by a 6-digit code sent to the account's mobile number.
+ *
+ * Three steps: ask for a code, check it (so the shopper learns about a typo
+ * before choosing a password), then set the new password with the same code.
+ * Only shopper accounts of this store are served. An unknown number, a staff
+ * account or a blocked one gets the same "sent" answer as a real one and no
+ * SMS, so these endpoints cannot be used to find out who shops here.
+ */
+const BD_MOBILE = /^01[3-9]\d{8}$/;
+
+const resetPhoneOf = (body) => {
+  const phone = typeof body?.phone === "string" ? body.phone.replace(/[\s-]/g, "").replace(/^\+?880/, "0") : "";
+  if (!BD_MOBILE.test(phone)) {
+    throw new customError("Enter an 11-digit mobile number, like 01712345678", statusCodes.BAD_REQUEST);
+  }
+  return phone;
+};
+
+// The shopper who may reset with this number, or null
+const resettableShopper = async (phone) => {
+  const user = await findByEmailOrPhone({ phone })?.populate("roles");
+  if (!user || user.roles?.length || user.isBlocked || !user.isActive) return null;
+  return user;
+};
+
+const wrongCode = () => new customError("That code is wrong or has expired. Check it, or ask for a new one.", statusCodes.BAD_REQUEST);
+
+exports.forgotPassword = asynchandeler(async (req, res) => {
+  const tenantId = requireStore();
+  const phone = resetPhoneOf(req.body);
+
+  if (!(await getFeatures(tenantId)).sms) {
+    throw new customError(
+      "This shop cannot send reset codes right now. Please contact the shop.",
+      statusCodes.SERVICE_UNAVAILABLE,
+      "SMS_NOT_CONFIGURED",
+    );
+  }
+
+  const user = await resettableShopper(phone);
+  if (user) {
+    try {
+      await sendResetCode(user, { storeName: req.tenant?.name, tag: `[shop-forgot-password] store=${tenantId}` });
+    } catch {
+      throw new customError("The code could not be sent just now. Please try again.", statusCodes.SERVICE_UNAVAILABLE, "SMS_SEND_FAILED");
+    }
+  }
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "If an account uses this number, a code has been sent to it", {
+    expiresIn: RESET_CODE_TTL_SECONDS,
+  });
+});
+
+// Checks the code without using it up; a wrong one counts against it
+exports.verifyResetCode = asynchandeler(async (req, res) => {
+  requireStore();
+  const phone = resetPhoneOf(req.body);
+  const user = await resettableShopper(phone);
+  if (!(await checkResetCode(user, req.body?.otp))) throw wrongCode();
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Code accepted");
+});
+
+exports.resetPassword = asynchandeler(async (req, res) => {
+  requireStore();
+  const phone = resetPhoneOf(req.body);
+  const { newPassword } = req.body;
+  if (typeof newPassword !== "string" || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
+  }
+
+  const user = await resettableShopper(phone);
+  if (!(await checkResetCode(user, req.body?.otp, { consume: true }))) throw wrongCode();
+
+  user.password = newPassword;
+  // Every session the old password left open ends here
+  user.refreshToken = null;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+  await user.save();
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Password reset. You can sign in with your new password.");
 });
 
 exports.me = asynchandeler(async (req, res) =>

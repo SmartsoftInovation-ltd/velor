@@ -76,9 +76,6 @@ const CreateBrandForm = () => {
     if (!name.trim()) {
       newErrors.name = "Brand name is required.";
     }
-    if (!image) {
-      newErrors.image = "Brand logo is required.";
-    }
 
     setErrors(newErrors);
 
@@ -118,7 +115,7 @@ const CreateBrandForm = () => {
       <div className="space-y-6">
         <div>
           <Label htmlFor="name" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">
-            Brand Name
+            Brand Name <span className="text-red-500">*</span>
           </Label>
           <Input
             value={name}

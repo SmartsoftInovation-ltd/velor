@@ -13,7 +13,7 @@ function savedOn(iso: string) {
 }
 
 const PRIMARY =
-  "shine relative inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-brand-500 px-4 text-small font-medium text-white shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]";
+  "shine relative inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-brand-500 px-4 text-small font-medium text-on-brand shadow-brand transition-[background-color,transform] duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 active:scale-[0.98]";
 
 /**
  * A saved product. Close to the shop card, but the hover actions are replaced

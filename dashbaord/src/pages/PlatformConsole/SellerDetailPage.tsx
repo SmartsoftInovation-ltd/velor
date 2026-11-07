@@ -6,9 +6,11 @@ import {
   FiActivity,
   FiCheck,
   FiCopy,
+  FiDroplet,
   FiGlobe,
   FiGrid,
   FiInfo,
+  FiLayout,
   FiLink,
   FiPause,
   FiPlay,
@@ -27,6 +29,8 @@ import type {
 } from "../Settings/StoreSettings/types";
 import OwnerPasswordCard from "./OwnerPasswordCard";
 import SellerBillingCard from "./SellerBillingCard";
+import SellerColorTab from "./SellerColorTab";
+import SellerDesignTab from "./SellerDesignTab";
 import SellerDomainsTab from "./SellerDomainsTab";
 import SellerStatusBadge from "./SellerStatusBadge";
 import SellerStatusDialog, { canSuspend } from "./SellerStatusDialog";
@@ -46,6 +50,8 @@ import {
 const TABS = [
   { key: "overview", label: "Overview", icon: <FiInfo /> },
   { key: "domains", label: "Domains", icon: <FiGlobe /> },
+  { key: "color", label: "Website Color", icon: <FiDroplet /> },
+  { key: "design", label: "Website Design", icon: <FiLayout /> },
   { key: "integrations", label: "Integrations", icon: <FiGrid /> },
   { key: "webhooks", label: "Webhooks", icon: <FiLink /> },
   { key: "audit", label: "Audit", icon: <FiActivity /> },
@@ -605,6 +611,8 @@ const SellerDetailPage = () => {
 
       {tab === "overview" && <Overview seller={seller} />}
       {tab === "domains" && <SellerDomainsTab tenantId={seller._id} />}
+      {tab === "color" && <SellerColorTab tenantId={seller._id} />}
+      {tab === "design" && <SellerDesignTab tenantId={seller._id} />}
       {tab === "integrations" && <IntegrationsTab tenantId={seller._id} />}
       {tab === "webhooks" && <WebhooksTab tenantId={seller._id} />}
       {tab === "audit" && <AuditTab tenantId={seller._id} />}

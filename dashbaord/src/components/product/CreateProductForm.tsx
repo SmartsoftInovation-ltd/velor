@@ -565,8 +565,7 @@ const CreateProductForm = () => {
       "wholesaleProfitMarginPercentage", "wholesaleProfitMarginAmount"
     ];
     if (name === "barCode") {
-      const clean = value.replace(/[^0-9]/g, "");
-      setFormData(p => ({ ...p, barCode: clean, sku: clean.slice(-6) }));
+      setFormData(p => ({ ...p, barCode: value, sku: value.trim().slice(-6) }));
       return;
     }
 

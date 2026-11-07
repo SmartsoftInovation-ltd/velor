@@ -13,7 +13,7 @@
 
 const VERSION = 1;
 
-export type ListName = "cart" | "wishlist";
+export type ListName = "cart" | "wishlist" | "checkout-draft";
 
 export type PersistedList<T> = {
   get: () => T[];

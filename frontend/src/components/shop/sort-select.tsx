@@ -127,7 +127,7 @@ export function SortSelect({ query }: { query: ShopQuery }) {
                   <span className="text-caption text-text-tertiary">{option.hint}</span>
                   <CheckIcon
                     className={cn(
-                      "size-4 shrink-0 text-brand-500",
+                      "size-4 shrink-0 text-text-brand",
                       isCurrent ? "opacity-100" : "opacity-0",
                     )}
                   />

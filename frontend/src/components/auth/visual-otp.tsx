@@ -24,7 +24,7 @@ export function VisualOtp() {
           cy="55"
           r={RADIUS}
           fill="none"
-          stroke="var(--orange-500)"
+          stroke="var(--brand-500)"
           strokeWidth="9"
           strokeLinecap="round"
           strokeDasharray={CIRCUMFERENCE}
@@ -38,7 +38,7 @@ export function VisualOtp() {
       </div>
 
       <p className="mt-4 flex items-center justify-center gap-1.5 text-caption font-semibold text-[#1f2a44]">
-        <ClockIcon className="size-4 text-[var(--orange-500)]" />
+        <ClockIcon className="size-4 text-[var(--brand-500)]" />
         Code expires in 5 minutes
       </p>
       <p className="mt-1 text-micro text-[#8b8378]">

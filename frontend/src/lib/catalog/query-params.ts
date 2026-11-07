@@ -1,3 +1,4 @@
+import { MAX_SEARCH_LENGTH } from "./product-search";
 import type { Availability, ShopQuery, SortOption } from "./types";
 
 const SORTS: SortOption[] = [
@@ -39,6 +40,7 @@ export function parseShopQuery(params: RawParams): ShopQuery {
   const view = one(params.view);
 
   return {
+    q: one(params.q)?.trim().slice(0, MAX_SEARCH_LENGTH) || undefined,
     category: one(params.category),
     subcategory: one(params.subcategory),
     brands: list(params.brands),
@@ -59,6 +61,7 @@ export function buildShopHref(query: ShopQuery, patch: Partial<ShopQuery>): stri
   const next = { ...query, ...patch };
   const search = new URLSearchParams();
 
+  if (next.q) search.set("q", next.q);
   if (next.category) search.set("category", next.category);
   if (next.subcategory) search.set("subcategory", next.subcategory);
   if (next.brands?.length) search.set("brands", next.brands.join(","));

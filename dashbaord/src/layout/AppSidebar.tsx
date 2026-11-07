@@ -81,7 +81,7 @@ const RailList = ({
 
 // ---------- COMPONENT ----------
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered } =
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered } =
     useSidebar();
   const { isSuperAdmin, isLoading } = useAuth();
   const location = useLocation();
@@ -197,7 +197,7 @@ const AppSidebar: React.FC = () => {
                 {nav.icon}
               </span>
               {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="truncate">{nav.name}</span>
+                <span className="min-w-0 truncate" title={nav.name}>{nav.name}</span>
               )}
               {(isExpanded || isHovered || isMobileOpen) && !ALWAYS_OPEN.includes(menuType) && (
                 <ChevronDownIcon
@@ -232,7 +232,7 @@ const AppSidebar: React.FC = () => {
                   {nav.icon}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className="truncate">{nav.name}</span>
+                  <span className="min-w-0 truncate" title={nav.name}>{nav.name}</span>
                 )}
               </Link>
             )
@@ -364,6 +364,8 @@ const AppSidebar: React.FC = () => {
   // ---------- RENDER ----------
   return (
     <aside
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-2.5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen

@@ -1,12 +1,13 @@
 "use server";
 
 import { headers } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import type { FreshItem } from "@/lib/cart/cart-store";
 import { CART_MAX_LINES, itemKey } from "@/lib/cart/types";
 import { currentItem } from "@/lib/catalog/item-snapshot";
 import type { ApiProduct } from "@/lib/catalog/storefront";
-import { shopperIdentity } from "@/lib/actions/shopper-identity";
-import { apiFetch, storeHostFrom } from "@/lib/store-api";
+import { callAsShopper, shopperIdentity } from "@/lib/actions/shopper-identity";
+import { ApiError, apiFetch, storeHostFrom } from "@/lib/store-api";
 
 type LineRef = { productId: string; variantId: string | null };
 export type CheckoutLine = LineRef & { quantity: number };
@@ -72,13 +73,18 @@ export async function saveCartAction(lines: CheckoutLine[], guestId: string): Pr
   if (!who) return { error: "Your cart could not be saved. Please refresh the page." };
 
   try {
-    const data = await apiFetch<{ rejected: SaveCartResult["rejected"] }>(host, "/shop/cart", {
-      method: "PUT",
-      headers: { "content-type": "application/json", ...who },
-      body: JSON.stringify({ items: lines.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })) }),
-    });
+    const body = JSON.stringify({ items: lines.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })) });
+    const data = await callAsShopper(host, who, (as) =>
+      apiFetch<{ rejected: SaveCartResult["rejected"] }>(host, "/shop/cart", {
+        method: "PUT",
+        headers: { "content-type": "application/json", ...as },
+        body,
+      }),
+    );
     return { rejected: data.rejected ?? [] };
-  } catch {
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof ApiError && error.status < 500) return { error: error.message };
     return { error: "Your cart could not be saved just now. Please try again." };
   }
 }

@@ -4,7 +4,7 @@
 // never list different modules. A permission only shows once it exists in the
 // platform's catalog (backend/src/seeder/permissionSeeder.js).
 import { MdOutlineInventory2, MdSecurity, MdDashboard } from "react-icons/md";
-import { TbBrandBootstrap, TbRosetteDiscount, TbRulerMeasure, TbReportAnalytics, TbPackage, TbSettings } from "react-icons/tb";
+import { TbBrandBootstrap, TbRosetteDiscount, TbReportAnalytics, TbPackage, TbSettings } from "react-icons/tb";
 import { HiOutlineAdjustments } from "react-icons/hi";
 
 export type Action = "view" | "add" | "edit" | "delete" | "print";
@@ -123,8 +123,18 @@ export const DASHBOARD_PARENT = "Dashboard";
 export const isDashboardWidget = (name: string): boolean =>
   DASHBOARD_MODULE_SET.has(name) && name !== DASHBOARD_PARENT;
 
+// Stock pages only show figures: nothing on them can be added, edited or deleted.
+// Stock Adjustment is left out on purpose, because that one changes stock.
+const VIEW_ONLY_STOCK_MODULES = new Set([
+  "View All Stock",
+  "Category Stock Details",
+  "Size & Color Wise Stock",
+  "Size Wise Stock",
+  "Low Stock",
+]);
+
 export const actionsForModule = (name: string): Action[] => {
-  if (DASHBOARD_MODULE_SET.has(name)) return VIEW_ONLY_ACTIONS;
+  if (DASHBOARD_MODULE_SET.has(name) || VIEW_ONLY_STOCK_MODULES.has(name)) return VIEW_ONLY_ACTIONS;
   if (REPORT_MODULES.has(name)) return REPORT_ACTIONS;
   if (PRINTABLE_MODULES.has(name)) return PRINTABLE_ACTIONS;
   return ALL_ACTIONS;
@@ -148,52 +158,51 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   { section: "Menu", label: "Dashboard", icon: MdDashboard, color: "from-slate-500 to-gray-700", modules: DASHBOARD_MODULES },
 
   // Sales Purchase
-  { section: "Sales Purchase", label: "Product", icon: MdOutlineInventory2, color: "from-blue-500 to-blue-600", modules: ["Category", "Sub Category", "Brand", "Product", "Barcode Print"] },
+  { section: "Sales Purchase", label: "Product", icon: MdOutlineInventory2, color: "from-blue-500 to-blue-600", modules: ["Product", "Barcode Print", "Category", "Sub Category", "Brand"] },
   { section: "Sales Purchase", label: "Variant", icon: HiOutlineAdjustments, color: "from-cyan-500 to-teal-600", modules: ["Variant"] },
   { section: "Sales Purchase", label: "Purchase", icon: TbBrandBootstrap, color: "from-orange-500 to-amber-600", modules: ["Purchase", "Purchase Return"] },
   {
     section: "Sales Purchase", label: "Sales", icon: MdSecurity, color: "from-emerald-500 to-green-700",
-    modules: ["Retail Sales", "Wholesale Sales", "Sales History", "Sales Return", "Retail Sale Order", "Whole Sale Order", "Draft Order"],
+    modules: ["Retail Sales", "Wholesale Sales", "Sales History", "Retail Sale Order", "Whole Sale Order", "Draft Order", "Sales Return"],
   },
 
   // Discount Management
-  { section: "Discount Management", label: "Discount", icon: TbRosetteDiscount, color: "from-pink-500 to-rose-600", modules: ["Discount"] },
+  { section: "Discount Management", label: "Discount & Coupon", icon: TbRosetteDiscount, color: "from-pink-500 to-rose-600", modules: ["Discount", "Coupon"] },
 
   // Stock Management
   {
     section: "Stock Management", label: "Stock", icon: TbPackage, color: "from-yellow-500 to-orange-500",
-    modules: ["View All Stock", "Stock Adjustment", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock"],
+    modules: ["View All Stock", "Category Stock Details", "Size & Color Wise Stock", "Size Wise Stock", "Low Stock", "Stock Adjustment"],
   },
 
   // Website Management
-  { section: "Website Management", label: "Order", icon: TbBrandBootstrap, color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order", "Chat"] },
-  { section: "Website Management", label: "Courier", icon: TbBrandBootstrap, color: "from-indigo-500 to-blue-700", modules: ["Courier Merchant", "Courier Delivery", "Courier Return"] },
-  { section: "Website Management", label: "Delivery Charge", icon: TbBrandBootstrap, color: "from-indigo-400 to-sky-600", modules: ["Delivery Charge"] },
-  { section: "Website Management", label: "Banner", icon: TbRulerMeasure, color: "from-gray-500 to-slate-600", modules: ["Create Banner"] },
+  { section: "Website Management", label: "Web Order", icon: TbBrandBootstrap, color: "from-green-500 to-emerald-600", modules: ["Order", "Incomplete Order", "Chat"] },
+  { section: "Website Management", label: "Courier & Merchant", icon: TbBrandBootstrap, color: "from-indigo-500 to-blue-700", modules: ["Courier Merchant", "Courier Delivery", "Courier Return"] },
+  {
+    section: "Website Management", label: "Website Settings", icon: TbSettings, color: "from-teal-400 to-cyan-600",
+    modules: ["Site Information", "Outlet Information", "Create Banner", "Discount Banner", "Size Chart", "Delivery Charge"],
+  },
   { section: "Website Management", label: "Limited Offer", icon: TbRosetteDiscount, color: "from-rose-400 to-pink-600", modules: ["Limited Offer"] },
-  { section: "Website Management", label: "Promo Banner", icon: TbRulerMeasure, color: "from-fuchsia-400 to-pink-600", modules: ["Discount Banner"] },
   { section: "Website Management", label: "Flash Sale", icon: TbRosetteDiscount, color: "from-amber-400 to-orange-600", modules: ["Flash Sale"] },
-  { section: "Website Management", label: "Coupon", icon: TbRosetteDiscount, color: "from-pink-400 to-rose-500", modules: ["Coupon"] },
-  { section: "Website Management", label: "Size Chart", icon: HiOutlineAdjustments, color: "from-teal-400 to-cyan-600", modules: ["Size Chart"] },
 
   // Profile
-  { section: "Profile", label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600", modules: ["Customer Type", "Customer", "Customer Payment", "Advance Payment"] },
+  { section: "Profile", label: "Customer", icon: MdSecurity, color: "from-red-500 to-rose-600", modules: ["Customer", "Customer Payment", "Advance Payment", "Customer Type"] },
   { section: "Profile", label: "Supplier", icon: MdSecurity, color: "from-lime-500 to-green-600", modules: ["Supplier", "Supplier Payment"] },
-  { section: "Profile", label: "Employee Management", icon: MdSecurity, color: "from-sky-500 to-blue-600", modules: ["Employee", "Designation", "Department", "Section"] },
+  { section: "Profile", label: "Employee", icon: MdSecurity, color: "from-sky-500 to-blue-600", modules: ["Employee", "Designation", "Department", "Section"] },
 
   // Accounts Management
   {
     section: "Accounts Management", label: "All Accounts", icon: TbPackage, color: "from-teal-500 to-cyan-600",
-    modules: ["Add Transaction", "Transaction Category", "Add Account", "Money Transfer", "Money Handover"],
+    modules: ["Add Transaction", "Money Transfer", "Money Handover", "Transaction Category", "Add Account"],
   },
 
   // Analytics & Users: Reports & Analytics (one group per report category), SMS, Role & Permission
   ...REPORT_GROUPS.map((g) => ({
     section: "Analytics & Users", label: g.label, icon: TbReportAnalytics, color: "from-slate-500 to-gray-700", modules: g.modules,
   })),
-  { section: "Analytics & Users", label: "SMS Notification", icon: MdSecurity, color: "from-fuchsia-500 to-purple-600", modules: ["Send SMS", "Send Bulk SMS", "SMS Info", "Due SMS"] },
-  { section: "Analytics & Users", label: "Role & Permission", icon: MdDashboard, color: "from-violet-500 to-purple-600", modules: ["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"] },
+  { section: "Analytics & Users", label: "SMS Notifications", icon: MdSecurity, color: "from-fuchsia-500 to-purple-600", modules: ["Send SMS", "Due SMS", "Send Bulk SMS", "SMS Info"] },
+  { section: "Analytics & Users", label: "User Role & Permission", icon: MdDashboard, color: "from-violet-500 to-purple-600", modules: ["Create User", "Create Role", "Create Permission", "Assign Role", "Audit Log"] },
 
   // General Settings
-  { section: "General Settings", label: "Settings", icon: TbSettings, color: "from-zinc-500 to-neutral-700", modules: ["Site Information", "Outlet Information", "Store Information"] },
+  { section: "General Settings", label: "Settings", icon: TbSettings, color: "from-zinc-500 to-neutral-700", modules: ["Store Information"] },
 ];

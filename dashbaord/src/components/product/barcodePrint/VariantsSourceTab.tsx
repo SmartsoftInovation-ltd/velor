@@ -1,4 +1,5 @@
 import InfiniteSearchList from "./InfiniteSearchList";
+import { labelsForStock } from "./types";
 import type { QueueItem, VariantLite } from "./types";
 
 interface VariantsSourceTabProps {
@@ -32,7 +33,7 @@ const VariantsSourceTab: React.FC<VariantsSourceTabProps> = ({
     price: v.retailPrice ?? 0,
     size: v.size,
     color: v.color,
-    quantity: 1,
+    quantity: labelsForStock(v.stockVariant),
   });
 
   return (

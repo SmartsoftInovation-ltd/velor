@@ -110,7 +110,7 @@ const VariantSchema = Joi.object({
   wholesaleProfitMarginPercentage: Joi.number().min(0).max(100).optional().allow(null),
   alertQuantity: Joi.number().min(0).optional(),
   sku: numericString("SKU").optional(),
-  barCode: numericString("Barcode").optional(),
+  barCode: Joi.string().trim().optional(),
   qrCode: Joi.string().trim().optional(),
   unit: Joi.string()
     .valid("Piece", "Kg", "Gram", "Packet", "pair", "liter", "Custom")

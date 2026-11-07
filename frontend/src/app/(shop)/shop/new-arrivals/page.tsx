@@ -8,6 +8,7 @@ import { storeHostFrom } from "@/lib/store-api";
 const DAYS = 7;
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/shop/new-arrivals" },
   title: "New arrivals",
   description: "Products added to the shop this week.",
 };

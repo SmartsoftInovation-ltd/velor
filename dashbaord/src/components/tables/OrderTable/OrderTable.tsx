@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
 import moment from "moment";
 import toast from "react-hot-toast";
 import { MdDelete } from "react-icons/md";
 import { IoIosPrint } from "react-icons/io";
-import { TbSticker2 } from "react-icons/tb";
+import { TbShieldSearch, TbStatusChange, TbSticker2 } from "react-icons/tb";
 import { FaEye, FaSearch, FaSync, FaTimes } from "react-icons/fa";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../ui/table";
 import Button from "../../ui/button/Button";
@@ -16,11 +16,15 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import { initSocket } from "../../../socket/socket";
 import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 import MobileCardList from "../../common/MobileCardList";
-import OrderStatus from "./OrderStatus";
+import OrdersEmptyState from "./OrdersEmptyState";
+import { OptionsMenu, OptionsMenuItem, OptionsMenuSeparator } from "../../common/OptionsMenu";
+import FraudCheckModal from "./FraudCheckModal";
+import OrderStatusModal from "./OrderStatusModal";
+import OrderStickerModal from "./OrderStickerModal";
 import ShippingInfo from "./ShippingInfo";
 import { OrderItemDetails, OrderItemStack } from "./OrderItems";
 import { ChannelTag, PaymentPill } from "./orderUi";
-import { STATUS_LABELS, taka, type OrderItem, type OrderStatusType } from "./orderMeta";
+import { STATUS_LABELS, statusPillClass, taka, toneOf, type OrderItem, type OrderStatusType } from "./orderMeta";
 
 interface Order {
   _id: string;
@@ -44,8 +48,6 @@ interface Order {
 
 type Segment = "all" | string;
 
-const ACTION = "shine flex size-8 shrink-0 items-center justify-center rounded border-none transition-all active:scale-90";
-const VIEW_TONE = "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10";
 // Every column gets the same width, so rows line up into an even grid
 const COLUMNS = ["Serial ID", "Invoice", "Customer", "Items", "Amount", "Payment", "Source", "Status", "Actions"] as const;
 const CELL = "px-4 py-4 align-top overflow-hidden";
@@ -113,29 +115,49 @@ const InvoiceCell = ({ order, index }: { order: Order; index: number }) => (
   </div>
 );
 
-const Actions = ({ order, canDelete, onDelete }: { order: Order; canDelete: boolean; onDelete: (id: string) => void }) => (
-  <div className="flex items-center justify-end gap-1.5">
-    <Link to={`/orderdetails/${order._id}`} aria-label="View order" title="View order" className={`${ACTION} ${VIEW_TONE}`}>
-      <FaEye className="size-4" />
-    </Link>
-    <Link to={`/sticker/${order._id}`} aria-label="Print sticker" title="Sticker" className={`${ACTION} ${VIEW_TONE}`}>
-      <TbSticker2 className="size-4" />
-    </Link>
-    <Link to={`/invoice/${order._id}`} aria-label="Print invoice" title="Invoice" className={`${ACTION} ${VIEW_TONE}`}>
-      <IoIosPrint className="size-4" />
-    </Link>
-    {canDelete && (
-      <Button
-        onClick={() => onDelete(order._id)}
-        size="sm"
-        aria-label="Delete order"
-        className="size-8 shrink-0 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
-      >
-        <MdDelete className="size-4" />
-      </Button>
-    )}
-  </div>
+// Read-only here: the status changes from Options
+const StatusPill = ({ status }: { status: OrderStatusType }) => (
+  <span className={statusPillClass(status)}>
+    <span className={`size-1.5 rounded-full ${toneOf(status).dot}`} aria-hidden="true" />
+    {STATUS_LABELS[status] ?? status}
+  </span>
 );
+
+const Actions = ({ order, canDelete, onDelete, onSticker, onStatus, onFraud }: { order: Order; canDelete: boolean; onDelete: (id: string) => void; onSticker: (id: string) => void; onStatus: (order: Order) => void; onFraud: (order: Order) => void }) => {
+  const navigate = useNavigate();
+  return (
+    <OptionsMenu label={order.invoiceId ? `Actions for order ${order.invoiceId}` : "Actions"}>
+      {(run) => (
+        <>
+          <OptionsMenuItem tone="view" icon={<FaEye className="size-3.5" />} onClick={run(() => navigate(`/orderdetails/${order._id}`))}>
+            View Details
+          </OptionsMenuItem>
+          <OptionsMenuItem tone="edit" icon={<TbStatusChange className="size-4" />} onClick={run(() => onStatus(order))}>
+            Change Status
+          </OptionsMenuItem>
+          <OptionsMenuItem icon={<TbShieldSearch className="size-4" />} onClick={run(() => onFraud(order))}>
+            Fraud Check
+          </OptionsMenuItem>
+          <OptionsMenuSeparator />
+          <OptionsMenuItem icon={<TbSticker2 className="size-4" />} onClick={run(() => onSticker(order._id))}>
+            Print Sticker
+          </OptionsMenuItem>
+          <OptionsMenuItem icon={<IoIosPrint className="size-3.5" />} onClick={run(() => navigate(`/invoice/${order._id}`))}>
+            Print Invoice
+          </OptionsMenuItem>
+          {canDelete && (
+            <>
+              <OptionsMenuSeparator />
+              <OptionsMenuItem tone="danger" icon={<MdDelete className="size-4" />} onClick={run(() => onDelete(order._id))}>
+                Delete
+              </OptionsMenuItem>
+            </>
+          )}
+        </>
+      )}
+    </OptionsMenu>
+  );
+};
 
 const TableSkeleton = () => (
   <div className="animate-pulse space-y-2">
@@ -156,6 +178,9 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
   const [payment, setPayment] = useState<Segment>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [stickerId, setStickerId] = useState<string | null>(null);
+  const [statusOrder, setStatusOrder] = useState<Order | null>(null);
+  const [fraudOrder, setFraudOrder] = useState<Order | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -221,6 +246,17 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
     }
   };
 
+  const emptyState = (
+    <OrdersEmptyState
+      filtered={Boolean(search) || channel !== "all" || payment !== "all"}
+      onClear={() => {
+        setSearch("");
+        setChannel("all");
+        setPayment("all");
+      }}
+    />
+  );
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -269,27 +305,28 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
           <p className="mb-4 font-semibold text-error-500">{getApiErrorMessage(error, "Error fetching orders")}</p>
           <Button size="sm" onClick={() => refetch()} className="!bg-accent-500 hover:!bg-accent-600 !text-white">Try Again</Button>
         </div>
+      ) : isMobile && rows.length === 0 ? (
+        emptyState
       ) : isMobile ? (
         <MobileCardList
           items={rows}
           getKey={(order) => order._id}
-          emptyMessage="No orders match these filters"
           renderCard={(order, index) => (
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <InvoiceCell order={order} index={index} />
                 <Amounts order={order} />
               </div>
-              <ShippingInfo order={order} />
+              <ShippingInfo order={order} hideFraudCheck />
               <OrderItemStack items={order.items} expanded={expanded.has(order._id)} onToggle={() => toggle(order._id)} />
               {expanded.has(order._id) ? <OrderItemDetails items={order.items} /> : null}
               <div className="flex flex-wrap items-center gap-2">
-                <OrderStatus order={order} onChanged={changed} />
+                <StatusPill status={order.orderStatus} />
                 <PaymentPill method={order.paymentMethod} status={order.paymentStatus} />
                 <ChannelTag channel={order.channel} source={order.orderFrom} />
               </div>
               <div className="border-t border-gray-100 pt-3 dark:border-white/[0.05]">
-                <Actions order={order} canDelete={canDelete} onDelete={setDeleteId} />
+                <Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onStatus={setStatusOrder} onFraud={setFraudOrder} />
               </div>
             </div>
           )}
@@ -297,7 +334,7 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
-            <Table className="w-full min-w-[1600px] table-fixed">
+            <Table className="w-full min-w-[1260px] table-fixed">
               <colgroup>
                 {COLUMNS.map((column) => (
                   <col key={column} style={{ width: `${100 / COLUMNS.length}%` }} />
@@ -309,7 +346,7 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
                     <TableCell
                       key={column}
                       isHeader
-                      className={`${HEAD} ${column === "Amount" || column === "Actions" ? "!text-right" : ""}`}
+                      className={`${HEAD} ${column === "Amount" ? "!text-right" : column === "Actions" ? "!text-center" : ""}`}
                     >
                       {column}
                     </TableCell>
@@ -319,8 +356,8 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell className="px-4 py-16 text-center text-sm text-gray-500 dark:text-gray-400" colSpan={COLUMNS.length}>
-                      No orders match these filters.
+                    <TableCell className="px-0 py-0" colSpan={COLUMNS.length}>
+                      {emptyState}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -329,15 +366,15 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
                       <TableRow className={`transition-colors hover:bg-gray-50/70 dark:hover:bg-white/[0.02] ${expanded.has(order._id) ? "bg-gray-50/70 dark:bg-white/[0.02]" : ""}`}>
                         <TableCell className={CELL}><SerialCell order={order} index={index} /></TableCell>
                         <TableCell className={CELL}><InvoiceCell order={order} index={index} /></TableCell>
-                        <TableCell className={`${CELL} text-theme-sm`}><ShippingInfo order={order} /></TableCell>
+                        <TableCell className={`${CELL} text-theme-sm`}><ShippingInfo order={order} hideFraudCheck /></TableCell>
                         <TableCell className={`${CELL} !py-3`}>
                           <OrderItemStack items={order.items} expanded={expanded.has(order._id)} onToggle={() => toggle(order._id)} />
                         </TableCell>
                         <TableCell className={CELL}><Amounts order={order} /></TableCell>
                         <TableCell className={CELL}><PaymentPill method={order.paymentMethod} status={order.paymentStatus} /></TableCell>
                         <TableCell className={CELL}><ChannelTag channel={order.channel} source={order.orderFrom} /></TableCell>
-                        <TableCell className={CELL}><OrderStatus order={order} onChanged={changed} /></TableCell>
-                        <TableCell className={CELL}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} /></TableCell>
+                        <TableCell className={CELL}><StatusPill status={order.orderStatus} /></TableCell>
+                        <TableCell className={`${CELL} text-center`}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onStatus={setStatusOrder} onFraud={setFraudOrder} /></TableCell>
                       </TableRow>
                       {expanded.has(order._id) ? (
                         <TableRow className="bg-gray-50/70 dark:bg-white/[0.02]">
@@ -354,6 +391,10 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
           </div>
         </div>
       )}
+
+      <OrderStickerModal orderId={stickerId} onClose={() => setStickerId(null)} />
+      {statusOrder && <OrderStatusModal order={statusOrder} onClose={() => setStatusOrder(null)} onChanged={changed} />}
+      {fraudOrder && <FraudCheckModal order={fraudOrder} onClose={() => setFraudOrder(null)} />}
 
       <Modal isOpen={Boolean(deleteId)} onClose={() => setDeleteId(null)}>
         <div className="p-8">

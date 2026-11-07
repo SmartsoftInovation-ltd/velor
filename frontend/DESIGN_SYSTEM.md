@@ -15,10 +15,20 @@ layer decides what that means under the current theme.
 
 ```
 Primitive  →  Semantic  →  Tailwind utility  →  Component
---orange-500   --color-brand-500   bg-brand-500     <button className="bg-brand-500">
+--brand-500   --color-brand-500   bg-brand-500     <button className="bg-brand-500">
 ```
 
-- **Primitives** (`--orange-500`, `--sand-700`) are raw values, defined once in
+- **Store color:** a seller's `primaryColor`, set in the Platform Console, replaces the
+  `--brand-*` ramp at render time (`src/lib/brand-theme.ts`). So never hardcode a brand
+  value, and put `text-on-brand`, not `text-white`, on a brand fill: a light store color
+  needs dark text.
+- **Store layout:** a seller's banner, card and grid choices arrive as `data-banner`,
+  `data-card` and `data-grid` on `<html>`. Restyle with the `banner-full:`, `banner-boxed:`,
+  `card-minimal:` and `card-overlay:` variants; new product grids take `product-grid`. The
+  rest (`data-category`, `data-gallery`, `data-thumbs`, `data-filter`, `data-footer`,
+  `data-button`, `data-menu`, `data-menu-align`, `data-announcement`) work the same way;
+  see the top of `globals.css`.
+- **Primitives** (`--brand-500`, `--sand-700`) are raw values, defined once in
   `globals.css` and referenced only by the semantic layer. Never used directly.
 - **Semantics** (`--color-bg-surface`, `--color-text-secondary`) carry meaning,
   not appearance. These are what you use.

@@ -33,7 +33,7 @@ export function Line({ w = "w-full", tone = "muted" }: { w?: string; tone?: "mut
       className={cn(
         "block h-2 rounded-full",
         w,
-        tone === "brand" ? "bg-[var(--orange-200)]" : "bg-[#e8e5e1]",
+        tone === "brand" ? "bg-[var(--brand-200)]" : "bg-[#e8e5e1]",
       )}
     />
   );

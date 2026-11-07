@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
  */
 export function FooterNewsletter() {
   return (
-    <div className="grid gap-6 border-b border-border-subtle py-10 lg:grid-cols-2 lg:items-center lg:gap-12">
+    <div className="grid gap-6 border-b border-border-subtle py-10 lg:grid-cols-2 lg:items-center lg:gap-12 footer-compact:hidden">
       <div className="space-y-1.5">
         <h2 className="text-h3 font-semibold tracking-tight text-text-primary">
           Get the drop before it sells out

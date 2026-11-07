@@ -44,7 +44,7 @@ export function Pagination({
           className={cn(
             STEP,
             item === page
-              ? "border-brand-500 bg-brand-500 text-white"
+              ? "border-brand-500 bg-brand-500 text-on-brand"
               : "border-border-default text-text-secondary hover:border-border-strong hover:bg-bg-hover hover:text-text-primary",
           )}
         >

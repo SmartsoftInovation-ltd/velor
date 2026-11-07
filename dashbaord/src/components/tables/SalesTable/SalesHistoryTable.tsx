@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import useIsMobile from "../../../hooks/useIsMobile";
 import MobileCardList from "../../common/MobileCardList";
+import InfiniteScrollTrigger from "../../common/InfiniteScrollTrigger";
 import MobileCardRow from "../../common/MobileCardRow";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -30,6 +31,7 @@ import axiosSecure from "../../../hooks/useAxiosSecure";
 import { invalidateStockQueries } from "../../../utils/invalidateStock";
 import { Modal } from "../../ui/modal";
 import { showApiError } from "../../../utils/apiError";
+import { OptionsMenu, OptionsMenuItem, OptionsMenuSeparator } from "../../common/OptionsMenu";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ListedCustomer {
@@ -101,7 +103,7 @@ function StatCard({
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 truncate">{label}</p>
+        <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-gray-400">{label}</p>
         <p className={`text-sm font-bold ${statValueTones[tone]}`}>{value}</p>
       </div>
     </div>
@@ -153,180 +155,37 @@ interface ActionMenuProps {
   onDelete: () => void;
 }
 
-const MENU_WIDTH = 200;
-const MENU_HEIGHT = 300;
-
 function ActionMenu({ invoiceNumber, canEdit, canDelete, onView, onInvoice, onReceipt, onChallan, onEdit, onDelete }: ActionMenuProps) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const ref = useRef<HTMLDivElement>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
-
-  // The table scrolls inside an overflow container, which would clip an
-  // absolutely-positioned menu — so the menu is fixed and positioned from the
-  // button's viewport rect instead.
-  const openMenu = () => {
-    const rect = btnRef.current?.getBoundingClientRect();
-    if (rect) {
-      const flipUp = rect.bottom + MENU_HEIGHT > window.innerHeight;
-      setPos({
-        top: flipUp ? rect.top - MENU_HEIGHT - 4 : rect.bottom + 4,
-        left: Math.max(8, rect.right - MENU_WIDTH),
-      });
-    }
-    setOpen(true);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const close = () => setOpen(false);
-    document.addEventListener("mousedown", handler);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    // Keyboard users land on the first item.
-    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [open]);
-
-  const closeAndFocus = () => {
-    setOpen(false);
-    btnRef.current?.focus();
-  };
-
-  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const items = Array.from(
-      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? [],
-    );
-    const i = items.indexOf(document.activeElement as HTMLElement);
-    if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length]?.focus({ preventScroll: true }); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus({ preventScroll: true }); }
-    else if (e.key === "Home") { e.preventDefault(); items[0]?.focus({ preventScroll: true }); }
-    else if (e.key === "End") { e.preventDefault(); items[items.length - 1]?.focus({ preventScroll: true }); }
-    else if (e.key === "Escape") { e.preventDefault(); closeAndFocus(); }
-    else if (e.key === "Tab") setOpen(false);
-  };
-
-  const run = (fn: () => void) => {
-    setOpen(false);
-    fn();
-  };
-
   return (
-    <div ref={ref} className="inline-block">
-      <button
-        ref={btnRef}
-        type="button"
-        onClick={() => (open ? setOpen(false) : openMenu())}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
-        aria-label={invoiceNumber ? `Actions for invoice ${invoiceNumber}` : "Actions"}
-        className="shine flex items-center gap-1.5 h-9 max-md:h-11 px-3 rounded border border-accent-100 bg-accent-50 hover:bg-accent-100 text-accent-600 dark:border-accent-500/20 dark:bg-accent-500/15 dark:text-accent-400 text-xs font-semibold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40"
-      >
-        Options
-        <FaChevronDown className={`size-2.5 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
-          aria-orientation="vertical"
-          onKeyDown={handleMenuKeyDown}
-          style={{ top: pos.top, left: pos.left, width: MENU_WIDTH }}
-          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden p-1"
-        >
-          <MenuItem tone="view" icon={<FaEye className="size-3.5" />} onClick={() => run(onView)}>
+    <OptionsMenu label={invoiceNumber ? `Actions for invoice ${invoiceNumber}` : "Actions"}>
+      {(run) => (
+        <>
+          <OptionsMenuItem tone="view" icon={<FaEye className="size-3.5" />} onClick={run(onView)}>
             View Details
-          </MenuItem>
-
-          <MenuItem tone="neutral" icon={<IoIosPrint className="size-3.5" />} onClick={() => run(onReceipt)}>
+          </OptionsMenuItem>
+          <OptionsMenuItem icon={<IoIosPrint className="size-3.5" />} onClick={run(onReceipt)}>
             Print Receipt
-          </MenuItem>
-
-          <MenuItem tone="neutral" icon={<HiOutlineDocumentText className="size-3.5" />} onClick={() => run(onInvoice)}>
+          </OptionsMenuItem>
+          <OptionsMenuItem icon={<HiOutlineDocumentText className="size-3.5" />} onClick={run(onInvoice)}>
             Print Invoice
-          </MenuItem>
-
-          <MenuItem tone="neutral" icon={<FiBox className="size-3.5" />} onClick={() => run(onChallan)}>
+          </OptionsMenuItem>
+          <OptionsMenuItem icon={<FiBox className="size-3.5" />} onClick={run(onChallan)}>
             Print Challan
-          </MenuItem>
-
-          {(canEdit || canDelete) && (
-            <div role="separator" className="my-1 h-px bg-gray-100 dark:bg-gray-700" />
-          )}
-
+          </OptionsMenuItem>
+          {(canEdit || canDelete) && <OptionsMenuSeparator />}
           {canEdit && (
-            <MenuItem tone="edit" icon={<FaEdit className="size-3.5" />} onClick={() => run(onEdit)}>
+            <OptionsMenuItem tone="edit" icon={<FaEdit className="size-3.5" />} onClick={run(onEdit)}>
               Edit Sale
-            </MenuItem>
+            </OptionsMenuItem>
           )}
-
           {canDelete && (
-            <MenuItem tone="danger" icon={<MdDelete className="size-4" />} onClick={() => run(onDelete)}>
+            <OptionsMenuItem tone="danger" icon={<MdDelete className="size-4" />} onClick={run(onDelete)}>
               Delete
-            </MenuItem>
+            </OptionsMenuItem>
           )}
-        </div>
+        </>
       )}
-    </div>
-  );
-}
-
-// Soft icon chip per action, same tones as the row action buttons elsewhere.
-const MENU_TONES = {
-  view: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400",
-  neutral: "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400",
-  edit: "bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-400",
-  danger: "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400",
-};
-
-function MenuItem({
-  icon,
-  children,
-  onClick,
-  disabled,
-  tone = "neutral",
-  title,
-}: {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  tone?: keyof typeof MENU_TONES;
-  title?: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      tabIndex={-1}
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`shine w-full flex items-center gap-2.5 px-2.5 py-2 max-md:py-2.5 rounded text-xs font-medium text-left transition-colors focus-visible:outline-none ${
-        disabled
-          ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
-          : tone === "danger"
-            ? "text-error-600 hover:bg-error-50 focus-visible:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/15 dark:focus-visible:bg-error-500/15"
-            : "text-gray-700 dark:text-gray-200 hover:bg-accent-50 hover:text-accent-700 focus-visible:bg-accent-50 focus-visible:text-accent-700 dark:hover:bg-accent-500/15 dark:hover:text-accent-400 dark:focus-visible:bg-accent-500/15"
-      }`}
-    >
-      <span className={`size-7 flex items-center justify-center rounded shrink-0 ${MENU_TONES[tone]} ${disabled ? "opacity-40" : ""}`}>
-        {icon}
-      </span>
-      {children}
-    </button>
+    </OptionsMenu>
   );
 }
 
@@ -679,7 +538,7 @@ const SalesHistoryTable = ({
         <StatCard
           icon={<FiDollarSign className="size-4" />}
           tone="green"
-          label="TODAY_SALES"
+          label="TODAY SALES"
           value={money(stats.todayAmount)}
         />
         <StatCard
@@ -987,24 +846,14 @@ const SalesHistoryTable = ({
       </div>
       )}
 
-      {/* The next page of the server-side list */}
-      {!loading && !isError && nextCursor && (
-        <div className="mt-4 flex justify-center">
-          <Button
-            onClick={() => fetchSales(false)}
-            disabled={loadingMore}
-            className="!bg-accent-500 hover:!bg-accent-600 !text-white !rounded font-semibold px-5 py-2 text-sm"
-          >
-            {loadingMore ? (
-              <span className="flex items-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Loading…
-              </span>
-            ) : (
-              "Load more"
-            )}
-          </Button>
-        </div>
+      {/* The next page of the server-side list, loaded as the end scrolls into view */}
+      {!loading && !isError && (
+        <InfiniteScrollTrigger
+          hasMore={!!nextCursor}
+          loading={loadingMore}
+          onLoadMore={() => fetchSales(false)}
+          label="Loading more sales…"
+        />
       )}
       <Modal isOpen={showDeleteModal} onClose={closeModal}>
         <div className="p-8">

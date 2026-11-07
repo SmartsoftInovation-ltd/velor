@@ -48,6 +48,16 @@ export default function RevenueTrendChart({
           stops: [0, 90, 100],
         },
       },
+      // A phone has no room for dates side by side: they would print over each other
+      responsive: [
+        {
+          breakpoint: 640,
+          options: {
+            xaxis: { labels: { rotate: -45, rotateAlways: true, hideOverlappingLabels: true } },
+            markers: { size: 2 },
+          },
+        },
+      ],
       dataLabels: { enabled: false },
       markers: { size: 4, hover: { sizeOffset: 2 } },
       grid: {

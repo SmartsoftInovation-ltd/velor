@@ -55,7 +55,7 @@ export async function SiteHeader() {
               row two focus stops for one target. */}
           <Link
             href={signedIn ? "/account" : "/sign-in"}
-            className="shine ml-2 hidden h-10 items-center gap-2 rounded-md bg-brand-500 px-4 text-body font-medium whitespace-nowrap text-white shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 sm:inline-flex"
+            className="shine ml-2 hidden h-10 items-center gap-2 rounded-md bg-brand-500 px-4 text-body font-medium whitespace-nowrap text-on-brand shadow-brand transition-colors duration-200 ease-[var(--ease-hover)] hover:bg-brand-600 sm:inline-flex"
           >
             <UserIcon className="relative z-2 size-4" />
             <span className="relative z-2">{signedIn ? "My account" : "Log in"}</span>
@@ -66,7 +66,9 @@ export async function SiteHeader() {
       </div>
 
       {/* Catalogue navigation. The mobile drawer covers this below lg. */}
-      <NavBar tone="sunken" className="hidden lg:block" />
+      <div data-nav-bar>
+        <NavBar tone="sunken" className="hidden lg:block" />
+      </div>
     </header>
   );
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { NavBar, type NavTone } from "@/components/layout/nav-bar";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX,
   title: "Nav tones",
   description: "The four bands the catalogue navigation can sit on.",
 };

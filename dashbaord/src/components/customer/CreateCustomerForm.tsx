@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { FaPlus, FaTimes, FaSearch, FaTrash, FaChevronDown } from "react-icons/fa";
@@ -47,6 +48,7 @@ type CustomerDraft = {
 
 const CreateCustomerForm = () => {
   const draft = useMemo(() => loadDraft<CustomerDraft>(DRAFT_KEY), []);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
@@ -229,6 +231,7 @@ const CreateCustomerForm = () => {
       if (preview) URL.revokeObjectURL(preview);
       setPreview(null);
       setErrors({});
+      navigate("/customer-list");
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to create customer");
     } finally {

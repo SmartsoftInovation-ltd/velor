@@ -100,7 +100,7 @@ const CreateSubCategoryForm = () => {
         {/* Category Select */}
         <div>
           <Label htmlFor="category" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">
-            Select Parent Category
+            Select Parent Category <span className="text-red-500">*</span>
           </Label>
           <div className="relative group">
             <SearchableSelect
@@ -128,7 +128,7 @@ const CreateSubCategoryForm = () => {
         {/* Subcategory Name */}
         <div>
           <Label htmlFor="subcategory-name" className="text-gray-700 dark:text-gray-300 font-semibold mb-1.5 block">
-            Subcategory Name
+            Subcategory Name <span className="text-red-500">*</span>
           </Label>
           <Input
             value={subCategoryName}

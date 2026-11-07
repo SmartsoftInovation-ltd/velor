@@ -72,6 +72,74 @@ describe("storefront shopper accounts", () => {
   const SHOPPER = { name: "Rahim", email: "rahim@example.com", password: "Shopper-Pass1" };
 
   describe("store identity", () => {
+    it("gives each store its own brand color, and none until one is set", async () => {
+      await service.updateSection(velor.tenant._id, "general", { primaryColor: "#0F9D63" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
+
+      expect(fromVelor.body.data.primaryColor).toBe("#0F9D63");
+      expect(fromPizza.body.data.primaryColor).toBe("");
+    });
+
+    it("gives each store its own layout, and the defaults until one is set", async () => {
+      await service.updateSection(velor.tenant._id, "general", { bannerLayout: "full", cardLayout: "overlay", gridColumns: "5" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
+
+      expect(fromVelor.body.data).toMatchObject({ bannerLayout: "full", cardLayout: "overlay", gridColumns: "5" });
+      expect(fromPizza.body.data).toMatchObject({ bannerLayout: "split", cardLayout: "standard", gridColumns: "4" });
+    });
+
+    it("accepts the Buy Now product card and sends it to the storefront", async () => {
+      await service.updateSection(velor.tenant._id, "general", { cardLayout: "buy" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      expect(fromVelor.body.data.cardLayout).toBe("buy");
+    });
+
+    it("accepts the round card category layout and sends it to the storefront", async () => {
+      await service.updateSection(velor.tenant._id, "general", { categoryLayout: "card" });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      expect(fromVelor.body.data.categoryLayout).toBe("card");
+    });
+
+    it("sends the rest of the design, and refuses an over-long announcement", async () => {
+      await service.updateSection(velor.tenant._id, "general", {
+        categoryLayout: "round",
+        filterLayout: "popup",
+        menuColor: "brand",
+        announcementEnabled: "on",
+        announcementText: "Free delivery this week",
+      });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      expect(fromVelor.body.data).toMatchObject({
+        categoryLayout: "round",
+        filterLayout: "popup",
+        menuColor: "brand",
+        menuAlign: "left",
+        announcementEnabled: "on",
+        announcementText: "Free delivery this week",
+      });
+
+      await expect(
+        service.updateSection(velor.tenant._id, "general", { announcementText: "x".repeat(121) }),
+      ).rejects.toThrow();
+    });
+
+    it("refuses a layout the storefront does not have", async () => {
+      await expect(service.updateSection(velor.tenant._id, "general", { cardLayout: "fancy" })).rejects.toThrow();
+    });
+
+    it("refuses a brand color that is not a plain hex value", async () => {
+      await expect(
+        service.updateSection(velor.tenant._id, "general", { primaryColor: "red}body{display:none" }),
+      ).rejects.toThrow();
+    });
+
     it("names the store whose domain the visitor arrived on", async () => {
       const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
       const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
@@ -256,6 +324,84 @@ describe("storefront shopper accounts", () => {
 
       expect(list.body.data.orders).toHaveLength(1);
       expect(list.body.data.orders[0].invoiceId).toBe("INV-1");
+    });
+  });
+
+  describe("session refresh", () => {
+    const refresh = (headers, refreshToken) =>
+      request(app.server).post("/api/v1/shop/auth/refresh").set(headers).send({ refreshToken });
+
+    const signIn = async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      return (await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200)).body.data;
+    };
+
+    it("swaps a shopper's refresh token for a working session", async () => {
+      const session = await signIn();
+      const res = await refresh(VELOR, session.refreshToken).expect(200);
+
+      expect(res.body.data.accessToken).toEqual(expect.any(String));
+      expect(res.body.data.refreshToken).toEqual(expect.any(String));
+      await request(app.server).get("/api/v1/shop/me").set({ ...VELOR, ...bearer(res.body.data.accessToken) }).expect(200);
+    });
+
+    it("refuses a missing, forged or access token", async () => {
+      const session = await signIn();
+      await refresh(VELOR, undefined).expect(401);
+      await refresh(VELOR, "not-a-token").expect(401);
+      await refresh(VELOR, session.accessToken).expect(401);
+      const forged = jwt.sign(jwt.decode(session.refreshToken), "some-other-secret");
+      await refresh(VELOR, forged).expect(401);
+    });
+
+    it("refuses the token in another store", async () => {
+      const session = await signIn();
+      await refresh(PIZZA, session.refreshToken).expect(401);
+    });
+
+    it("refuses an expired token", async () => {
+      const session = await signIn();
+      const { exp, iat, ...claims } = jwt.decode(session.refreshToken);
+      const expired = jwt.sign(claims, STAFF_ENV.REFRESH_TOKEN_SCCERET, { expiresIn: -10 });
+      await refresh(VELOR, expired).expect(401);
+    });
+
+    it("refuses once the account's tokens are revoked or it is blocked", async () => {
+      const session = await signIn();
+      await runForTenant(velor.tenant._id, () => User.updateOne({ email: SHOPPER.email }, { $inc: { tokenVersion: 1 } }));
+      await refresh(VELOR, session.refreshToken).expect(401);
+
+      const again = (await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200)).body.data;
+      await runForTenant(velor.tenant._id, () => User.updateOne({ email: SHOPPER.email }, { isBlocked: true }));
+      await refresh(VELOR, again.refreshToken).expect(401);
+    });
+
+    it("never renews a staff session", async () => {
+      const staff = await runForTenant(velor.tenant._id, () => User.findById(velor.user._id).populate("roles"));
+      await refresh(VELOR, staff.generateJwtRefreshToken()).expect(401);
+    });
+  });
+
+  describe("sign-up by mobile number alone", () => {
+    it("creates accounts with no email, and signs them in by phone", async () => {
+      const first = await register(VELOR, { name: "Rahim", phone: "01711000001", password: "Shopper-Pass1" }).expect(201);
+      // A second phone-only shopper must not collide on the missing email
+      await register(VELOR, { name: "Karim", phone: "01711000002", password: "Shopper-Pass1", email: "  " }).expect(201);
+      expect(first.body.data.user.email).toBeUndefined();
+
+      const stored = await runForTenant(velor.tenant._id, () => User.find({ phone: /^0171100000/ }).lean());
+      expect(stored.every((user) => !("email" in user))).toBe(true);
+
+      await login(VELOR, { phone: "01711000001", password: "Shopper-Pass1" }).expect(200);
+    });
+
+    it("still keeps emails and phones unique within a store", async () => {
+      await register(VELOR, { name: "Rahim", phone: "01711000001", password: "Shopper-Pass1" }).expect(201);
+      await register(VELOR, { name: "Again", phone: "01711000001", password: "Shopper-Pass1" }).expect(409);
+      await register(VELOR, SHOPPER).expect(201);
+      await register(VELOR, { ...SHOPPER, name: "Copy" }).expect(409);
+      // The same number is a separate account at another store
+      await register(PIZZA, { name: "Rahim", phone: "01711000001", password: "Shopper-Pass1" }).expect(201);
     });
   });
 });

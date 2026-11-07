@@ -6229,6 +6229,22 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/shop/auth/forgot-password":
+    post:
+      operationId: "post__shop_auth_forgot_password"
+      tags: ["shop"]
+      security: []
+      x-rate-limit: ["passwordResetLimiter"]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   "/shop/auth/login":
     post:
       operationId: "post__shop_auth_login"
@@ -6261,6 +6277,53 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  "/shop/auth/refresh":
+    post:
+      operationId: "post__shop_auth_refresh"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  "/shop/auth/reset-password":
+    post:
+      operationId: "post__shop_auth_reset_password"
+      tags: ["shop"]
+      security: []
+      x-rate-limit: ["shopResetSubmitLimiter"]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  "/shop/auth/verify-reset-code":
+    post:
+      operationId: "post__shop_auth_verify_reset_code"
+      tags: ["shop"]
+      security: []
+      x-rate-limit: ["shopResetSubmitLimiter"]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   "/shop/banners":
     get:
       operationId: "get__shop_banners"

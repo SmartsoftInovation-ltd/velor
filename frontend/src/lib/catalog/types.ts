@@ -14,8 +14,13 @@ export type CatalogProduct = Product & {
   createdAt: string;
   /** Units sold so far; ranks best sellers. */
   sold?: number;
+  categoryName?: string;
+  /** Everything a shopper might type to find this product; see product-search.ts */
+  searchText?: string;
   /** What the cart and wishlist store for this card; see lib/cart/types.ts */
   item: ItemSnapshot;
+  /** What Buy Now adds when `item` still needs an option picked. */
+  buyNowItem?: ItemSnapshot;
 };
 
 /** One buyable option of a product, e.g. "Navy / M", with its own price and stock. */
@@ -95,6 +100,8 @@ export type ViewMode = "grid" | "list";
 export type Availability = "in-stock" | "out-of-stock" | "offer";
 
 export type ShopQuery = {
+  /** Text typed into the header search. */
+  q?: string;
   category?: string;
   subcategory?: string;
   brands?: string[];
@@ -107,6 +114,22 @@ export type ShopQuery = {
   sort?: SortOption;
   page?: number;
   view?: ViewMode;
+};
+
+/** One row of the header search's results. */
+export type SearchSuggestion = Pick<
+  CatalogProduct,
+  "id" | "name" | "brand" | "href" | "image" | "alt" | "price" | "compareAtPrice" | "stock" | "stockCount"
+> & {
+  categoryName: string;
+  /** The product has several options, so `price` is the lowest of them. */
+  fromPrice: boolean;
+};
+
+export type SearchResult = {
+  suggestions: SearchSuggestion[];
+  /** Every match, of which `suggestions` is the top few. */
+  total: number;
 };
 
 export type ShopResult = {
