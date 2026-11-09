@@ -70,6 +70,14 @@ describe("platform tenant logo API", () => {
     expect(res.body.data).toMatchObject({ url: "https://res.cloudinary.com/x/old.png", status: "uploaded", hasStoreInformation: true });
   });
 
+  it("adds each seller's logo URL to the seller list, empty when they have none", async () => {
+    await createStore();
+    const other = await Tenant.create({ name: "Book House", slug: "bookhouse", status: "active" });
+    const res = await request(app).get("/api/v1/platform/tenants").set(supportAuth).expect(200);
+    const bySlug = Object.fromEntries(res.body.data.items.map((t) => [t.slug, t.logoUrl]));
+    expect(bySlug).toEqual({ pizzashop: "https://res.cloudinary.com/x/old.png", [other.slug]: "" });
+  });
+
   it("reports a seller with no Store Information", async () => {
     const res = await request(app).get(url()).set(supportAuth).expect(200);
     expect(res.body.data).toMatchObject({ url: "", hasStoreInformation: false });

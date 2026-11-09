@@ -31,9 +31,9 @@ export const OrderItemStack = ({
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
-      className="group flex w-full min-w-0 flex-col items-start gap-1.5 rounded-lg p-1 text-left transition hover:bg-gray-100 dark:hover:bg-white/5"
+      className="group/items flex w-full min-w-0 items-center gap-3 rounded-lg p-1 text-left transition hover:bg-gray-100 dark:hover:bg-white/5"
     >
-      <span className="flex -space-x-3">
+      <span className="flex shrink-0 -space-x-3">
         {items.slice(0, 3).map((item, index) => (
           <Thumb key={item._id ?? index} item={item} />
         ))}

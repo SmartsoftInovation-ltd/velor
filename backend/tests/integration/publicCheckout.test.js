@@ -6,6 +6,7 @@ jest.mock("../../src/integrations/sslcommerz", () => ({
   queryTransaction: jest.fn(async () => ({ APIConnect: "DONE", element: [] })),
 }));
 
+const jwt = require("jsonwebtoken");
 const request = require("supertest");
 const { connectTestDb, clearTestDb, disconnectTestDb } = require("../helpers/db");
 const { setSettingsEnv } = require("../helpers/settings");
@@ -114,6 +115,23 @@ describe("storefront checkout", () => {
         Order.findOne({ invoiceId: res.body.data.order.invoiceId }).lean(),
       );
       expect(String(order.tenantId)).toBe(String(velor.tenant._id));
+    });
+
+    it("lists the web order on the store's dashboard order list", async () => {
+      await fillCart();
+      const res = await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
+      const staffToken = jwt.sign(
+        { sub: String(velor.user._id), tid: String(velor.tenant._id), tv: 0, aud: "staff" },
+        STAFF_ENV.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1d" },
+      );
+
+      const list = await request(app.server)
+        .get("/api/v1/order/allorders")
+        .set({ "x-tenant": "velor", Authorization: `Bearer ${staffToken}` })
+        .expect(200);
+      const order = list.body.data.find((o) => o.invoiceId === res.body.data.order.invoiceId);
+      expect(order).toMatchObject({ channel: "web", orderType: "complete", orderFrom: "Website" });
     });
 
     it("does not show the order to the other store", async () => {

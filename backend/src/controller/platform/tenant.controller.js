@@ -8,6 +8,7 @@ const { invalidateTenantCache } = require("../../tenancy/tenantResolver");
 const { provisionTenant } = require("../../tenancy/provisioning");
 const PlatformAuditLog = require("../../models/platform/platformAuditLog.model");
 const User = require("../../models/user.model");
+const StoreInformation = require("../../models/storeInformation.model");
 const { runForTenant } = require("../../tenancy/context");
 const { sendOwnerCredentials } = require("../../service/ownerCredentials.service");
 
@@ -40,6 +41,17 @@ const withOwners = async (tenants) => {
   const owners = ids.length ? await User.find({ _id: { $in: ids } }).select("name email phone").lean() : [];
   const byId = Object.fromEntries(owners.map((o) => [String(o._id), { name: o.name, email: o.email, phone: o.phone }]));
   return tenants.map((t) => ({ ...t.toObject(), owner: byId[String(t.ownerUserId)] || null }));
+};
+
+// Adds each seller's logo URL (the image on their Store Information) for the
+// console's seller list: one query for the whole page, run in platform scope.
+const withLogos = async (tenants) => {
+  const ids = tenants.map((t) => t._id);
+  const stores = ids.length
+    ? await StoreInformation.find({ tenantId: { $in: ids } }).select("tenantId image.url").lean()
+    : [];
+  const byTenant = Object.fromEntries(stores.map((s) => [String(s.tenantId), s.image?.url || ""]));
+  return tenants.map((t) => ({ ...t, logoUrl: byTenant[String(t._id)] || "" }));
 };
 
 // Flattens nested update input into dot paths: { limits: { maxStaff } } -> ["limits.maxStaff"].
@@ -101,7 +113,7 @@ exports.listTenants = asynchandeler(async (req, res) => {
   }
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Tenants fetched", {
-    items: await withOwners(items),
+    items: await withLogos(await withOwners(items)),
     total,
     page,
     limit,

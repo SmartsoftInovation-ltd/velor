@@ -16,6 +16,7 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import { initSocket } from "../../../socket/socket";
 import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 import MobileCardList from "../../common/MobileCardList";
+import Tooltip from "../../common/Tooltip";
 import OrdersEmptyState from "./OrdersEmptyState";
 import { OptionsMenu, OptionsMenuItem, OptionsMenuSeparator } from "../../common/OptionsMenu";
 import FraudCheckModal from "./FraudCheckModal";
@@ -50,8 +51,24 @@ type Segment = "all" | string;
 
 // Every column gets the same width, so rows line up into an even grid
 const COLUMNS = ["Serial ID", "Invoice", "Customer", "Items", "Amount", "Payment", "Source", "Status", "Actions"] as const;
-const CELL = "px-4 py-4 align-top overflow-hidden";
-const HEAD = "px-4 py-3 text-left text-theme-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400";
+// Fixed widths sized to each column's content (longest pill, serial, amount);
+// Customer and Items have none, so they share whatever space is left.
+const COLUMN_WIDTHS: Record<(typeof COLUMNS)[number], number | undefined> = {
+  "Serial ID": 110,
+  Invoice: 150,
+  Customer: undefined,
+  Items: undefined,
+  Amount: 120,
+  Payment: 160,
+  Source: 100,
+  Status: 150,
+  Actions: 170,
+};
+const CELL = "px-4 py-3.5 align-middle overflow-hidden";
+const HEAD = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
+// The actions column stays pinned to the right edge while the table scrolls sideways
+const STICKY_ACTIONS =
+  "sticky right-0 z-[1] bg-white shadow-[-10px_0_12px_-10px_rgba(16,24,40,0.18)] transition-colors group-hover:bg-gray-50 dark:bg-gray-900 dark:group-hover:bg-gray-800";
 
 // A two- or three-way toggle used for the channel and payment filters
 const SegmentControl = ({ value, onChange, options, label }: {
@@ -126,36 +143,48 @@ const StatusPill = ({ status }: { status: OrderStatusType }) => (
 const Actions = ({ order, canDelete, onDelete, onSticker, onStatus, onFraud }: { order: Order; canDelete: boolean; onDelete: (id: string) => void; onSticker: (id: string) => void; onStatus: (order: Order) => void; onFraud: (order: Order) => void }) => {
   const navigate = useNavigate();
   return (
-    <OptionsMenu label={order.invoiceId ? `Actions for order ${order.invoiceId}` : "Actions"}>
-      {(run) => (
-        <>
-          <OptionsMenuItem tone="view" icon={<FaEye className="size-3.5" />} onClick={run(() => navigate(`/orderdetails/${order._id}`))}>
-            View Details
-          </OptionsMenuItem>
-          <OptionsMenuItem tone="edit" icon={<TbStatusChange className="size-4" />} onClick={run(() => onStatus(order))}>
-            Change Status
-          </OptionsMenuItem>
-          <OptionsMenuItem icon={<TbShieldSearch className="size-4" />} onClick={run(() => onFraud(order))}>
-            Fraud Check
-          </OptionsMenuItem>
-          <OptionsMenuSeparator />
-          <OptionsMenuItem icon={<TbSticker2 className="size-4" />} onClick={run(() => onSticker(order._id))}>
-            Print Sticker
-          </OptionsMenuItem>
-          <OptionsMenuItem icon={<IoIosPrint className="size-3.5" />} onClick={run(() => navigate(`/invoice/${order._id}`))}>
-            Print Invoice
-          </OptionsMenuItem>
-          {canDelete && (
-            <>
-              <OptionsMenuSeparator />
-              <OptionsMenuItem tone="danger" icon={<MdDelete className="size-4" />} onClick={run(() => onDelete(order._id))}>
-                Delete
-              </OptionsMenuItem>
-            </>
-          )}
-        </>
-      )}
-    </OptionsMenu>
+    <div className="flex items-center justify-end gap-1.5">
+      <Tooltip text="View details">
+        <button
+          type="button"
+          aria-label={`View order ${order.invoiceId ?? ""}`.trim()}
+          onClick={() => navigate(`/orderdetails/${order._id}`)}
+          className="flex size-8 items-center justify-center rounded border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-accent-50 hover:text-accent-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-accent-500/10"
+        >
+          <FaEye className="size-3.5" />
+        </button>
+      </Tooltip>
+      <OptionsMenu label={order.invoiceId ? `Actions for order ${order.invoiceId}` : "Actions"}>
+        {(run) => (
+          <>
+            <OptionsMenuItem tone="view" icon={<FaEye className="size-3.5" />} onClick={run(() => navigate(`/orderdetails/${order._id}`))}>
+              View Details
+            </OptionsMenuItem>
+            <OptionsMenuItem tone="edit" icon={<TbStatusChange className="size-4" />} onClick={run(() => onStatus(order))}>
+              Change Status
+            </OptionsMenuItem>
+            <OptionsMenuItem icon={<TbShieldSearch className="size-4" />} onClick={run(() => onFraud(order))}>
+              Fraud Check
+            </OptionsMenuItem>
+            <OptionsMenuSeparator />
+            <OptionsMenuItem icon={<TbSticker2 className="size-4" />} onClick={run(() => onSticker(order._id))}>
+              Print Sticker
+            </OptionsMenuItem>
+            <OptionsMenuItem icon={<IoIosPrint className="size-3.5" />} onClick={run(() => navigate(`/invoice/${order._id}`))}>
+              Print Invoice
+            </OptionsMenuItem>
+            {canDelete && (
+              <>
+                <OptionsMenuSeparator />
+                <OptionsMenuItem tone="danger" icon={<MdDelete className="size-4" />} onClick={run(() => onDelete(order._id))}>
+                  Delete
+                </OptionsMenuItem>
+              </>
+            )}
+          </>
+        )}
+      </OptionsMenu>
+    </div>
   );
 };
 
@@ -334,19 +363,19 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
-            <Table className="w-full min-w-[1260px] table-fixed">
+            <Table className="w-full min-w-[1320px] table-fixed">
               <colgroup>
                 {COLUMNS.map((column) => (
-                  <col key={column} style={{ width: `${100 / COLUMNS.length}%` }} />
+                  <col key={column} style={COLUMN_WIDTHS[column] ? { width: COLUMN_WIDTHS[column] } : undefined} />
                 ))}
               </colgroup>
-              <TableHeader className="border-b border-gray-100 bg-gray-50/60 dark:border-white/[0.05] dark:bg-white/[0.02]">
+              <TableHeader className="border-b border-gray-200 bg-gray-50 dark:border-white/[0.05] dark:bg-white/[0.02]">
                 <TableRow>
                   {COLUMNS.map((column) => (
                     <TableCell
                       key={column}
                       isHeader
-                      className={`${HEAD} ${column === "Amount" ? "!text-right" : column === "Actions" ? "!text-center" : ""}`}
+                      className={`${HEAD} ${column === "Amount" ? "!text-right" : column === "Actions" ? `!text-right ${STICKY_ACTIONS} !bg-gray-50 dark:!bg-gray-900` : ""}`}
                     >
                       {column}
                     </TableCell>
@@ -363,18 +392,18 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
                 ) : (
                   rows.map((order, index) => (
                     <Fragment key={order._id}>
-                      <TableRow className={`transition-colors hover:bg-gray-50/70 dark:hover:bg-white/[0.02] ${expanded.has(order._id) ? "bg-gray-50/70 dark:bg-white/[0.02]" : ""}`}>
+                      <TableRow className={`group transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${expanded.has(order._id) ? "bg-gray-50 dark:bg-gray-800" : ""}`}>
                         <TableCell className={CELL}><SerialCell order={order} index={index} /></TableCell>
                         <TableCell className={CELL}><InvoiceCell order={order} index={index} /></TableCell>
                         <TableCell className={`${CELL} text-theme-sm`}><ShippingInfo order={order} hideFraudCheck /></TableCell>
-                        <TableCell className={`${CELL} !py-3`}>
+                        <TableCell className={CELL}>
                           <OrderItemStack items={order.items} expanded={expanded.has(order._id)} onToggle={() => toggle(order._id)} />
                         </TableCell>
                         <TableCell className={CELL}><Amounts order={order} /></TableCell>
                         <TableCell className={CELL}><PaymentPill method={order.paymentMethod} status={order.paymentStatus} /></TableCell>
                         <TableCell className={CELL}><ChannelTag channel={order.channel} source={order.orderFrom} /></TableCell>
                         <TableCell className={CELL}><StatusPill status={order.orderStatus} /></TableCell>
-                        <TableCell className={`${CELL} text-center`}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onStatus={setStatusOrder} onFraud={setFraudOrder} /></TableCell>
+                        <TableCell className={`${CELL} ${STICKY_ACTIONS} !overflow-visible`}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onStatus={setStatusOrder} onFraud={setFraudOrder} /></TableCell>
                       </TableRow>
                       {expanded.has(order._id) ? (
                         <TableRow className="bg-gray-50/70 dark:bg-white/[0.02]">

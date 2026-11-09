@@ -23,6 +23,8 @@ export interface Tenant {
   ownerUserId?: string | null;
   /** The store owner's account, added by the list and detail endpoints */
   owner?: { name: string; email: string; phone: string } | null;
+  /** The seller's logo from their Store Information, added by the list endpoint; "" when none */
+  logoUrl?: string;
   createdAt: string;
 }
 
