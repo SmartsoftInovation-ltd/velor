@@ -42,9 +42,10 @@ const nameSearchFilter = (query) => {
 /**
  * "Contains" name search for the product and variant lists: every word typed
  * must appear somewhere in `field`, in any case ("shirt" finds
- * "CASUALFULLSHIRT", "ull sh" finds "Casual Full Shirt"). Unlike
- * nameSearchFilter this cannot use an index, so it reads the store's whole
- * collection; fine for the list pages, which stay paged.
+ * "CASUALFULLSHIRT", "ull sh" finds "Casual Full Shirt"). An unanchored
+ * regex has no index bounds, so `field` must carry a { tenantId, field }
+ * index (product name, variant variantName): MongoDB then runs the regex over
+ * the store's index keys and fetches only the documents that match.
  */
 const nameContainsFilter = (query, field) => {
   const terms = searchWordsOf(query).slice(0, MAX_TERMS);

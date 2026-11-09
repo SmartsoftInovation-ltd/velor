@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
@@ -9,6 +9,7 @@ import MobileActionBar from "../common/MobileActionBar";
 import SearchableSelect from "../form/SearchableSelect";
 import Select from "../form/Select";
 import axiosSecure from "../../hooks/useAxiosSecure";
+import useRemoteLookup from "../../hooks/useRemoteLookup";
 import toast from "react-hot-toast";
 import { FaTrashAlt, FaCloudUploadAlt, FaGlobe, FaRulerCombined, FaBarcode, FaSync, FaTimesCircle } from "react-icons/fa";
 import ReactQuill from "react-quill-new";
@@ -348,6 +349,7 @@ const CreateVariantForm = ({
       const res = await axiosSecure.get(`/variant/${slugVal}`);
       const v = res?.data?.data?.variant || res?.data?.data;
       if (v) {
+        rememberProduct(v.product);
         setExistingGallery(v.image || []);
         setInitialStockInput(v.initialStock ?? v.stockVariant ?? 0);
 
@@ -702,19 +704,37 @@ const CreateVariantForm = ({
     });
   }, [variantForms]);
 
-  const { data: productOptions = [] } = useQuery({
-    queryKey: ["multipleVariantProducts"],
-    queryFn: async () => {
-      const res = await axiosSecure.get(`/product/multiplevarinatproduct`);
-      // The API response structure is { data: { products: [...] } }
-      const products = res.data?.data?.products || [];
-      console.log("products", products);
-      return products.map((p: Product) => ({
-        value: p._id,
-        label: p.name,
-      }));
-    },
+  // The product list answers one page (BUG-P2-010), so the dropdown asks the
+  // server again as the seller types instead of filtering the first page
+  const productLookup = useRemoteLookup<Product>(
+    "multipleVariantProducts",
+    "/product/multiplevarinatproduct",
+    (body) => body?.data?.products as Product[] | undefined,
+  );
+  // Labels of the products already picked on any of the forms, so each stays
+  // shown when a search moves past it
+  const [knownProducts, setKnownProducts] = useState<Record<string, string>>(() => {
+    const data = initialData as { variant?: { product?: unknown }; product?: unknown } | null;
+    const p = (data?.variant ?? data)?.product as Partial<Product> | undefined;
+    return p && typeof p === "object" && p._id && p.name ? { [p._id]: p.name } : {};
   });
+  const rememberProduct = (product: unknown) => {
+    const p = product as { _id?: string; name?: string } | null;
+    if (p && typeof p === "object" && p._id && p.name) {
+      setKnownProducts((prev) => (prev[p._id!] === p.name ? prev : { ...prev, [p._id!]: p.name! }));
+    }
+  };
+  const productOptions = useMemo(() => {
+    const list = productLookup.items.map((p) => ({ value: p._id, label: p.name }));
+    const listed = new Set(list.map((o) => o.value));
+    // Only the products a form currently holds; the dropdown no longer filters
+    // its options itself, so anything else pinned here would show on every search
+    const inUse = new Set(variantForms.map((f) => f.formData.product).filter(Boolean));
+    const picked = Object.entries(knownProducts)
+      .filter(([id]) => inUse.has(id) && !listed.has(id))
+      .map(([value, label]) => ({ value, label }));
+    return [...picked, ...list];
+  }, [productLookup.items, knownProducts, variantForms]);
 
   const handleInputChange = (
     formIndex: number,
@@ -1126,9 +1146,12 @@ const CreateVariantForm = ({
             options={productOptions}
             placeholder="Select Product"
             value={formData.formData.product}
-            onChange={(value: string) =>
-              handleInputChange(formIndex, "product", value)
-            }
+            onSearchChange={productLookup.onSearchChange}
+            onChange={(value: string) => {
+              const option = productOptions.find((o) => o.value === value);
+              if (option) rememberProduct({ _id: option.value, name: option.label });
+              handleInputChange(formIndex, "product", value);
+            }}
           />
           {formData.errors.product && (
             <p className="text-red-500 text-sm">{formData.errors.product}</p>
