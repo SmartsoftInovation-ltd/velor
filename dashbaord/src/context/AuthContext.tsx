@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import axiosSecure from "../hooks/useAxiosSecure";
 import { clearTenantStorage, clearWorkspace } from "../lib/session";
 import { disconnectSocket } from "../socket/socket";
@@ -63,6 +64,12 @@ interface AuthContextType {
   /** @deprecated use isOwner — kept for existing callers */
   isSuperAdmin: boolean;
   isLoading: boolean;
+  /**
+   * The user could not be loaded for a reason that is not the session (network
+   * down, API restarting). The session is still valid, so pages offer a retry
+   * instead of sending the user to sign in.
+   */
+  loadFailed: boolean;
   can: (module: string, action: string) => boolean;
   refreshAuth: () => Promise<void>;
   clearAuth: () => void;
@@ -102,6 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [permissionMap, setPermissionMap] = useState<PermissionMap>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const isOwner =
     user?.isOwner ?? (user?.roles?.some((r) => LEGACY_OWNER_SLUGS.includes(r.slug)) || false);
@@ -109,6 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUser = useCallback(async () => {
     const token = localStorage.getItem("accessToken");
     if (!token) { setIsLoading(false); return; }
+    setLoadFailed(false);
     try {
       const res = await axiosSecure.get("/auth/getme");
       const fetchedUser: AuthUser = res.data?.data;
@@ -120,6 +129,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("[Auth] getme FAILED:", err);
       setUser(null);
       setPermissionMap({});
+      // 401/403 means the session is over (the axios interceptor has already
+      // tried the refresh token and redirects to sign-in). Anything else is
+      // temporary and must not look like a signed-out user.
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      setLoadFailed(status !== 401 && status !== 403);
     } finally {
       setIsLoading(false);
     }
@@ -163,6 +177,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isOwner,
         isSuperAdmin: isOwner,
         isLoading,
+        loadFailed,
         can,
         refreshAuth,
         clearAuth,

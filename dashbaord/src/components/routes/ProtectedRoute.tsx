@@ -49,12 +49,29 @@ const PermissionGuard = ({
   anyOfModules?: string[];
   action: string;
 }) => {
-  const { isSuperAdmin, can, isLoading, user } = useAuth();
+  const { isSuperAdmin, can, isLoading, user, loadFailed, refreshAuth } = useAuth();
 
   // Still fetching user — show nothing until auth resolves
   if (isLoading) return null;
 
-  // Auth fetch completed but user is null — token is invalid/expired
+  // The session is fine but the server could not be reached: stay on the page
+  if (!user && loadFailed) {
+    return (
+      <div role="alert" className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <p className="text-sm font-semibold text-gray-800 dark:text-white/90">Could not reach the server</p>
+        <p className="max-w-sm text-sm text-gray-500 dark:text-gray-400">Check your connection and try again. You are still signed in.</p>
+        <button
+          type="button"
+          onClick={() => refreshAuth()}
+          className="shine rounded bg-accent-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-600"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  // Auth fetch completed but user is null — the session is over
   if (!user) return <Navigate to="/signin" replace />;
 
   // User is superadmin — bypass all permission checks
