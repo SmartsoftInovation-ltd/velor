@@ -79,6 +79,28 @@ interface DiscountTableProps {
   fetchDiscounts: () => void;
 }
 
+// The list is virtualized: only the rows near the viewport are in the DOM, so
+// with automatic table layout every scroll re-measured the columns from a new
+// set of rows and the headings jumped sideways. Fixed layout sizes the columns
+// from these shares of the table width alone, so the headings never move.
+// Cells are one line (long values truncate, full text on hover) so rows stay
+// one height.
+const COLUMN_WIDTHS = [
+  "7%", // Serial ID
+  "12%", // Dis Name
+  "8%", // Plan
+  "12%", // Applicable
+  "7%", // Type
+  "8%", // From
+  "8%", // To
+  "7%", // Value (Tk)
+  "7%", // Value (%)
+  "8%", // Status
+  "16%", // Actions (four 40px buttons)
+];
+// Below this the columns would be too narrow to read; the table scrolls instead
+const TABLE_MIN_WIDTH = 1300;
+
 const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
   const queryClient = useQueryClient();
   const canAdd    = usePermission("discount", "add");
@@ -106,7 +128,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
   const virtualizer = useVirtualizer({
     count: tableData.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 65,
+    estimateSize: () => 65, // a one-line row; each rendered row is then measured
     overscan: 5,
   });
 
@@ -286,20 +308,26 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
           ref={parentRef}
           className="no-scrollbar max-w-full overflow-auto max-h-[600px]"
         >
-          <Table>
+          {/* w-full matters: browsers ignore table-fixed while the width is auto */}
+          <Table className="w-full table-fixed" style={{ minWidth: TABLE_MIN_WIDTH }}>
+            <colgroup>
+              {COLUMN_WIDTHS.map((width, i) => (
+                <col key={i} style={{ width }} />
+              ))}
+            </colgroup>
             <TableHeader className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow className="uppercase">
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-start text-[11px] dark:text-gray-400">Serial ID</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-start text-[11px] dark:text-gray-400">Dis Name</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Plan</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Applicable</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Type</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">From</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">To</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Value (Tk)</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Value (%)</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Status</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Actions</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-start text-[11px] dark:text-gray-400" title="Serial ID">Serial ID</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-start text-[11px] dark:text-gray-400" title="Dis Name">Dis Name</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Plan">Plan</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Applicable">Applicable</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Type">Type</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="From">From</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="To">To</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Value (Tk)">Value (Tk)</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Value (%)">Value (%)</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Status">Status</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Actions">Actions</TableCell>
               </TableRow>
             </TableHeader>
 
@@ -357,18 +385,24 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                   {virtualRows.map((virtualRow) => {
                     const discount = tableData[virtualRow.index];
                     return (
-                      <TableRow key={discount._id} className="dark:text-gray-400">
-                        <TableCell className="px-4 py-3 text-theme-sm text-start">
+                      <tr
+                        key={discount._id}
+                        // A plain row so the virtualizer can measure its real height
+                        ref={virtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        className="dark:text-gray-400"
+                      >
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-start">
                           {discount.discountSerialId ? (
                             <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{discount.discountSerialId}</span>
                           ) : (
                             <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm font-medium text-gray-800 dark:text-gray-200 text-start">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate font-medium text-gray-800 dark:text-gray-200 text-start" title={discount.discountName}>
                           {discount.discountName}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           <div className="flex justify-center">
                             <Badge
                               size="sm"
@@ -385,14 +419,22 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center font-medium text-gray-700 dark:text-gray-300">
+                        <TableCell
+                          className="px-2 py-3 text-theme-sm truncate text-center font-medium text-gray-700 dark:text-gray-300"
+                          title={
+                            discount.discountPlan === "category" ? discount.category?.name :
+                            discount.discountPlan === "subCategory" ? discount.subCategory?.name :
+                            discount.discountPlan === "product" ? discount.product?.name :
+                            undefined
+                          }
+                        >
                           {discount.discountPlan === "category" ? discount.category?.name || "N/A" :
                            discount.discountPlan === "subCategory" ? discount.subCategory?.name || "N/A" :
                            discount.discountPlan === "product" ? discount.product?.name || "N/A" :
                            discount.discountPlan === "flat" ? "All Products" :
                            "N/A"}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           <div className="flex justify-center">
                             <Badge
                               size="sm"
@@ -402,29 +444,29 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {new Date(discount.discountValidFrom).toLocaleDateString()}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {new Date(discount.discountValidTo).toLocaleDateString()}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {discount.discountValueByAmount > 0
                             ? `${discount.discountValueByAmount} Tk`
                             : "-"}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {discount.discountValueByPercentance > 0
                             ? `${discount.discountValueByPercentance}%`
                             : "-"}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           <div className="flex justify-center">
                             <StatusPill isActive={discount.isActive} />
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm">
-                          <div className="flex items-center gap-2 justify-center">
+                        <TableCell className="px-2 py-3 text-theme-sm">
+                          <div className="flex flex-nowrap items-center gap-2 justify-center">
                             {/* View Action */}
                             <Tooltip text="View Discount">
                               <Link to={`/discount-view/${discount.slug}`}>
@@ -478,7 +520,7 @@ const DiscountTable = ({ discounts, fetchDiscounts }: DiscountTableProps) => {
                             )}
                           </div>
                         </TableCell>
-                      </TableRow>
+                      </tr>
                     );
                   })}
                   {paddingBottom > 0 && (

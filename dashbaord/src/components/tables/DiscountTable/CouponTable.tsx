@@ -72,6 +72,25 @@ interface CouponTableProps {
   fetchCoupons: () => void;
 }
 
+// The list is virtualized: only the rows near the viewport are in the DOM, so
+// with automatic table layout every scroll re-measured the columns from a new
+// set of rows and the headings jumped sideways. Fixed layout sizes the columns
+// from these shares of the table width alone, so the headings never move.
+// Cells are one line (long values truncate, full text on hover) so rows stay
+// one height.
+const COLUMN_WIDTHS = [
+  "10%", // Serial ID
+  "16%", // Coupon Code
+  "10%", // Usage Limit
+  "12%", // Expired Date
+  "10%", // Value (Tk)
+  "9%", // Value (%)
+  "11%", // Status
+  "22%", // Actions (four 40px buttons)
+];
+// Below this the columns would be too narrow to read; the table scrolls instead
+const TABLE_MIN_WIDTH = 1000;
+
 const CouponTable = ({ coupons, fetchCoupons }: CouponTableProps) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -96,7 +115,7 @@ const CouponTable = ({ coupons, fetchCoupons }: CouponTableProps) => {
   const virtualizer = useVirtualizer({
     count: tableData.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 65,
+    estimateSize: () => 65, // a one-line row; each rendered row is then measured
     overscan: 5,
   });
 
@@ -249,17 +268,23 @@ const CouponTable = ({ coupons, fetchCoupons }: CouponTableProps) => {
           ref={parentRef}
           className="no-scrollbar max-w-full overflow-auto max-h-[600px]"
         >
-          <Table>
+          {/* w-full matters: browsers ignore table-fixed while the width is auto */}
+          <Table className="w-full table-fixed" style={{ minWidth: TABLE_MIN_WIDTH }}>
+            <colgroup>
+              {COLUMN_WIDTHS.map((width, i) => (
+                <col key={i} style={{ width }} />
+              ))}
+            </colgroup>
             <TableHeader className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow className="uppercase">
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-start text-[11px] dark:text-gray-400">Serial ID</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-start text-[11px] dark:text-gray-400">Coupon Code</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Usage Limit</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Expired Date</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Value (Tk)</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Value (%)</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Status</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] dark:text-gray-400">Actions</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-start text-[11px] dark:text-gray-400" title="Serial ID">Serial ID</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-start text-[11px] dark:text-gray-400" title="Coupon Code">Coupon Code</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Usage Limit">Usage Limit</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Expired Date">Expired Date</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Value (Tk)">Value (Tk)</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Value (%)">Value (%)</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Status">Status</TableCell>
+                <TableCell isHeader className="px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] dark:text-gray-400" title="Actions">Actions</TableCell>
               </TableRow>
             </TableHeader>
 
@@ -314,36 +339,42 @@ const CouponTable = ({ coupons, fetchCoupons }: CouponTableProps) => {
                   {virtualRows.map((virtualRow) => {
                     const coupon = tableData[virtualRow.index];
                     return (
-                      <TableRow key={coupon._id} className="dark:text-gray-400">
-                        <TableCell className="px-4 py-3 text-theme-sm text-start">
+                      <tr
+                        key={coupon._id}
+                        // A plain row so the virtualizer can measure its real height
+                        ref={virtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        className="dark:text-gray-400"
+                      >
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-start">
                           {coupon.customSerialId ? (
                             <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{coupon.customSerialId}</span>
                           ) : (
                             <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm font-medium text-gray-800 dark:text-gray-200 text-start">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate font-medium text-gray-800 dark:text-gray-200 text-start" title={coupon.code}>
                           {coupon.code}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {coupon.usageLimit}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {new Date(coupon.expireAt).toLocaleDateString()}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {coupon.discountType === "fixed" ? `${coupon.discountValue} Tk` : "-"}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           {coupon.discountType === "percentage" ? `${coupon.discountValue}%` : "-"}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className="px-2 py-3 text-theme-sm truncate text-center">
                           <div className="flex justify-center">
                             <StatusPill isActive={coupon.isActive} />
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm">
-                          <div className="flex items-center gap-2 justify-center">
+                        <TableCell className="px-2 py-3 text-theme-sm">
+                          <div className="flex flex-nowrap items-center gap-2 justify-center">
                             {/* View Action */}
                             <Tooltip text="View Coupon">
                               <Link to={`/coupon-view/${coupon.slug}`}>
@@ -392,7 +423,7 @@ const CouponTable = ({ coupons, fetchCoupons }: CouponTableProps) => {
                             </Tooltip>
                           </div>
                         </TableCell>
-                      </TableRow>
+                      </tr>
                     );
                   })}
                   {paddingBottom > 0 && (

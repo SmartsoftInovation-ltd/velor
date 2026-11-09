@@ -110,7 +110,7 @@ const Tooltip = ({
   return (
     <div
       ref={ref}
-      className="inline-flex"
+      className="inline-flex min-w-0 max-w-full"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setVisible(false)}
     >
@@ -181,7 +181,11 @@ export default function SizeChartTable({
     overscan: 10,
   });
 
-  const gridTemplateColumns = "110px 2fr 130px 1.5fr 70px 70px 110px 120px 220px";
+  // Each virtualized row is its own grid, so a plain "1fr" track (min = auto)
+  // grew to fit a long value in that row alone and its cells slid out of line
+  // with the headings. minmax(0, …) plus min-w-0 on the cells keeps every row
+  // on exactly the header's column widths; long values truncate instead.
+  const gridTemplateColumns = "110px minmax(0,2fr) 130px minmax(0,1.5fr) 70px 70px 110px 120px 220px";
 
   const getApplicableItems = (chart: SizeChart): ApplicableItem[] => {
     switch (chart.applicableLevel) {
@@ -372,55 +376,55 @@ export default function SizeChartTable({
               <TableRow className="grid" style={{ gridTemplateColumns }}>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Serial ID
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Name
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Applicable Level
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Applicable
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Cols
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Rows
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Visibility
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Status
                 </TableCell>
                 <TableCell
                   isHeader
-                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center"
+                  className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0"
                 >
                   Actions
                 </TableCell>
@@ -501,11 +505,11 @@ export default function SizeChartTable({
                         gridTemplateColumns,
                       }}
                     >
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-500 dark:text-gray-400 flex items-center justify-center font-medium">
+                      <TableCell className="px-4 py-3 text-theme-sm text-gray-500 dark:text-gray-400 flex items-center justify-center font-medium min-w-0">
                         #{virtualRow.index + 1}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center text-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center text-center min-w-0">
                         <Tooltip text={chart.name ?? ""}>
                           <span className="font-bold text-sm text-gray-800 dark:text-white/90 truncate max-w-40">
                             {(chart.name ?? "").length > 22
@@ -515,13 +519,13 @@ export default function SizeChartTable({
                         </Tooltip>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <span className={`text-[10px] font-bold capitalize px-2.5 py-1 rounded-lg ${levelStyle[chart.applicableLevel]}`}>
                           {chart.applicableLevel}
                         </span>
                       </TableCell>
 
-                      <TableCell className="px-3 py-3 flex items-center justify-center">
+                      <TableCell className="px-3 py-3 flex items-center justify-center min-w-0">
                         {(() => {
                           const items = getApplicableItems(chart);
                           if (items.length === 0) {
@@ -553,19 +557,19 @@ export default function SizeChartTable({
                         })()}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
                           {chart.columns?.length ?? 0}
                         </span>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
                           {chart.rows?.length ?? 0}
                         </span>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <span
                           className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${visibilityStyle[chart.visibility]}`}
                         >
@@ -573,11 +577,11 @@ export default function SizeChartTable({
                         </span>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <StatusPill isActive={chart.isActive} />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2 min-w-0">
                         {/* View */}
                         <Tooltip text="View details">
                           <Link to={`/sizechart-view/${chart.slug}`}>

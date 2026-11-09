@@ -37,7 +37,12 @@ const statusStyle: Record<string, string> = {
   failed: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
 };
 
-const gridTemplateColumns = "150px 1fr 1.4fr 90px 90px 90px 120px 110px 56px";
+// Header and rows share this template. minmax(0, ...) keeps the flexible
+// columns the same width whatever the content: a plain fr grows to fit a long
+// value, and as rows swap in while scrolling they drifted out of line with the
+// headings. Long values are cut with an ellipsis and shown in full on hover.
+const gridTemplateColumns =
+  "150px minmax(0, 1fr) minmax(0, 1.4fr) 90px 90px 90px 120px 110px 56px";
 const HEADERS = [
   "Date",
   "Recipient Type",
@@ -79,7 +84,7 @@ const SmsCampaignTable = ({ campaigns }: Props) => {
           style={{ gridTemplateColumns }}
         >
           {HEADERS.map((h, i) => (
-            <div key={i} className="px-3 py-3">
+            <div key={i} className="min-w-0 truncate px-3 py-3" title={h || undefined}>
               {h}
             </div>
           ))}
@@ -109,38 +114,41 @@ const SmsCampaignTable = ({ campaigns }: Props) => {
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                 >
-                  <div className="px-3 py-2 text-xs">
+                  <div className="min-w-0 truncate px-3 py-2 text-xs">
                     {moment(c.createdAt).format("DD MMM YYYY")}
                     <div className="text-[11px] text-gray-400">
                       {moment(c.createdAt).format("hh:mm A")}
                     </div>
                   </div>
-                  <div className="px-3 py-2">
+                  <div
+                    className="min-w-0 truncate px-3 py-2"
+                    title={RECIPIENT_LABELS[c.recipientType] || c.recipientType}
+                  >
                     {RECIPIENT_LABELS[c.recipientType] || c.recipientType}
                   </div>
-                  <div className="truncate px-3 py-2" title={c.message}>
+                  <div className="min-w-0 truncate px-3 py-2" title={c.message}>
                     {c.message}
                   </div>
-                  <div className="px-3 py-2 font-semibold">{c.totalCount}</div>
-                  <div className="px-3 py-2 font-semibold text-emerald-600">
+                  <div className="min-w-0 truncate px-3 py-2 font-semibold">{c.totalCount}</div>
+                  <div className="min-w-0 truncate px-3 py-2 font-semibold text-emerald-600">
                     {c.sentCount}
                   </div>
-                  <div className="px-3 py-2 font-semibold text-red-500">
+                  <div className="min-w-0 truncate px-3 py-2 font-semibold text-red-500">
                     {c.failedCount}
                   </div>
-                  <div className="truncate px-3 py-2 text-xs" title={c.sentByName}>
+                  <div className="min-w-0 truncate px-3 py-2 text-xs" title={c.sentByName || c.triggeredBy || "admin"}>
                     {c.sentByName || c.triggeredBy || "admin"}
                   </div>
-                  <div className="px-3 py-2">
+                  <div className="min-w-0 px-3 py-2" title={c.status}>
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
+                      className={`inline-flex max-w-full rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
                         statusStyle[c.status] || statusStyle.queued
                       }`}
                     >
-                      {c.status}
+                      <span className="min-w-0 truncate">{c.status}</span>
                     </span>
                   </div>
-                  <div className="px-2 py-2">
+                  <div className="min-w-0 px-2 py-2">
                     <button
                       onClick={() => setPreview(c)}
                       className="flex size-8 items-center justify-center rounded-xl bg-brand-500 text-white transition-colors hover:bg-brand-600"

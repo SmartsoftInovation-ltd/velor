@@ -56,7 +56,13 @@ interface SupplierTableProps {
 }
 
 // Equal 1fr for all data columns; fixed only for # and Actions
-const gridTemplateColumns = "110px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 160px";
+// Header and rows are separate grids; a plain "1fr" track grows to fit its
+// content, so one long value widened that row's column and the headings slid
+// sideways while scrolling. minmax(0, …) plus min-w-0 on each cell keeps every
+// grid on the same widths; long values are cut instead. Actions fits all four
+// buttons.
+const gridTemplateColumns =
+  "110px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 210px";
 const COLUMNS = ["Serial ID", "Supplier Name", "Contact Person", "Designation", "Mobile", "Address", "Initial Due", "Due Balance", "Actions"];
 
 export default function SupplierTable({
@@ -230,13 +236,14 @@ export default function SupplierTable({
       <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
         {/* Header — outside scroll container */}
         <div
-          className="grid bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
+          className="grid *:min-w-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
           style={{ gridTemplateColumns }}
         >
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className="px-3 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center"
+              title={col}
+              className="px-3 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center truncate"
             >
               {col}
             </div>
@@ -264,7 +271,7 @@ export default function SupplierTable({
                 return (
                   <div
                     key={item._id}
-                    className="absolute top-0 left-0 w-full grid items-center border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
+                    className="absolute top-0 left-0 w-full grid *:min-w-0 items-center border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
                     style={{
                       gridTemplateColumns,
                       height: virtualRow.size,
@@ -273,28 +280,28 @@ export default function SupplierTable({
                   >
                     {/* Serial ID */}
                     <div className="px-3 flex justify-center">
-                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">
+                      <span className="max-w-full truncate rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap" title={item.supplierSerialId || undefined}>
                         {item.supplierSerialId || `#${virtualRow.index + 1}`}
                       </span>
                     </div>
 
                     {/* Supplier Name */}
-                    <div className="px-3 text-sm font-medium text-gray-800 dark:text-gray-100 truncate text-center">
+                    <div className="px-3 text-sm font-medium text-gray-800 dark:text-gray-100 truncate text-center" title={item.supplierName}>
                       {item.supplierName}
                     </div>
 
                     {/* Contact Person */}
-                    <div className="px-3 text-sm text-gray-600 dark:text-gray-300 truncate text-center">
+                    <div className="px-3 text-sm text-gray-600 dark:text-gray-300 truncate text-center" title={item.contactPersonName || undefined}>
                       {item.contactPersonName || <span className="text-gray-300 dark:text-gray-600">—</span>}
                     </div>
 
                     {/* Designation */}
-                    <div className="px-3 text-sm text-gray-600 dark:text-gray-300 truncate text-center">
+                    <div className="px-3 text-sm text-gray-600 dark:text-gray-300 truncate text-center" title={item.contactPersonDesignation || undefined}>
                       {item.contactPersonDesignation || <span className="text-gray-300 dark:text-gray-600">—</span>}
                     </div>
 
                     {/* Mobile */}
-                    <div className="px-3 text-sm text-gray-700 dark:text-gray-200 font-mono text-center">
+                    <div className="px-3 text-sm text-gray-700 dark:text-gray-200 font-mono text-center truncate" title={item.mobile}>
                       {item.mobile}
                     </div>
 
@@ -308,21 +315,21 @@ export default function SupplierTable({
 
                     {/* Initial Due — the figure carried in at creation, not
                         moved by transactions. */}
-                    <div className="px-3 text-sm text-center">
+                    <div className="px-3 text-sm text-center truncate">
                       <span className="text-gray-500 dark:text-gray-400">
                         ৳{(item.initialDue ?? 0).toLocaleString()}
                       </span>
                     </div>
 
                     {/* Due Balance — opening dues */}
-                    <div className="px-3 text-sm font-semibold text-center">
+                    <div className="px-3 text-sm font-semibold text-center truncate">
                       <span className={(item.openingDues ?? 0) > 0 ? "text-red-500" : "text-gray-400 dark:text-gray-500"}>
                         ৳{(item.openingDues ?? 0).toLocaleString()}
                       </span>
                     </div>
 
                     {/* Actions: View → Edit → Delete */}
-                    <div className="px-3 flex items-center justify-center gap-1.5">
+                    <div className="px-3 flex flex-nowrap items-center justify-center gap-1.5">
                       <Tooltip text="Print">
                         <button
                           type="button"

@@ -128,6 +128,10 @@ const PurchaseReturnTable = () => {
 
   const fmt = (n: number) => n.toLocaleString("en-BD");
 
+  // Header and rows share these widths. min-w-0 on every cell stops a long
+  // value from widening its column in one row only, which made the headings
+  // drift sideways as rows scrolled in and out. Rows are measured, since the
+  // product list makes their heights differ.
   const COLS = [
     { label: "Serial ID", w: "flex-1" },
     { label: "Supplier", w: "flex-1" },
@@ -135,7 +139,7 @@ const PurchaseReturnTable = () => {
     { label: "Products", w: "flex-2" },
     { label: "Total Amount", w: "flex-1" },
     { label: "Remarks", w: "flex-1" },
-    { label: "Actions", w: "w-36 shrink-0" },
+    { label: "Actions", w: "w-40 shrink-0" },
   ];
 
   return (
@@ -256,7 +260,8 @@ const PurchaseReturnTable = () => {
               {COLS.map((col) => (
                 <div
                   key={col.label}
-                  className={`${col.w} shrink-0 px-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}
+                  title={col.label}
+                  className={`${col.w} shrink-0 min-w-0 truncate px-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}
                 >
                   {col.label}
                 </div>
@@ -312,33 +317,36 @@ const PurchaseReturnTable = () => {
                       className="flex items-start px-4 py-4 border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors"
                     >
                       {/* ID */}
-                      <div className="flex-1 px-2">
-                        <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">
+                      <div className="flex-1 min-w-0 px-2">
+                        <span
+                          className="inline-block max-w-full truncate align-middle rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap"
+                          title={pr.serial || undefined}
+                        >
                           {pr.serial || `#${vRow.index + 1}`}
                         </span>
                       </div>
 
                       {/* Supplier */}
-                      <div className="flex-1 px-2">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                      <div className="flex-1 min-w-0 px-2">
+                        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate" title={pr.supplier?.supplierName}>
                           {pr.supplier?.supplierName ?? "—"}
                         </p>
                         {pr.supplier?.supplierId && (
-                          <p className="text-xs text-gray-400 mt-0.5">
+                          <p className="text-xs text-gray-400 mt-0.5 truncate" title={pr.supplier.supplierId}>
                             {pr.supplier.supplierId}
                           </p>
                         )}
                       </div>
 
                       {/* Return date */}
-                      <div className="flex-1 px-2">
+                      <div className="flex-1 min-w-0 px-2">
                         <span className="text-sm text-gray-600 dark:text-gray-300 tabular-nums">
                           {moment(pr.returnDate).format("DD MMM YYYY")}
                         </span>
                       </div>
 
                       {/* Products */}
-                      <div className="flex-2 px-2 space-y-2.5">
+                      <div className="flex-2 min-w-0 px-2 space-y-2.5">
                         {pr.products.map((item, i) => {
                           const name = item.product?.name ?? item.variant?.variantName ?? "—";
                           const variantName = item.variant?.variantName;
@@ -348,7 +356,7 @@ const PurchaseReturnTable = () => {
                           return (
                             <div key={i} className="space-y-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium text-gray-800 dark:text-white">
+                                <span className="min-w-0 break-words text-sm font-medium text-gray-800 dark:text-white">
                                   {name}
                                 </span>
                                 {variantName && (
@@ -387,21 +395,21 @@ const PurchaseReturnTable = () => {
                       </div>
 
                       {/* Total */}
-                      <div className="flex-1 px-2">
+                      <div className="flex-1 min-w-0 px-2">
                         <span className="text-base font-bold text-orange-600 dark:text-orange-400 tabular-nums">
                           ৳{fmt(pr.totalReturnAmount)}
                         </span>
                       </div>
 
                       {/* Remarks */}
-                      <div className="flex-1 px-2">
-                        <span className="text-sm text-gray-500 dark:text-gray-400 truncate block">
+                      <div className="flex-1 min-w-0 px-2">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 truncate block" title={pr.remarks || undefined}>
                           {pr.remarks || "—"}
                         </span>
                       </div>
 
                       {/* Actions */}
-                      <div className="w-36 shrink-0 px-2 flex items-center gap-2">
+                      <div className="w-40 shrink-0 px-2 flex flex-nowrap items-center gap-2">
                         <Link
                           to={`/purchase-return-invoice-print/${pr._id}`}
                           aria-label="Print return"

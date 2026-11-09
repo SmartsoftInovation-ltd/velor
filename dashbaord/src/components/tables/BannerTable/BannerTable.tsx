@@ -71,7 +71,12 @@ const firstWords = (text: string, count: number) => {
   return words.length > count ? `${words.slice(0, count).join(" ")}...` : words.join(" ");
 };
 
-const gridTemplateColumns = "110px 100px 1fr 1fr 1fr 80px 180px";
+// Header and rows share this template. minmax(0, 1fr) keeps the flexible
+// columns the same width whatever the content: a plain 1fr grows to fit a long
+// value, and as rows swap in while scrolling they drifted out of line with the
+// headings. Long values are cut with an ellipsis and shown in full on hover.
+const gridTemplateColumns =
+  "110px 100px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 80px 180px";
 const COLUMNS = ["Serial ID", "Image", "Title", "Headline", "Description", "Priority", "Actions"];
 
 interface BannerTableProps {
@@ -248,9 +253,10 @@ export default function BannerTable({
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className="px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
+              title={col}
+              className="min-w-0 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
             >
-              {col}
+              <span className="min-w-0 truncate">{col}</span>
             </div>
           ))}
         </div>
@@ -279,12 +285,12 @@ export default function BannerTable({
                     }}
                   >
                     {/* # */}
-                    <div className="px-4 text-xs text-gray-400 font-mono flex items-center justify-center">
+                    <div className="min-w-0 px-4 text-xs text-gray-400 font-mono flex items-center justify-center">
                       <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                     </div>
 
                     {/* Image */}
-                    <div className="px-3 flex items-center justify-center">
+                    <div className="min-w-0 px-3 flex items-center justify-center">
                       {imgUrl ? (
                         <img
                           src={imgUrl}
@@ -299,32 +305,32 @@ export default function BannerTable({
                     </div>
 
                     {/* Title */}
-                    <div className="px-4 text-sm font-medium text-gray-800 dark:text-gray-100 truncate flex items-center justify-center">
-                      {banner.title}
+                    <div className="min-w-0 px-4 text-sm font-medium text-gray-800 dark:text-gray-100 flex items-center justify-center" title={banner.title}>
+                      <span className="min-w-0 truncate">{banner.title}</span>
                     </div>
 
                     {/* Headline */}
-                    <div className="px-4 text-sm text-gray-600 dark:text-gray-300 truncate flex items-center justify-center">
-                      {banner.headLine}
+                    <div className="min-w-0 px-4 text-sm text-gray-600 dark:text-gray-300 flex items-center justify-center" title={banner.headLine}>
+                      <span className="min-w-0 truncate">{banner.headLine}</span>
                     </div>
 
                     {/* Description */}
                     <div
-                      className="px-4 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center"
+                      className="min-w-0 px-4 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center"
                       title={banner.description}
                     >
-                      {firstWords(banner.description, 4)}
+                      <span className="min-w-0 truncate">{firstWords(banner.description, 4)}</span>
                     </div>
 
                     {/* Priority */}
-                    <div className="px-4 flex items-center justify-center">
+                    <div className="min-w-0 px-4 flex items-center justify-center">
                       <span className="inline-flex items-center justify-center size-7 rounded-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400 text-xs font-bold">
                         {banner.priority}
                       </span>
                     </div>
 
                     {/* Actions: View → Edit → Delete */}
-                    <div className="px-4 flex items-center justify-center gap-2">
+                    <div className="min-w-0 px-4 flex flex-nowrap items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
                           type="button"

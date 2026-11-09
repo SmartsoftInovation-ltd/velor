@@ -108,7 +108,11 @@ const AccountTable = () => {
     !searchTerm.trim() || a.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const gridTemplateColumns = "80px 2fr 1fr 220px";
+  // Header and every row are separate grids, so columns must not size from
+  // content: `1fr` grows to fit its widest cell, and the virtualizer swaps rows
+  // in and out, which shifted headings sideways while scrolling. minmax(0, …)
+  // and a fixed Actions width keep them identical; long values are truncated.
+  const gridTemplateColumns = "80px minmax(0, 2fr) minmax(0, 1fr) 220px";
 
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
@@ -313,8 +317,8 @@ const AccountTable = () => {
                 <TableHeader className="sticky top-0 z-30 bg-gray-50/95 dark:bg-gray-800/95 border-b border-gray-200 dark:border-white/5 backdrop-blur-md">
                   <TableRow className="grid" style={{ gridTemplateColumns }}>
                     {["Serial ID", "Account Name", "Balance", "Actions"].map((h) => (
-                      <TableCell key={h} isHeader className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
-                        {h}
+                      <TableCell key={h} isHeader className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 flex min-w-0 items-center justify-center">
+                        <span className="truncate" title={h}>{h}</span>
                       </TableCell>
                     ))}
                   </TableRow>
@@ -329,20 +333,20 @@ const AccountTable = () => {
                         className="absolute top-0 left-0 w-full grid hover:bg-gray-50 dark:hover:bg-white/2 transition-colors border-b border-gray-100 dark:border-white/5"
                         style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)`, gridTemplateColumns }}
                       >
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
                           <span className="font-medium text-gray-500 dark:text-gray-400">
                             #{virtualRow.index + 1}
                           </span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-sm font-semibold text-gray-800 dark:text-white">{account.name}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-white max-w-full truncate" title={account.name}>{account.name}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className={`text-sm font-bold ${account.balance < 0 ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className={`max-w-full truncate text-sm font-bold ${account.balance < 0 ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
                             ৳{(account.balance ?? 0).toLocaleString()}
                           </span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                        <TableCell className="px-4 py-3 flex flex-nowrap min-w-0 items-center justify-center gap-2">
                           <Tooltip text="Transaction History">
                             <Button
                               onClick={() => navigate(`/account-history/${account._id}`)}

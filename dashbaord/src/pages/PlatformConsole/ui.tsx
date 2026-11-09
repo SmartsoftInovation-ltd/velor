@@ -137,9 +137,19 @@ export const initials = (name: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join("") || "?";
 
-export const Avatar = ({ name, size = "md" }: { name: string; size?: "md" | "lg" }) => {
+// The seller's logo when `src` is given and loads, otherwise coloured initials
+export const Avatar = ({ name, size = "md", src }: { name: string; size?: "md" | "lg"; src?: string }) => {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [src]);
   const tone = AVATAR_TONES[[...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % AVATAR_TONES.length];
   const dims = size === "lg" ? "size-14 rounded-2xl text-lg" : "size-10 rounded-xl text-sm";
+  if (src && !broken) {
+    return (
+      <span className={`flex shrink-0 items-center justify-center overflow-hidden border border-gray-200 bg-white p-1 dark:border-gray-700 dark:bg-gray-900 ${dims}`}>
+        <img src={src} alt={`${name} logo`} loading="lazy" onError={() => setBroken(true)} className="size-full object-contain" />
+      </span>
+    );
+  }
   return (
     <span aria-hidden className={`relative flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br font-semibold text-white ${dims} ${tone}`}>
       <span className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.14)_0_6px,transparent_6px_12px)]" />

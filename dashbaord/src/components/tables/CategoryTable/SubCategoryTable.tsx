@@ -65,7 +65,7 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
   };
 
   return (
-    <div ref={ref} onMouseEnter={handleMouseEnter} onMouseLeave={() => setVisible(false)} className="relative inline-block">
+    <div ref={ref} onMouseEnter={handleMouseEnter} onMouseLeave={() => setVisible(false)} className="relative inline-block max-w-full">
       {children}
       {visible && createPortal(
         <div
@@ -160,7 +160,11 @@ const SubCategoryTable = ({
     setSearchTerm("");
   };
 
-  const gridTemplateColumns = "150px 1.5fr 1.5fr 1fr 1fr 1fr 1fr 220px";
+  // Each virtualized row is its own grid, so a plain "1fr" track (min = auto)
+  // grew to fit a long value in that row alone and its cells slid out of line
+  // with the headings. minmax(0, …) plus min-w-0 on the cells keeps every row
+  // on exactly the header's column widths; long values truncate instead.
+  const gridTemplateColumns = "150px minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 220px";
 
   return (
     <div className="w-full">
@@ -302,28 +306,28 @@ const SubCategoryTable = ({
                 className="grid"
                 style={{ gridTemplateColumns }}
               >
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Serial ID
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Subcategory Name
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Parent Category
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Discount Name
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Discount Type
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Value
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Status
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Actions
                 </TableCell>
               </TableRow>
@@ -349,7 +353,7 @@ const SubCategoryTable = ({
                         gridTemplateColumns
                       }}
                     >
-                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center">
+                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center min-w-0">
                         {subcategory.subCategorySerialId ? (
                           <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
                             {subcategory.subCategorySerialId}
@@ -358,33 +362,33 @@ const SubCategoryTable = ({
                           <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center">
+                      <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center min-w-0">
                         <Tooltip text={subcategory.name}>
-                          <span className="truncate max-w-[150px]">
+                          <span className="block truncate max-w-[150px]">
                             {subcategory.name.length > 25 ? `${subcategory.name.substring(0, 25)}...` : subcategory.name}
                           </span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center">
-                        {subcategory?.category?.name || "N/A"}
+                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center min-w-0">
+                        <span className="min-w-0 truncate" title={subcategory?.category?.name || undefined}>{subcategory?.category?.name || "N/A"}</span>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center">
-                        {subcategory?.discount?.discountName || "N/A"}
+                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center min-w-0">
+                        <span className="min-w-0 truncate" title={subcategory?.discount?.discountName || undefined}>{subcategory?.discount?.discountName || "N/A"}</span>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center">
-                        {subcategory?.discount?.discountType || "N/A"}
+                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center min-w-0">
+                        <span className="min-w-0 truncate" title={subcategory?.discount?.discountType || undefined}>{subcategory?.discount?.discountType || "N/A"}</span>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center">
+                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center min-w-0">
                         {subcategory?.discount?.discountValueByAmount
                           ? <Badge size="sm" color="success" variant="light" className="font-bold">{subcategory.discount.discountValueByAmount} TK</Badge>
                           : subcategory?.discount?.discountValueByPercentance
                             ? <Badge size="sm" color="primary" variant="light" className="font-bold">{subcategory.discount.discountValueByPercentance}%</Badge>
                             : <span className="text-gray-400 font-semibold text-xs">N/A</span>}
                       </TableCell>
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <StatusPill isActive={subcategory.isActive} />
                       </TableCell>
-                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2 min-w-0">
                         {/* View */}
                         <Tooltip text="View Details">
                           <Link to={`/subcategory-view/${subcategory.slug}`}>

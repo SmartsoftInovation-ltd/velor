@@ -108,7 +108,11 @@ const TransactionCategoryTable = () => {
     !searchTerm.trim() || c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const gridTemplateColumns = "80px 2fr 1fr 180px";
+  // Header and every row are separate grids, so columns must not size from
+  // content: `1fr` grows to fit its widest cell, and the virtualizer swaps rows
+  // in and out, which shifted headings sideways while scrolling. minmax(0, …)
+  // and a fixed Actions width keep them identical; long values are truncated.
+  const gridTemplateColumns = "80px minmax(0, 2fr) minmax(0, 1fr) 180px";
 
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
@@ -296,8 +300,8 @@ const TransactionCategoryTable = () => {
                 <TableHeader className="sticky top-0 z-30 bg-gray-50/95 dark:bg-gray-800/95 border-b border-gray-200 dark:border-white/5 backdrop-blur-md">
                   <TableRow className="grid" style={{ gridTemplateColumns }}>
                     {["Serial ID", "Category Name", "Type", "Actions"].map((h) => (
-                      <TableCell key={h} isHeader className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
-                        {h}
+                      <TableCell key={h} isHeader className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 flex min-w-0 items-center justify-center">
+                        <span className="truncate" title={h}>{h}</span>
                       </TableCell>
                     ))}
                   </TableRow>
@@ -312,14 +316,14 @@ const TransactionCategoryTable = () => {
                         className="absolute top-0 left-0 w-full grid hover:bg-gray-50 dark:hover:bg-white/2 transition-colors border-b border-gray-100 dark:border-white/5"
                         style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)`, gridTemplateColumns }}
                       >
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
                           <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-sm font-semibold text-gray-800 dark:text-white">{category.name}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-white max-w-full truncate" title={category.name}>{category.name}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className={`max-w-full truncate text-xs font-bold px-2.5 py-1 rounded-full ${
                             category.allowedType === "cash recived"
                               ? "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
                               : "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400"
@@ -327,7 +331,7 @@ const TransactionCategoryTable = () => {
                             {category.allowedType === "cash recived" ? "Cash Received" : "Cash Payment"}
                           </span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                        <TableCell className="px-4 py-3 flex flex-nowrap min-w-0 items-center justify-center gap-2">
                           <Tooltip text="Edit">
                             <Button
                               onClick={() => { setSelectedCategory(category); setEditedName(category.name); setEditedType(category.allowedType); setShowEditModal(true); }}

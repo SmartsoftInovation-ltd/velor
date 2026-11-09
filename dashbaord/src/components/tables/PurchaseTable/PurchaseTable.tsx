@@ -99,6 +99,9 @@ interface Purchase {
 }
 
 // ---------- Columns ----------
+// Header and rows share these widths; min-w-0 on every cell (header too) stops
+// content from widening one row's column, which made the headings drift
+// sideways while the virtualized rows scrolled in and out.
 const COLS = [
   { label: "Serial ID", w: "flex-1" },
   { label: "Invoice", w: "flex-1" },
@@ -291,7 +294,8 @@ const PurchaseTable = () => {
                 {COLS.map((col) => (
                   <div
                     key={col.label}
-                    className={`${col.w} px-2 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide`}
+                    title={col.label}
+                    className={`${col.w} min-w-0 truncate px-2 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide`}
                   >
                     {col.label}
                   </div>
@@ -401,7 +405,8 @@ const PurchaseTable = () => {
                 {COLS.map((col) => (
                   <div
                     key={col.label}
-                    className={`${col.w} px-2 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide`}
+                    title={col.label}
+                    className={`${col.w} min-w-0 truncate px-2 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide`}
                   >
                     {col.label}
                   </div>
@@ -464,13 +469,13 @@ const PurchaseTable = () => {
                       >
                         <div className="flex-1 min-w-0 px-2">
                           {purchase.serial ? (
-                            <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap">{purchase.serial}</span>
+                            <span className="inline-block max-w-full truncate align-middle rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 whitespace-nowrap" title={purchase.serial}>{purchase.serial}</span>
                           ) : (
                             <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                           )}
                         </div>
                         <div className="flex-1 min-w-0 px-2">
-                          <span className="text-sm font-bold text-gray-800 dark:text-white truncate block">
+                          <span className="text-sm font-bold text-gray-800 dark:text-white truncate block" title={purchase.invoiceNumber}>
                             {purchase.invoiceNumber}
                           </span>
                         </div>
@@ -491,7 +496,7 @@ const PurchaseTable = () => {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0 px-2">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate block">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate block" title={getSupplierName(purchase.supplierId)}>
                             {getSupplierName(purchase.supplierId)}
                           </span>
                         </div>
@@ -517,7 +522,7 @@ const PurchaseTable = () => {
                             ৳{purchase.dueamount?.toLocaleString() || 0}
                           </span>
                         </div>
-                        <div className="w-52 shrink-0 px-2 flex items-center gap-2">
+                        <div className="w-52 shrink-0 px-2 flex flex-nowrap items-center gap-2">
                           <Tooltip text="View details">
                             <Link to={`/purchase-view/${purchase._id}`}>
                               <Button

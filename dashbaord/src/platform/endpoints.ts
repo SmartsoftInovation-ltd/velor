@@ -146,6 +146,23 @@ export const tenantsApi = {
   audit: (id: string, page = 1) => data<Page<AuditEntry>>(api.get(`/tenants/${id}/audit`, { params: { page, limit: 20 } })),
 };
 
+export interface SellerLogo {
+  url: string;
+  status: "" | "pending" | "processing" | "uploaded" | "failed";
+  lastError: string;
+  hasStoreInformation: boolean;
+}
+
+// The seller's logo is the image on their Store Information record
+export const logoApi = {
+  get: (tenantId: string) => data<SellerLogo>(api.get(`/tenants/${tenantId}/logo`)),
+  upload: (tenantId: string, file: File) => {
+    const body = new FormData();
+    body.append("image", file);
+    return data<SellerLogo>(api.put(`/tenants/${tenantId}/logo`, body));
+  },
+};
+
 export const domainsApi = {
   list: (tenantId: string) => data<TenantDomain[]>(api.get(`/tenants/${tenantId}/domains`)),
   add: (tenantId: string, body: { host: string; isPrimary?: boolean }) =>

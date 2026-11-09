@@ -540,12 +540,14 @@ const SizeColorWiseStockList = () => {
           </div>
         ) : (
           <div ref={scrollRef} className="no-scrollbar overflow-auto" style={{ maxHeight: 580 }}>
-            <table className="border-collapse table-fixed max-md:min-w-[950px] md:w-full">
+            {/* Fixed column widths (w-full is needed for table-fixed to apply) and one-line,
+                measured rows keep columns and rows still while the list virtualizes */}
+            <table className="w-full border-collapse table-fixed max-md:min-w-[950px]">
               <colgroup>
                 <col style={{ width: "12%" }} />
                 <col style={{ width: "14%" }} />
                 <col style={{ width: "7%" }} />
-                {SIZE_COLS.map((c) => <col key={c.label} style={{ width: "4.33%" }} />)}
+                {SIZE_COLS.map((c) => <col key={c.label} style={{ width: "5.16%" }} />)}
                 <col style={{ width: "5%" }} />
               </colgroup>
               <thead className="bg-slate-50 dark:bg-white/[0.03] sticky top-0 z-10">
@@ -559,7 +561,8 @@ const SizeColorWiseStockList = () => {
                   ].map((c) => (
                     <th
                       key={c.label}
-                      className={`${cellBorder} px-1.5 py-3 text-[10px] font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200 text-center bg-slate-50 dark:bg-slate-800/60 whitespace-nowrap`}
+                      title={c.label}
+                      className={`${cellBorder} px-1.5 py-3 text-[10px] font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200 text-center bg-slate-50 dark:bg-slate-800/60 whitespace-nowrap truncate`}
                     >
                       {c.label}
                     </th>
@@ -577,28 +580,30 @@ const SizeColorWiseStockList = () => {
                   return (
                     <tr
                       key={row.key}
+                      ref={virtualizer.measureElement}
+                      data-index={vi.index}
                       className={`${rowBg} hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors`}
                       style={{ height: ROW_H }}
                     >
-                      <td className={`${cellBorder} px-1.5 text-center text-[12px] text-gray-600 dark:text-gray-400`}>
+                      <td className={`${cellBorder} px-1.5 text-center text-[12px] text-gray-600 dark:text-gray-400 truncate`} title={row.subcategory}>
                         {row.subcategory}
                       </td>
-                      <td className={`${cellBorder} px-1.5 text-center text-[12px] font-semibold text-gray-800 dark:text-gray-200`}>
+                      <td className={`${cellBorder} px-1.5 text-center text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate`} title={row.productName}>
                         {row.productName}
                       </td>
-                      <td className={`${cellBorder} px-1 text-center`}>
-                        <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                      <td className={`${cellBorder} px-1 text-center truncate`} title={row.color}>
+                        <span className={`inline-flex max-w-full items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-medium ${
                           row.variantType === "single"
                             ? "bg-sky-100 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400"
                             : "bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400"
                         }`}>
-                          {row.color}
+                          <span className="min-w-0 truncate">{row.color}</span>
                         </span>
                       </td>
                       {SIZE_COLS.map((col) => {
                         if (!row.hasAnySize) {
                           return (
-                            <td key={col.label} className={`${cellBorder} text-center text-[11px] text-gray-300 dark:text-gray-600`}>
+                            <td key={col.label} className={`${cellBorder} text-center text-[11px] text-gray-300 dark:text-gray-600 truncate`}>
                               N/A
                             </td>
                           );
@@ -606,7 +611,7 @@ const SizeColorWiseStockList = () => {
                         const val = getSizeVal(row.sizeStock, col);
                         const display = val ?? 0;
                         return (
-                          <td key={col.label} className={`${cellBorder} text-center text-[12px]`}>
+                          <td key={col.label} className={`${cellBorder} text-center text-[12px] truncate`}>
                             {display > 0 ? (
                               <span className="font-bold text-gray-800 dark:text-gray-100">{display}</span>
                             ) : (
@@ -615,7 +620,7 @@ const SizeColorWiseStockList = () => {
                           </td>
                         );
                       })}
-                      <td className={`${cellBorder} text-center`}>
+                      <td className={`${cellBorder} text-center truncate`}>
                         <span className={`inline-flex items-center justify-center w-full text-[12px] font-bold ${
                           row.total > 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
                         }`}>

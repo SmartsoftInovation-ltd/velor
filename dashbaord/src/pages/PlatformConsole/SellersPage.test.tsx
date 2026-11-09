@@ -53,6 +53,19 @@ describe("SellersPage (Platform Console)", () => {
     expect(screen.queryByText(/create store/i)).not.toBeInTheDocument();
   });
 
+  it("shows a seller's logo when they have one, and initials otherwise", async () => {
+    list.mockResolvedValue({
+      items: [{ ...seller("t1", "Pizza Shop", "pizzashop", "active"), logoUrl: "https://x/logo.png" }, seller("t2", "Book House", "bookhouse", "active")],
+      total: 2, page: 1, limit: 10,
+      counts: { all: 2, active: 2, provisioning: 0, suspended: 0, cancelled: 0 },
+    });
+    renderPage();
+
+    expect(await screen.findByAltText("Pizza Shop logo")).toHaveAttribute("src", "https://x/logo.png");
+    expect(screen.queryByAltText("Book House logo")).not.toBeInTheDocument();
+    expect(screen.getByText("BH")).toBeInTheDocument();
+  });
+
   it("filters by status from the pills", async () => {
     renderPage();
     await screen.findByText("Pizza Shop");

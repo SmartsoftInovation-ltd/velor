@@ -27,6 +27,11 @@ const settings = {
   webhooks: vi.fn(async () => ({ sslcommerz: { ipn: "https://api/hooks/sslcommerz/K/ipn" }, pathao: "https://api/hooks/pathao/K", steadfast: "https://api/hooks/steadfast/K" })),
 };
 
+const logo = {
+  get: vi.fn(async () => ({ url: "https://x/old.png", status: "uploaded", lastError: "", hasStoreInformation: true })),
+  upload: vi.fn(async () => ({ url: "https://x/old.png", status: "pending", lastError: "", hasStoreInformation: true })),
+};
+
 vi.mock("../../platform/endpoints", () => {
   // Resolved lazily: the mock factory is hoisted above the mocks it forwards to
   const forward = (pick: () => Record<string, (...a: unknown[]) => unknown>) =>
@@ -35,6 +40,7 @@ vi.mock("../../platform/endpoints", () => {
     tenantsApi: forward(() => tenants as never),
     settingsApi: forward(() => settings as never),
     domainsApi: { list: async () => [] },
+    logoApi: forward(() => logo as never),
   };
 });
 vi.mock("../../platform/PlatformAuthContext", () => ({ usePlatformAuth: () => ({ isSuperadmin: true }) }));
@@ -169,5 +175,27 @@ describe("SellerDetailPage (Platform Console)", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: /audit/i }));
     expect(await screen.findByText("TENANT_SETTINGS_UPDATED")).toBeInTheDocument();
+  });
+
+  it("uploads a new seller logo from the overview tab, and shows it in the header", async () => {
+    // jsdom has no object URLs; the card previews the chosen file with one
+    URL.createObjectURL = vi.fn(() => "blob:logo");
+    URL.revokeObjectURL = vi.fn();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/platform/sellers/t1"]}>
+          <Routes><Route path="/platform/sellers/:tenantId" element={<SellerDetailPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByAltText("Seller logo")).toHaveAttribute("src", "https://x/old.png");
+    expect(await screen.findByAltText("Pizza Shop logo")).toHaveAttribute("src", "https://x/old.png");
+
+    const file = new File(["png"], "logo.png", { type: "image/png" });
+    await userEvent.upload(screen.getByLabelText(/choose logo image/i), file);
+    await userEvent.click(screen.getByRole("button", { name: /save logo/i }));
+
+    await waitFor(() => expect(logo.upload).toHaveBeenCalledWith("t1", file));
+    expect(await screen.findByText(/uploading to the seller's image storage/i)).toBeInTheDocument();
   });
 });

@@ -56,7 +56,10 @@ interface RoleTableProps {
   isFetching?: boolean;
 }
 
-const gridTemplateColumns = "1fr 1fr 1fr 1fr";
+// Header and rows share this template. minmax(0, 1fr) keeps the columns equal
+// whatever the content: a plain 1fr grows to fit a long role name, and as rows
+// swap in while scrolling that row drifted out of line with the headings.
+const gridTemplateColumns = "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
 
 export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm }: RoleTableProps) {
   const queryClient = useQueryClient();
@@ -154,8 +157,8 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
           style={{ gridTemplateColumns }}
         >
           {["#", "Role Name", "Status", "Actions"].map((h, i) => (
-            <div key={h} className={`px-4 py-4 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center ${i === 1 ? "justify-start" : "justify-center"}`}>
-              {h}
+            <div key={h} title={h} className={`min-w-0 px-4 py-4 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center ${i === 1 ? "justify-start" : "justify-center"}`}>
+              <span className="min-w-0 truncate">{h}</span>
             </div>
           ))}
         </div>
@@ -244,22 +247,22 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
                     style={{ gridTemplateColumns, height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                   >
                     {/* # */}
-                    <div className="px-4 flex items-center justify-center text-xs font-mono text-gray-400 dark:text-gray-500">
+                    <div className="min-w-0 px-4 flex items-center justify-center text-xs font-mono text-gray-400 dark:text-gray-500">
                       {virtualRow.index + 1}
                     </div>
 
                     {/* Name */}
-                    <div className="px-4 flex items-center gap-2.5">
+                    <div className="min-w-0 px-4 flex items-center gap-2.5" title={role.name}>
                       <div className="size-8 rounded-xl bg-accent-50 dark:bg-accent-500/10 flex items-center justify-center shrink-0">
                         <FaShieldAlt className="size-3.5 text-accent-500" />
                       </div>
-                      <span className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                      <span className="min-w-0 text-sm font-semibold text-gray-800 dark:text-white truncate">
                         {role.name}
                       </span>
                     </div>
 
                     {/* Status */}
-                    <div className="px-4 flex items-center justify-center">
+                    <div className="min-w-0 px-4 flex items-center justify-center">
                       <Badge
                         size="sm"
                         variant="solid"
@@ -271,7 +274,7 @@ export default function RoleTable({ roles, fetchRoles, searchTerm, setSearchTerm
                     </div>
 
                     {/* Actions: Edit → Delete */}
-                    <div className="px-4 flex items-center justify-center gap-2">
+                    <div className="min-w-0 px-4 flex flex-nowrap items-center justify-center gap-2">
                       <Tooltip text="Edit">
                         <button
                           type="button"

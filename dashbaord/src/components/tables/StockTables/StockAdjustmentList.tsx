@@ -110,7 +110,7 @@ const COLS = [
   { label: "Adj. (+)", width: 75 },
   { label: "Adj. (-)", width: 75 },
   { label: "Reason", width: 165 },
-  { label: "Actions", width: 150 },
+  { label: "Actions", width: 160 },
 ];
 
 const PAGE_LIMIT = 30;
@@ -137,6 +137,7 @@ const StockAdjustmentList = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Only the newest request may fill the list
   const requestRef = useRef(0);
@@ -442,8 +443,8 @@ const StockAdjustmentList = () => {
         )
       ) : (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden">
-        {/* Fixed header */}
-        <div className="overflow-x-auto border-b border-gray-200 dark:border-white/[0.08]">
+        {/* Fixed header: its scrollLeft follows the body so headings stay over their columns */}
+        <div ref={headerRef} className="overflow-x-auto border-b border-gray-200 dark:border-white/[0.08]">
           <table
             className="w-full min-w-[1390px] border-collapse"
             style={{ tableLayout: "fixed" }}
@@ -471,6 +472,9 @@ const StockAdjustmentList = () => {
         {/* Virtualized body */}
         <div
           ref={scrollRef}
+          onScroll={(e) => {
+            if (headerRef.current) headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+          }}
           aria-busy={busy}
           className={`no-scrollbar overflow-x-auto overflow-y-auto transition-opacity duration-200 ${busy && !firstLoad ? "pointer-events-none opacity-50" : "opacity-100"}`}
           style={{ maxHeight: 560 }}
@@ -558,18 +562,21 @@ const StockAdjustmentList = () => {
                     item.productId?.color ?? item.variantId?.color ?? "N/A";
 
                   return (
+                    // One-line cells keep rows the same height; each row is still measured
                     <tr
                       key={item._id}
+                      ref={virtualizer.measureElement}
+                      data-index={vi.index}
                       className={`border-b border-gray-100 dark:border-white/[0.04] transition-colors ${isEven ? "bg-white dark:bg-transparent" : "bg-gray-50/50 dark:bg-white/[0.02]"}`}
                       style={{ height: ROW_H }}
                     >
-                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 first:border-l-0">
+                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 first:border-l-0 truncate">
                         <span className="font-medium text-gray-500 dark:text-gray-400">#{index + 1}</span>
                       </td>
-                      <td className="px-3 text-center text-[12px] font-mono text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] font-mono text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={barcode}>
                         {barcode}
                       </td>
-                      <td className="px-3 text-center text-[12px] text-gray-500 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] text-gray-500 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate">
                         {new Date(item.date).toLocaleDateString()}
                       </td>
                       <td className="px-3 text-center text-[13px] font-bold text-gray-800 dark:text-gray-200 truncate max-w-0 border-x border-gray-100 dark:border-gray-800">
@@ -577,33 +584,33 @@ const StockAdjustmentList = () => {
                           {product}
                         </span>
                       </td>
-                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={subcat}>
                         {subcat}
                       </td>
-                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 truncate" title={variant}>
                         <span
-                          className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          className={`inline-flex max-w-full items-center justify-center px-2 py-0.5 rounded text-[11px] font-semibold ${
                             isVar
                               ? "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400"
                               : "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"
                           }`}
                         >
-                          {variant}
+                          <span className="min-w-0 truncate">{variant}</span>
                         </span>
                       </td>
-                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={size}>
                         {size}
                       </td>
-                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 truncate" title={color}>
                         {color !== "N/A" ? (
-                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400 text-[11px] font-bold">
-                            {color}
+                          <span className="inline-flex max-w-full items-center justify-center px-2 py-0.5 rounded text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400 text-[11px] font-bold">
+                            <span className="min-w-0 truncate">{color}</span>
                           </span>
                         ) : (
                           <span className="text-gray-400 text-[12px]">-</span>
                         )}
                       </td>
-                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 truncate">
                         {item.increaseQuantity != null ? (
                           <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400 text-[13px] font-bold">
                             +{item.increaseQuantity}
@@ -614,7 +621,7 @@ const StockAdjustmentList = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 truncate">
                         {item.decreaseQuantity != null ? (
                           <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 text-[13px] font-bold">
                             -{item.decreaseQuantity}
@@ -636,7 +643,7 @@ const StockAdjustmentList = () => {
 
                       {/* Action buttons */}
                       <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 last:border-r-0">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex flex-nowrap items-center justify-center gap-1.5">
                           {/* View */}
                           <Tooltip text="View">
                             <button

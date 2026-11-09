@@ -95,7 +95,12 @@ export default function DueSmsTable() {
     overscan: 10,
   });
 
-  const gridTemplateColumns = "50px 1fr 1fr 1fr 1fr 1fr 120px";
+  // Header and rows share this template. minmax(0, 1fr) keeps the flexible
+  // columns the same width whatever the content: a plain 1fr grows to fit a
+  // long name, and as rows swap in while scrolling they drifted out of line
+  // with the headings. Long values are cut with an ellipsis, full on hover.
+  const gridTemplateColumns =
+    "50px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 120px";
 
   const handleView = (customer: Customer) => {
     setViewCustomer(customer);
@@ -238,13 +243,13 @@ export default function DueSmsTable() {
             className="grid bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
             style={{ gridTemplateColumns }}
           >
-            <div>#</div>
-            <div>Customer</div>
-            <div>Mobile</div>
-            <div>Type</div>
-            <div>Dues (৳)</div>
-            <div>Status</div>
-            <div className="text-center">Actions</div>
+            <div className="min-w-0 truncate">#</div>
+            <div className="min-w-0 truncate" title="Customer">Customer</div>
+            <div className="min-w-0 truncate" title="Mobile">Mobile</div>
+            <div className="min-w-0 truncate" title="Type">Type</div>
+            <div className="min-w-0 truncate" title="Dues (৳)">Dues (৳)</div>
+            <div className="min-w-0 truncate" title="Status">Status</div>
+            <div className="min-w-0 truncate text-center" title="Actions">Actions</div>
           </div>
 
           {/* Virtualized rows */}
@@ -268,25 +273,28 @@ export default function DueSmsTable() {
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
+                    <div className="min-w-0 truncate text-xs text-gray-400 dark:text-gray-500">
                       {virtualRow.index + 1}
                     </div>
-                    <div>
+                    <div className="min-w-0" title={customer.fullName}>
                       <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
                         {customer.fullName}
                       </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                      <p className="truncate text-xs text-gray-400 dark:text-gray-500">
                         {customer.customerId}
                       </p>
                     </div>
-                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="min-w-0 truncate text-sm text-gray-700 dark:text-gray-300" title={customer.mobileNumber}>
                       {customer.mobileNumber}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                    <div
+                      className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-400 capitalize"
+                      title={customer.customerType?.customerType || undefined}
+                    >
                       {customer.customerType?.customerType || "—"}
                     </div>
                     <div
-                      className={`text-sm font-semibold ${
+                      className={`min-w-0 truncate text-sm font-semibold ${
                         customer.openingDues > 0
                           ? "text-red-500"
                           : "text-green-500"
@@ -294,7 +302,7 @@ export default function DueSmsTable() {
                     >
                       {customer.openingDues.toLocaleString()}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           customer.isActive
@@ -305,7 +313,7 @@ export default function DueSmsTable() {
                         {customer.isActive ? "Active" : "Inactive"}
                       </span>
                     </div>
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="min-w-0 flex flex-nowrap items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
                           type="button"

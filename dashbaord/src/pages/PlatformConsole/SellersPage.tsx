@@ -155,7 +155,7 @@ const SellersPage = () => {
                   <td className="px-5 py-3.5 font-mono text-xs text-gray-400">#{(page - 1) * LIMIT + index + 1}</td>
                   <td className="px-5 py-3.5">
                     <Link to={`/platform/sellers/${seller._id}`} className="flex items-center gap-3">
-                      <Avatar name={seller.name} />
+                      <Avatar name={seller.name} src={seller.logoUrl} />
                       <span className="min-w-0">
                         <span className="block truncate font-semibold text-gray-900 transition group-hover:text-accent-700 dark:text-white/90">{seller.name}</span>
                         <span className="block truncate font-mono text-xs text-gray-500 dark:text-gray-400">{seller.slug}</span>

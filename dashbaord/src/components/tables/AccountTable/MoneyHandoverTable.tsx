@@ -94,7 +94,11 @@ const MoneyHandoverTable = () => {
     );
   });
 
-  const gridTemplateColumns = "1fr 1fr 1fr 1fr 1fr 1fr 1fr";
+  // Header and every row are separate grids, so columns must not size from
+  // content: `1fr` grows to fit its widest cell, and the virtualizer swaps rows
+  // in and out, which shifted headings sideways while scrolling. minmax(0, …)
+  // and a fixed Actions width keep them identical; long values are truncated.
+  const gridTemplateColumns = "repeat(6, minmax(0, 1fr)) 168px";
 
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
@@ -270,7 +274,7 @@ const MoneyHandoverTable = () => {
         {!showSkeleton && !isError && !isMobile && (
           <div
             ref={parentRef}
-            className="no-scrollbar max-w-full overflow-y-auto overflow-x-hidden max-h-[650px] relative"
+            className="no-scrollbar max-w-full overflow-auto max-h-[650px] relative"
             style={{ minHeight: filtered.length === 0 ? "300px" : "auto" }}
           >
             {filtered.length === 0 ? (
@@ -286,12 +290,12 @@ const MoneyHandoverTable = () => {
                 )}
               </div>
             ) : (
-              <Table className="w-full">
+              <Table className="w-full" style={{ minWidth: 900 }}>
                 <TableHeader className="sticky top-0 z-30 bg-gray-50/95 dark:bg-gray-800/95 border-b border-gray-200 dark:border-white/5 backdrop-blur-md">
                   <TableRow className="grid" style={{ gridTemplateColumns }}>
                     {headers.map((h) => (
-                      <TableCell key={h} isHeader className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
-                        {h}
+                      <TableCell key={h} isHeader className="px-4 py-5 font-bold text-gray-500 text-[11px] uppercase dark:text-gray-400 flex min-w-0 items-center justify-center">
+                        <span className="truncate" title={h}>{h}</span>
                       </TableCell>
                     ))}
                   </TableRow>
@@ -306,25 +310,25 @@ const MoneyHandoverTable = () => {
                         className="absolute top-0 left-0 w-full grid hover:bg-gray-50 dark:hover:bg-white/2 transition-colors border-b border-gray-100 dark:border-white/5"
                         style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)`, gridTemplateColumns }}
                       >
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{item.handoverSerialId || `#${virtualRow.index + 1}`}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400 max-w-full truncate" title={item.handoverSerialId || `#${virtualRow.index + 1}`}>{item.handoverSerialId || `#${virtualRow.index + 1}`}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">{moment(item.date).format("DD MMM YYYY")}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 max-w-full truncate" title={moment(item.date).format("DD MMM YYYY")}>{moment(item.date).format("DD MMM YYYY")}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-sm font-semibold text-gray-800 dark:text-white">{item.name}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-white max-w-full truncate" title={item.name}>{item.name}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-sm font-bold text-green-600 dark:text-green-400">৳{item.amount?.toLocaleString()}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="max-w-full truncate text-sm font-bold text-green-600 dark:text-green-400">৳{item.amount?.toLocaleString()}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{item.voucherNumber || "—"}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300 max-w-full truncate" title={item.voucherNumber || "—"}>{item.voucherNumber || "—"}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{item.transactionDescription || "—"}</span>
+                        <TableCell className="px-4 py-3 flex min-w-0 items-center justify-center">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 max-w-full truncate" title={item.transactionDescription || "—"}>{item.transactionDescription || "—"}</span>
                         </TableCell>
-                        <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                        <TableCell className="px-4 py-3 flex flex-nowrap min-w-0 items-center justify-center gap-2">
                           <Tooltip text="Print">
                             <Link to={`/money-handover-print/${item._id}`} className="shine flex size-10 items-center justify-center rounded transition-all active:scale-90 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10" aria-label="Print handover voucher">
                               <IoIosPrint className="size-4" />

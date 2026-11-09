@@ -16,7 +16,7 @@ import {
   FiPlay,
 } from "react-icons/fi";
 import { errorMessage } from "../../platform/api";
-import { settingsApi, tenantsApi } from "../../platform/endpoints";
+import { logoApi, settingsApi, tenantsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import type { Tenant } from "../../platform/types";
 import type { Features } from "../../context/AuthContext";
@@ -32,6 +32,7 @@ import SellerBillingCard from "./SellerBillingCard";
 import SellerColorTab from "./SellerColorTab";
 import SellerDesignTab from "./SellerDesignTab";
 import SellerDomainsTab from "./SellerDomainsTab";
+import SellerLogoCard from "./SellerLogoCard";
 import SellerStatusBadge from "./SellerStatusBadge";
 import SellerStatusDialog, { canSuspend } from "./SellerStatusDialog";
 import {
@@ -81,6 +82,21 @@ const SectionTitle = ({
     {action}
   </div>
 );
+
+// The seller's own logo (from their Store Information), or their initials
+const SellerHeaderLogo = ({ tenantId, name }: { tenantId: string; name: string }) => {
+  const logo = useQuery({
+    queryKey: ["platform", "logo", tenantId],
+    queryFn: () => logoApi.get(tenantId),
+  });
+  const url = logo.data?.url;
+  if (!url) return <Avatar name={name} size="lg" />;
+  return (
+    <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white p-1 dark:border-gray-700 dark:bg-gray-900">
+      <img src={url} alt={`${name} logo`} className="size-full object-contain" />
+    </div>
+  );
+};
 
 const Overview = ({ seller }: { seller: Tenant }) => {
   const { isSuperadmin } = usePlatformAuth();
@@ -134,6 +150,9 @@ const Overview = ({ seller }: { seller: Tenant }) => {
 
   return (
     <div className="grid gap-5 lg:grid-cols-5">
+      <div className="lg:col-span-5">
+        <SellerLogoCard tenantId={seller._id} canEdit={isSuperadmin} />
+      </div>
       <section className={`${cardClass} p-6 lg:col-span-3`}>
         <SectionTitle
           title="Seller information"
@@ -536,7 +555,7 @@ const SellerDetailPage = () => {
         <div className="relative flex flex-col gap-5 overflow-hidden border-b border-gray-100 bg-gradient-to-r from-accent-50 via-accent-25 to-white px-6 py-6 md:flex-row md:items-center md:justify-between dark:border-gray-800 dark:from-accent-500/10 dark:via-accent-500/5 dark:to-transparent">
           <div className="pointer-events-none absolute -left-10 -top-16 size-48 rounded-full bg-accent-500/10 blur-3xl" />
           <div className="relative flex min-w-0 items-center gap-4">
-            <Avatar name={seller.name} size="lg" />
+            <SellerHeaderLogo tenantId={seller._id} name={seller.name} />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
                 <h2 className="truncate text-xl font-semibold text-gray-900 dark:text-white/90">
