@@ -103,6 +103,33 @@ describe("useReportPrintAll", () => {
     sheet.remove();
   });
 
+  it("prints the 80mm receipt, not the sheet, when asked for thermal", async () => {
+    const sheet = sheetWith(2);
+    const thermal = document.createElement("div");
+    thermal.className = "thermal-receipt w-[80mm]";
+    thermal.innerHTML = "<p>Receipt total</p>";
+    let printed: { text: string; className: string } | null = null;
+    const print = vi.spyOn(window, "print").mockImplementation(() => {
+      const host = document.getElementById("report-print-snapshot");
+      printed = { text: host?.textContent ?? "", className: host?.className ?? "" };
+    });
+    const { result } = renderHook(() => {
+      const ctl = useReportPrintAll(false, { sheetRef: { current: sheet }, thermalRef: { current: thermal } });
+      useRunWhenAllRowsReady(ctl, ctl.printAll);
+      return ctl;
+    });
+
+    act(() => result.current.print(true));
+    await flushFrames();
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(printed!.text).toBe("Receipt total");
+    expect(printed!.className).toContain("thermal-receipt");
+
+    window.dispatchEvent(new Event("afterprint"));
+    print.mockRestore();
+    sheet.remove();
+  });
+
   it("gives up if the rows cannot be loaded", async () => {
     const action = vi.fn();
     const { result, rerender } = renderHook(

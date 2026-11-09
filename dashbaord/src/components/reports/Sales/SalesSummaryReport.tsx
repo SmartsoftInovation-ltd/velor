@@ -455,7 +455,7 @@ const SalesSummaryReport = () => {
     };
   }, [pageFormat, isThermal]);
 
-  const handlePrint = () => printAllCtl.print();
+  const handlePrint = () => printAllCtl.print(isThermal);
 
   const downloadPdfNow = async () => {
     const source = printAllCtl.pdfSource(isThermal);
