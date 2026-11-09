@@ -1,7 +1,8 @@
+const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { useIntegrationApp } = require("../setup/integration");
 const { api, expectSuccessEnvelope, expectErrorEnvelope } = require("../helpers/api");
-const { createUserIn, tokenFor, ensurePermissionSlug, uniquePhone } = require("../helpers/auth");
+const { createUserIn, tokenFor, expiredTokenFor, ensurePermissionSlug, uniquePhone } = require("../helpers/auth");
 const { tenantFactory } = require("../factories");
 const { runForTenant } = require("../../src/tenancy/context");
 const User = require("../../src/models/user.model");
@@ -126,6 +127,26 @@ describe("staff auth routes (/api/v1/auth)", () => {
       expect(viaCookie.body.data.accessToken).toEqual(expect.any(String));
       const viaHeader = await api(ctx.server).post("/auth/refresh-token").set("x-refresh-token", cookie.replace("refreshToken=", "")).expect(200);
       await client(viaHeader.body.data.accessToken).get("/auth/getme").expect(200);
+    });
+
+    // The dashboard refreshes on a 401 and signs out only when the refresh itself
+    // answers 401/403, so both expiries must come back as 401, never a 500.
+    it("401 for an expired access token, and a refresh then issues one that works", async () => {
+      const cookie = refreshCookie(await signIn());
+      const expired = await client(expiredTokenFor(owner)).get("/auth/getme").expect(401);
+      expectErrorEnvelope(expired.body);
+      const fresh = await api(ctx.server).post("/auth/refresh-token").set("Cookie", cookie).expect(200);
+      await client(fresh.body.data.accessToken).get("/auth/getme").expect(200);
+    });
+
+    it("401 when the refresh token itself has expired", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const expired = jwt.sign(
+        { id: String(owner._id), sub: String(owner._id), tid: String(tenant._id), tv: 0, iat: now - 3600, exp: now - 60 },
+        process.env.REFRESH_TOKEN_SCCERET,
+      );
+      await runForTenant(tenant._id, () => User.updateOne({ _id: owner._id }, { refreshToken: expired }));
+      await api(ctx.server).post("/auth/refresh-token").set("x-refresh-token", expired).expect(401);
     });
 
     it("401 without a refresh token, or with one the database does not hold", async () => {

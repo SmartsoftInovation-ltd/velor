@@ -109,6 +109,11 @@ const showStoreSuspended = () => {
  */
 let refreshPromise: Promise<string> | null = null;
 
+const isSessionRejected = (error: unknown) => {
+  const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+  return status === 401 || status === 403;
+};
+
 const refreshAccessToken = (): Promise<string> => {
   if (refreshPromise) return refreshPromise;
 
@@ -183,8 +188,12 @@ axiosSecure.interceptors.response.use(
         showStoreSuspended();
         return Promise.reject(refreshError);
       }
-      // Refresh token expired/revoked, or the account was blocked.
-      forceLogout();
+      // Only the server rejecting the refresh token ends the session: 401 when
+      // it expired, was revoked or replaced by a newer sign-in, 403 when the
+      // account was blocked. A network drop, a restart (5xx) or a rate limit
+      // (429) says nothing about the session, so the user stays signed in and
+      // the next request tries the refresh again.
+      if (isSessionRejected(refreshError)) forceLogout();
       return Promise.reject(refreshError);
     }
   },
