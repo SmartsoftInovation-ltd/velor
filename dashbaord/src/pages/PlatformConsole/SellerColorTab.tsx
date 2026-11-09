@@ -6,7 +6,6 @@ import { errorMessage } from "../../platform/api";
 import { settingsApi } from "../../platform/endpoints";
 import { usePlatformAuth } from "../../platform/PlatformAuthContext";
 import { brandRamp } from "./brandRamp";
-import SellerLogoCard from "./SellerLogoCard";
 import { useSellerPreviewUrl } from "./useSellerPreviewUrl";
 import { useStorefrontContent } from "./useStorefrontContent";
 import StorefrontPrototype, { designFrom, STOREFRONT_DEFAULT_COLOR, type StoreContent, type WebsiteDesign } from "./StorefrontPrototype";
@@ -214,18 +213,15 @@ const SellerColorTab = ({ tenantId }: { tenantId: string }) => {
     return <p className="text-sm text-error-600">Could not load settings</p>;
 
   return (
-    <div className="space-y-5">
-      <SellerLogoCard tenantId={tenantId} canEdit={isSuperadmin} />
-      <ColorStudio
-        saved={String(current.data.settings.general?.primaryColor ?? "")}
-        design={designFrom(current.data.settings.general)}
-        content={content}
-        previewUrl={previewUrl}
-        canEdit={isSuperadmin}
-        saving={save.isPending}
-        onSave={(color) => save.mutate(color)}
-      />
-    </div>
+    <ColorStudio
+      saved={String(current.data.settings.general?.primaryColor ?? "")}
+      design={designFrom(current.data.settings.general)}
+      content={content}
+      previewUrl={previewUrl}
+      canEdit={isSuperadmin}
+      saving={save.isPending}
+      onSave={(color) => save.mutate(color)}
+    />
   );
 };
 

@@ -177,18 +177,19 @@ describe("SellerDetailPage (Platform Console)", () => {
     expect(await screen.findByText("TENANT_SETTINGS_UPDATED")).toBeInTheDocument();
   });
 
-  it("uploads a new seller logo from the website color tab", async () => {
+  it("uploads a new seller logo from the overview tab, and shows it in the header", async () => {
     // jsdom has no object URLs; the card previews the chosen file with one
     URL.createObjectURL = vi.fn(() => "blob:logo");
     URL.revokeObjectURL = vi.fn();
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter initialEntries={["/platform/sellers/t1?tab=color"]}>
+        <MemoryRouter initialEntries={["/platform/sellers/t1"]}>
           <Routes><Route path="/platform/sellers/:tenantId" element={<SellerDetailPage />} /></Routes>
         </MemoryRouter>
       </QueryClientProvider>,
     );
     expect(await screen.findByAltText("Seller logo")).toHaveAttribute("src", "https://x/old.png");
+    expect(await screen.findByAltText("Pizza Shop logo")).toHaveAttribute("src", "https://x/old.png");
 
     const file = new File(["png"], "logo.png", { type: "image/png" });
     await userEvent.upload(screen.getByLabelText(/choose logo image/i), file);
