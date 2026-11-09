@@ -5,7 +5,7 @@ const shopOrderController = require("../../controller/shopOrder.controller");
 const shopCatalogController = require("../../controller/shopCatalog.controller");
 const shopCartController = require("../../controller/shopCart.controller");
 const { guestOrAuth } = require("../../middleware/guestOrAuth");
-const { loginLimiter, registerLimiter, couponLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
+const { loginLimiter, registerLimiter, couponLimiter, trackLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
 
 /**
  * Storefront customer accounts.
@@ -42,5 +42,6 @@ _.get("/delivery-options", shopOrderController.deliveryOptions);
 _.post("/coupon/preview", guestOrAuth, couponLimiter, shopOrderController.previewCoupon);
 _.post("/order", guestOrAuth, shopOrderController.createOrder);
 _.get("/track/:invoiceId", shopOrderController.trackOrder);
+_.post("/track", trackLimiter, shopOrderController.trackOrderDetails);
 
 module.exports = _;

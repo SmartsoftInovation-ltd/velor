@@ -439,3 +439,82 @@ exports.trackOrder = asynchandeler(async (req, res) => {
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Order status", { order });
 });
+
+// ---------------------------------------------------------------- order tracking
+
+// Bangladeshi numbers arrive as 017…, +88017… or 88017…; compare the national part
+const phoneKey = (value) => {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : "";
+};
+
+const N_A = (value) => (value && value !== "N/A" ? value : "");
+const firstImage = (list) => {
+  const pick = Array.isArray(list) ? list[0] : list;
+  return (typeof pick === "string" ? pick : pick?.url) || "";
+};
+
+// One parcel line as the shopper sees it, from the snapshot stored on the order
+const trackedLine = (item, index) => {
+  const variant = item.variant && typeof item.variant === "object" ? item.variant : null;
+  const product = item.product && typeof item.product === "object" ? item.product : variant?.product || null;
+  const quantity = Number(item.quantity) || 0;
+  const unitPrice = Number(item.retailPrice) || 0;
+  return {
+    id: String(item._id ?? variant?._id ?? product?._id ?? index),
+    name: variant?.variantName || product?.name || item.name || "Item",
+    image: firstImage(variant?.image) || firstImage(product?.image),
+    color: N_A(item.color) || N_A(variant?.color) || N_A(product?.color),
+    size: N_A(item.size) || N_A(variant?.size) || N_A(product?.size),
+    quantity,
+    unitPrice,
+    lineTotal: Number(item.totalPrice) || unitPrice * quantity,
+  };
+};
+
+/**
+ * POST /shop/track — the order's progress, parcel and delivery address.
+ *
+ * Needs the invoice number AND the phone number given at checkout: the result
+ * carries a name and an address, so knowing (or guessing) an invoice number
+ * alone must not be enough. A wrong phone answers exactly like an unknown
+ * invoice, so the response never confirms that an invoice exists.
+ */
+exports.trackOrderDetails = asynchandeler(async (req, res) => {
+  requireStore();
+
+  const invoiceId = typeof req.body?.invoiceId === "string" ? req.body.invoiceId.trim() : "";
+  const phone = phoneKey(req.body?.phone);
+  if (!/^[A-Za-z0-9-]{3,40}$/.test(invoiceId) || !phone) {
+    throw new customError("Enter your invoice number and the phone number used at checkout", statusCodes.BAD_REQUEST);
+  }
+
+  const order = await Order.findOne({ invoiceId: { $regex: `^${invoiceId}$`, $options: "i" } })
+    .populate("deliveryCharge", "name deliveryCharge")
+    .lean();
+  if (!order || phoneKey(order.shippingInfo?.phone) !== phone) {
+    throw new customError("No order matches that invoice and phone number", statusCodes.NOT_FOUND);
+  }
+
+  const items = (order.items || []).map(trackedLine);
+  const info = order.shippingInfo || {};
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Order tracking", {
+    order: {
+      invoiceId: order.invoiceId,
+      orderStatus: order.orderStatus,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      placedAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      courier: { name: order.courier?.name || "", trackingId: order.courier?.trackingId || "" },
+      recipient: info.fullName || "",
+      phone: info.phone || "",
+      address: [info.address, info.city, info.postalCode].filter(Boolean).join(", "),
+      items,
+      subtotal: items.reduce((sum, line) => sum + line.lineTotal, 0),
+      discount: Number(order.discountAmount) || 0,
+      delivery: Number(order.deliveryCharge?.deliveryCharge) || 0,
+      total: Number(order.finalAmount) || 0,
+    },
+  });
+});

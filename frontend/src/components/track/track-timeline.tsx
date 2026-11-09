@@ -1,10 +1,9 @@
 import { CheckIcon, DotIcon } from "@/components/track/track-icons";
 import { cn } from "@/lib/cn";
-import type { TrackingEvent, TrackingStage } from "@/lib/catalog/order-fixture";
-import { STAGE_ORDER } from "@/lib/catalog/order-fixture";
+import { STAGE_ORDER, type TrackingEvent, type TrackingStage } from "@/lib/track";
 
-function formatStamp(at?: string) {
-  if (!at) return "Pending";
+function formatStamp(at: string | undefined, reached: boolean) {
+  if (!at) return reached ? "" : "Pending";
   return new Date(at).toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
@@ -33,12 +32,13 @@ export function TrackTimeline({
     <ol className="relative">
       {events.map((event, index) => {
         const stageIndex = STAGE_ORDER.indexOf(event.stage);
-        const done = stageIndex < currentIndex;
-        const live = stageIndex === currentIndex;
+        // Delivered is the end of the road: show it done, not pulsing
+        const done = stageIndex < currentIndex || (stageIndex === currentIndex && current === "delivered");
+        const live = stageIndex === currentIndex && !done;
         const last = index === events.length - 1;
 
         return (
-          <li key={event.id} className="relative flex gap-4 pb-6 last:pb-0">
+          <li key={event.stage} className="relative flex gap-4 pb-6 last:pb-0">
             {!last ? (
               <span
                 aria-hidden="true"
@@ -82,11 +82,10 @@ export function TrackTimeline({
                     live ? "font-medium text-text-brand" : "text-text-tertiary",
                   )}
                 >
-                  {formatStamp(event.at)}
+                  {formatStamp(event.at, done || live)}
                 </p>
               </div>
               <p className="mt-0.5 text-caption text-text-secondary">{event.detail}</p>
-              <p className="mt-0.5 text-micro text-text-tertiary">{event.location}</p>
             </div>
           </li>
         );

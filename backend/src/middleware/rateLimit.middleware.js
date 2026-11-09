@@ -242,7 +242,22 @@ const couponLimiter = rateLimit({
   handler: tooMany("Too many coupon attempts. Please try again in 15 minutes."),
 });
 
+// Wrong invoice/phone pairs on order tracking, counted per invoice: storefront
+// calls share the shop server's IP, and the phone is what is being guessed.
+const trackLimiter = rateLimit({
+  store: newStore(),
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  statusCode: statusCodes.TOO_MANY_REQUESTS,
+  keyGenerator: (req) => `track:${String(req.body?.invoiceId ?? "").trim().toLowerCase() || clientIp(req)}`,
+  handler: tooMany("Too many tracking attempts for this invoice. Please try again in 15 minutes."),
+});
+
 module.exports = {
+  trackLimiter,
   couponLimiter,
   searchLimiter,
   reportLimiter,

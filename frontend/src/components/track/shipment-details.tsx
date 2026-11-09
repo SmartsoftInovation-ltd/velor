@@ -1,5 +1,5 @@
 import { MapPinIcon, PhoneIcon } from "@/components/ui/icons-footer";
-import type { TrackedOrder } from "@/lib/catalog/order-fixture";
+import { paymentLabel, type TrackedOrderDetails } from "@/lib/track";
 
 function formatDay(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -10,7 +10,7 @@ function formatDay(iso: string) {
   });
 }
 
-export function ShipmentDetails({ order }: { order: TrackedOrder }) {
+export function ShipmentDetails({ order }: { order: TrackedOrderDetails }) {
   return (
     <section className="rounded-xl border border-border-subtle bg-bg-surface p-5 shadow-xs sm:p-6">
       <h2 className="mb-4 text-body font-semibold text-text-primary">
@@ -23,8 +23,8 @@ export function ShipmentDetails({ order }: { order: TrackedOrder }) {
             <MapPinIcon className="size-4 shrink-0" />
             Delivering to
           </p>
-          <p className="text-small font-medium text-text-primary">{order.recipient}</p>
-          <p className="text-caption text-text-secondary">{order.address}</p>
+          <p className="text-small font-medium text-text-primary">{order.recipient || "—"}</p>
+          <p className="text-caption text-text-secondary">{order.address || "—"}</p>
         </div>
 
         <div className="space-y-1.5">
@@ -32,7 +32,7 @@ export function ShipmentDetails({ order }: { order: TrackedOrder }) {
             <PhoneIcon className="size-4 shrink-0" />
             Contact
           </p>
-          <p className="text-small font-medium tabular text-text-primary">{order.phone}</p>
+          <p className="text-small font-medium tabular text-text-primary">{order.phone || "—"}</p>
           <p className="text-caption text-text-secondary">
             The rider calls before arriving.
           </p>
@@ -45,12 +45,12 @@ export function ShipmentDetails({ order }: { order: TrackedOrder }) {
           </div>
           <div className="flex justify-between sm:block sm:space-y-1">
             <dt className="text-text-tertiary">Payment</dt>
-            <dd className="font-medium text-text-primary">{order.paymentMethod}</dd>
+            <dd className="font-medium text-text-primary">{paymentLabel(order)}</dd>
           </div>
           <div className="flex justify-between sm:block sm:space-y-1">
             <dt className="text-text-tertiary">Tracking number</dt>
             <dd className="font-medium tabular text-text-primary">
-              {order.trackingNumber}
+              {order.courier.trackingId || "Not assigned yet"}
             </dd>
           </div>
         </dl>

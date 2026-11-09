@@ -380,5 +380,54 @@ describe("storefront checkout", () => {
         .set(PIZZA)
         .expect(404);
     });
+
+    describe("POST /shop/track (invoice + phone)", () => {
+      const track = (headers, body) => request(app.server).post("/api/v1/shop/track").set(headers).send(body);
+      const place = async () => {
+        await fillCart(2);
+        const placed = await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
+        return placed.body.data.order.invoiceId;
+      };
+
+      it("returns the progress, parcel and address when the phone matches", async () => {
+        const invoiceId = await place();
+        // Lower case invoice, phone typed with the country code: both still match
+        const res = await track(VELOR, { invoiceId: invoiceId.toLowerCase(), phone: "+880 1711-000000" }).expect(200);
+
+        expect(res.body.data.order).toMatchObject({
+          invoiceId,
+          orderStatus: "Pending",
+          paymentMethod: "cod",
+          recipient: "Rahim",
+          phone: "01711000000",
+          address: "12 Road, Dhaka",
+          subtotal: 1000,
+          items: [expect.objectContaining({ name: "Cola", quantity: 2, unitPrice: 500, lineTotal: 1000 })],
+        });
+      });
+
+      it("answers a wrong phone exactly like an unknown invoice", async () => {
+        const invoiceId = await place();
+        const wrongPhone = await track(VELOR, { invoiceId, phone: "01800000000" }).expect(404);
+        const unknown = await track(VELOR, { invoiceId: "NOPE-1234", phone: "01711000000" }).expect(404);
+        expect(wrongPhone.body.message).toBe(unknown.body.message);
+      });
+
+      it("does not find another store's order", async () => {
+        const invoiceId = await place();
+        await track(PIZZA, { invoiceId, phone: "01711000000" }).expect(404);
+      });
+
+      it("rejects a lookup missing the invoice or the phone", async () => {
+        await track(VELOR, { invoiceId: "ABC-123" }).expect(400);
+        await track(VELOR, { phone: "01711000000" }).expect(400);
+      });
+
+      it("stops guessing phone numbers for one invoice after 10 misses", async () => {
+        const invoiceId = await place();
+        for (let i = 0; i < 10; i += 1) await track(VELOR, { invoiceId, phone: `0190000000${i}` }).expect(404);
+        await track(VELOR, { invoiceId, phone: "01711000000" }).expect(429);
+      });
+    });
   });
 });
