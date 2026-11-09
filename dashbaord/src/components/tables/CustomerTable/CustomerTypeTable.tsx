@@ -69,7 +69,11 @@ export interface CustomerType {
 }
 
 // ---------- Constants ----------
-const gridTemplateColumns = "1fr 1fr 1fr";
+// Header and rows are separate grids; a plain "1fr" track grows to fit its
+// content, so a long type name widened that row's column and the headings slid
+// sideways while scrolling. minmax(0, …) plus min-w-0 on each cell keeps every
+// grid on the same widths; long names are cut instead.
+const gridTemplateColumns = "minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)";
 const COLUMNS = ["Serial No", "Customer Type", "Actions"];
 
 const CustomerTypeTable = () => {
@@ -307,15 +311,16 @@ const CustomerTypeTable = () => {
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden shadow-theme-sm">
         {/* Header */}
         <div
-          className="grid bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
+          className="grid *:min-w-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
           style={{ gridTemplateColumns }}
         >
           {COLUMNS.map((col) => (
             <div
               key={col}
+              title={col}
               className="px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
             >
-              {col}
+              <span className="truncate">{col}</span>
             </div>
           ))}
         </div>
@@ -366,7 +371,7 @@ const CustomerTypeTable = () => {
                 return (
                   <div
                     key={item._id}
-                    className="absolute top-0 left-0 w-full grid items-center border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
+                    className="absolute top-0 left-0 w-full grid *:min-w-0 items-center border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
                     style={{
                       gridTemplateColumns,
                       height: virtualRow.size,
@@ -380,13 +385,13 @@ const CustomerTypeTable = () => {
 
                     {/* Customer Type */}
                     <div className="px-4 flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate" title={item.customerType}>
                         {item.customerType}
                       </span>
                     </div>
 
                     {/* Actions: Edit → Delete */}
-                    <div className="px-4 flex items-center justify-center gap-2">
+                    <div className="px-4 flex flex-nowrap items-center justify-center gap-2">
                       <Tooltip text="Edit">
                         <button
                           type="button"

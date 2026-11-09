@@ -41,7 +41,7 @@ const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }
   };
 
   return (
-    <div ref={ref} className="inline-flex" onMouseEnter={handleMouseEnter} onMouseLeave={() => setVisible(false)}>
+    <div ref={ref} className="inline-flex min-w-0 max-w-full" onMouseEnter={handleMouseEnter} onMouseLeave={() => setVisible(false)}>
       {children}
       {visible && createPortal(
         <div
@@ -196,7 +196,11 @@ export default function CategoryTable({
     setSearchTerm("");
   };
 
-  const gridTemplateColumns = "150px 1.5fr 120px 1fr 1fr 150px 120px 220px";
+  // Each virtualized row is its own grid, so a plain "1fr" track (min = auto)
+  // grew to fit a long value in that row alone and its cells slid out of line
+  // with the headings. minmax(0, …) plus min-w-0 on the cells keeps every row
+  // on exactly the header's column widths; long values truncate instead.
+  const gridTemplateColumns = "150px minmax(0,1.5fr) 120px minmax(0,1fr) minmax(0,1fr) 150px 120px 220px";
 
   return (
     <div className="w-full">
@@ -341,28 +345,28 @@ export default function CategoryTable({
                 className="grid"
                 style={{ gridTemplateColumns }}
               >
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Serial ID
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Category Name
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Image
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Subcategories
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Discount Info
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Created At
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Status
                 </TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                   Actions
                 </TableCell>
               </TableRow>
@@ -394,7 +398,7 @@ export default function CategoryTable({
                         gridTemplateColumns
                       }}
                     >
-                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center">
+                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center min-w-0">
                         {category.categorySerialId ? (
                           <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
                             {category.categorySerialId}
@@ -403,14 +407,14 @@ export default function CategoryTable({
                           <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center">
+                      <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center min-w-0">
                         <Tooltip text={category.name}>
                           <span className="truncate max-w-[150px]">
                             {category.name.length > 25 ? `${category.name.substring(0, 25)}...` : category.name}
                           </span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <div 
                           className="w-14 h-14 overflow-hidden rounded-2xl border-2 border-white dark:border-gray-800 shadow-md bg-gray-100 cursor-zoom-in transition-transform hover:scale-110"
                           onMouseEnter={(e) => setHoveredImage({ url: category.image?.url, name: category.name, x: e.clientX + 20, y: e.clientY - 150 })}
@@ -424,17 +428,17 @@ export default function CategoryTable({
                           />
                         </div>
                       </TableCell>
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <div 
-                          className="flex flex-wrap gap-1.5 justify-center cursor-help group/subs"
+                          className="flex flex-wrap gap-1.5 justify-center cursor-help group/subs min-w-0"
                           onMouseEnter={(e) => handleSubMouseEnter(e as any, category.subcategories)}
                           onMouseLeave={() => setHoveredSubcategories(null)}
                         >
                           {category.subcategories?.length > 0 ? (
                             <>
                               {category.subcategories.slice(0, 2).map((sub) => (
-                                <Badge key={sub._id} size="sm" variant="light" color="light" className="font-semibold text-[10px]">
-                                  {sub.name}
+                                <Badge key={sub._id} size="sm" variant="light" color="light" className="font-semibold text-[10px] max-w-full">
+                                  <span className="min-w-0 truncate" title={sub.name}>{sub.name}</span>
                                 </Badge>
                               ))}
                               {category.subcategories?.length > 2 && (
@@ -448,10 +452,10 @@ export default function CategoryTable({
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center">
+                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center min-w-0">
                         {category?.discount?.discountName ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="font-extrabold text-brand-600 dark:text-brand-400 text-[11px] uppercase tracking-tighter">{category.discount.discountName}</span>
+                          <div className="flex flex-col items-center gap-1 min-w-0 max-w-full">
+                            <span className="font-extrabold text-brand-600 dark:text-brand-400 text-[11px] uppercase tracking-tighter max-w-full truncate" title={category.discount.discountName}>{category.discount.discountName}</span>
                             <div className="bg-success-50 dark:bg-success-500/10 text-success-600 dark:text-success-400 px-2 py-0.5 rounded text-[10px] font-black border border-success-100 dark:border-success-500/20">
                                {category.discount.discountValueByAmount ? `${category.discount.discountValueByAmount} TK` : `${category.discount.discountValueByPercentance}%`}
                             </div>
@@ -460,14 +464,14 @@ export default function CategoryTable({
                           <span className="text-gray-400 text-xs font-semibold">N/A</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center font-bold text-[11px]">
+                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center font-bold text-[11px] min-w-0">
                         {moment(category.createdAt).format("MMM DD, YYYY")}
                       </TableCell>
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <StatusPill isActive={category.isActive} />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2 min-w-0">
                         {/* View */}
                         <Tooltip text="View details">
                           <Link to={`/category-view/${category.slug}`}>

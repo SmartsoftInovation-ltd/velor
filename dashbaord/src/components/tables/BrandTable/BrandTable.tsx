@@ -30,7 +30,7 @@ import { showApiError } from "../../../utils/apiError";
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
   const [visible, setVisible] = useState(false);
   return (
-    <div className="relative inline-block" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+    <div className="relative inline-block max-w-full" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
       {children}
       {visible && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-gray-900 text-white text-[10px] font-bold rounded shadow-lg whitespace-nowrap z-50 pointer-events-none animate-in fade-in zoom-in duration-150">
@@ -150,7 +150,11 @@ export default function BrandTable({
     setSearchTerm("");
   };
 
-  const gridTemplateColumns = "150px 2fr 1fr 1.5fr 120px 220px";
+  // Each virtualized row is its own grid, so a plain "1fr" track (min = auto)
+  // grew to fit a long value in that row alone and its cells slid out of line
+  // with the headings. minmax(0, …) plus min-w-0 on the cells keeps every row
+  // on exactly the header's column widths; long values truncate instead.
+  const gridTemplateColumns = "150px minmax(0,2fr) minmax(0,1fr) minmax(0,1.5fr) 120px 220px";
 
   return (
     <div className="w-full space-y-6">
@@ -287,22 +291,22 @@ export default function BrandTable({
                   className="grid" 
                   style={{ gridTemplateColumns }}
                 >
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                     Serial ID
                   </TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                     Brand Name
                   </TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                     Logo
                   </TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                     Created At
                   </TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                     Status
                   </TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center">
+                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400 flex items-center justify-center min-w-0">
                     Actions
                   </TableCell>
                 </TableRow>
@@ -328,7 +332,7 @@ export default function BrandTable({
                         gridTemplateColumns
                       }}
                     >
-                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center">
+                      <TableCell className="px-4 py-3 text-theme-sm flex items-center justify-center min-w-0">
                         {brand.brandSerialId ? (
                           <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
                             {brand.brandSerialId}
@@ -337,16 +341,16 @@ export default function BrandTable({
                           <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center">
+                      <TableCell className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-white/90 flex items-center justify-center text-center min-w-0">
                         <Tooltip text={brand?.name || "No Name"}>
-                          <span className="truncate max-w-[150px]">
+                          <span className="block truncate max-w-[150px]">
                             {brand?.name && brand.name.length > 25 
                               ? `${brand.name.substring(0, 25)}...` 
                               : brand?.name || "N/A"}
                           </span>
                         </Tooltip>
                       </TableCell>
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <div 
                           className="w-14 h-14 overflow-hidden rounded-2xl border-2 border-white dark:border-gray-800 shadow-md bg-gray-100 cursor-zoom-in transition-transform hover:scale-110"
                           onMouseEnter={(e) => brand?.image?.url && setHoveredImage({ url: brand.image.url, name: brand.name || "Brand", x: e.clientX + 20, y: e.clientY - 150 })}
@@ -361,14 +365,14 @@ export default function BrandTable({
                         </div>
                       </TableCell>
                       
-                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center font-bold text-[11px]">
+                      <TableCell className="px-4 py-3 text-theme-sm text-gray-600 dark:text-gray-400 flex items-center justify-center text-center font-bold text-[11px] min-w-0">
                         {moment(brand.createdAt).format("MMM DD, YYYY")}
                       </TableCell>
-                      <TableCell className="px-4 py-3 flex items-center justify-center">
+                      <TableCell className="px-4 py-3 flex items-center justify-center min-w-0">
                         <StatusPill isActive={brand.isActive} />
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2">
+                      <TableCell className="px-4 py-3 flex items-center justify-center gap-2 min-w-0">
                         {/* View */}
                         <Tooltip text="View details">
                           <Link to={`/brand-view/${brand.slug}`}>

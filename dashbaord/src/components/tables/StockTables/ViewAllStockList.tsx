@@ -273,6 +273,7 @@ const ViewAllStockList = () => {
   const [brandOpts, setBrandOpts]           = useState<FilterOption[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Only the newest request may fill the table (a slow old search could
   // otherwise land last and replace the right results)
@@ -650,8 +651,9 @@ const ViewAllStockList = () => {
         )
       ) : (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden">
-        {/* Header — non-scrolling */}
-        <div className="overflow-x-auto border-b border-gray-200 dark:border-white/[0.08]">
+        {/* Header — non-scrolling. Both parts reserve the scrollbar gutter so the
+            two tables get the same width, and the header follows the body's scrollLeft */}
+        <div ref={headerRef} className="overflow-x-auto border-b border-gray-200 dark:border-white/[0.08]" style={{ scrollbarGutter: "stable" }}>
           <table className="w-full min-w-[1170px] border-collapse" style={{ tableLayout: "fixed" }}>
             <colgroup>
               {COLS.map((c) => <col key={c.label} style={{ width: c.width }} />)}
@@ -674,9 +676,12 @@ const ViewAllStockList = () => {
         {/* Body — virtualized scroll */}
         <div
           ref={scrollRef}
+          onScroll={(e) => {
+            if (headerRef.current) headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+          }}
           aria-busy={busy}
           className={`overflow-x-auto overflow-y-auto transition-opacity duration-200 ${busy && !firstLoad ? "pointer-events-none opacity-50" : "opacity-100"}`}
-          style={{ maxHeight: 560 }}
+          style={{ maxHeight: 560, scrollbarGutter: "stable" }}
         >
           {firstLoad ? (
             <div className="flex items-center justify-center" style={{ height: 300 }}>
@@ -706,54 +711,57 @@ const ViewAllStockList = () => {
                   const isEven = vi.index % 2 === 0;
 
                   return (
+                    // One-line cells keep rows the same height; each row is still measured
                     <tr
                       key={row.key}
+                      ref={virtualizer.measureElement}
+                      data-index={vi.index}
                       className={`border-b border-gray-100 dark:border-white/[0.04] transition-colors ${isEven ? "bg-white dark:bg-transparent" : "bg-gray-50/50 dark:bg-white/[0.02]"}`}
                       style={{ height: ROW_H }}
                     >
-                      <td className="px-3 text-center text-[12px] font-mono text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 first:border-l-0">
+                      <td className="px-3 text-center text-[12px] font-mono text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 first:border-l-0 truncate" title={String(row.barcode)}>
                         {row.barcode}
                       </td>
-                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.subcategory)}>
                         {row.subcategory}
                       </td>
-                      <td className="px-3 text-center text-[13px] font-bold text-gray-800 dark:text-gray-200 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[13px] font-bold text-gray-800 dark:text-gray-200 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.productName)}>
                         {row.productName}
                       </td>
-                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.size)}>
                         {row.size}
                       </td>
-                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 truncate" title={row.color}>
                         {row.color !== "N/A" ? (
-                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400 text-[11px] font-bold">
-                            {row.color}
+                          <span className="inline-flex max-w-full items-center justify-center px-2 py-0.5 rounded text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400 text-[11px] font-bold">
+                            <span className="min-w-0 truncate">{row.color}</span>
                           </span>
                         ) : (
                           <span className="text-gray-400 text-[12px]">-</span>
                         )}
                       </td>
-                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.buyRate)}>
                         {row.buyRate}
                       </td>
-                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.retailPrice)}>
                         {row.retailPrice}
                       </td>
-                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.wsPrice)}>
                         {row.wsPrice}
                       </td>
-                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.unit)}>
                         {row.unit}
                       </td>
-                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[12px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.groupUnit)}>
                         {row.groupUnit}
                       </td>
-                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[13px] font-bold text-gray-900 dark:text-gray-100 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.groupUnitQuantity)}>
                         {row.groupUnitQuantity}
                       </td>
-                      <td className="px-3 text-center text-[13px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800">
+                      <td className="px-3 text-center text-[13px] text-gray-600 dark:text-gray-400 border-x border-gray-100 dark:border-gray-800 truncate" title={String(row.groupQty)}>
                         {row.groupQty}
                       </td>
-                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 last:border-r-0">
+                      <td className="px-3 text-center border-x border-gray-100 dark:border-gray-800 last:border-r-0 truncate">
                         {row.stock === 0 ? (
                           <span className="text-red-500 font-bold">{row.stock}</span>
                         ) : (

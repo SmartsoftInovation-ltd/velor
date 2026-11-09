@@ -495,11 +495,13 @@ const SizeWiseStockList = () => {
           </div>
         ) : (
           <div ref={scrollRef} className="no-scrollbar overflow-auto" style={{ maxHeight: 580 }}>
-            <table className="border-collapse table-fixed max-md:min-w-[900px] md:w-full">
+            {/* Fixed column widths (w-full is needed for table-fixed to apply) and one-line,
+                measured rows keep columns and rows still while the list virtualizes */}
+            <table className="w-full border-collapse table-fixed max-md:min-w-[900px]">
               <colgroup>
                 <col style={{ width: "14%" }} />
                 <col style={{ width: "16%" }} />
-                {SIZE_COLS.map((c) => <col key={c.label} style={{ width: "4.5%" }} />)}
+                {SIZE_COLS.map((c) => <col key={c.label} style={{ width: "5.41%" }} />)}
                 <col style={{ width: "5%" }} />
               </colgroup>
 
@@ -513,7 +515,8 @@ const SizeWiseStockList = () => {
                   ].map((c) => (
                     <th
                       key={c.label}
-                      className={`${cellBorder} px-1.5 py-3 text-[10px] font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200 text-center bg-slate-50 dark:bg-slate-800/60 whitespace-nowrap`}
+                      title={c.label}
+                      className={`${cellBorder} px-1.5 py-3 text-[10px] font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200 text-center bg-slate-50 dark:bg-slate-800/60 whitespace-nowrap truncate`}
                     >
                       {c.label}
                     </th>
@@ -534,20 +537,22 @@ const SizeWiseStockList = () => {
                   return (
                     <tr
                       key={row.key}
+                      ref={virtualizer.measureElement}
+                      data-index={vi.index}
                       className={`${rowBg} hover:bg-gray-50 dark:hover:bg-white/3 transition-colors`}
                       style={{ height: ROW_H }}
                     >
-                      <td className={`${cellBorder} px-1.5 text-center text-[12px] text-gray-600 dark:text-gray-400`}>
+                      <td className={`${cellBorder} px-1.5 text-center text-[12px] text-gray-600 dark:text-gray-400 truncate`} title={row.subcategory}>
                         {row.subcategory}
                       </td>
-                      <td className={`${cellBorder} px-1.5 text-center text-[12px] font-semibold text-gray-800 dark:text-gray-200`}>
+                      <td className={`${cellBorder} px-1.5 text-center text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate`} title={row.productName}>
                         {row.productName}
                       </td>
 
                       {SIZE_COLS.map((col) => {
                         if (!row.hasAnySize) {
                           return (
-                            <td key={col.label} className={`${cellBorder} text-center text-[11px] text-gray-300 dark:text-gray-600`}>
+                            <td key={col.label} className={`${cellBorder} text-center text-[11px] text-gray-300 dark:text-gray-600 truncate`}>
                               N/A
                             </td>
                           );
@@ -555,7 +560,7 @@ const SizeWiseStockList = () => {
                         const val = getSizeVal(row.sizeStock, col);
                         const display = val ?? 0;
                         return (
-                          <td key={col.label} className={`${cellBorder} text-center text-[12px]`}>
+                          <td key={col.label} className={`${cellBorder} text-center text-[12px] truncate`}>
                             {display > 0 ? (
                               <span className="font-bold text-gray-800 dark:text-gray-100">{display}</span>
                             ) : (
@@ -565,7 +570,7 @@ const SizeWiseStockList = () => {
                         );
                       })}
 
-                      <td className={`${cellBorder} text-center`}>
+                      <td className={`${cellBorder} text-center truncate`}>
                         <span className={`inline-flex items-center justify-center w-full text-[12px] font-bold ${
                           row.total > 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
                         }`}>

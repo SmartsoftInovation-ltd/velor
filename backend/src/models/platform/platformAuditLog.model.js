@@ -16,6 +16,7 @@ const PLATFORM_AUDIT_ACTIONS = [
   "TENANT_SUSPENDED",
   "TENANT_ACTIVATED",
   "TENANT_OWNER_PASSWORD_SET",
+  "TENANT_LOGO_UPDATED",
   "TENANT_SETTINGS_UPDATED",
   // Storefront hostnames. Which domain points at which store decides where a
   // shopper's order lands, so every change to that map is recorded.

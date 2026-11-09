@@ -70,7 +70,10 @@ interface DesignationTableProps {
   isFetching: boolean;
 }
 
-const gridTemplateColumns = "1fr 1fr 1fr";
+// Header and rows share this template. minmax(0, 1fr) keeps the three columns
+// equal whatever the content: a plain 1fr grows to fit a long name, and as rows
+// swap in while scrolling that row drifted out of line with the headings.
+const gridTemplateColumns = "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
 const COLUMNS = ["Serial ID", "Designation Name", "Actions"];
 
 export default function DesignationTable({
@@ -241,9 +244,10 @@ export default function DesignationTable({
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className="px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
+              title={col}
+              className="min-w-0 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
             >
-              {col}
+              <span className="min-w-0 truncate">{col}</span>
             </div>
           ))}
         </div>
@@ -288,19 +292,19 @@ export default function DesignationTable({
                     }}
                   >
                     {/* # */}
-                    <div className="px-4 flex items-center justify-center">
+                    <div className="min-w-0 px-4 flex items-center justify-center">
                       <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                     </div>
 
                     {/* Name */}
-                    <div className="px-4 flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                    <div className="min-w-0 px-4 flex items-center justify-center" title={item.name}>
+                      <span className="min-w-0 text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
                         {item.name}
                       </span>
                     </div>
 
                     {/* Actions: Edit → Delete */}
-                    <div className="px-4 flex items-center justify-center gap-2">
+                    <div className="min-w-0 px-4 flex flex-nowrap items-center justify-center gap-2">
                       <Tooltip text="Edit">
                         <button
                           type="button"

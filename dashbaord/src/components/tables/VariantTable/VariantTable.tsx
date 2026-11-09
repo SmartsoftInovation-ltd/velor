@@ -85,6 +85,37 @@ interface Variant {
   image?: VariantImage[];
 }
 
+// The list is virtualized: only the rows near the viewport are in the DOM, so
+// with automatic table layout every scroll re-measured the columns from a new
+// set of rows and the headings jumped sideways. Fixed layout sizes the columns
+// from these shares of the table width alone, so the headings never move and
+// every column fits the screen; long values wrap inside their cell.
+const COLUMN_WIDTHS = [
+  "4%", // Serial ID
+  "8%", // Barcode
+  "9%", // Product
+  "9%", // Images
+  "8%", // Variant
+  "8%", // SKU
+  "5%", // Size
+  "7%", // Color
+  "7%", // Purchase Price
+  "6%", // Retail Price
+  "6%", // WS Price
+  "8%", // Status
+  "15%", // Actions
+];
+// Below this the columns would be too narrow to read; the table scrolls instead
+const TABLE_MIN_WIDTH = 1000;
+
+// Every row is one line high: the virtualizer places rows by a fixed height, so
+// a value that wrapped onto a second line made the list jump while scrolling.
+// Long values are cut with an ellipsis and shown in full on hover.
+const CELL = "px-2 py-3 text-theme-sm text-center truncate";
+const HEADER = "px-2 py-4 truncate font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400";
+const listText = (value?: string | string[]) =>
+  value ? (Array.isArray(value) ? value.join(", ") : value) : "";
+
 const VariantTable = () => {
   const queryClient = useQueryClient();
   const canAdd    = usePermission("variant", "add");
@@ -177,7 +208,7 @@ const VariantTable = () => {
   const virtualizer = useVirtualizer({
     count: rawVariants.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 70, // Estimated row height in pixels
+    estimateSize: () => 57, // a one-line row; each rendered row is then measured
     overscan: 10,
   });
 
@@ -438,24 +469,30 @@ const VariantTable = () => {
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] overflow-hidden shadow-theme-sm">
           <div
             ref={parentRef}
-            className="no-scrollbar max-w-full overflow-auto max-h-[600px]"
+            className="custom-scrollbar max-w-full overflow-auto max-h-[600px]"
           >
-            <Table>
+            {/* w-full matters: browsers ignore table-fixed while the width is auto */}
+            <Table className="w-full table-fixed" style={{ minWidth: TABLE_MIN_WIDTH }}>
+              <colgroup>
+                {COLUMN_WIDTHS.map((width, i) => (
+                  <col key={i} style={{ width }} />
+                ))}
+              </colgroup>
               <TableHeader className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-white/[0.05]">
                 <TableRow className="uppercase">
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Serial ID</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Barcode</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Product</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Images</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Variant</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">SKU</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Size</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Color</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Purchase Price</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Retail Price</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">WS Price</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Status</TableCell>
-                  <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Actions</TableCell>
+                  <TableCell isHeader className={HEADER} title="Serial ID">Serial</TableCell>
+                  <TableCell isHeader className={HEADER} title="Barcode">Barcode</TableCell>
+                  <TableCell isHeader className={HEADER} title="Product">Product</TableCell>
+                  <TableCell isHeader className={HEADER} title="Images">Images</TableCell>
+                  <TableCell isHeader className={HEADER} title="Variant">Variant</TableCell>
+                  <TableCell isHeader className={HEADER} title="SKU">SKU</TableCell>
+                  <TableCell isHeader className={HEADER} title="Size">Size</TableCell>
+                  <TableCell isHeader className={HEADER} title="Color">Color</TableCell>
+                  <TableCell isHeader className={HEADER} title="Purchase Price">Cost</TableCell>
+                  <TableCell isHeader className={HEADER} title="Retail Price">Retail</TableCell>
+                  <TableCell isHeader className={HEADER} title="WS Price">WS Price</TableCell>
+                  <TableCell isHeader className={HEADER} title="Status">Status</TableCell>
+                  <TableCell isHeader className={HEADER} title="Actions">Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
@@ -517,71 +554,63 @@ const VariantTable = () => {
                     {virtualRows.map((virtualRow) => {
                       const variant = rawVariants[virtualRow.index];
                       return (
-                        <TableRow key={variant._id} className="dark:text-gray-400">
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <tr
+                          key={variant._id}
+                          // A plain row so the virtualizer can measure its real height
+                          ref={virtualizer.measureElement}
+                          data-index={virtualRow.index}
+                          className="dark:text-gray-400"
+                        >
+                          <TableCell className={CELL}>
                             <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">{variant.barCode || "N/A"}</TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center font-medium text-gray-800 dark:text-gray-200">{variant.product?.name || "N/A"}</TableCell>
-                          
-                          {/* Images Column */}
-                          <TableCell className="px-4 py-3 text-theme-sm">
-                            <div className="flex -space-x-2 justify-center">
+                          <TableCell className={CELL} title={variant.barCode || undefined}>{variant.barCode || "N/A"}</TableCell>
+                          <TableCell className={`${CELL} font-medium text-gray-800 dark:text-gray-200`} title={variant.product?.name || undefined}>{variant.product?.name || "N/A"}</TableCell>
+
+                          {/* Images Column: two thumbnails and a count of the rest */}
+                          <TableCell className="px-1 py-3 text-theme-sm">
+                            <div className="flex -space-x-2.5 justify-center overflow-hidden">
                               {variant.image && variant.image.length > 0 ? (
-                                variant.image.slice(0, 3).map((img, i) => (
-                                  <div key={i} className="w-10 h-10 overflow-hidden border-2 border-white rounded-full dark:border-gray-900 shadow-sm">
+                                variant.image.slice(0, 2).map((img, i) => (
+                                  <div key={i} className="size-8 shrink-0 overflow-hidden border-2 border-white rounded-full dark:border-gray-900 shadow-sm">
                                     <img src={img.url} alt={`Variant ${i + 1}`} className="w-full h-full object-cover" />
                                   </div>
                                 ))
                               ) : variant.thumbnail?.url ? (
-                                <div className="w-10 h-10 overflow-hidden border-2 border-white rounded-full dark:border-gray-900 shadow-sm">
+                                <div className="size-8 shrink-0 overflow-hidden border-2 border-white rounded-full dark:border-gray-900 shadow-sm">
                                   <img src={variant.thumbnail.url} alt="Variant Thumbnail" className="w-full h-full object-cover" />
                                 </div>
                               ) : (
-                                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-gray-400 shadow-inner">
+                                <div className="size-8 shrink-0 bg-gray-100 dark:bg-gray-800 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-gray-400 shadow-inner">
                                   <FaUserCircle className="size-full opacity-20" />
                                 </div>
                               )}
-                              {variant.image && variant.image.length > 3 && (
-                                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300">+{variant.image.length - 3}</div>
+                              {variant.image && variant.image.length > 2 && (
+                                <div className="size-8 shrink-0 bg-gray-200 dark:bg-gray-700 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300">+{variant.image.length - 2}</div>
                               )}
                             </div>
                           </TableCell>
 
-                          <TableCell className="px-4 py-3 text-theme-sm text-center font-medium text-gray-800 dark:text-gray-200">{variant.variantName || "N/A"}</TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">{variant.sku || "N/A"}</TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">
-                            {variant.size
-                              ? Array.isArray(variant.size)
-                                ? variant.size.join(", ")
-                                : variant.size
-                              : "-"}
+                          <TableCell className={`${CELL} font-medium text-gray-800 dark:text-gray-200`} title={variant.variantName || undefined}>{variant.variantName || "N/A"}</TableCell>
+                          <TableCell className={CELL} title={variant.sku || undefined}>{variant.sku || "N/A"}</TableCell>
+                          <TableCell className={CELL} title={listText(variant.size) || undefined}>{listText(variant.size) || "-"}</TableCell>
+                          <TableCell className={CELL} title={listText(variant.color) || undefined}>
+                            <Badge size="sm" color="orange" className="max-w-full">
+                              <span className="min-w-0 truncate">{listText(variant.color) || "-"}</span>
+                            </Badge>
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">
-                            <div className="flex justify-center">
-                              <Badge size="sm" color="orange">
-                                {variant.color
-                                  ? Array.isArray(variant.color)
-                                    ? variant.color.join(", ")
-                                    : variant.color
-                                  : "-"}
-                              </Badge>
-                            </div>
+                          <TableCell className={CELL}>{variant.purchasePrice}</TableCell>
+                          <TableCell className={CELL}>{variant.retailPrice || "N/A"}</TableCell>
+                          <TableCell className={CELL}>{variant.wholesalePrice}</TableCell>
+                          <TableCell className={CELL}>
+                            <StatusPill isActive={variant.isActive} />
                           </TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">{variant.purchasePrice}</TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">{variant.retailPrice || "N/A"}</TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">{variant.wholesalePrice}</TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm text-center">
-                            <div className="flex justify-center">
-                              <StatusPill isActive={variant.isActive} />
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-4 py-3 text-theme-sm">
-                            <div className="flex items-center gap-2 justify-center">
+                          <TableCell className="px-1 py-3 text-theme-sm">
+                            <div className="flex flex-nowrap items-center justify-center gap-1">
                               {/* View Action */}
                               <Tooltip text="View Variant">
                                 <Link to={`/variant-view/${variant.slug}`}>
-                                  <Button size="sm" variant="outline" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
+                                  <Button size="sm" variant="outline" className="size-8 p-0 !rounded border-none transition-all active:scale-90 !bg-gray-100 !text-gray-600 hover:!bg-gray-200 hover:!text-gray-900 dark:!bg-white/5 dark:!text-gray-400 dark:hover:!bg-white/10"
                     aria-label="View variant"
                   >
                                     <FaEye className="size-4" />
@@ -596,14 +625,14 @@ const VariantTable = () => {
                                   onClick={() => handleToggleModal(variant.slug, variant.isActive)}
                                   size="sm"
                                   variant="outline"
-                                  className={`size-10 p-0 !rounded border-none transition-all active:scale-90 ${
+                                  className={`size-8 p-0 !rounded border-none transition-all active:scale-90 ${
                       variant.isActive
                         ? "!bg-accent-50 !text-accent-600 hover:!bg-accent-100 dark:!bg-accent-500/15 dark:!text-accent-400 dark:hover:!bg-accent-500/25"
                         : "!bg-gray-100 !text-gray-400 hover:!bg-gray-200 hover:!text-gray-500 dark:!bg-white/5 dark:!text-gray-500 dark:hover:!bg-white/10"
                     }`}
                     aria-label={variant.isActive ? "Deactivate variant" : "Activate variant"}
                   >
-                                  {variant.isActive ? <FaToggleOn className="size-7" /> : <FaToggleOff className="size-7" />}
+                                  {variant.isActive ? <FaToggleOn className="size-6" /> : <FaToggleOff className="size-6" />}
                                 </Button>
                               </Tooltip>
                               )}
@@ -612,7 +641,7 @@ const VariantTable = () => {
                               {canEdit && (
                               <Tooltip text="Edit Variant">
                                 <Link to={`/update-variant/${variant.slug}`}>
-                                  <Button size="sm" variant="outline" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
+                                  <Button size="sm" variant="outline" className="size-8 p-0 !rounded border-none transition-all active:scale-90 !bg-warning-50 !text-warning-600 hover:!bg-warning-100 hover:!text-warning-700 dark:!bg-warning-500/15 dark:!text-warning-400 dark:hover:!bg-warning-500/25"
                     aria-label="Edit variant"
                   >
                                     <FaEdit className="size-4" />
@@ -624,7 +653,7 @@ const VariantTable = () => {
                               {/* Delete Action */}
                               {canDelete && (
                               <Tooltip text="Delete Variant">
-                                <Button onClick={() => handleDeleteModal(variant.slug)} size="sm" className="size-10 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
+                                <Button onClick={() => handleDeleteModal(variant.slug)} size="sm" className="size-8 p-0 !rounded border-none transition-all active:scale-90 !bg-error-50 !text-error-600 hover:!bg-error-100 dark:!bg-error-500/15 dark:!text-error-400 dark:hover:!bg-error-500/25"
                     aria-label="Delete variant"
                   >
                                   <MdDelete className="size-4" />
@@ -633,7 +662,7 @@ const VariantTable = () => {
                               )}
                             </div>
                           </TableCell>
-                        </TableRow>
+                        </tr>
                       );
                     })}
                     {paddingBottom > 0 && (

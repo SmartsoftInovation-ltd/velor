@@ -131,7 +131,11 @@ const CustomerAdvancePaymentTable = ({
   });
 
   // Payment ID | Customer | Date | Previous Balance | Balance | Paid | Cashback | Account | Actions
-  const gridTemplateColumns = "1fr 1.3fr 0.9fr 0.9fr 0.9fr 0.9fr 0.8fr 1fr 150px";
+  // Header and rows are separate grids; a plain "1fr" track grows to fit its
+  // content, so one long value widened that row's column and the headings slid
+  // sideways while scrolling. minmax(0, …) plus min-w-0 on each cell keeps
+  // every grid on the same widths; long values are cut instead.
+  const gridTemplateColumns = "minmax(0,1fr) minmax(0,1.3fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.8fr) minmax(0,1fr) 150px";
 
   const handleDeleteModal = (id: string) => {
     setSelectedId(id);
@@ -339,15 +343,16 @@ const CustomerAdvancePaymentTable = ({
       <div className="rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/3 overflow-hidden shadow-theme-sm">
         {/* Sticky header — outside scroll container */}
         <div
-          className="grid bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-white/5 px-3 py-3"
+          className="grid *:min-w-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-white/5 px-3 py-3"
           style={{ gridTemplateColumns }}
         >
           {headers.map((h) => (
             <div
               key={h}
+              title={h}
               className="flex items-center justify-center text-[11px] font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wide"
             >
-              {h}
+              <span className="truncate">{h}</span>
             </div>
           ))}
         </div>
@@ -392,7 +397,7 @@ const CustomerAdvancePaymentTable = ({
                 return (
                   <div
                     key={payment._id}
-                    className="absolute top-0 left-0 w-full grid items-center px-3 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/2 transition-colors"
+                    className="absolute top-0 left-0 w-full grid *:min-w-0 items-center px-3 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/2 transition-colors"
                     style={{
                       gridTemplateColumns,
                       height: virtualRow.size,
@@ -401,14 +406,14 @@ const CustomerAdvancePaymentTable = ({
                   >
                     {/* Payment ID */}
                     <div className="flex items-center justify-center px-1">
-                      <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
+                      <span className="max-w-full truncate rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400" title={payment.paymentId || undefined}>
                         {payment.paymentId || `#${virtualRow.index + 1}`}
                       </span>
                     </div>
 
                     {/* Customer Name */}
                     <div className="flex items-center justify-center px-2">
-                      <span className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-white truncate" title={payment.customer?.fullName || undefined}>
                         {payment.customer?.fullName || "—"}
                       </span>
                     </div>
@@ -462,13 +467,13 @@ const CustomerAdvancePaymentTable = ({
 
                     {/* Account */}
                     <div className="flex items-center justify-center px-1">
-                      <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                      <span className="text-xs text-gray-600 dark:text-gray-400 truncate" title={payment.paymentMode?.name || undefined}>
                         {payment.paymentMode?.name || "—"}
                       </span>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className="flex flex-nowrap items-center justify-center gap-1.5">
                       <Tooltip text="Print">
                         <button
                           type="button"

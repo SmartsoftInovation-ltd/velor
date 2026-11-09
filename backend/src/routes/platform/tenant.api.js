@@ -13,6 +13,8 @@ const {
 } = require("../../validation/platform/tenant.validation");
 const domainController = require("../../controller/platform/domain.controller");
 const { addDomainSchema, updateDomainSchema } = require("../../validation/platform/domain.validation");
+const logoController = require("../../controller/platform/tenantLogo.controller");
+const { singleFileUpload } = require("../../middleware/multer.middleware");
 const { domainVerifyLimiter } = require("../../middleware/rateLimit.middleware");
 
 const _ = express.Router();
@@ -34,6 +36,10 @@ _.post("/:tenantId/domains", superadmin, validateBody(addDomainSchema), domainCo
 _.post("/:tenantId/domains/:domainId/verify", superadmin, domainVerifyLimiter, domainController.verifyDomainHandler);
 _.patch("/:tenantId/domains/:domainId", superadmin, validateBody(updateDomainSchema), domainController.updateDomain);
 _.delete("/:tenantId/domains/:domainId", superadmin, domainController.removeDomain);
+
+// The seller's logo: the image on their Store Information record
+_.get("/:tenantId/logo", logoController.forTenant, logoController.getLogo);
+_.put("/:tenantId/logo", superadmin, logoController.forTenant, singleFileUpload("image"), logoController.updateLogo);
 
 _.get("/:tenantId/audit", controller.listTenantAudit);
 _.get("/:tenantId/settings", settingsController.getSettings);

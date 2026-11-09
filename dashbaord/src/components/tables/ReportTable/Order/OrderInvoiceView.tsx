@@ -60,6 +60,11 @@ const esc = (v: unknown) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 const taka = (n: number) => `৳${(n ?? 0).toLocaleString()}`;
 
+// One column template for the header and every virtualized row; minmax(0, 1fr)
+// keeps the Customer column from growing to fit a long name. Cells stay on one
+// line (truncated, full value on hover) so measured rows are all the same height.
+const GRID_COLUMNS = "45px 100px 90px minmax(0, 1fr) 100px 90px 80px 90px 80px 90px 90px";
+
 // The printed sheet, built from the data rather than the screen list (which
 // only draws the rows in view). Rows are kept separate so the preview can add
 // them as it scrolls (see useReportPrintAll).
@@ -271,10 +276,10 @@ const OrderInvoiceView = () => {
             <div className="rounded-xl border border-gray-200 dark:border-white/[0.05] overflow-hidden">
               <div
                 className="bg-green-100 dark:bg-green-900/20 grid border-b border-gray-300 dark:border-gray-600"
-                style={{ gridTemplateColumns: "45px 100px 90px 1fr 100px 90px 80px 90px 80px 90px 90px" }}
+                style={{ gridTemplateColumns: GRID_COLUMNS }}
               >
                 {COLS.map((c) => (
-                  <div key={c} className="px-2 py-3 text-xs font-semibold uppercase text-gray-700 dark:text-gray-300 text-center border-r border-gray-300 dark:border-gray-600 last:border-r-0">
+                  <div key={c} className="px-2 py-3 text-xs font-semibold uppercase text-gray-700 dark:text-gray-300 text-center border-r border-gray-300 dark:border-gray-600 last:border-r-0 truncate" title={c}>
                     {c}
                   </div>
                 ))}
@@ -304,20 +309,20 @@ const OrderInvoiceView = () => {
                             left: 0,
                             width: "100%",
                             transform: `translateY(${vRow.start}px)`,
-                            gridTemplateColumns: "45px 100px 90px 1fr 100px 90px 80px 90px 80px 90px 90px",
+                            gridTemplateColumns: GRID_COLUMNS,
                           }}
                         >
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{vRow.index + 1}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{row.orderId}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{moment(row.date).format("DD-MM-YY")}</div>
-                          <div className="px-2 py-3 text-xs text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{row.customerInfo?.name}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{row.customerInfo?.phone}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">৳{(row.total ?? 0).toLocaleString()}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">৳{(row.discount ?? 0).toLocaleString()}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">৳{(row.subTotal ?? 0).toLocaleString()}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">৳{(row.delivery ?? 0).toLocaleString()}</div>
-                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{row.followUpBy}</div>
-                          <div className="px-2 py-3 text-xs text-center">
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{vRow.index + 1}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate" title={row.orderId}>{row.orderId}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">{moment(row.date).format("DD-MM-YY")}</div>
+                          <div className="px-2 py-3 text-xs text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate" title={row.customerInfo?.name}>{row.customerInfo?.name}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate" title={row.customerInfo?.phone}>{row.customerInfo?.phone}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">৳{(row.total ?? 0).toLocaleString()}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">৳{(row.discount ?? 0).toLocaleString()}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">৳{(row.subTotal ?? 0).toLocaleString()}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate">৳{(row.delivery ?? 0).toLocaleString()}</div>
+                          <div className="px-2 py-3 text-xs text-center text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 truncate" title={row.followUpBy}>{row.followUpBy}</div>
+                          <div className="px-2 py-3 text-xs text-center truncate" title={row.status}>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLOR[row.status] ?? "bg-gray-100 text-gray-700"}`}>
                               {row.status}
                             </span>

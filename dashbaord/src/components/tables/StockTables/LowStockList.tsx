@@ -439,15 +439,18 @@ const LowStockList = () => {
             )}
           </div>
         ) : (
-          <div ref={scrollRef} className="no-scrollbar overflow-y-auto" style={{ maxHeight: 580 }}>
-            <table className="w-full border-collapse table-fixed">
-              <colgroup><col style={{width:"10%"}}/><col style={{width:"9%"}}/><col style={{width:"13%"}}/><col style={{width:"8%"}}/><col style={{width:"7%"}}/><col style={{width:"7%"}}/><col style={{width:"8%"}}/><col style={{width:"9%"}}/><col style={{width:"9%"}}/><col style={{width:"7%"}}/><col style={{width:"7%"}}/></colgroup>
+          <div ref={scrollRef} className="no-scrollbar overflow-auto" style={{ maxHeight: 580 }}>
+            {/* Fixed column widths and one-line, measured rows keep columns and rows still
+                while the list virtualizes; narrow screens scroll instead of crushing */}
+            <table className="w-full border-collapse table-fixed" style={{ minWidth: 960 }}>
+              <colgroup><col style={{width:"12%"}}/><col style={{width:"11%"}}/><col style={{width:"15%"}}/><col style={{width:"8%"}}/><col style={{width:"7%"}}/><col style={{width:"7%"}}/><col style={{width:"8%"}}/><col style={{width:"9%"}}/><col style={{width:"9%"}}/><col style={{width:"7%"}}/><col style={{width:"7%"}}/></colgroup>
               <thead className="sticky top-0 z-10">
                 <tr>
                   {COLS.map((c) => (
                     <th
                       key={c}
-                      className="border border-gray-200 dark:border-white/[0.07] px-2 py-3 text-[10px] font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200 text-center bg-slate-50 dark:bg-slate-800/60 whitespace-nowrap"
+                      title={c}
+                      className="border border-gray-200 dark:border-white/[0.07] px-2 py-3 text-[10px] font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200 text-center bg-slate-50 dark:bg-slate-800/60 whitespace-nowrap truncate"
                     >
                       {c}
                     </th>
@@ -469,43 +472,45 @@ const LowStockList = () => {
                   return (
                     <tr
                       key={row.key}
+                      ref={virtualizer.measureElement}
+                      data-index={vi.index}
                       className={`${urgency} hover:bg-orange-50/40 dark:hover:bg-white/[0.03] transition-colors`}
                       style={{ height: ROW_H }}
                     >
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[11px] font-mono text-gray-600 dark:text-gray-400">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[11px] font-mono text-gray-600 dark:text-gray-400 truncate" title={String(row.barcode)}>
                         {row.barcode}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-600 dark:text-gray-400">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-600 dark:text-gray-400 truncate" title={String(row.subcategory)}>
                         {row.subcategory}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] font-semibold text-gray-800 dark:text-gray-200">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate" title={String(row.productName)}>
                         {row.productName}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center">
-                        <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center truncate" title={row.variant}>
+                        <span className={`inline-flex max-w-full items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-medium ${
                           row.variantType === "single"
                             ? "bg-sky-100 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400"
                             : "bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400"
                         }`}>
-                          {row.variant}
+                          <span className="min-w-0 truncate">{row.variant}</span>
                         </span>
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-600 dark:text-gray-400">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-600 dark:text-gray-400 truncate" title={String(row.color)}>
                         {row.color}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-600 dark:text-gray-400">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-600 dark:text-gray-400 truncate" title={String(row.size)}>
                         {row.size}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-700 dark:text-gray-300">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-700 dark:text-gray-300 truncate">
                         {row.buyRate === "-" ? "-" : `৳${row.buyRate}`}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-700 dark:text-gray-300">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-700 dark:text-gray-300 truncate">
                         {row.retailPrice === "-" ? "-" : `৳${row.retailPrice}`}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-700 dark:text-gray-300">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-700 dark:text-gray-300 truncate">
                         {row.wholesalePrice === "-" ? "-" : `৳${row.wholesalePrice}`}
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center truncate">
                         <span className={`inline-flex items-center justify-center w-full text-[12px] font-bold ${
                           row.stock === 0
                             ? "text-red-600 dark:text-red-400"
@@ -514,7 +519,7 @@ const LowStockList = () => {
                           {row.stock}
                         </span>
                       </td>
-                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-500 dark:text-gray-400">
+                      <td className="border border-gray-200 dark:border-white/[0.07] px-2 text-center text-[12px] text-gray-500 dark:text-gray-400 truncate" title={String(row.alertQty)}>
                         {row.alertQty}
                       </td>
                     </tr>

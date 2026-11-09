@@ -102,7 +102,13 @@ export default function UserTable({
     overscan: 10,
   });
 
-  const gridTemplateColumns = "56px 1fr 1fr 1fr 1fr 110px 110px 180px";
+  // The header and every row are separate grids. A plain "1fr" track grows to
+  // fit its content, so a long email in one row widened that row's column and
+  // the headings slid sideways while scrolling. minmax(0, …) plus min-w-0 on
+  // each cell keeps every grid on the same widths; long values are cut instead.
+  // Actions fits all four buttons.
+  const gridTemplateColumns =
+    "56px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 110px 110px 220px";
 
   // ---------- Handlers ----------
   const handleDeleteModal = (user: User) => {
@@ -250,15 +256,16 @@ export default function UserTable({
       <div className="rounded-2xl border border-gray-200 dark:border-white/[0.05] bg-white dark:bg-white/[0.03] overflow-hidden shadow-theme-sm">
         {/* Sticky Header */}
         <div
-          className="grid bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-white/[0.05]"
+          className="grid *:min-w-0 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-white/[0.05]"
           style={{ gridTemplateColumns }}
         >
           {["S/N", "Name", "Email", "Phone", "Role", "Created", "Status", "Actions"].map((h) => (
             <div
               key={h}
+              title={h}
               className="px-4 py-4 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
             >
-              {h}
+              <span className="truncate">{h}</span>
             </div>
           ))}
         </div>
@@ -296,7 +303,7 @@ export default function UserTable({
                 return (
                   <div
                     key={user._id}
-                    className="absolute top-0 left-0 w-full grid items-center border-b border-gray-100 dark:border-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                    className="absolute top-0 left-0 w-full grid *:min-w-0 items-center border-b border-gray-100 dark:border-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                     style={{
                       gridTemplateColumns,
                       height: virtualRow.size,
@@ -323,19 +330,19 @@ export default function UserTable({
                           </span>
                         </div>
                       )}
-                      <span className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-white truncate" title={user.name}>
                         {user.name}
                       </span>
                     </div>
 
                     {/* Email */}
                     <div className="px-4 flex items-center justify-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 truncate">{user.email}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 truncate" title={user.email}>{user.email}</span>
                     </div>
 
                     {/* Phone */}
                     <div className="px-4 flex items-center justify-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 truncate" title={user.phone || undefined}>
                         {user.phone || <span className="text-gray-300 dark:text-gray-600">—</span>}
                       </span>
                     </div>
@@ -343,8 +350,8 @@ export default function UserTable({
                     {/* Role */}
                     <div className="px-4 flex items-center justify-center">
                       {user.roles && user.roles.length > 0 ? (
-                        <Badge size="sm" variant="light" color="primary" className="font-semibold text-[11px]">
-                          {user.roles[0].name}
+                        <Badge size="sm" variant="light" color="primary" className="max-w-full font-semibold text-[11px]">
+                          <span className="min-w-0 truncate" title={user.roles[0].name}>{user.roles[0].name}</span>
                         </Badge>
                       ) : (
                         <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
@@ -371,7 +378,7 @@ export default function UserTable({
                     </div>
 
                     {/* Actions: View → Toggle → Edit → Delete */}
-                    <div className="px-4 flex items-center justify-center gap-2">
+                    <div className="px-4 flex flex-nowrap items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
                           type="button"

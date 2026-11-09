@@ -100,7 +100,13 @@ const Tooltip = ({
 
 // ─── Grid layout ──────────────────────────────────────────────────────────────
 
-const gridTemplateColumns = "150px 130px 130px 1fr 1fr 1fr 1fr 1fr 100px 170px";
+// Header and rows are separate grids; a plain "1fr" track grows to fit its
+// content, so one long value widened that row's column and the headings slid
+// sideways while scrolling. minmax(0, …) plus min-w-0 on each cell keeps every
+// grid on the same widths; long values are cut instead. Actions fits all four
+// buttons.
+const gridTemplateColumns =
+  "150px 130px 130px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 100px 210px";
 const COLUMNS = [
   "Serial ID",
   "Date",
@@ -357,13 +363,14 @@ export default function SupplierPaymentTable({
       <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
         {/* Sticky header — outside scroll container */}
         <div
-          className="grid bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
+          className="grid *:min-w-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
           style={{ gridTemplateColumns }}
         >
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className={`px-3 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 ${
+              title={col}
+              className={`truncate px-3 py-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 ${
                 col === "Serial ID" || col === "Status" || col === "Actions"
                   ? "text-center"
                   : "text-left"
@@ -404,7 +411,7 @@ export default function SupplierPaymentTable({
                 return (
                   <div
                     key={item._id}
-                    className="absolute top-0 left-0 w-full grid items-center border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
+                    className="absolute top-0 left-0 w-full grid *:min-w-0 items-center border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
                     style={{
                       gridTemplateColumns,
                       height: virtualRow.size,
@@ -414,7 +421,7 @@ export default function SupplierPaymentTable({
                     {/* Serial */}
                     <div className="px-3 flex justify-center">
                       {item.supplierPaymentSerialId ? (
-                        <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{item.supplierPaymentSerialId}</span>
+                        <span className="max-w-full truncate rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400" title={item.supplierPaymentSerialId}>{item.supplierPaymentSerialId}</span>
                       ) : (
                         <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                       )}
@@ -441,22 +448,22 @@ export default function SupplierPaymentTable({
                     </div>
 
                     {/* Supplier Name */}
-                    <div className="px-3 text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                    <div className="px-3 text-sm font-medium text-gray-800 dark:text-gray-100 truncate" title={item.supplier?.supplierName || item.supplierId}>
                       {item.supplier?.supplierName || item.supplierId}
                     </div>
 
                     {/* Mobile */}
-                    <div className="px-3 text-sm font-mono text-gray-600 dark:text-gray-300">
+                    <div className="px-3 text-sm font-mono text-gray-600 dark:text-gray-300 truncate" title={item.supplier?.mobile || undefined}>
                       {item.supplier?.mobile || "—"}
                     </div>
 
                     {/* Paid */}
-                    <div className="px-3 text-sm font-semibold text-green-600 dark:text-green-400">
+                    <div className="px-3 text-sm font-semibold text-green-600 dark:text-green-400 truncate">
                       ৳{item.paidAmount.toLocaleString()}
                     </div>
 
                     {/* Less */}
-                    <div className="px-3 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="px-3 text-sm text-gray-500 dark:text-gray-400 truncate">
                       {item.lessAmount > 0 ? (
                         `৳${item.lessAmount.toLocaleString()}`
                       ) : (
@@ -467,7 +474,7 @@ export default function SupplierPaymentTable({
                     </div>
 
                     {/* Account */}
-                    <div className="px-3 text-sm text-gray-600 dark:text-gray-300 truncate">
+                    <div className="px-3 text-sm text-gray-600 dark:text-gray-300 truncate" title={item.paymentMethod?.[0]?.name || undefined}>
                       {item.paymentMethod?.[0]?.name || "—"}
                     </div>
 
@@ -477,7 +484,7 @@ export default function SupplierPaymentTable({
                     </div>
 
                     {/* Actions: Print + Edit + Toggle + Delete */}
-                    <div className="px-3 flex items-center justify-center gap-1.5">
+                    <div className="px-3 flex flex-nowrap items-center justify-center gap-1.5">
                       <Tooltip text="Print">
                         <button
                           type="button"

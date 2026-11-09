@@ -94,6 +94,33 @@ interface ProductTableProps {
   searching?: boolean;
 }
 
+// The list is virtualized: only the rows near the viewport are in the DOM, so
+// with automatic table layout every scroll re-measured the columns from a new
+// set of rows and the headings jumped sideways. Fixed layout sizes the columns
+// from these shares of the table width alone, so the headings never move.
+const COLUMN_WIDTHS = [
+  "5%", // Serial ID
+  "8%", // Barcode
+  "7%", // SKU
+  "11%", // Images (up to three avatars and a +N)
+  "10%", // Product Name
+  "7%", // Category
+  "7%", // SubCategory
+  "6%", // Brand
+  "5%", // Buy Rate
+  "6%", // Retail Price
+  "6%", // WH Price
+  "7%", // Status
+  "15%", // Actions (four 40px buttons)
+];
+// Below this the columns would be too narrow to read; the table scrolls instead
+const TABLE_MIN_WIDTH = 1400;
+
+// Every row is one line high so the measured rows stay uniform; long values
+// are cut with an ellipsis and shown in full on hover.
+const CELL = "px-2 py-3 text-theme-sm text-center truncate";
+const HEADER = "px-2 py-5 truncate font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400";
+
 export default function ProductTable({
   products,
   fetchProducts,
@@ -148,7 +175,7 @@ export default function ProductTable({
   const virtualizer = useVirtualizer({
     count: products.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 70, // Estimated row height in pixels
+    estimateSize: () => 65, // a one-line row; each rendered row is then measured
     overscan: 10,
   });
 
@@ -375,22 +402,28 @@ export default function ProductTable({
           ref={parentRef}
           className="no-scrollbar max-w-full overflow-auto max-h-[600px]"
         >
-          <Table>
+          {/* w-full matters: browsers ignore table-fixed while the width is auto */}
+          <Table className="w-full table-fixed" style={{ minWidth: TABLE_MIN_WIDTH }}>
+            <colgroup>
+              {COLUMN_WIDTHS.map((width, i) => (
+                <col key={i} style={{ width }} />
+              ))}
+            </colgroup>
             <TableHeader className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow className="uppercase">
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Serial ID</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Barcode</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">SKU</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Images</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Product Name</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Category</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">SubCategory</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Brand</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Buy Rate</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Retail Price</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">WH Price</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Status</TableCell>
-                <TableCell isHeader className="px-4 py-5 font-bold text-gray-500 text-center text-[11px] uppercase dark:text-gray-400">Actions</TableCell>
+                <TableCell isHeader className={HEADER} title="Serial ID">Serial ID</TableCell>
+                <TableCell isHeader className={HEADER} title="Barcode">Barcode</TableCell>
+                <TableCell isHeader className={HEADER} title="SKU">SKU</TableCell>
+                <TableCell isHeader className={HEADER} title="Images">Images</TableCell>
+                <TableCell isHeader className={HEADER} title="Product Name">Product Name</TableCell>
+                <TableCell isHeader className={HEADER} title="Category">Category</TableCell>
+                <TableCell isHeader className={HEADER} title="SubCategory">SubCategory</TableCell>
+                <TableCell isHeader className={HEADER} title="Brand">Brand</TableCell>
+                <TableCell isHeader className={HEADER} title="Buy Rate">Buy Rate</TableCell>
+                <TableCell isHeader className={HEADER} title="Retail Price">Retail Price</TableCell>
+                <TableCell isHeader className={HEADER} title="WH Price">WH Price</TableCell>
+                <TableCell isHeader className={HEADER} title="Status">Status</TableCell>
+                <TableCell isHeader className={HEADER} title="Actions">Actions</TableCell>
               </TableRow>
             </TableHeader>
 
@@ -452,8 +485,14 @@ export default function ProductTable({
                   {virtualRows.map((virtualRow) => {
                     const product = products[virtualRow.index];
                     return (
-                      <TableRow key={product._id} className="dark:text-gray-400">
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                      <tr
+                        key={product._id}
+                        // A plain row so the virtualizer can measure its real height
+                        ref={virtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        className="dark:text-gray-400"
+                      >
+                        <TableCell className={CELL} title={product.productSerialId || undefined}>
                           {product.productSerialId ? (
                             <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">
                               {product.productSerialId}
@@ -462,9 +501,9 @@ export default function ProductTable({
                             <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{product.variantType === "multipleVariant" ? "N/A" : (product.barCode || "N/A")}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{product.variantType === "multipleVariant" ? "N/A" : (product.sku || "N/A")}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm">
+                        <TableCell className={CELL} title={product.variantType === "multipleVariant" ? undefined : product.barCode || undefined}>{product.variantType === "multipleVariant" ? "N/A" : (product.barCode || "N/A")}</TableCell>
+                        <TableCell className={CELL} title={product.variantType === "multipleVariant" ? undefined : product.sku || undefined}>{product.variantType === "multipleVariant" ? "N/A" : (product.sku || "N/A")}</TableCell>
+                        <TableCell className="px-2 py-3 text-theme-sm">
                           <div className="flex -space-x-2 justify-center">
                             {product.variantType === "multipleVariant" ? (
                               <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center text-gray-400 shadow-inner" title="Variant Level Images">
@@ -486,20 +525,20 @@ export default function ProductTable({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm font-medium text-gray-800 dark:text-gray-200 text-center">{product.name}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{product.category?.name || "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{product.subcategory?.name || "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{product.brand?.name || "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{renderCellValue(product, "purchasePrice")}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{renderCellValue(product, "retailPrice")}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">{renderCellValue(product, "wholesalePrice")}</TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm text-center">
+                        <TableCell className={`${CELL} font-medium text-gray-800 dark:text-gray-200`} title={product.name || undefined}>{product.name}</TableCell>
+                        <TableCell className={CELL} title={product.category?.name || undefined}>{product.category?.name || "N/A"}</TableCell>
+                        <TableCell className={CELL} title={product.subcategory?.name || undefined}>{product.subcategory?.name || "N/A"}</TableCell>
+                        <TableCell className={CELL} title={product.brand?.name || undefined}>{product.brand?.name || "N/A"}</TableCell>
+                        <TableCell className={CELL}>{renderCellValue(product, "purchasePrice")}</TableCell>
+                        <TableCell className={CELL}>{renderCellValue(product, "retailPrice")}</TableCell>
+                        <TableCell className={CELL}>{renderCellValue(product, "wholesalePrice")}</TableCell>
+                        <TableCell className={CELL}>
                           <div className="flex justify-center">
                             <StatusPill isActive={product.isActive} />
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-theme-sm">
-                          <div className="flex items-center gap-2 justify-center">
+                        <TableCell className="px-2 py-3 text-theme-sm">
+                          <div className="flex flex-nowrap items-center gap-2 justify-center">
                             {/* View Action */}
                             <Tooltip text="View Product">
                               <Link to={`/product-view/${product.slug}`}>
@@ -555,7 +594,7 @@ export default function ProductTable({
                             )}
                           </div>
                         </TableCell>
-                      </TableRow>
+                      </tr>
                     );
                   })}
                   {paddingBottom > 0 && (

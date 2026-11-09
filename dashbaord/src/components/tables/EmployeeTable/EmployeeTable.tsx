@@ -105,7 +105,12 @@ const Tooltip = ({
   );
 };
 
-const gridTemplateColumns = "150px 72px 1fr 1fr 1fr 1fr 120px 200px";
+// Header and rows share this template. minmax(0, 1fr) keeps the flexible
+// columns the same width whatever the content: a plain 1fr grows to fit a long
+// name, and as rows swap in while scrolling they drifted out of line with the
+// headings. Actions is wide enough for all four buttons.
+const gridTemplateColumns =
+  "150px 72px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 120px 224px";
 const COLUMNS = ["Serial ID", "Photo", "Name", "Designation", "Contact", "Joining Date", "Status", "Actions"];
 
 function getImageUrl(image: Employee["image"]): string {
@@ -281,9 +286,10 @@ export default function EmployeeTable({
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className="px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
+              title={col}
+              className="min-w-0 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center justify-center"
             >
-              {col}
+              <span className="min-w-0 truncate">{col}</span>
             </div>
           ))}
         </div>
@@ -324,16 +330,16 @@ export default function EmployeeTable({
                     }}
                   >
                     {/* Employee ID */}
-                    <div className="px-4 flex items-center justify-center">
+                    <div className="min-w-0 px-4 flex items-center justify-center">
                       {emp.employeeId ? (
-                        <span className="rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{emp.employeeId}</span>
+                        <span title={emp.employeeId} className="min-w-0 max-w-full truncate rounded-md bg-accent-50 px-2 py-0.5 font-mono text-xs font-semibold text-accent-700 dark:bg-accent-500/15 dark:text-accent-400">{emp.employeeId}</span>
                       ) : (
                         <span className="font-medium text-gray-500 dark:text-gray-400">#{virtualRow.index + 1}</span>
                       )}
                     </div>
 
                     {/* Photo */}
-                    <div className="px-2 flex items-center justify-center">
+                    <div className="min-w-0 px-2 flex items-center justify-center">
                       {photoUrl ? (
                         <img
                           src={photoUrl}
@@ -348,15 +354,15 @@ export default function EmployeeTable({
                     </div>
 
                     {/* Name */}
-                    <div className="px-4 flex items-center justify-center">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate text-center">
+                    <div className="min-w-0 px-4 flex items-center justify-center" title={emp.fullName}>
+                      <p className="min-w-0 text-sm font-semibold text-gray-800 dark:text-gray-100 truncate text-center">
                         {emp.fullName}
                       </p>
                     </div>
 
                     {/* Designation */}
-                    <div className="px-4 flex items-center justify-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                    <div className="min-w-0 px-4 flex items-center justify-center" title={emp.designation?.name || undefined}>
+                      <span className="min-w-0 text-sm text-gray-600 dark:text-gray-300 truncate">
                         {emp.designation?.name || (
                           <span className="text-gray-300 dark:text-gray-600">—</span>
                         )}
@@ -364,18 +370,18 @@ export default function EmployeeTable({
                     </div>
 
                     {/* Contact */}
-                    <div className="px-4 flex flex-col items-center justify-center min-w-0">
-                      <p className="text-sm text-gray-700 dark:text-gray-200 font-mono truncate text-center">
+                    <div className="px-4 flex flex-col items-center justify-center min-w-0" title={[emp.mobile, emp.email].filter(Boolean).join(" · ") || undefined}>
+                      <p className="max-w-full text-sm text-gray-700 dark:text-gray-200 font-mono truncate text-center">
                         {emp.mobile || <span className="text-gray-300 dark:text-gray-600">—</span>}
                       </p>
-                      <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate text-center">
+                      <p className="max-w-full text-[11px] text-gray-400 dark:text-gray-500 truncate text-center">
                         {emp.email || ""}
                       </p>
                     </div>
 
                     {/* Joining date */}
-                    <div className="px-4 flex items-center justify-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                    <div className="min-w-0 px-4 flex items-center justify-center">
+                      <span className="min-w-0 truncate text-sm text-gray-600 dark:text-gray-300">
                         {emp.joiningDate
                           ? new Date(emp.joiningDate).toLocaleDateString("en-GB")
                           : <span className="text-gray-300 dark:text-gray-600">—</span>}
@@ -383,12 +389,12 @@ export default function EmployeeTable({
                     </div>
 
                     {/* Status */}
-                    <div className="px-4 flex items-center justify-center">
+                    <div className="min-w-0 px-4 flex items-center justify-center">
                       <StatusPill isActive={emp.isActive !== false} />
                     </div>
 
                     {/* Actions: View → Edit → Delete */}
-                    <div className="px-4 flex items-center justify-center gap-2">
+                    <div className="min-w-0 px-4 flex flex-nowrap items-center justify-center gap-2">
                       <Tooltip text="View">
                         <button
                           type="button"
