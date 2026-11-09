@@ -16,7 +16,6 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import { initSocket } from "../../../socket/socket";
 import { showApiError, getApiErrorMessage } from "../../../utils/apiError";
 import MobileCardList from "../../common/MobileCardList";
-import Tooltip from "../../common/Tooltip";
 import OrdersEmptyState from "./OrdersEmptyState";
 import { OptionsMenu, OptionsMenuItem, OptionsMenuSeparator } from "../../common/OptionsMenu";
 import FraudCheckModal from "./FraudCheckModal";
@@ -62,7 +61,7 @@ const COLUMN_WIDTHS: Record<(typeof COLUMNS)[number], number | undefined> = {
   Payment: 160,
   Source: 100,
   Status: 150,
-  Actions: 170,
+  Actions: 130,
 };
 const CELL = "px-4 py-3.5 align-middle overflow-hidden";
 const HEAD = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
@@ -144,16 +143,6 @@ const Actions = ({ order, canDelete, onDelete, onSticker, onStatus, onFraud }: {
   const navigate = useNavigate();
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Tooltip text="View details">
-        <button
-          type="button"
-          aria-label={`View order ${order.invoiceId ?? ""}`.trim()}
-          onClick={() => navigate(`/orderdetails/${order._id}`)}
-          className="flex size-8 items-center justify-center rounded border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-accent-50 hover:text-accent-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-accent-500/10"
-        >
-          <FaEye className="size-3.5" />
-        </button>
-      </Tooltip>
       <OptionsMenu label={order.invoiceId ? `Actions for order ${order.invoiceId}` : "Actions"}>
         {(run) => (
           <>

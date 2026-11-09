@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { FaChevronDown } from "react-icons/fa";
 
 const MENU_WIDTH = 200;
@@ -88,7 +89,8 @@ export function OptionsMenu({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!ref.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
     };
     const close = () => setOpen(false);
     document.addEventListener("mousedown", handler);
@@ -135,7 +137,9 @@ export function OptionsMenu({
         <FaChevronDown className={`size-2.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open && (
+      {/* Portalled to <body> so no sticky cell or stacking context can paint over
+          it; z-index sits above the sticky app header */}
+      {open && createPortal(
         <div
           ref={menuRef}
           id={menuId}
@@ -143,10 +147,11 @@ export function OptionsMenu({
           aria-orientation="vertical"
           onKeyDown={handleMenuKeyDown}
           style={{ top: pos.top, left: pos.left, width: MENU_WIDTH }}
-          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden p-1"
+          className="fixed z-[100000] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden p-1"
         >
           {children(run)}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
