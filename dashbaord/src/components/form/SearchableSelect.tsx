@@ -41,9 +41,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   const selected = options.find((o) => o.value === value);
 
-  const filtered = options.filter((o) =>
-    (o.label ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  // A server-searched list is already the matches, and the server also matches
+  // what the label does not show (a barcode or SKU), so it is not filtered again
+  const filtered = onSearchChange
+    ? options
+    : options.filter((o) =>
+        (o.label ?? "").toLowerCase().includes(search.toLowerCase())
+      );
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
