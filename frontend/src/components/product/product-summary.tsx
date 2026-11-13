@@ -3,6 +3,7 @@ import { Stars } from "@/components/ui/stars";
 import type { ProductDetail } from "@/lib/catalog/types";
 import { ProductPurchase } from "./product-purchase";
 import { ShareButton } from "./share-button";
+import { SizeChartButton } from "./size-chart";
 
 export function ProductSummary({
   product,
@@ -13,6 +14,11 @@ export function ProductSummary({
   variantId: string;
   onVariantChange: (id: string) => void;
 }) {
+  // The picked option's chart; a product without variants uses its own
+  const variant = product.variants.find((v) => v.id === variantId);
+  const chartId = variant ? variant.sizeChartId : product.sizeChartId;
+  const chart = product.sizeCharts.find((c) => c.id === chartId);
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -21,6 +27,7 @@ export function ProductSummary({
             {product.brand}
           </p>
           <div className="flex items-center gap-2">
+            {chart ? <SizeChartButton chart={chart} /> : null}
             <WishlistToggle item={product.item} size="sm" className="rounded-full" />
             <ShareButton productName={product.name} />
           </div>
@@ -53,8 +60,6 @@ export function ProductSummary({
         soldOutSizes={product.soldOutSizes}
         productName={product.name}
         item={product.item}
-        sizeCharts={product.sizeCharts}
-        sizeChartId={product.sizeChartId}
         variantId={variantId}
         onVariantChange={onVariantChange}
       />

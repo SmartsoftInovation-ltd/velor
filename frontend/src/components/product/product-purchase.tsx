@@ -4,10 +4,9 @@ import { useState } from "react";
 import { StatusDot } from "@/components/ui/badge";
 import { forVariant } from "@/lib/cart/snapshot";
 import type { ItemSnapshot } from "@/lib/cart/types";
-import type { ProductVariant, SizeChart } from "@/lib/catalog/types";
+import type { ProductVariant } from "@/lib/catalog/types";
 import { BuyActions } from "./buy-actions";
 import { ProductOptions } from "./product-options";
-import { SizeChartButton } from "./size-chart";
 import { VariantPicker } from "./variant-picker";
 
 /**
@@ -26,8 +25,6 @@ export function ProductPurchase({
   soldOutSizes,
   productName,
   item,
-  sizeCharts,
-  sizeChartId,
   variantId,
   onVariantChange,
 }: {
@@ -41,9 +38,6 @@ export function ProductPurchase({
   productName: string;
   /** The product as the cart stores it; narrowed to the picked variant below */
   item: ItemSnapshot;
-  sizeCharts: SizeChart[];
-  /** The product's own chart, for a product without variants */
-  sizeChartId: string | null;
   /** The picked option; ProductShowcase holds it so the gallery follows too */
   variantId: string;
   onVariantChange: (id: string) => void;
@@ -56,8 +50,6 @@ export function ProductPurchase({
   const wasPrice = variant ? variant.compareAtPrice : compareAtPrice;
   const available = variant ? variant.stock : stockCount;
   const cartItem = variant ? forVariant(item, variant) : item;
-  const chartId = variant ? variant.sizeChartId : sizeChartId;
-  const chart = sizeCharts.find((c) => c.id === chartId);
 
   const pickVariant = (id: string) => {
     onVariantChange(id);
@@ -93,8 +85,6 @@ export function ProductPurchase({
           // Colour and size pickers only for a product without variants that has them
           <ProductOptions colors={colors} sizes={sizes} soldOutSizes={soldOutSizes} />
         )}
-
-        {chart ? <SizeChartButton chart={chart} /> : null}
 
         <BuyActions
           qty={qty}

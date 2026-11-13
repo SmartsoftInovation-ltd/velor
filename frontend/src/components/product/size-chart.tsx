@@ -2,9 +2,10 @@
 
 import { useRef } from "react";
 import { CloseIcon } from "@/components/ui/icons";
+import { RulerIcon } from "@/components/ui/icons-filter";
 import type { SizeChart } from "@/lib/catalog/types";
 
-/** "Size chart" link that opens the chart for the picked option in a dialog. */
+/** "Size chart" pill beside wishlist and share; opens the picked option's chart. */
 export function SizeChartButton({ chart }: { chart: SizeChart }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -13,8 +14,9 @@ export function SizeChartButton({ chart }: { chart: SizeChart }) {
       <button
         type="button"
         onClick={() => dialogRef.current?.showModal()}
-        className="text-small font-medium text-text-brand underline underline-offset-4 transition-colors hover:text-brand-700"
+        className="flex shrink-0 items-center gap-1.5 rounded-full border border-border-default bg-bg-surface px-3 py-1.5 text-caption font-medium text-text-secondary shadow-xs transition-colors duration-150 ease-[var(--ease-hover)] hover:border-border-strong hover:text-text-primary"
       >
+        <RulerIcon className="size-4" />
         Size chart
       </button>
 
