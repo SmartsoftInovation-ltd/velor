@@ -21,6 +21,8 @@ const {
   bumpNsVersion,
   buildCacheKey,
 } = require("@/utils/cache.util");
+const fs = require("fs");
+const path = require("path");
 const { imageQueue } = require("@/queues/image.queue");
 
 const NS = "variant";
@@ -79,12 +81,30 @@ exports.createVariant = asynchandeler(async (req, res) => {
     );
   }
 
-  const savedVariants = [];
-  const jobs = [];
-
+  // Validate the whole batch before saving any of it. Saving as we went left
+  // the earlier variants in the database when a later one failed, and the
+  // error response then deleted their uploaded images before they were
+  // queued: those variants stayed "pending" with no image, for good.
+  const validated = [];
   for (let i = 0; i < variants.length; i++) {
-    const v = variants[i];
-    const validatedData = await validateVariant({ ...v, index: i }, allFiles);
+    validated.push(await validateVariant({ ...variants[i], index: i }, allFiles));
+  }
+  for (const field of ["variantName", "sku", "barCode"]) {
+    const seen = new Set();
+    for (const value of validated.map((v) => v[field]).filter(Boolean)) {
+      if (seen.has(value)) {
+        const label = { variantName: "Variant name", sku: "SKU", barCode: "Barcode" }[field];
+        throw new customError(`${label} "${value}" is used twice in this batch`, statusCodes.BAD_REQUEST);
+      }
+      seen.add(value);
+    }
+  }
+
+  const savedVariants = [];
+
+  for (let i = 0; i < validated.length; i++) {
+    const jobs = [];
+    const validatedData = validated[i];
     for (const field of SERVER_COUNTERS) delete validatedData[field];
 
     if (
@@ -196,11 +216,11 @@ exports.createVariant = asynchandeler(async (req, res) => {
       });
     }
 
-    savedVariants.push(newVariant);
-  }
+    // Queue this variant's images now: once queued, the worker owns the files
+    // and a later failure in the batch can no longer delete them
+    if (jobs.length > 0) await imageQueue.addBulk(jobs);
 
-  if (jobs.length > 0) {
-    await imageQueue.addBulk(jobs);
+    savedVariants.push(newVariant);
   }
 
   await bumpNsVersion(NS);
@@ -563,14 +583,14 @@ exports.addVariantImage = asynchandeler(async (req, res) => {
 // @desc delete variant gallery image(s) or thumbnail by publicId
 exports.deleteVariantImage = asynchandeler(async (req, res) => {
   const { slug } = req.params;
-  let { publicId } = req.body;
+  // `publicId`: uploaded images. `index`: gallery positions of images that
+  // never uploaded and so have no publicId to name them by. An empty publicId
+  // used to match every such image at once, and the thumbnail with them.
+  const publicIds = [].concat(req.body.publicId ?? []).filter(Boolean);
+  const indexes = new Set([].concat(req.body.index ?? []).map(Number).filter(Number.isInteger));
 
-  if (!publicId) {
-    throw new customError("publicId is required", statusCodes.BAD_REQUEST);
-  }
-
-  if (!Array.isArray(publicId)) {
-    publicId = [publicId];
+  if (publicIds.length === 0 && indexes.size === 0) {
+    throw new customError("publicId or index is required", statusCodes.BAD_REQUEST);
   }
 
   const variantToUpdate = await variant.findOne({ slug });
@@ -579,43 +599,59 @@ exports.deleteVariantImage = asynchandeler(async (req, res) => {
   }
 
   const toDelete = [];
+  let removedUnuploaded = 0;
 
-  if (publicId.includes(variantToUpdate.thumbnail?.publicId)) {
-    toDelete.push(variantToUpdate.thumbnail.publicId);
+  const thumbId = variantToUpdate.thumbnail?.publicId;
+  if (thumbId && publicIds.includes(thumbId)) {
+    toDelete.push({ publicId: thumbId, cloudName: variantToUpdate.thumbnail.cloudName });
     variantToUpdate.thumbnail = { status: "pending" };
   }
 
-  variantToUpdate.image = variantToUpdate.image.filter((img) => {
-    if (publicId.includes(img.publicId)) {
-      toDelete.push(img.publicId);
+  // The worker writes an upload back by its gallery position, so nothing may
+  // leave the gallery while one is running: it would shift where it lands
+  const stillUploading = (img) =>
+    ["pending", "processing"].includes(img.status) &&
+    img.localPath &&
+    fs.existsSync(path.resolve(img.localPath));
+  if (variantToUpdate.image.some(stillUploading)) {
+    throw new customError(
+      "Images are still uploading. Try again once the upload finishes.",
+      statusCodes.CONFLICT,
+    );
+  }
+
+  variantToUpdate.image = variantToUpdate.image.filter((img, i) => {
+    if (img.publicId && publicIds.includes(img.publicId)) {
+      toDelete.push({ publicId: img.publicId, cloudName: img.cloudName });
+      return false;
+    }
+    if (!img.publicId && indexes.has(i)) {
+      removedUnuploaded += 1;
       return false;
     }
     return true;
   });
 
-  if (toDelete.length === 0) {
-    throw new customError(
-      "No matching images found with provided publicIds",
-      statusCodes.NOT_FOUND,
-    );
+  const deletedCount = toDelete.length + removedUnuploaded;
+  if (deletedCount === 0) {
+    throw new customError("No matching images found", statusCodes.NOT_FOUND);
   }
 
   await variantToUpdate.save();
   await bumpNsVersion(NS);
   await bumpNsVersion("product");
 
-  const jobs = toDelete.map((pid) => ({
-    name: "delete-cloudinary-image",
-    data: { publicId: pid },
-  }));
-
-  await imageQueue.addBulk(jobs);
+  if (toDelete.length > 0) {
+    await imageQueue.addBulk(
+      toDelete.map((data) => ({ name: "delete-cloudinary-image", data })),
+    );
+  }
 
   return apiResponse.sendSuccess(
     res,
     statusCodes.OK,
-    `${toDelete.length} image(s) removal started in background`,
-    { slug, deletedCount: toDelete.length },
+    `${deletedCount} image(s) removal started in background`,
+    { slug, deletedCount },
   );
 });
 

@@ -21,7 +21,9 @@ const OwnerPasswordCard = ({ tenantId }: { tenantId: string }) => {
       setResult({ ...data, notified: notify });
       setPassword("");
       setShow(false);
-      toast.success("Owner password updated");
+      toast.success(
+        notify ? "New password set. Sign-in details sent to the owner." : "New password set for the owner.",
+      );
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -35,6 +37,10 @@ const OwnerPasswordCard = ({ tenantId }: { tenantId: string }) => {
       <form
         onSubmit={(event) => {
           event.preventDefault();
+          if (password.length < NEW_PASSWORD_MIN) {
+            toast.error(`Password must be at least ${NEW_PASSWORD_MIN} characters`);
+            return;
+          }
           setResult(null);
           save.mutate();
         }}
@@ -46,11 +52,9 @@ const OwnerPasswordCard = ({ tenantId }: { tenantId: string }) => {
               id="owner-new-password"
               type={show ? "text" : "password"}
               autoComplete="new-password"
-              minLength={NEW_PASSWORD_MIN}
               className={`${inputClass} pr-11`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
             />
             <button
               type="button"
@@ -73,7 +77,7 @@ const OwnerPasswordCard = ({ tenantId }: { tenantId: string }) => {
         </label>
         {result?.notified && <CredentialsNoticeLine notice={result.notification} owner={result.owner} />}
         <div className="flex justify-end">
-          <button type="submit" disabled={password.length < NEW_PASSWORD_MIN || save.isPending} className={primaryButtonClass}>
+          <button type="submit" disabled={!password || save.isPending} className={primaryButtonClass}>
             {save.isPending ? "Saving…" : "Set owner password"}
           </button>
         </div>

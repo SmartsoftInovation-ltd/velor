@@ -340,6 +340,23 @@ describe("product and variant routes", () => {
       expect(await inTenant(() => Variant.countDocuments())).toBe(0);
     });
 
+    it("a batch with one bad variant saves none of them", async () => {
+      const res = await as()
+        .post("/variant")
+        .send({ variants: [variantPayload(), variantPayload({ variantName: "Polo Red L", sku: "ABC", barCode: "777002" })] })
+        .expect(400);
+      expect(res.body.message).toBeDefined();
+      expect(await inTenant(() => Variant.countDocuments())).toBe(0);
+    });
+
+    it("400 for a SKU, barcode or name used twice in one batch", async () => {
+      const second = { variantName: "Polo Red L", sku: "555002", barCode: "777002", size: "L" };
+      for (const clash of [{ sku: "555001" }, { barCode: "777001" }, { variantName: variantPayload().variantName }]) {
+        await as().post("/variant").send({ variants: [variantPayload(), variantPayload({ ...second, ...clash })] }).expect(400);
+      }
+      expect(await inTenant(() => Variant.countDocuments())).toBe(0);
+    });
+
     it("400 for a duplicate SKU or barcode", async () => {
       await as().post("/variant").send({ variants: [variantPayload()] }).expect(201);
       await as().post("/variant").send({ variants: [variantPayload({ variantName: "Other", barCode: "777009" })] }).expect(400);
@@ -361,6 +378,52 @@ describe("product and variant routes", () => {
       await as().post("/variant").send({ variants: [variantPayload({ posSold: 40, totalSales: 99, salesReturnStock: 5 })] }).expect(201);
       const v = await inTenant(() => Variant.findOne({ variantName: "Polo Red M" }).lean());
       expect(v).toMatchObject({ posSold: 0, totalSales: 0, salesReturnStock: 0 });
+    });
+
+    it("DELETE /deletevariantimage removes one image that never uploaded, and nothing while an upload runs", async () => {
+      const fs = require("fs");
+      const path = require("path");
+      const created = (await as().post("/variant").send({ variants: [variantPayload()] }).expect(201)).body.data[0];
+      const uploading = path.join("public", "temp", `still-uploading-${Date.now()}.png`);
+      fs.mkdirSync(path.dirname(uploading), { recursive: true });
+      fs.writeFileSync(uploading, PNG);
+      try {
+        await inTenant(() =>
+          Variant.updateOne({ _id: created._id }, {
+            $set: {
+              thumbnail: { url: "t", publicId: "thumb", status: "uploaded" },
+              image: [
+                { url: "u1", publicId: "p1", status: "uploaded" },
+                { status: "pending", localPath: "public/temp/gone-1.png" },
+                { status: "pending", localPath: "public/temp/gone-2.png" },
+                { status: "pending", localPath: uploading },
+              ],
+            },
+          }),
+        );
+        const images = async () => (await inTenant(() => Variant.findById(created._id).lean())).image;
+        const del = (body) => as().delete(`/deletevariantimage/${created.slug}`).send(body);
+
+        // An empty publicId names nothing (it used to match every unuploaded image)
+        await del({ publicId: [""] }).expect(400);
+
+        // While the worker can still upload one, nothing leaves the gallery:
+        // it saves by position, and a removal would shift where it lands
+        await del({ index: [1] }).expect(409);
+        await del({ publicId: ["p1"] }).expect(409);
+        expect(await images()).toHaveLength(4);
+        fs.rmSync(uploading, { force: true });
+
+        await del({ index: [1] }).expect(200);
+        expect((await images()).map((img) => img.localPath || img.publicId)).toEqual(["p1", "public/temp/gone-2.png", uploading]);
+
+        await del({ publicId: ["p1"] }).expect(200);
+        const variantAfter = await inTenant(() => Variant.findById(created._id).lean());
+        expect(variantAfter.image).toHaveLength(2);
+        expect(variantAfter.thumbnail.publicId).toBe("thumb");
+      } finally {
+        fs.rmSync(uploading, { force: true });
+      }
     });
 
     it("lists, searches, reads by slug, deactivates/activates and deletes (unlinking from the product)", async () => {

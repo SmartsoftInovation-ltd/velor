@@ -13,7 +13,7 @@ const billing = joi.object({
 
 // Owner account created with the store. The operator sets the first password;
 // the owner may keep it or change it later.
-const password = joi.string().min(8).max(128);
+const password = joi.string().min(6).max(128);
 
 const owner = joi.object({
   name: joi.string().trim().min(2).max(100).required(),

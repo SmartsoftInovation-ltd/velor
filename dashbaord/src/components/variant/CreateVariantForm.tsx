@@ -209,14 +209,17 @@ const DropZone = ({ onDrop, multiple = false, preview, onRemove, label, height =
   );
 };
 
-const GalleryDropZone = ({ onDrop, galleryCount }: any) => {
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: true, accept: { "image/*": [] }, maxSize: 5 * 1024 * 1024 });
+// How long the gallery stays locked waiting for the image worker
+const UPLOAD_WAIT_MS = 2 * 60 * 1000;
+
+const GalleryDropZone = ({ onDrop, galleryCount, disabled = false }: any) => {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, disabled, multiple: true, accept: { "image/*": [] }, maxSize: 5 * 1024 * 1024 });
   return (
-    <div {...getRootProps()} className={`border-2 border-dashed rounded-2xl py-5 px-4 text-center cursor-pointer transition-all duration-300 ${isDragActive ? "border-accent-500 bg-accent-50" : "border-gray-200 dark:border-gray-700 hover:border-accent-400 bg-gray-50/50 dark:bg-gray-800/30"}`}>
+    <div {...getRootProps()} aria-disabled={disabled} className={`border-2 border-dashed rounded-2xl py-5 px-4 text-center transition-all duration-300 ${disabled ? "cursor-not-allowed opacity-60 border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30" : isDragActive ? "cursor-pointer border-accent-500 bg-accent-50" : "cursor-pointer border-gray-200 dark:border-gray-700 hover:border-accent-400 bg-gray-50/50 dark:bg-gray-800/30"}`}>
       <input {...getInputProps()} />
       <FaCloudUploadAlt className="mx-auto text-3xl text-gray-300 dark:text-gray-600 mb-2" />
-      <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Add Gallery Images</p>
-      <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">{galleryCount}/10 Uploaded</p>
+      <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{disabled ? "Uploading images…" : "Add Gallery Images"}</p>
+      <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">{disabled ? "Wait for the upload to finish" : `${galleryCount}/10 Uploaded`}</p>
     </div>
   );
 };
@@ -247,11 +250,13 @@ const CreateVariantForm = ({
     return actualData?.initialStock ?? actualData?.stockVariant ?? 0;
   });
 
-  const [existingGallery, setExistingGallery] = useState<{ url: string; publicId: string }[]>(() => {
+  const [existingGallery, setExistingGallery] = useState<{ url: string; publicId: string; status?: string }[]>(() => {
     const actualData = (initialData as any)?.variant || initialData;
     const initialImages = actualData?.image
       ? (Array.isArray(actualData.image)
-          ? actualData.image.filter((img: any) => img && typeof img === "object" && img.url)
+          // Keep every entry, uploaded or not: deleting one that never uploaded
+          // goes by its position, which must match the server's
+          ? actualData.image.map((img: any) => (img && typeof img === "object" ? img : { url: "", publicId: "" }))
           : [])
       : [];
     return initialImages;
@@ -260,11 +265,18 @@ const CreateVariantForm = ({
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isDeletingImages, setIsDeletingImages] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  // Gallery positions the image worker is still uploading. The worker saves
+  // each upload by position, so nothing in the gallery may be added or removed
+  // until these are done (removing one would shift where an upload lands).
+  const [uploadingPositions, setUploadingPositions] = useState<number[]>([]);
+  const uploadStartedAt = useRef(0);
+  const galleryBusy = isUploadingImages || uploadingPositions.length > 0;
 
   const [gallery, setGallery] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
 
   const onGalleryDrop = (acceptedFiles: File[]) => {
+    if (galleryBusy) return;
     if (gallery.length + existingGallery.length + acceptedFiles.length > 10) {
       toast.error("Maximum 10 images allowed per variant");
       return;
@@ -278,7 +290,12 @@ const CreateVariantForm = ({
     setGalleryPreviews(p => p.filter((_, idx) => idx !== i));
   };
 
+  // An image that never uploaded has no publicId, and every such image shares
+  // the empty one: selecting one selected them all. Those go by position.
+  const galleryKey = (img: { publicId?: string }, i: number) => img.publicId || `idx:${i}`;
+
   const toggleImageSelection = (publicId: string) => {
+    if (galleryBusy) return;
     setSelectedImages(prev => 
       prev.includes(publicId) ? prev.filter(id => id !== publicId) : [...prev, publicId]
     );
@@ -291,7 +308,10 @@ const CreateVariantForm = ({
     setIsDeletingImages(true);
     try {
       await axiosSecure.delete(`/deletevariantimage/${slugVal}`, {
-        data: { publicId: selectedImages }
+        data: {
+          publicId: selectedImages.filter((key) => !key.startsWith("idx:")),
+          index: selectedImages.filter((key) => key.startsWith("idx:")).map((key) => Number(key.slice(4))),
+        }
       });
       toast.success("Images deleted successfully!");
       setSelectedImages([]);
@@ -314,6 +334,8 @@ const CreateVariantForm = ({
     const slugVal = actualData?.slug || (initialData as any)?.slug;
     if (!slugVal || gallery.length === 0) return;
     setIsUploadingImages(true);
+    setSelectedImages([]);
+    const before = existingGallery.length;
     const data = new FormData();
     gallery.forEach(file => data.append("image", file));
 
@@ -321,14 +343,18 @@ const CreateVariantForm = ({
       await axiosSecure.post(`/addvariantimage/${slugVal}`, data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      toast.success("Images added successfully!");
       setGallery([]);
       setGalleryPreviews([]);
       // Refetch variant data to sync UI
       const res = await axiosSecure.get(`/variant/${slugVal}`);
       const v = res?.data?.data?.variant || res?.data?.data;
       if (v) {
-        setExistingGallery(v.image || []);
+        const list = v.image || [];
+        setExistingGallery(list);
+        const added = list.map((_: unknown, i: number) => i).filter((i: number) => i >= before && !list[i]?.url);
+        uploadStartedAt.current = Date.now();
+        setUploadingPositions(added);
+        if (added.length === 0) toast.success("Images uploaded");
       }
     } catch (error) {
       showApiError(error, "Failed to add images.");
@@ -337,6 +363,42 @@ const CreateVariantForm = ({
       setIsUploadingImages(false);
     }
   };
+
+  // Poll the variant until the worker has uploaded every new image (or gives up)
+  useEffect(() => {
+    if (uploadingPositions.length === 0) return;
+    const source = initialData as { slug?: string; variant?: { slug?: string } } | undefined;
+    const slugVal = source?.variant?.slug || source?.slug;
+    if (!slugVal) return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const res = await axiosSecure.get(`/variant/${slugVal}`);
+        const v = res?.data?.data?.variant || res?.data?.data;
+        if (cancelled || !v) return;
+        const list = v.image || [];
+        setExistingGallery(list);
+        const pending = uploadingPositions.filter((i) => list[i] && !list[i].url && list[i].status !== "failed");
+        const failed = uploadingPositions.some((i) => list[i]?.status === "failed");
+        if (pending.length === 0) {
+          setUploadingPositions([]);
+          if (failed) toast.error("Some images failed to upload. Remove them and try again.");
+          else toast.success("Images uploaded");
+        } else if (Date.now() - uploadStartedAt.current > UPLOAD_WAIT_MS) {
+          setUploadingPositions([]);
+          toast.error("Upload is taking too long. Refresh the page to check again.");
+        } else if (pending.length !== uploadingPositions.length) {
+          setUploadingPositions(pending);
+        }
+      } catch {
+        // Keep polling; a passing network error should not unlock the gallery
+      }
+    }, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [uploadingPositions, initialData]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -1569,7 +1631,7 @@ const CreateVariantForm = ({
                 <div>
                   <div className="flex justify-between items-center w-full mb-3">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Gallery Control</span>
-                    {selectedImages.length > 0 && (
+                    {selectedImages.length > 0 && !galleryBusy && (
                       <Button 
                         size="sm" 
                           className="!bg-error-500 hover:!bg-error-600 !text-white text-[10px] py-1 px-3 rounded-lg flex items-center gap-1.5 shadow-lg active:scale-95"
@@ -1582,41 +1644,56 @@ const CreateVariantForm = ({
                     )}
                   </div>
                   
-                  <GalleryDropZone onDrop={onGalleryDrop} galleryCount={gallery.length + existingGallery.length} />
+                  <GalleryDropZone onDrop={onGalleryDrop} disabled={galleryBusy} galleryCount={gallery.length + existingGallery.length} />
                   
                   <div className="grid grid-cols-3 gap-2 mt-4">
                     {existingGallery.map((img, i) => (
                       <div 
                         key={`exist-${i}`} 
                         className={`relative aspect-square rounded-xl overflow-hidden border group shadow-sm transition-all cursor-zoom-in ${
-                          selectedImages.includes(img.publicId) ? "ring-2 ring-red-500 border-red-500" : "border-gray-200 hover:border-accent-400 dark:border-gray-800"
+                          selectedImages.includes(galleryKey(img, i)) ? "ring-2 ring-red-500 border-red-500" : "border-gray-200 hover:border-accent-400 dark:border-gray-800"
                         }`}
                       >
-                        <img src={img.url} className={`w-full h-full object-cover transition-all ${selectedImages.includes(img.publicId) ? "opacity-40" : "opacity-80 group-hover:opacity-100 group-hover:scale-110"}`} alt="existing" />
+                        {uploadingPositions.includes(i) ? (
+                          <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-accent-50 text-[10px] font-semibold uppercase tracking-tight text-accent-600 dark:bg-accent-500/15 dark:text-accent-400">
+                            <span className="size-4 animate-spin rounded-full border-2 border-accent-500/30 border-t-accent-500" />
+                            Uploading…
+                          </div>
+                        ) : img.url ? (
+                          <img src={img.url} className={`w-full h-full object-cover transition-all ${selectedImages.includes(galleryKey(img, i)) ? "opacity-40" : "opacity-80 group-hover:opacity-100 group-hover:scale-110"}`} alt="existing" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-gray-100 px-2 text-center text-[10px] font-semibold uppercase tracking-tight text-gray-500 dark:bg-white/5 dark:text-gray-400">
+                            Not uploaded
+                          </div>
+                        )}
                         
-                        {/* Multi-select Checkbox */}
+                        {/* Multi-select Checkbox; locked while any upload is running */}
+                        {!galleryBusy && (
                         <div className="absolute top-1.5 right-1.5 z-10">
                           <input 
                             type="checkbox" 
-                            checked={selectedImages.includes(img.publicId)}
-                            onChange={(e) => { e.stopPropagation(); toggleImageSelection(img.publicId); }}
+                            checked={selectedImages.includes(galleryKey(img, i))}
+                            onChange={(e) => { e.stopPropagation(); toggleImageSelection(galleryKey(img, i)); }}
                             className="size-4 rounded-md border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer accent-red-500"
                           />
                         </div>
+                        )}
 
+                        {!galleryBusy && (
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <button 
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); toggleImageSelection(img.publicId); }} 
+                            onClick={(e) => { e.stopPropagation(); toggleImageSelection(galleryKey(img, i)); }} 
                             className={`p-2 rounded-full shadow-lg transform scale-75 group-hover:scale-100 transition-all duration-300 duration-300 ${
-                              selectedImages.includes(img.publicId) ? "bg-red-500 text-white" : "bg-white text-gray-700 hover:bg-red-500 hover:text-white"
+                              selectedImages.includes(galleryKey(img, i)) ? "bg-red-500 text-white" : "bg-white text-gray-700 hover:bg-red-500 hover:text-white"
                             }`}
                           >
-                            {selectedImages.includes(img.publicId) ? <FaTimesCircle className="size-3" /> : <FaTrashAlt className="size-3" />}
+                            {selectedImages.includes(galleryKey(img, i)) ? <FaTimesCircle className="size-3" /> : <FaTrashAlt className="size-3" />}
                           </button>
                         </div>
+                        )}
                         
-                        {!selectedImages.includes(img.publicId) && (
+                        {img.url && !selectedImages.includes(galleryKey(img, i)) && (
                           <div className="absolute bottom-1 left-1 bg-accent-500/90 text-[8px] text-white px-1.5 py-0.5 rounded-md font-bold uppercase backdrop-blur-sm">Stored</div>
                         )}
                       </div>
@@ -1627,13 +1704,26 @@ const CreateVariantForm = ({
                         className="relative aspect-square rounded-xl overflow-hidden border border-emerald-200 group shadow-sm bg-emerald-50/10 cursor-zoom-in"
                       >
                         <img src={u} className="w-full h-full object-cover transition-all group-hover:scale-110" alt="new" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button type="button" onClick={(e) => { e.stopPropagation(); removeNewGalleryImage(i); }} className="bg-red-500 text-white p-2 rounded-full shadow-lg transform scale-75 group-hover:scale-100 transition-all duration-300"><FaTrashAlt className="size-3" /></button>
-                        </div>
+                        {isUploadingImages ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/50 text-[10px] font-semibold uppercase tracking-tight text-white">
+                            <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            Uploading…
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); removeNewGalleryImage(i); }} className="bg-red-500 text-white p-2 rounded-full shadow-lg transform scale-75 group-hover:scale-100 transition-all duration-300"><FaTrashAlt className="size-3" /></button>
+                          </div>
+                        )}
                         <div className="absolute top-1 left-1 bg-emerald-500 text-[8px] text-white px-1.5 py-0.5 rounded-full font-bold uppercase shadow-sm">New</div>
                       </div>
                     ))}
                   </div>
+
+                  {uploadingPositions.length > 0 && (
+                    <p className="mt-3 text-[11px] font-semibold text-accent-600 dark:text-accent-400">
+                      Uploading {uploadingPositions.length} image(s). You can add or remove images when it finishes.
+                    </p>
+                  )}
 
                   {gallery.length > 0 && (
                     <div className="mt-4 space-y-2">

@@ -11,4 +11,5 @@ export const loginIdentifier = (value: string): { email: string } | { phone: str
 };
 
 // Minimum length for any new password chosen in the dashboard
-export const NEW_PASSWORD_MIN = 8;
+export const NEW_PASSWORD_MIN = 6;
+
