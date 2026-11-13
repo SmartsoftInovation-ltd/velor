@@ -37,6 +37,8 @@ function buildDetail(p: ApiProduct): ProductDetail {
     }),
     maxPrice: p.maxPrice,
     variants,
+    sizeCharts: (p.sizeCharts ?? []).map(({ _id, ...chart }) => ({ id: _id, ...chart })),
+    sizeChartId: p.sizeChartId ?? null,
     categoryName: p.category?.name ?? "",
   };
 }

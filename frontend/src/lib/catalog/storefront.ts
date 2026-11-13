@@ -2,6 +2,7 @@ import { cache } from "react";
 import { apiFetch } from "@/lib/store-api";
 import type { Stock } from "@/lib/product";
 import { buyNowSnapshot, NO_IMAGE, toItemSnapshot, variantLabel } from "./item-snapshot";
+import type { ApiProduct, ApiVariant } from "./api-types";
 import type { CatalogProduct, Category, ColorOption, ProductVariant, Taxonomy } from "./types";
 
 /**
@@ -10,50 +11,7 @@ import type { CatalogProduct, Category, ColorOption, ProductVariant, Taxonomy } 
  * `price` is the retail price checkout charges, `stock` the units sellable now.
  */
 
-type ApiRef = { name: string; slug: string } | null;
-
-export type ApiVariant = {
-  _id: string;
-  slug: string;
-  name: string;
-  sku: string;
-  size: string;
-  color: string;
-  price: number;
-  /** Retail price while a flash sale puts this option on sale, else null */
-  compareAtPrice: number | null;
-  stock: number;
-  image: string;
-};
-
-export type ApiProduct = {
-  _id: string;
-  slug: string;
-  name: string;
-  description: string;
-  brand: ApiRef;
-  category: ApiRef;
-  subcategory: ApiRef;
-  image: string;
-  gallery: string[];
-  price: number;
-  maxPrice: number;
-  /** Retail price struck through on the card while a flash sale runs, else null */
-  compareAtPrice: number | null;
-  stock: number;
-  sizes: string[];
-  colors: string[];
-  variants: ApiVariant[];
-  sku: string;
-  rating: number;
-  sold: number;
-  specifications: string;
-  warrantyInformation: string;
-  shippingInformation: string;
-  createdAt: string;
-  /** Set on a Limited Offer entry that features one variant */
-  variantId?: string | null;
-};
+export type { ApiProduct, ApiSizeChart, ApiVariant } from "./api-types";
 
 export { NO_IMAGE };
 const LOW_STOCK = 5;
@@ -109,6 +67,8 @@ export function toVariant(v: ApiVariant): ProductVariant {
     compareAtPrice: v.compareAtPrice ?? undefined,
     stock: v.stock,
     image: v.image,
+    gallery: v.gallery ?? [],
+    sizeChartId: v.sizeChartId ?? null,
   };
 }
 

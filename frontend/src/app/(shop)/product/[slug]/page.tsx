@@ -2,13 +2,12 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/home/product-card";
-import { ProductGallery } from "@/components/product/product-gallery";
 import {
   DescriptionPanel,
   ReviewsPanel,
   SpecificationPanel,
 } from "@/components/product/product-panels";
-import { ProductSummary } from "@/components/product/product-summary";
+import { ProductShowcase } from "@/components/product/product-showcase";
 import { ProductTabs } from "@/components/product/product-tabs";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
 import {
@@ -93,8 +92,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:gap-12 gallery-right:lg:grid-cols-[1fr_auto]">
-        <ProductGallery images={product.gallery} discountPct={discountPct} />
-        <ProductSummary product={product} initialVariantId={typeof variant === "string" ? variant : undefined} />
+        <ProductShowcase
+          product={product}
+          discountPct={discountPct}
+          initialVariantId={typeof variant === "string" ? variant : undefined}
+        />
       </div>
 
       <div className="mt-12">

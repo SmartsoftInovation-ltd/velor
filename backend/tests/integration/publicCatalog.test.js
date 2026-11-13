@@ -7,6 +7,8 @@ const { invalidateTenantCache } = require("../../src/tenancy/tenantResolver");
 const TenantDomain = require("../../src/models/platform/tenantDomain.model");
 const Product = require("../../src/models/product.model");
 const Category = require("../../src/models/category.model");
+const Variant = require("../../src/models/variant.model");
+const SizeChart = require("../../src/models/sizeChart.model");
 const service = require("../../src/settings/settings.service");
 const { cache } = require("../../src/config/redis.config");
 
@@ -194,6 +196,37 @@ describe("public catalogue for storefront visitors", () => {
       for (const field of ["purchasePrice", "wholesalePrice", "posSold", "salesReturn", "initialStock"]) {
         expect(list[0]).not.toHaveProperty(field);
       }
+    });
+
+    it("gives each variant its own photos and the size chart that applies to it", async () => {
+      const ids = await runForTenant(velor.tenant._id, async () => {
+        const category = await Category.findOne({ slug: "drinks" });
+        const product = await Product.create({ name: "Panjabi", slug: "panjabi", category: category._id, variantType: "multipleVariant" });
+        const photo = (name) => ({ url: `https://img.test/${name}.jpg`, publicId: name, status: "uploaded" });
+        const base = { product: product._id, retailPrice: 900, purchasePrice: 400, stockVariant: 3, color: "Red" };
+        const small = await Variant.create({ ...base, variantName: "Panjabi S", size: "S", sku: "1001", barCode: "2001", thumbnail: photo("s-thumb"), image: [photo("s-1"), photo("s-2")] });
+        const large = await Variant.create({ ...base, variantName: "Panjabi L", size: "L", sku: "1002", barCode: "2002", thumbnail: photo("l-thumb") });
+        await Product.updateOne({ _id: product._id }, { variant: [small._id, large._id] });
+        const table = { columns: [{ key: "chest", label: "Chest", unit: "inch" }], rows: [{ label: "S", values: ["38"] }, { label: "L", values: ["42"] }] };
+        const categoryChart = await SizeChart.create({ name: "Drinks chart", applicableLevel: "category", applicableCategories: [category._id], ...table });
+        const variantChart = await SizeChart.create({ name: "Small chart", applicableLevel: "variant", applicableVariants: [small._id], ...table });
+        await SizeChart.create({ name: "Off chart", applicableLevel: "category", applicableCategories: [category._id], isActive: false, ...table });
+        return { small: String(small._id), large: String(large._id), categoryChart: String(categoryChart._id), variantChart: String(variantChart._id) };
+      });
+
+      const res = await request(app.server).get("/api/v1/shop/products/panjabi").set({ "x-tenant-host": "velor.com" }).expect(200);
+      const product = res.body.data.product;
+      const byId = Object.fromEntries(product.variants.map((v) => [v._id, v]));
+
+      expect(byId[ids.small].gallery).toEqual(["https://img.test/s-thumb.jpg", "https://img.test/s-1.jpg", "https://img.test/s-2.jpg"]);
+      expect(byId[ids.large].gallery).toEqual(["https://img.test/l-thumb.jpg"]);
+
+      // The variant's own chart wins; the other falls back to the category's
+      expect(byId[ids.small].sizeChartId).toBe(ids.variantChart);
+      expect(byId[ids.large].sizeChartId).toBe(ids.categoryChart);
+      expect(product.sizeChartId).toBe(ids.categoryChart);
+      expect(product.sizeCharts.map((c) => c._id).sort()).toEqual([ids.categoryChart, ids.variantChart].sort());
+      expect(product.sizeCharts[0]).toMatchObject({ columns: [{ label: "Chest", unit: "inch" }], rows: [{ label: "S", values: ["38"] }, { label: "L", values: ["42"] }] });
     });
 
     it("serves one product by slug and 404s an unknown one", async () => {

@@ -32,6 +32,19 @@ export type ProductVariant = {
   compareAtPrice?: number;
   stock: number;
   image: string;
+  /** The option's own photos; the page shows them when it is picked */
+  gallery?: string[];
+  /** The size chart that applies to this option, from ProductDetail.sizeCharts */
+  sizeChartId?: string | null;
+};
+
+/** A seller's size chart: one row per size, one value per measurement column. */
+export type SizeChart = {
+  id: string;
+  name: string;
+  description: string;
+  columns: { label: string; unit: string }[];
+  rows: { label: string; values: string[] }[];
 };
 
 /**
@@ -50,6 +63,10 @@ export type ProductDetail = CatalogProduct & {
   /** Highest variant price; above `price` when variants are priced differently. */
   maxPrice: number;
   variants: ProductVariant[];
+  /** Every size chart a variant or the product refers to */
+  sizeCharts: SizeChart[];
+  /** The chart for the product as a whole (its category, brand…), if any */
+  sizeChartId: string | null;
   /** For the breadcrumb; `categoryId` is the slug. */
   categoryName: string;
 };

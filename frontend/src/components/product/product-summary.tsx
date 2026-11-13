@@ -6,10 +6,12 @@ import { ShareButton } from "./share-button";
 
 export function ProductSummary({
   product,
-  initialVariantId,
+  variantId,
+  onVariantChange,
 }: {
   product: ProductDetail;
-  initialVariantId?: string;
+  variantId: string;
+  onVariantChange: (id: string) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -51,7 +53,10 @@ export function ProductSummary({
         soldOutSizes={product.soldOutSizes}
         productName={product.name}
         item={product.item}
-        initialVariantId={initialVariantId}
+        sizeCharts={product.sizeCharts}
+        sizeChartId={product.sizeChartId}
+        variantId={variantId}
+        onVariantChange={onVariantChange}
       />
     </div>
   );

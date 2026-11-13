@@ -1,5 +1,6 @@
 const Product = require("../models/product.model");
 const LimitedOffer = require("../models/limitedOffer.model");
+const SizeChart = require("../models/sizeChart.model");
 const { currentPricing } = require("../service/flashSale.service");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
@@ -41,7 +42,7 @@ const url = (image) => image?.url || "";
 const urls = (images) => (images || []).map(url).filter(Boolean);
 // "N/A" is the dashboard's placeholder for "no size" / "no colour"
 const real = (value) => (value && value !== "N/A" ? value : "");
-const ref = (doc) => (doc ? { name: doc.name, slug: doc.slug } : null);
+const ref = (doc) => (doc ? { _id: doc._id, name: doc.name, slug: doc.slug } : null);
 const unique = (values) => [...new Set(values.filter(Boolean))];
 
 const toVariant = (v) => ({
@@ -54,6 +55,8 @@ const toVariant = (v) => ({
   price: v.retailPrice ?? 0,
   stock: v.stockVariant ?? 0,
   image: url(v.thumbnail) || urls(v.image)[0] || "",
+  // The option's own photos, shown when the shopper picks it
+  gallery: unique([url(v.thumbnail), ...urls(v.image)]),
 });
 
 const toStorefront = (p) => {
@@ -162,6 +165,63 @@ exports.products = asynchandeler(async (req, res) => {
   return apiResponse.sendSuccess(res, statusCodes.OK, "Products", { products: withSale(products, priceFor) });
 });
 
+const toChart = (c) => ({
+  _id: c._id,
+  name: c.name,
+  description: c.description || "",
+  videoUrl: c.videoUrl || "",
+  columns: (c.columns || []).map((col) => ({ label: col.label, unit: col.unit === "unitless" ? "" : col.unit })),
+  rows: (c.rows || []).map((row) => ({ label: row.label, values: row.values })),
+});
+
+const has = (list, id) => Boolean(id) && (list || []).some((x) => String(x) === String(id));
+
+/**
+ * The size charts that apply to a product, most specific first: a chart for
+ * the variant, then the product, its subcategory, category and brand. Read per
+ * request rather than cached with the product, so a chart saved in the
+ * dashboard shows at once. Each variant gets `sizeChartId`, and the product
+ * the one its variants fall back to.
+ */
+const withSizeCharts = async (product) => {
+  const variantIds = product.variants.map((v) => v._id);
+  const ids = {
+    product: product._id,
+    subCategory: product.subcategory?._id,
+    category: product.category?._id,
+    brand: product.brand?._id,
+  };
+  const charts = await SizeChart.find({
+    isActive: true,
+    $or: [
+      { applicableLevel: "variant", applicableVariants: { $in: variantIds } },
+      { applicableLevel: "product", applicableProducts: ids.product },
+      ...(ids.subCategory ? [{ applicableLevel: "subCategory", applicableSubCategories: ids.subCategory }] : []),
+      ...(ids.category ? [{ applicableLevel: "category", applicableCategories: ids.category }] : []),
+      ...(ids.brand ? [{ applicableLevel: "brand", applicableBrands: ids.brand }] : []),
+    ],
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const listOf = { product: "applicableProducts", subCategory: "applicableSubCategories", category: "applicableCategories", brand: "applicableBrands" };
+  const productChart = ["product", "subCategory", "category", "brand"]
+    .map((level) => charts.find((c) => c.applicableLevel === level && has(c[listOf[level]], ids[level])))
+    .find(Boolean);
+
+  const used = new Map();
+  const use = (chart) => {
+    if (!chart) return null;
+    used.set(String(chart._id), toChart(chart));
+    return chart._id;
+  };
+  const variants = product.variants.map((v) => ({
+    ...v,
+    sizeChartId: use(charts.find((c) => c.applicableLevel === "variant" && has(c.applicableVariants, v._id)) || productChart),
+  }));
+  return { ...product, variants, sizeChartId: use(productChart), sizeCharts: [...used.values()] };
+};
+
 // GET /shop/products/:slug: one active product with its variants
 exports.product = asynchandeler(async (req, res) => {
   requireStore();
@@ -178,7 +238,7 @@ exports.product = asynchandeler(async (req, res) => {
 
   const { priceFor } = await currentPricing();
   const [priced] = withSale([product], priceFor);
-  return apiResponse.sendSuccess(res, statusCodes.OK, "Product", { product: priced });
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Product", { product: await withSizeCharts(priced) });
 });
 
 // GET /shop/limited-offers: the seller's picks under Website Management →
