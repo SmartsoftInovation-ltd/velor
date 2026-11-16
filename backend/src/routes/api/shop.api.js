@@ -7,6 +7,7 @@ const shopCatalogController = require("../../controller/shopCatalog.controller")
 const shopCartController = require("../../controller/shopCart.controller");
 const shopTrackController = require("../../controller/shopTrack.controller");
 const { guestOrAuth } = require("../../middleware/guestOrAuth");
+const { singleFileUpload } = require("../../middleware/multer.middleware");
 const { trackOrderLimiter, loginLimiter, registerLimiter, couponLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
 
 /**
@@ -38,6 +39,8 @@ _.post("/auth/reset-password", shopResetSubmitLimiter, shopController.resetPassw
 
 _.get("/me", shopperGuard, shopController.me);
 _.patch("/me", shopperGuard, shopController.updateMe);
+_.post("/me/photo", shopperGuard, singleFileUpload("image"), shopController.updatePhoto);
+_.delete("/me/photo", shopperGuard, shopController.removePhoto);
 // Rate-limited like sign-in: the current password can otherwise be guessed here
 _.post("/me/password", loginLimiter, shopperGuard, shopController.changePassword);
 _.get("/orders", shopperGuard, shopController.myOrders);

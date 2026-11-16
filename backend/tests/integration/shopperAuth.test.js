@@ -12,6 +12,7 @@ const Order = require("../../src/models/order.model");
 const Banner = require("../../src/models/banner.model");
 const DiscountBanner = require("../../src/models/discountbanner.model");
 const StoreInformation = require("../../src/models/storeInformation.model");
+const { PNG, tempUploadTracker, enableCloudinary } = require("../helpers/uploads");
 const service = require("../../src/settings/settings.service");
 
 /**
@@ -559,9 +560,35 @@ describe("storefront shopper accounts", () => {
       await login("Newer-Pass2").expect(200);
     });
 
+    it("uploads a profile photo in the background, and removes it", async () => {
+      const uploads = tempUploadTracker();
+      uploads.snapshot();
+      try {
+        await enableCloudinary(velor.tenant);
+        const { accessToken } = (await register(VELOR, SHOPPER).expect(201)).body.data;
+        const photo = () => request(app.server).post("/api/v1/shop/me/photo").set(VELOR).set(bearer(accessToken));
+
+        await photo().expect(400);
+        const res = await photo().attach("image", PNG, "me.png").expect(200);
+        expect(res.body.data.user).toMatchObject({ image: null, imagePending: true });
+
+        const { imageQueue } = require("../../src/queues/image.queue");
+        const jobs = await imageQueue.getJobs(["waiting"]);
+        const user = await runForTenant(velor.tenant._id, () => User.findOne({ email: SHOPPER.email }).lean());
+        expect(jobs.some((j) => j.name === "update-user-image" && String(j.data.documentId) === String(user._id))).toBe(true);
+        await Promise.all(jobs.map((j) => j.remove().catch(() => {})));
+
+        const removed = await request(app.server).delete("/api/v1/shop/me/photo").set(VELOR).set(bearer(accessToken)).expect(200);
+        expect(removed.body.data.user).toMatchObject({ image: null, imagePending: false });
+      } finally {
+        uploads.cleanup();
+      }
+    });
+
     it("needs a signed-in shopper", async () => {
       await request(app.server).patch("/api/v1/shop/me").set(VELOR).send({ name: "X" }).expect(401);
       await request(app.server).post("/api/v1/shop/me/password").set(VELOR).send({}).expect(401);
+      await request(app.server).post("/api/v1/shop/me/photo").set(VELOR).attach("image", PNG, "x.png").expect(401);
     });
   });
 });

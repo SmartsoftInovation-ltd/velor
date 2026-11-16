@@ -10,7 +10,9 @@ import {
   KEEP_COOKIE,
   normalizePhone,
   passwordProblems,
+  removeShopperPhoto,
   updateShopper,
+  uploadShopperPhoto,
 } from "@/lib/shopper-auth";
 import { ApiError, storeHostFrom } from "@/lib/store-api";
 
@@ -72,6 +74,43 @@ export async function updateProfileAction(_prev: ProfileState, form: FormData): 
 
   revalidatePath("/account");
   return { ok: true, values };
+}
+
+export type PhotoState = { ok?: boolean; error?: string };
+
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+// The browser shrinks the photo first (avatar-uploader.tsx); this is the backstop
+const PHOTO_MAX_BYTES = 900 * 1024;
+
+/** Sends a new profile photo, or removes the current one when `remove` is set */
+export async function updatePhotoAction(_prev: PhotoState, form: FormData): Promise<PhotoState> {
+  const remove = form.get("remove") === "1";
+  const photo = form.get("photo");
+  if (!remove) {
+    if (!(photo instanceof Blob) || !photo.size) return { error: "Choose a photo to upload." };
+    if (!PHOTO_TYPES.includes(photo.type)) return { error: "Use a JPG, PNG or WEBP photo." };
+    if (photo.size > PHOTO_MAX_BYTES) return { error: "That photo is too large. Try a smaller one." };
+  }
+
+  const host = storeHostFrom(await headers());
+  if (!host) return { error: NO_SHOP };
+  const who = await signedIn();
+  if (!who) return { error: "Your session has ended. Sign in again to change your photo." };
+
+  try {
+    await callAsShopper(
+      host,
+      who,
+      (as) => (remove ? removeShopperPhoto(host, as) : uploadShopperPhoto(host, as, photo as Blob)),
+      "/account",
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status < 500) return { error: error.message };
+    return { error: "We could not update your photo just now. Please try again." };
+  }
+
+  revalidatePath("/account");
+  return { ok: true };
 }
 
 /**

@@ -13,6 +13,7 @@ const { statusCodes, PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE } = require("../c
 const { getTenantId } = require("../tenancy/context");
 const { SHOPPER, isShopper } = require("../utils/accountType.util");
 const { getSettings, getFeatures } = require("../settings/settings.service");
+const { imageQueue } = require("../queues/image.queue");
 const { RESET_CODE_TTL_SECONDS, findByEmailOrPhone, sendResetCode, checkResetCode } = require("../service/passwordReset.service");
 
 /**
@@ -47,7 +48,11 @@ const shopperSummary = (user) => ({
   name: user.name,
   email: user.email,
   phone: user.phone,
-  image: user.image ?? null,
+  // The photo's URL once the image worker has uploaded it
+  image: user.image?.url || null,
+  // True while a new photo is still on its way to image storage
+  // (an empty image also carries the schema's default status, so a file must be waiting)
+  imagePending: Boolean(user.image?.localPath) && ["pending", "processing"].includes(user.image?.status),
 });
 
 const issueSession = (user) => ({
@@ -440,6 +445,48 @@ exports.changePassword = asynchandeler(async (req, res) => {
   await user.save();
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Password changed", issueSession(user));
+});
+
+const PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * The shopper's profile photo (multipart field "image"). The file goes to the
+ * store's image storage in the background, as staff photos do; until then the
+ * account reports `imagePending` and the storefront shows the initials.
+ */
+exports.updatePhoto = asynchandeler(async (req, res) => {
+  if (!req.file) throw new customError("Choose a photo to upload", statusCodes.BAD_REQUEST);
+  if (req.file.size > PHOTO_MAX_BYTES) {
+    throw new customError("The photo must be 2 MB or smaller", statusCodes.BAD_REQUEST);
+  }
+
+  const user = await User.findById(req.user._id);
+  const oldPublicId = user.image?.publicId || null;
+  const oldCloudName = user.image?.cloudName || null;
+  user.image = { ...(user.image?.toObject?.() ?? {}), status: "pending", localPath: req.file.path, tries: 0, lastError: "" };
+  await user.save();
+
+  await imageQueue.add("update-user-image", {
+    modelName: "user",
+    documentId: user._id,
+    localPath: req.file.path,
+    oldPublicId,
+    oldCloudName,
+  });
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Photo uploading", { user: shopperSummary(user) });
+});
+
+// Removes the photo; the account shows initials again
+exports.removePhoto = asynchandeler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  const publicId = user.image?.publicId;
+  if (publicId) {
+    await imageQueue.add("delete-cloudinary-image", { publicId, cloudName: user.image?.cloudName });
+  }
+  user.image = {};
+  await user.save();
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Photo removed", { user: shopperSummary(user) });
 });
 
 /**

@@ -34,8 +34,15 @@ export default async function AccountPage() {
     <main className="container py-6">
       <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "My account" }]} />
 
+      <p className="mt-4 text-body text-text-secondary">
+        Manage your photo, contact details and password for {store?.name || "this shop"}.
+      </p>
+
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start">
-        <AccountProfile user={user} storeName={store?.name || "this shop"} />
+        {/* Stays in view on desktop while the cards on the right scroll */}
+        <div className="lg:sticky lg:top-28">
+          <AccountProfile user={user} storeName={store?.name || "this shop"} />
+        </div>
 
         <div className="space-y-6">
           <AccountDetails user={user} />

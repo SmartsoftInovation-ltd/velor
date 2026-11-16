@@ -7,7 +7,16 @@ import { ApiError, apiFetch } from "@/lib/store-api";
  * different shops.
  */
 
-export type Shopper = { _id: string; name: string; email?: string; phone?: string; image?: string | null };
+export type Shopper = {
+  _id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  /** The photo's URL, or null when there is none (or it is still uploading) */
+  image?: string | null;
+  /** A new photo is on its way to the store's image storage */
+  imagePending?: boolean;
+};
 
 // The session cookies live on the shop's own domain, so each store keeps its own
 export const SESSION_COOKIE = "shop_session";
@@ -58,6 +67,17 @@ export const updateShopper = async (tenantHost: string, who: Record<string, stri
       body: JSON.stringify(input),
     })
   ).user;
+
+// POST /shop/me/photo — multipart field "image"; stored in the background
+export const uploadShopperPhoto = async (tenantHost: string, who: Record<string, string>, photo: Blob) => {
+  const body = new FormData();
+  body.append("image", photo, "photo.jpg");
+  return (await apiFetch<{ user: Shopper }>(tenantHost, "/shop/me/photo", { method: "POST", headers: who, body })).user;
+};
+
+// DELETE /shop/me/photo
+export const removeShopperPhoto = async (tenantHost: string, who: Record<string, string>) =>
+  (await apiFetch<{ user: Shopper }>(tenantHost, "/shop/me/photo", { method: "DELETE", headers: who })).user;
 
 // POST /shop/me/password — ends every other session and hands this one a fresh pair
 export const changeShopperPassword = (
