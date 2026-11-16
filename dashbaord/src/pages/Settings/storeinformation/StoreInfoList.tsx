@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../../com
 import axiosSecure from "../../../hooks/useAxiosSecure";
 import { usePermission } from "../../../hooks/usePermission";
 import { showApiError } from "../../../utils/apiError";
+import Tooltip from "../../../components/ui/tooltip/Tooltip";
 
 interface StoreInfo {
   _id: string;
@@ -32,21 +33,6 @@ interface PaginationMeta {
 }
 
 const LIMIT = 10;
-
-const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="relative inline-block" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
-      {children}
-      {visible && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2.5 py-1 bg-gray-900 text-white text-[10px] font-bold rounded shadow-lg whitespace-nowrap pointer-events-none" style={{ zIndex: 9999 }}>
-          {text}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900" />
-        </div>
-      )}
-    </div>
-  );
-};
 
 const StoreInfoList = () => {
   const navigate = useNavigate();
@@ -227,8 +213,10 @@ const StoreInfoList = () => {
                               </Tooltip>
                               <Tooltip text="Edit">
                                 <button
+                                  type="button"
                                   onClick={() => navigate(`/update-store-info/${store.slug}`)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-yellow-400 hover:text-yellow-500 bg-white dark:bg-gray-800 transition-colors"
+                                  className="shine flex size-10 items-center justify-center rounded border-none transition-all active:scale-90 bg-warning-50 text-warning-600 hover:bg-warning-100 hover:text-warning-700 dark:bg-warning-500/15 dark:text-warning-400 dark:hover:bg-warning-500/25"
+                                  aria-label="Edit store"
                                 >
                                   <FiEdit2 className="text-base" />
                                 </button>
