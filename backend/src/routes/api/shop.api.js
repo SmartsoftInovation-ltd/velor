@@ -1,6 +1,7 @@
 const express = require("express");
 const shopController = require("../../controller/shop.controller");
 const { shopperGuard } = require("../../middleware/authMiddleware");
+const returnPolicyController = require("../../controller/returnPolicy.controller");
 const shopOrderController = require("../../controller/shopOrder.controller");
 const shopCatalogController = require("../../controller/shopCatalog.controller");
 const shopCartController = require("../../controller/shopCart.controller");
@@ -20,6 +21,7 @@ const _ = express.Router();
 _.get("/store", shopController.store);
 _.get("/banners", shopController.banners);
 _.get("/promo-banner", shopController.promoBanner);
+_.get("/return-policy", returnPolicyController.shopReturnPolicy);
 _.get("/products", shopCatalogController.products);
 _.get("/limited-offers", shopCatalogController.limitedOffers);
 _.get("/flash-sale", shopCatalogController.flashSale);

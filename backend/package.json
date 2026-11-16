@@ -94,7 +94,8 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "sslcommerz-lts": "^1.1.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "xss": "^1.0.17"
   },
   "devDependencies": {
     "@babel/parser": "^7.29.9",

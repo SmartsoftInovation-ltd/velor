@@ -312,6 +312,8 @@ const navItems: NavItem[] = [
         module: PERMISSIONS.SITE_INFORMATION,
         pro: false,
       },
+      // The website's Return Policy page, written in a rich-text editor
+      { name: "Return Policy", path: "/return-policy", module: PERMISSIONS.SITE_INFORMATION, pro: false },
       {
         name: "Create Outlet Info",
         path: "/add-outlet",

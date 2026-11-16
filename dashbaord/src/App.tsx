@@ -380,6 +380,9 @@ const FlashSaleForm = lazy(() => import("./pages/WebsiteManagement/FlashSaleForm
 const AddSiteInfo = lazy(
   () => import("./pages/Settings/siteinformation/AddSiteInfo.tsx"),
 );
+const ReturnPolicy = lazy(
+  () => import("./pages/Settings/returnpolicy/ReturnPolicy.tsx"),
+);
 const SiteInfoList = lazy(
   () => import("./pages/Settings/siteinformation/SiteInfoList.tsx"),
 );
@@ -941,6 +944,7 @@ export default function App() {
 
                 {/* Side Information site info */}
                 <Route path="/add-site-info" element={<ProtectedRoute module="site-information" action="add"><AddSiteInfo /></ProtectedRoute>} />
+                <Route path="/return-policy" element={<ProtectedRoute module="site-information" action="view"><ReturnPolicy /></ProtectedRoute>} />
                 <Route path="/site-info-list" element={<ProtectedRoute module="site-information" action="view"><SiteInfoList /></ProtectedRoute>} />
                 <Route
                   path="/update-site-info/:slug"

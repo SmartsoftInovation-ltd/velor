@@ -4317,6 +4317,33 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  "/platform/tenants/{tenantId}/logo":
+    get:
+      operationId: "get__platform_tenants_tenantId_logo"
+      tags: ["tenant"]
+      security: [{ platformBearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "tenantId", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: "put__platform_tenants_tenantId_logo"
+      tags: ["tenant"]
+      security: [{ platformBearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "tenantId", in: path, required: true, schema: { type: string } }
+      requestBody:
+        content: { multipart/form-data: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/platform/tenants/{tenantId}/owner/password":
     post:
       operationId: "post__platform_tenants_tenantId_owner_password"
@@ -6241,32 +6268,16 @@ paths:
         content: { application/json: { schema: { type: object } } }
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
-        "503": { $ref: "#/components/responses/Error" }
   "/shop/auth/login":
     post:
       operationId: "post__shop_auth_login"
       tags: ["shop"]
       security: []
       x-rate-limit: ["loginLimiter"]
-      parameters:
-        - $ref: "#/components/parameters/Tenant"
-      requestBody:
-        content: { application/json: { schema: { type: object } } }
-      responses:
-        "200": { $ref: "#/components/responses/Success" }
-        "201": { $ref: "#/components/responses/Success" }
-        "400": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-        "429": { $ref: "#/components/responses/Error" }
-  "/shop/auth/register":
-    post:
-      operationId: "post__shop_auth_register"
-      tags: ["shop"]
-      security: []
-      x-rate-limit: ["registerLimiter"]
       parameters:
         - $ref: "#/components/parameters/Tenant"
       requestBody:
@@ -6288,10 +6299,25 @@ paths:
         content: { application/json: { schema: { type: object } } }
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/auth/register":
+    post:
+      operationId: "post__shop_auth_register"
+      tags: ["shop"]
+      security: []
+      x-rate-limit: ["registerLimiter"]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
-        "503": { $ref: "#/components/responses/Error" }
   "/shop/auth/reset-password":
     post:
       operationId: "post__shop_auth_reset_password"
@@ -6304,10 +6330,10 @@ paths:
         content: { application/json: { schema: { type: object } } }
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
-        "503": { $ref: "#/components/responses/Error" }
   "/shop/auth/verify-reset-code":
     post:
       operationId: "post__shop_auth_verify_reset_code"
@@ -6320,10 +6346,10 @@ paths:
         content: { application/json: { schema: { type: object } } }
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
-        "503": { $ref: "#/components/responses/Error" }
   "/shop/banners":
     get:
       operationId: "get__shop_banners"
@@ -6485,6 +6511,17 @@ paths:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/shop/return-policy":
+    get:
+      operationId: "get__shop_return_policy"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/shop/store":
     get:
       operationId: "get__shop_store"
@@ -6558,6 +6595,35 @@ paths:
   "/siteinformation/get-siteinformation":
     get:
       operationId: "get__siteinformation_get_siteinformation"
+      tags: ["siteinformation"]
+      security: [{ staffBearer: [] }]
+      x-permission: "site-information:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/siteinformation/return-policy":
+    put:
+      operationId: "put__siteinformation_return_policy"
+      tags: ["siteinformation"]
+      security: [{ staffBearer: [] }]
+      x-permission: "site-information:edit"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: "get__siteinformation_return_policy"
       tags: ["siteinformation"]
       security: [{ staffBearer: [] }]
       x-permission: "site-information:view"

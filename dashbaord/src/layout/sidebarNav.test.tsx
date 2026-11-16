@@ -86,6 +86,7 @@ describe("sidebar order", () => {
     expect(links("Website Settings")).toEqual([
       "Create Website Info",
       "Website Info List",
+      "Return Policy",
       "Create Outlet Info",
       "Outlet Info List",
       "Create Web Banner",

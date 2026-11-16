@@ -4,6 +4,7 @@ const { singleFileUpload } = require("../../middleware/multer.middleware");
 const { authGuard } = require("../../middleware/authMiddleware");
 const { authorize } = require("../../middleware/checkPermission.middleware");
 const siteInformationController = require("../../controller/siteinformation.controller");
+const returnPolicyController = require("../../controller/returnPolicy.controller");
 
 _.route("/create-siteinformation").post(
   authGuard,
@@ -36,5 +37,10 @@ _.route("/delete-siteinformation/:slug").delete(
   authorize("site-information", "delete"),
   siteInformationController.deleteSiteInformation,
 );
+
+// The return policy shown on the storefront; part of the website's information
+_.route("/return-policy")
+  .get(authGuard, authorize("site-information", "view"), returnPolicyController.getReturnPolicy)
+  .put(authGuard, authorize("site-information", "edit"), returnPolicyController.saveReturnPolicy);
 
 module.exports = _;
