@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/ui/icons";
-import { ChatIcon, MessengerIcon } from "@/components/ui/icons-chat";
-import { PhoneIcon, WhatsAppIcon } from "@/components/ui/icons-footer";
+import { ChatIcon, LinkedInIcon, MessengerIcon, XIcon, YouTubeIcon } from "@/components/ui/icons-chat";
+import { FacebookIcon, InstagramIcon, MapPinIcon, PhoneIcon, WhatsAppIcon } from "@/components/ui/icons-footer";
 import type { ChatChannel } from "@/lib/chat-channels";
 import { cn } from "@/lib/cn";
 
@@ -11,6 +11,12 @@ import { cn } from "@/lib/cn";
 const LOOK = {
   messenger: { Icon: MessengerIcon, tone: "bg-[#0084ff]" },
   whatsapp: { Icon: WhatsAppIcon, tone: "bg-[#25d366]" },
+  facebook: { Icon: FacebookIcon, tone: "bg-[#1877f2]" },
+  instagram: { Icon: InstagramIcon, tone: "bg-[#e4405f]" },
+  youtube: { Icon: YouTubeIcon, tone: "bg-[#ff0000]" },
+  twitter: { Icon: XIcon, tone: "bg-[#000000] ring-1 ring-white/20" },
+  linkedin: { Icon: LinkedInIcon, tone: "bg-[#0a66c2]" },
+  map: { Icon: MapPinIcon, tone: "bg-[#34a853]" },
   call: { Icon: PhoneIcon, tone: "bg-brand-500" },
 } as const;
 
@@ -29,7 +35,13 @@ export function ChatButton({ channels }: { channels: ChatChannel[] }) {
 
   return (
     <div className="fixed right-4 bottom-4 z-40 flex flex-col items-center gap-3 sm:right-6 sm:bottom-6">
-      <ul id="chat-options" inert={!open} className="flex flex-col items-center gap-3">
+      {/* Up to nine options: on a short screen the column scrolls instead of
+          running off the top. The padding leaves room for the hover zoom. */}
+      <ul
+        id="chat-options"
+        inert={!open}
+        className="flex max-h-[calc(100dvh-7rem)] flex-col items-center gap-3 overflow-y-auto p-1 [scrollbar-width:none]"
+      >
         {channels.map(({ id, label, href }, index) => {
           const { Icon, tone } = LOOK[id];
           return (
@@ -65,9 +77,9 @@ export function ChatButton({ channels }: { channels: ChatChannel[] }) {
         aria-expanded={open}
         aria-controls="chat-options"
         aria-label={open ? "Close chat options" : "Chat with us"}
-        className="relative flex size-14 items-center justify-center rounded-full bg-brand-500 text-on-brand shadow-xl transition-transform duration-200 ease-[var(--ease-hover)] hover:scale-105 active:scale-95"
+        className="relative flex size-14 items-center justify-center rounded-full bg-bg-inverse text-text-inverse shadow-xl transition-transform duration-200 ease-[var(--ease-hover)] hover:scale-105 active:scale-95"
       >
-        {!open ? <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-brand-500 opacity-30 motion-reduce:hidden" /> : null}
+        {!open ? <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-bg-inverse opacity-20 motion-reduce:hidden" /> : null}
         <ChatIcon className={cn("absolute size-7 transition-[opacity,transform] duration-300", open ? "scale-50 -rotate-90 opacity-0" : "opacity-100")} />
         <CloseIcon className={cn("absolute size-6 transition-[opacity,transform] duration-300", open ? "opacity-100" : "scale-50 rotate-90 opacity-0")} />
       </button>

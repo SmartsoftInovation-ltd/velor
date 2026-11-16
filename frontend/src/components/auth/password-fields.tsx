@@ -28,7 +28,14 @@ function strengthOf(password: string) {
  * the confirmation, which says as soon as it matches. The server checks the
  * same rules again; this is guidance, not the gate.
  */
-export function PasswordFields({ errors }: { errors?: { password?: string; confirm?: string } }) {
+export function PasswordFields({
+  errors,
+  label = "Password",
+}: {
+  errors?: { password?: string; confirm?: string };
+  /** "New password" when changing one */
+  label?: string;
+}) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const strength = strengthOf(password);
@@ -38,7 +45,7 @@ export function PasswordFields({ errors }: { errors?: { password?: string; confi
     <div className="space-y-3">
       <div>
         <FieldLabel htmlFor="sign-up-password" required>
-          Password
+          {label}
         </FieldLabel>
         <PasswordInput
           id="sign-up-password"

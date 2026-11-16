@@ -24,7 +24,7 @@ export function ProductOptions({
   if (!colors.length && !sizes.length) return null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {colors.length > 0 ? (
         <div className="space-y-2">
           <p className="text-small text-text-secondary">

@@ -2,7 +2,7 @@ import { cache } from "react";
 import { apiFetch } from "@/lib/store-api";
 import type { Stock } from "@/lib/product";
 import { buyNowSnapshot, NO_IMAGE, toItemSnapshot, variantLabel } from "./item-snapshot";
-import type { CatalogProduct, Category, ColorOption, ProductVariant, Taxonomy } from "./types";
+import type { CatalogProduct, Category, ColorOption, ProductVariant, SizeChart, Taxonomy } from "./types";
 
 /**
  * The store's catalogue from the API (GET /shop/products), turned into the
@@ -51,6 +51,8 @@ export type ApiProduct = {
   warrantyInformation: string;
   shippingInformation: string;
   createdAt: string;
+  /** Only on the single-product response */
+  sizeChart?: SizeChart | null;
   /** Set on a Limited Offer entry that features one variant */
   variantId?: string | null;
 };

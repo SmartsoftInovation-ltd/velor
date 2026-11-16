@@ -37,6 +37,7 @@ function buildDetail(p: ApiProduct): ProductDetail {
     }),
     maxPrice: p.maxPrice,
     variants,
+    sizeChart: p.sizeChart ?? null,
     categoryName: p.category?.name ?? "",
   };
 }

@@ -12,33 +12,32 @@ export function ProductSummary({
   initialVariantId?: string;
 }) {
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="space-y-2">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-micro font-medium uppercase tracking-wide text-text-tertiary">
-            {product.brand}
-          </p>
-          <div className="flex items-center gap-2">
+          <h1 className="text-h1 font-bold tracking-tight text-text-primary">{product.name}</h1>
+          <div className="flex shrink-0 items-center gap-2 pt-1">
             <WishlistToggle item={product.item} size="sm" className="rounded-full" />
             <ShareButton productName={product.name} />
           </div>
         </div>
-        <h1 className="text-h1 font-semibold tracking-tight text-text-primary">
-          {product.name}
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {product.rating > 0 ? (
-            <div className="flex items-center gap-2">
-              <Stars rating={product.rating} />
-              <span className="text-small tabular text-text-secondary">{product.rating}</span>
-            </div>
-          ) : null}
-          {product.sku ? (
-            <span className="text-caption text-text-tertiary">
-              SKU <span className="font-mono">{product.sku}</span>
+        {product.brand ? <p className="text-small text-text-tertiary">{product.brand}</p> : null}
+        {product.sku ? (
+          <p className="flex items-center gap-2 text-small text-text-tertiary">
+            SKU
+            <span className="rounded-sm bg-bg-sunken px-1.5 py-0.5 font-mono text-caption text-text-secondary">
+              {product.sku}
             </span>
-          ) : null}
-        </div>
+          </p>
+        ) : null}
+        {product.rating > 0 ? (
+          <div className="flex items-center gap-2">
+            <Stars rating={product.rating} className="size-4" />
+            <span className="text-small tabular text-text-secondary">
+              {product.reviews ? `${product.reviews} Ratings` : product.rating}
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <ProductPurchase
@@ -52,6 +51,7 @@ export function ProductSummary({
         productName={product.name}
         item={product.item}
         initialVariantId={initialVariantId}
+        sizeChart={product.sizeChart}
       />
     </div>
   );

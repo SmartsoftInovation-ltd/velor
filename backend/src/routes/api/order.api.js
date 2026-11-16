@@ -5,6 +5,13 @@ const posOrderController = require("../../controller/posOrder.controller");
 const { authGuard } = require("../../middleware/authMiddleware");
 const { authorize } = require("../../middleware/checkPermission.middleware");
 
+const webOrderNotification = require("../../controller/webOrderNotification.controller");
+
+// The header bell: storefront orders no one has opened yet
+_.route("/web-notifications").get(authGuard, authorize("order", "view"), webOrderNotification.list);
+_.route("/web-notifications/seen-all").patch(authGuard, authorize("order", "view"), webOrderNotification.markAllSeen);
+_.route("/web-notifications/:id/seen").patch(authGuard, authorize("order", "view"), webOrderNotification.markSeen);
+
 _.route("/createorder").post(authGuard, authorize("order", "add"), orderController.createOrder);
 
 // Counter orders taken by staff. Lines come in the request (there is no shopper

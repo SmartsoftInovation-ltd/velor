@@ -7,6 +7,7 @@ const { invalidateTenantCache } = require("../../src/tenancy/tenantResolver");
 const TenantDomain = require("../../src/models/platform/tenantDomain.model");
 const Product = require("../../src/models/product.model");
 const Category = require("../../src/models/category.model");
+const SizeChart = require("../../src/models/sizeChart.model");
 const service = require("../../src/settings/settings.service");
 const { cache } = require("../../src/config/redis.config");
 
@@ -201,6 +202,46 @@ describe("public catalogue for storefront visitors", () => {
       expect(res.body.data.product).toMatchObject({ slug: "cola", price: 500 });
 
       await request(app.server).get("/api/v1/shop/products/nope").set({ "x-tenant-host": "velor.com" }).expect(404);
+    });
+
+    it("sends the most specific active size chart with a product", async () => {
+      const chart = (name, extra) =>
+        runForTenant(velor.tenant._id, () =>
+          SizeChart.create({
+            name,
+            applicableLevel: "category",
+            applicableCategories: [new Product()._id],
+            columns: [{ key: "chest", label: "Chest", unit: "inch" }, { key: "len", label: "Length" }],
+            rows: [{ label: "M", values: ["40", "28"] }],
+            ...extra,
+          }),
+        );
+      const detail = async () =>
+        (await request(app.server).get("/api/v1/shop/products/cola").set({ "x-tenant-host": "velor.com" }).expect(200)).body.data.product;
+
+      expect((await detail()).sizeChart).toBeNull();
+
+      const forCategory = await chart("Drinks chart");
+      const forProduct = await chart("Cola chart", { isActive: false });
+      await runForTenant(velor.tenant._id, async () => {
+        await Category.updateOne({ slug: "drinks" }, { sizeChart: forCategory._id });
+        await Product.updateOne({ slug: "cola" }, { sizeChart: forProduct._id });
+      });
+      // A chart edit bumps its namespace, which the detail cache key carries
+      await runForTenant(velor.tenant._id, () => require("../../src/utils/cache.util").bumpNsVersion("sizechart"));
+
+      // The product's own chart is inactive, so the category's shows
+      expect((await detail()).sizeChart).toEqual({
+        name: "Drinks chart",
+        description: "",
+        columns: [{ label: "Chest", unit: "inch" }, { label: "Length", unit: "" }],
+        rows: [{ label: "M", values: ["40", "28"] }],
+        videoUrl: "",
+      });
+
+      await runForTenant(velor.tenant._id, () => SizeChart.updateOne({ _id: forProduct._id }, { isActive: true }));
+      await runForTenant(velor.tenant._id, () => require("../../src/utils/cache.util").bumpNsVersion("sizechart"));
+      expect((await detail()).sizeChart.name).toBe("Cola chart");
     });
   });
 });

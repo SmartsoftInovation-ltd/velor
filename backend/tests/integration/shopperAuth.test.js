@@ -11,6 +11,7 @@ const User = require("../../src/models/user.model");
 const Order = require("../../src/models/order.model");
 const Banner = require("../../src/models/banner.model");
 const DiscountBanner = require("../../src/models/discountbanner.model");
+const StoreInformation = require("../../src/models/storeInformation.model");
 const service = require("../../src/settings/settings.service");
 
 /**
@@ -90,6 +91,43 @@ describe("storefront shopper accounts", () => {
 
       expect(fromVelor.body.data).toMatchObject({ bannerLayout: "full", cardLayout: "overlay", gridColumns: "5" });
       expect(fromPizza.body.data).toMatchObject({ bannerLayout: "split", cardLayout: "buy", gridColumns: "4" });
+    });
+
+    it("sends the store's contact details and social links, empty until saved", async () => {
+      await runForTenant(velor.tenant._id, () =>
+        StoreInformation.create({
+          storeName: "Velor",
+          adress: "Dhaka",
+          phone: "01700000000",
+          messengerLink: "velor.page",
+          whatsappLink: "8801700000000",
+          facebookLink: "https://facebook.com/velor",
+          instagramLink: "https://instagram.com/velor",
+          youtubeLink: "https://youtube.com/@velor",
+          twitterLink: "velor",
+          linkedinLink: "https://linkedin.com/company/velor",
+          googleMapLink: "https://maps.app.goo.gl/abc",
+        }),
+      );
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+      const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
+
+      expect(fromVelor.body.data).toMatchObject({
+        name: "Velor",
+        address: "Dhaka",
+        phone: "01700000000",
+        messengerLink: "velor.page",
+        whatsappLink: "8801700000000",
+        facebookLink: "https://facebook.com/velor",
+        instagramLink: "https://instagram.com/velor",
+        youtubeLink: "https://youtube.com/@velor",
+        twitterLink: "velor",
+        linkedinLink: "https://linkedin.com/company/velor",
+        googleMapLink: "https://maps.app.goo.gl/abc",
+        email: "",
+      });
+      expect(fromPizza.body.data).toMatchObject({ phone: "", messengerLink: "", facebookLink: "" });
     });
 
     it("accepts the Buy Now product card and sends it to the storefront", async () => {
@@ -477,6 +515,53 @@ describe("storefront shopper accounts", () => {
       await register(VELOR, { ...SHOPPER, name: "Copy" }).expect(409);
       // The same number is a separate account at another store
       await register(PIZZA, { name: "Rahim", phone: "01711000001", password: "Shopper-Pass1" }).expect(201);
+    });
+  });
+
+  describe("the shopper's own account page", () => {
+    const me = (token) => request(app.server).get("/api/v1/shop/me").set(VELOR).set(bearer(token));
+    const update = (token, body) => request(app.server).patch("/api/v1/shop/me").set(VELOR).set(bearer(token)).send(body);
+    const changePassword = (token, body) =>
+      request(app.server).post("/api/v1/shop/me/password").set(VELOR).set(bearer(token)).send(body);
+
+    it("updates name, email and phone, and refuses details another account holds", async () => {
+      const { accessToken } = (await register(VELOR, SHOPPER).expect(201)).body.data;
+      await register(VELOR, { name: "Karim", phone: "01711000009", password: "Shopper-Pass1" }).expect(201);
+
+      const res = await update(accessToken, { name: "Rahim Uddin", email: "RAHIM2@example.com", phone: "01711000002" }).expect(200);
+      expect(res.body.data.user).toMatchObject({ name: "Rahim Uddin", email: "rahim2@example.com", phone: "01711000002" });
+      expect((await me(accessToken).expect(200)).body.data.user.name).toBe("Rahim Uddin");
+
+      await update(accessToken, { name: "Rahim", phone: "01711000009" }).expect(409);
+      await update(accessToken, { name: "Rahim", email: "", phone: "" }).expect(400);
+      await update(accessToken, { name: "R", email: "rahim2@example.com" }).expect(400);
+
+      // Dropping the email keeps the phone as the sign-in
+      await update(accessToken, { name: "Rahim", email: "", phone: "01711000002" }).expect(200);
+      await request(app.server).post("/api/v1/shop/auth/login").set(VELOR).send({ phone: "01711000002", password: SHOPPER.password }).expect(200);
+    });
+
+    it("changes the password only with the current one, and ends other sessions", async () => {
+      const { accessToken: first } = (await register(VELOR, SHOPPER).expect(201)).body.data;
+
+      await changePassword(first, { currentPassword: "wrong-pass", newPassword: "Newer-Pass2" }).expect(400);
+      const res = await changePassword(first, { currentPassword: SHOPPER.password, newPassword: "Newer-Pass2" }).expect(200);
+      const { accessToken: fresh, refreshToken } = res.body.data;
+      expect(refreshToken).toEqual(expect.any(String));
+
+      // The old token is revoked; the one handed back works
+      await me(first).expect(401);
+      await me(fresh).expect(200);
+
+      const login = (password) =>
+        request(app.server).post("/api/v1/shop/auth/login").set(VELOR).send({ email: SHOPPER.email, password });
+      await login(SHOPPER.password).expect(400);
+      await login("Newer-Pass2").expect(200);
+    });
+
+    it("needs a signed-in shopper", async () => {
+      await request(app.server).patch("/api/v1/shop/me").set(VELOR).send({ name: "X" }).expect(401);
+      await request(app.server).post("/api/v1/shop/me/password").set(VELOR).send({}).expect(401);
     });
   });
 });

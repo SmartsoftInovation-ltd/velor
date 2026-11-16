@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/home/product-card";
+import { SectionHeading } from "@/components/home/section-heading";
+import { SparkleIcon } from "@/components/ui/icons-nav";
 import { ProductGallery } from "@/components/product/product-gallery";
 import {
   DescriptionPanel,
@@ -127,9 +129,13 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
       {related.length ? (
         <section className="mt-14">
-          <h2 className="mb-6 text-h2 font-semibold tracking-tight text-text-primary">
-            You may also like
-          </h2>
+          <SectionHeading
+            eyebrow="Handpicked for you"
+            icon={<SparkleIcon />}
+            title="Related Products"
+            description={category ? `More from ${category.name} you might love.` : "More picks you might love."}
+            viewAllHref={category ? `/shop?category=${category.id}` : "/shop"}
+          />
           <ul className="product-grid grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4 lg:gap-6">
             {related.map((item) => (
               <li key={item.id}>

@@ -113,6 +113,9 @@ export type StoreContact = {
   instagramLink: string;
   whatsappLink: string;
   messengerLink: string;
+  youtubeLink: string;
+  twitterLink: string;
+  linkedinLink: string;
 };
 
 /**

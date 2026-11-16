@@ -24,6 +24,16 @@ export type CatalogProduct = Product & {
 };
 
 /** One buyable option of a product, e.g. "Navy / M", with its own price and stock. */
+/** A size chart from the dashboard: one row per size, one value per column. */
+export type SizeChart = {
+  name: string;
+  description: string;
+  /** `unit` is empty for a unitless column */
+  columns: { label: string; unit: string }[];
+  rows: { label: string; values: string[] }[];
+  videoUrl: string;
+};
+
 export type ProductVariant = {
   id: string;
   label: string;
@@ -53,6 +63,8 @@ export type ProductDetail = CatalogProduct & {
   /** Highest variant price; above `price` when variants are priced differently. */
   maxPrice: number;
   variants: ProductVariant[];
+  /** The most specific active chart for this product, or null */
+  sizeChart: SizeChart | null;
   /** For the breadcrumb; `categoryId` is the slug. */
   categoryName: string;
 };

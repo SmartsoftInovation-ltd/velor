@@ -5,8 +5,9 @@ const returnPolicyController = require("../../controller/returnPolicy.controller
 const shopOrderController = require("../../controller/shopOrder.controller");
 const shopCatalogController = require("../../controller/shopCatalog.controller");
 const shopCartController = require("../../controller/shopCart.controller");
+const shopTrackController = require("../../controller/shopTrack.controller");
 const { guestOrAuth } = require("../../middleware/guestOrAuth");
-const { loginLimiter, registerLimiter, couponLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
+const { trackOrderLimiter, loginLimiter, registerLimiter, couponLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
 
 /**
  * Storefront customer accounts.
@@ -26,6 +27,8 @@ _.get("/products", shopCatalogController.products);
 _.get("/limited-offers", shopCatalogController.limitedOffers);
 _.get("/flash-sale", shopCatalogController.flashSale);
 _.get("/products/:slug", shopCatalogController.product);
+// Order tracking for anyone holding the invoice number and checkout phone
+_.post("/track", trackOrderLimiter, shopTrackController.track);
 _.post("/auth/register", registerLimiter, shopController.register);
 _.post("/auth/login", loginLimiter, shopController.login);
 _.post("/auth/refresh", shopController.refresh);
@@ -34,6 +37,9 @@ _.post("/auth/verify-reset-code", shopResetSubmitLimiter, shopController.verifyR
 _.post("/auth/reset-password", shopResetSubmitLimiter, shopController.resetPassword);
 
 _.get("/me", shopperGuard, shopController.me);
+_.patch("/me", shopperGuard, shopController.updateMe);
+// Rate-limited like sign-in: the current password can otherwise be guessed here
+_.post("/me/password", loginLimiter, shopperGuard, shopController.changePassword);
 _.get("/orders", shopperGuard, shopController.myOrders);
 _.get("/orders/:id", shopperGuard, shopController.myOrder);
 

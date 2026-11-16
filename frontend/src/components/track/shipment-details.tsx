@@ -1,5 +1,5 @@
 import { MapPinIcon, PhoneIcon } from "@/components/ui/icons-footer";
-import type { TrackedOrder } from "@/lib/catalog/order-fixture";
+import type { TrackedOrder } from "@/lib/track-order";
 
 function formatDay(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -24,7 +24,7 @@ export function ShipmentDetails({ order }: { order: TrackedOrder }) {
             Delivering to
           </p>
           <p className="text-small font-medium text-text-primary">{order.recipient}</p>
-          <p className="text-caption text-text-secondary">{order.address}</p>
+          {order.address ? <p className="text-caption text-text-secondary">{order.address}</p> : null}
         </div>
 
         <div className="space-y-1.5">
@@ -45,12 +45,15 @@ export function ShipmentDetails({ order }: { order: TrackedOrder }) {
           </div>
           <div className="flex justify-between sm:block sm:space-y-1">
             <dt className="text-text-tertiary">Payment</dt>
-            <dd className="font-medium text-text-primary">{order.paymentMethod}</dd>
+            <dd className="font-medium text-text-primary">
+              {order.paymentMethod}
+              {order.paymentStatus ? <span className="font-normal text-text-tertiary"> · {order.paymentStatus}</span> : null}
+            </dd>
           </div>
           <div className="flex justify-between sm:block sm:space-y-1">
             <dt className="text-text-tertiary">Tracking number</dt>
             <dd className="font-medium tabular text-text-primary">
-              {order.trackingNumber}
+              {order.trackingNumber || "Not booked yet"}
             </dd>
           </div>
         </dl>

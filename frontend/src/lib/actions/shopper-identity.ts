@@ -51,14 +51,15 @@ export async function clearSession() {
  * Makes one API call as this shopper. When a signed-in shopper's access token
  * has expired, the refresh token buys a new pair and the call runs once more.
  * When the store refuses that too, the session is dropped and the shopper is
- * sent to sign in, coming back to checkout after; their bag and checkout draft
- * stay in the browser. Guests carry no session and never get here.
+ * sent to sign in, coming back to `returnPath` after (checkout by default);
+ * their bag and checkout draft stay in the browser. Guests carry no session and never get here.
  * Must run inside an action.
  */
 export async function callAsShopper<T>(
   host: string,
   who: Record<string, string>,
   call: (who: Record<string, string>) => Promise<T>,
+  returnPath = "/checkout",
 ): Promise<T> {
   try {
     return await call(who);
@@ -78,7 +79,7 @@ export async function callAsShopper<T>(
   }
   if (!renewed) {
     await clearSession();
-    redirect(expiredSignInHref("/checkout"));
+    redirect(expiredSignInHref(returnPath));
   }
 
   await storeSession(renewed, jar.has(KEEP_COOKIE));

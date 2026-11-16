@@ -227,6 +227,15 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    /**
+     * False while a storefront order waits in the dashboard's notification
+     * bell; set true when a staff member opens it from there. Only web orders
+     * are created unseen, so old rows (no field) and counter orders never show.
+     */
+    staffSeen: {
+      type: Boolean,
+      default: true,
+    },
     isAutoPlaced: {
       type: Boolean,
       default: false,
@@ -235,6 +244,9 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+// The bell's query: this store's unseen web orders, newest first
+orderSchema.index({ staffSeen: 1, createdAt: -1 }, { partialFilterExpression: { staffSeen: false } });
 
 orderSchema.plugin(tenantPlugin);
 module.exports = mongoose.models.Order || mongoose.model("Order", orderSchema);

@@ -39,10 +39,10 @@ export function QuickViewOptions({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {colors.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-body font-medium text-text-primary">Select Color: {selected.color}</p>
+          <p className="text-small font-medium text-text-primary">Select Color: {selected.color}</p>
           <ul className="flex flex-wrap gap-2">
             {colors.map((color) => {
               const photo = variants.find((v) => v.color === color && v.image)?.image;
@@ -54,12 +54,12 @@ export function QuickViewOptions({
                     aria-label={color}
                     aria-pressed={color === selected.color}
                     className={cn(
-                      "relative flex size-12 items-center justify-center overflow-hidden rounded-md border-2 transition-colors duration-200 ease-[var(--ease-hover)]",
+                      "relative flex size-11 items-center justify-center overflow-hidden rounded-md border-2 transition-colors duration-200 ease-[var(--ease-hover)]",
                       color === selected.color ? "border-brand-500" : "border-border-default hover:border-border-strong",
                     )}
                   >
                     {photo ? (
-                      <AppImage src={photo} alt="" fill sizes="48px" className="object-cover" />
+                      <AppImage src={photo} alt="" fill sizes="44px" className="object-cover" />
                     ) : (
                       // Dashboard colours are free text; a CSS colour name paints itself
                       <span
@@ -78,7 +78,7 @@ export function QuickViewOptions({
 
       {sizes.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-body font-medium text-text-primary">Select Size: {selected.size}</p>
+          <p className="text-small font-medium text-text-primary">Select Size: {selected.size}</p>
           <ul className="flex flex-wrap gap-2">
             {sizes.map((size) => {
               const option = inColor.find((v) => v.size === size && v.stock > 0) ?? inColor.find((v) => v.size === size);
@@ -94,9 +94,9 @@ export function QuickViewOptions({
                     aria-pressed={active}
                     aria-label={soldOut ? `${size}, sold out` : undefined}
                     className={cn(
-                      "relative flex h-12 min-w-12 items-center justify-center overflow-hidden rounded-md border px-3 text-body font-medium transition-colors duration-200 ease-[var(--ease-hover)]",
+                      "relative flex h-10 min-w-10 items-center justify-center overflow-hidden rounded-md border px-2 text-small font-medium transition-colors duration-200 ease-[var(--ease-hover)]",
                       soldOut
-                        ? "cursor-not-allowed border-border-subtle bg-bg-sunken text-text-tertiary"
+                        ? "cursor-not-allowed border-transparent bg-text-tertiary text-text-inverse"
                         : active
                           ? "border-bg-inverse bg-bg-inverse text-text-inverse"
                           : "border-border-default text-text-primary hover:border-border-strong hover:bg-bg-hover",
@@ -104,7 +104,7 @@ export function QuickViewOptions({
                   >
                     {soldOut ? (
                       <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
-                        <span className="h-px w-[140%] rotate-[-45deg] bg-border-strong" />
+                        <span className="h-px w-[140%] rotate-[-45deg] bg-text-inverse/80" />
                       </span>
                     ) : null}
                     <span className="relative">{size}</span>

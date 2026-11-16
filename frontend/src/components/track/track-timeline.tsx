@@ -1,10 +1,9 @@
 import { CheckIcon, DotIcon } from "@/components/track/track-icons";
 import { cn } from "@/lib/cn";
-import type { TrackingEvent, TrackingStage } from "@/lib/catalog/order-fixture";
-import { STAGE_ORDER } from "@/lib/catalog/order-fixture";
+import { STAGES, type TrackingStage } from "@/lib/track-order";
 
-function formatStamp(at?: string) {
-  if (!at) return "Pending";
+function formatStamp(at: string | undefined, reached: boolean) {
+  if (!at) return reached ? "Done" : "Pending";
   return new Date(at).toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
@@ -21,20 +20,29 @@ function formatStamp(at?: string) {
  * so the fill stops exactly at the current stage.
  */
 export function TrackTimeline({
-  events,
   current,
+  placedAt,
+  updatedAt,
 }: {
-  events: TrackingEvent[];
   current: TrackingStage;
+  placedAt: string;
+  /** When the order reached `current`; the shop keeps no time for the stages between */
+  updatedAt: string;
 }) {
-  const currentIndex = STAGE_ORDER.indexOf(current);
+  const currentIndex = STAGES.findIndex((s) => s.stage === current);
+  // Delivered is the end: it reads as done, not as a stage still running
+  const finished = current === "delivered";
+  const events = STAGES.map((s, index) => ({
+    ...s,
+    id: s.stage,
+    at: index === 0 ? placedAt : index === currentIndex ? updatedAt : undefined,
+  }));
 
   return (
     <ol className="relative">
       {events.map((event, index) => {
-        const stageIndex = STAGE_ORDER.indexOf(event.stage);
-        const done = stageIndex < currentIndex;
-        const live = stageIndex === currentIndex;
+        const done = index < currentIndex || (finished && index === currentIndex);
+        const live = index === currentIndex && !finished;
         const last = index === events.length - 1;
 
         return (
@@ -82,11 +90,10 @@ export function TrackTimeline({
                     live ? "font-medium text-text-brand" : "text-text-tertiary",
                   )}
                 >
-                  {formatStamp(event.at)}
+                  {formatStamp(event.at, done || live)}
                 </p>
               </div>
               <p className="mt-0.5 text-caption text-text-secondary">{event.detail}</p>
-              <p className="mt-0.5 text-micro text-text-tertiary">{event.location}</p>
             </div>
           </li>
         );

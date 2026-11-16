@@ -134,6 +134,69 @@ describe("storefront checkout", () => {
       expect(order).toMatchObject({ channel: "web", orderType: "complete", orderFrom: "Website" });
     });
 
+    it("rings the dashboard bell until staff open the order", async () => {
+      await fillCart();
+      const res = await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
+      const staff = (tenant, user, slug) => ({
+        "x-tenant": slug,
+        Authorization: `Bearer ${jwt.sign(
+          { sub: String(user._id), tid: String(tenant._id), tv: 0, aud: "staff" },
+          STAFF_ENV.ACCESS_TOKEN_SECRET,
+          { expiresIn: "1d" },
+        )}`,
+      });
+      const asVelor = staff(velor.tenant, velor.user, "velor");
+      const bell = (headers) => request(app.server).get("/api/v1/order/web-notifications").set(headers).expect(200);
+
+      const before = (await bell(asVelor)).body.data;
+      expect(before.count).toBe(1);
+      expect(before.notifications[0]).toMatchObject({
+        invoiceId: res.body.data.order.invoiceId,
+        customerName: "Rahim",
+        phone: "01711000000",
+      });
+      // The other store's bell stays quiet
+      expect((await bell(staff(pizza.tenant, pizza.user, "pizzashop"))).body.data.count).toBe(0);
+
+      await request(app.server)
+        .patch(`/api/v1/order/web-notifications/${before.notifications[0]._id}/seen`)
+        .set(asVelor)
+        .expect(200);
+      expect((await bell(asVelor)).body.data).toEqual({ count: 0, notifications: [] });
+    });
+
+    it("tracks an order by invoice number or by checkout phone, masking contact details", async () => {
+      await fillCart(2);
+      const placed = await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);
+      const invoice = placed.body.data.order.invoiceId;
+      const track = (headers, body) => request(app.server).post("/api/v1/shop/track").set(headers).send(body);
+
+      const byInvoice = (await track(VELOR, { invoice: invoice.toLowerCase() }).expect(200)).body.data.orders;
+      expect(byInvoice).toHaveLength(1);
+      expect(byInvoice[0]).toMatchObject({
+        invoice,
+        status: "Pending",
+        recipient: "Rahim",
+        // Only part of the phone and only the area of the address
+        phone: "017•••••000",
+        address: "Dhaka",
+        paymentMethod: "Cash on delivery",
+        subtotal: 1000,
+        total: 1000,
+      });
+      expect(byInvoice[0].lines).toEqual([expect.objectContaining({ name: "Cola", quantity: 2, unitPrice: 500, total: 1000 })]);
+      expect(JSON.stringify(byInvoice)).not.toMatch(/purchasePrice|tenantId|guestId|12 Road|01711000000/);
+
+      // The phone may be typed in any common form
+      const byPhone = (await track(VELOR, { phone: "+880 1711-000000" }).expect(200)).body.data.orders;
+      expect(byPhone.map((o) => o.invoice)).toEqual([invoice]);
+
+      await track(VELOR, { phone: "01799999999" }).expect(404);
+      await track(VELOR, { invoice: "NOPE-1" }).expect(404);
+      await track(PIZZA, { invoice }).expect(404);
+      await track(VELOR, {}).expect(400);
+    });
+
     it("does not show the order to the other store", async () => {
       await fillCart();
       await checkout({ ...VELOR, ...GUEST }, { shippingInfo: SHIPPING, paymentMethod: "cod" }).expect(201);

@@ -77,10 +77,32 @@ const STOREFRONT_DESIGN_FIELDS = [
   "announcementText",
 ];
 
+/**
+ * Store Information fields the storefront shows, as it names them. Public by
+ * nature: the seller enters them to be found (footer, contact page, chat).
+ */
+const CONTACT_FIELDS = {
+  slogan: "propiterSlogan",
+  businessType: "businessType",
+  address: "adress",
+  phone: "phone",
+  secondaryPhone: "secondaryPhone",
+  email: "email",
+  businessHours: "businessHours",
+  googleMapLink: "googleMapLink",
+  facebookLink: "facebookLink",
+  instagramLink: "instagramLink",
+  whatsappLink: "whatsappLink",
+  messengerLink: "messengerLink",
+  youtubeLink: "youtubeLink",
+  twitterLink: "twitterLink",
+  linkedinLink: "linkedinLink",
+};
+
 exports.store = asynchandeler(async (req, res) => {
   requireStore();
   const [info, settings] = await Promise.all([
-    StoreInformation.findOne().select("storeName image").lean(),
+    StoreInformation.findOne().select(`storeName image ${Object.values(CONTACT_FIELDS).join(" ")}`).lean(),
     getSettings(getTenantId()),
   ]);
   return apiResponse.sendSuccess(res, statusCodes.OK, "Store", {
@@ -91,6 +113,8 @@ exports.store = asynchandeler(async (req, res) => {
     logo: info?.image?.url || "",
     primaryColor: settings.general.primaryColor || "",
     ...Object.fromEntries(STOREFRONT_DESIGN_FIELDS.map((field) => [field, settings.general[field]])),
+    // Contact details and social links, for the footer and the chat button
+    ...Object.fromEntries(Object.entries(CONTACT_FIELDS).map(([out, field]) => [out, info?.[field] || ""])),
   });
 });
 
@@ -347,6 +371,76 @@ exports.resetPassword = asynchandeler(async (req, res) => {
 exports.me = asynchandeler(async (req, res) =>
   apiResponse.sendSuccess(res, statusCodes.OK, "Profile", { user: shopperSummary(req.user) }),
 );
+
+/**
+ * The shopper changes their own name, email and phone. At least one of email
+ * or phone must remain, since one of them is how they sign in. Both are
+ * unique within the store, so a value another account holds is refused (409)
+ * without saying whose it is.
+ */
+exports.updateMe = asynchandeler(async (req, res) => {
+  const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+  const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const phone = typeof req.body.phone === "string" ? req.body.phone.trim() : "";
+
+  if (name.length < 2) throw new customError("Enter your full name", statusCodes.BAD_REQUEST);
+  if (!email && !phone) {
+    throw new customError("Keep an email or a phone number to sign in with", statusCodes.BAD_REQUEST);
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new customError("Enter a valid email address", statusCodes.BAD_REQUEST);
+  }
+
+  const taken = await User.findOne({
+    _id: { $ne: req.user._id },
+    $or: [...(email ? [{ email }] : []), ...(phone ? [{ phone }] : [])],
+  })
+    .select("email phone")
+    .lean();
+  if (taken) {
+    const field = email && taken.email === email ? "email" : "phone number";
+    throw new customError(`Another account here already uses this ${field}`, statusCodes.CONFLICT);
+  }
+
+  const user = await User.findById(req.user._id);
+  user.name = name;
+  // Blank becomes absent: the unique indexes only skip accounts with no value at all
+  user.email = email || undefined;
+  user.phone = phone || undefined;
+  await user.save();
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Profile updated", { user: shopperSummary(user) });
+});
+
+/**
+ * Changes the password after checking the current one. Every other session
+ * ends (tokenVersion is bumped, as on a reset); this device gets a fresh pair
+ * so the shopper stays signed in where they made the change.
+ */
+exports.changePassword = asynchandeler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (typeof currentPassword !== "string" || !currentPassword) {
+    throw new customError("Enter your current password", statusCodes.BAD_REQUEST);
+  }
+  if (typeof newPassword !== "string" || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
+  }
+
+  const user = await User.findById(req.user._id).select("+password");
+  if (!(await user.comparePassword(currentPassword))) {
+    throw new customError("Your current password is not correct", statusCodes.BAD_REQUEST, "WRONG_PASSWORD");
+  }
+  if (await user.comparePassword(newPassword)) {
+    throw new customError("Choose a password different from your current one", statusCodes.BAD_REQUEST);
+  }
+
+  user.password = newPassword;
+  user.refreshToken = null;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+  await user.save();
+
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Password changed", issueSession(user));
+});
 
 /**
  * The shopper's own orders. Filtered by `user` as well as being tenant-scoped

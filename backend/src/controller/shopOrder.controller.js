@@ -336,6 +336,8 @@ exports.createOrder = asynchandeler(async (req, res) => {
       // Taken on the storefront, so reports can tell it apart from a counter sale
       channel: "web",
       orderFrom: WEBSITE_SOURCE,
+      // Waits in the dashboard's notification bell until staff open it
+      staffSeen: false,
       storefrontHost: req.tenantHost ?? null,
     });
 

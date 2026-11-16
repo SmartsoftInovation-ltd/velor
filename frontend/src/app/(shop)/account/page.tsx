@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AccountDetails } from "@/components/account/account-details";
 import { AccountProfile } from "@/components/account/account-profile";
 import { AccountShortcuts } from "@/components/account/account-shortcuts";
+import { ChangePassword } from "@/components/account/change-password";
 import { Breadcrumb } from "@/components/shop/breadcrumb";
 import { currentShopper, expiredSignInHref, REFRESH_COOKIE, SESSION_COOKIE } from "@/lib/shopper-auth";
 import { getStore, storeHostFrom } from "@/lib/store-api";
@@ -38,6 +39,7 @@ export default async function AccountPage() {
 
         <div className="space-y-6">
           <AccountDetails user={user} />
+          <ChangePassword />
           <AccountShortcuts />
         </div>
       </div>

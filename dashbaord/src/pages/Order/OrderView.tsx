@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import moment from "moment";
 import { FaArrowLeft, FaBoxOpen, FaCreditCard, FaTruck, FaUser, FaInfoCircle } from "react-icons/fa";
 import { IoIosPrint } from "react-icons/io";
@@ -29,6 +29,17 @@ const OrderView = () => {
     queryFn: async () => (await axiosSecure.get(`/order/single-order/${id}`)).data.data,
     enabled: Boolean(id),
   });
+
+  // A web order still waiting in the header bell is seen once it is opened here
+  const queryClient = useQueryClient();
+  const unseenWebOrder = order?.channel === "web" && order?.staffSeen === false;
+  useEffect(() => {
+    if (!unseenWebOrder || !id) return;
+    axiosSecure
+      .patch(`/order/web-notifications/${id}/seen`)
+      .catch(() => undefined)
+      .finally(() => queryClient.invalidateQueries({ queryKey: ["webOrderNotifications"] }));
+  }, [unseenWebOrder, id, queryClient]);
 
   if (isLoading) {
     return (

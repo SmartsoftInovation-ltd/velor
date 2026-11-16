@@ -242,7 +242,33 @@ const couponLimiter = rateLimit({
   handler: tooMany("Too many coupon attempts. Please try again in 15 minutes."),
 });
 
+// Public order tracking, failed lookups only: a shopper checking their own
+// parcel never burns quota. The storefront calls from its own server, so the
+// IP is shared by every shopper; the limits are therefore per looked-up key,
+// one for phone numbers and one for invoice numbers.
+const trackKey = (part) => String(part || "").replace(/\s+/g, "").toLowerCase().slice(-32) || "-";
+const trackLimiter = (name, pick) =>
+  rateLimit({
+    store: newStore(),
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    statusCode: statusCodes.TOO_MANY_REQUESTS,
+    // A lookup by the other key is not counted here, or every such lookup
+    // would share one bucket
+    skip: (req) => !String(pick(req.body) || "").trim(),
+    keyGenerator: (req) => `track-${name}:${clientIp(req)}:${trackKey(pick(req.body))}`,
+    handler: tooMany("Too many lookups. Please try again in 15 minutes."),
+  });
+const trackOrderLimiter = [
+  trackLimiter("phone", (body) => String(body?.phone || "").replace(/\D/g, "").slice(-10)),
+  trackLimiter("invoice", (body) => body?.invoice),
+];
+
 module.exports = {
+  trackOrderLimiter,
   couponLimiter,
   searchLimiter,
   reportLimiter,

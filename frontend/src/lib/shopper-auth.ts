@@ -47,6 +47,30 @@ export const getMe = async (tenantHost: string, accessToken: string) =>
 
 export type SessionTokens = Pick<ShopperSession, "accessToken" | "refreshToken">;
 
+export type ProfileInput = { name: string; email: string; phone: string };
+
+// PATCH /shop/me — a blank email or phone removes it; one of them must stay
+export const updateShopper = async (tenantHost: string, who: Record<string, string>, input: ProfileInput) =>
+  (
+    await apiFetch<{ user: Shopper }>(tenantHost, "/shop/me", {
+      method: "PATCH",
+      headers: { ...who, "content-type": "application/json" },
+      body: JSON.stringify(input),
+    })
+  ).user;
+
+// POST /shop/me/password — ends every other session and hands this one a fresh pair
+export const changeShopperPassword = (
+  tenantHost: string,
+  who: Record<string, string>,
+  input: { currentPassword: string; newPassword: string },
+) =>
+  apiFetch<SessionTokens>(tenantHost, "/shop/me/password", {
+    method: "POST",
+    headers: { ...who, "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
 // POST /shop/auth/refresh — a fresh pair for a refresh token the store still honours
 export const refreshShopper = (tenantHost: string, refreshToken: string) =>
   apiFetch<SessionTokens>(tenantHost, "/shop/auth/refresh", {

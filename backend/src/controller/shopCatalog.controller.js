@@ -1,12 +1,13 @@
 const Product = require("../models/product.model");
 const LimitedOffer = require("../models/limitedOffer.model");
+const SizeChart = require("../models/sizeChart.model");
 const { currentPricing } = require("../service/flashSale.service");
 const { customError } = require("../lib/CustomError");
 const { asynchandeler } = require("../lib/asyncHandeler");
 const { apiResponse } = require("../utils/apiResponse");
 const { statusCodes } = require("../constant/constant");
 const { getTenantId } = require("../tenancy/context");
-const { buildCacheKey, getCache, setCache } = require("../utils/cache.util");
+const { buildCacheKey, getCache, getNsVersion, setCache } = require("../utils/cache.util");
 
 /**
  * The storefront's view of the catalogue.
@@ -91,13 +92,13 @@ const toStorefront = (p) => {
 
 const PRODUCT_FIELDS =
   "slug name description brand category subcategory variant variantType thumbnail image size color " +
-  "stock retailPrice sku rating posSold webSold specifications warrantyInformation shippingInformation createdAt";
-const VARIANT_FIELDS = "slug variantName sku size color stockVariant retailPrice thumbnail image isActive";
+  "stock retailPrice sku rating posSold webSold specifications warrantyInformation shippingInformation createdAt sizeChart";
+const VARIANT_FIELDS = "slug variantName sku size color stockVariant retailPrice thumbnail image isActive sizeChart";
 
 const findProducts = (filter) =>
   Product.find({ ...filter, isActive: { $ne: false } })
     .select(PRODUCT_FIELDS)
-    .populate("brand category subcategory", "name slug")
+    .populate("brand category subcategory", "name slug sizeChart")
     .populate({ path: "variant", select: VARIANT_FIELDS })
     .sort({ createdAt: -1 })
     .lean();
@@ -162,17 +163,51 @@ exports.products = asynchandeler(async (req, res) => {
   return apiResponse.sendSuccess(res, statusCodes.OK, "Products", { products: withSale(products, priceFor) });
 });
 
-// GET /shop/products/:slug: one active product with its variants
+/**
+ * The size chart a shopper sees for a product. A chart is linked in the
+ * dashboard to a variant, the product, its subcategory, category or brand
+ * (sizeChart.controller writes the link onto that document); the most
+ * specific active one wins. Only the table goes out, not who made it.
+ */
+const resolveSizeChart = async (p) => {
+  const candidates = [
+    ...(p.variant || []).filter((v) => v && v.isActive !== false).map((v) => v.sizeChart),
+    p.sizeChart,
+    p.subcategory?.sizeChart,
+    p.category?.sizeChart,
+    p.brand?.sizeChart,
+  ].filter(Boolean).map(String);
+  if (!candidates.length) return null;
+
+  const charts = await SizeChart.find({ _id: { $in: unique(candidates) }, isActive: true })
+    .select("name description columns rows videoUrl")
+    .lean();
+  const byId = new Map(charts.map((c) => [String(c._id), c]));
+  const chart = candidates.map((id) => byId.get(id)).find(Boolean);
+  if (!chart) return null;
+
+  return {
+    name: chart.name,
+    description: chart.description || "",
+    columns: (chart.columns || []).map((c) => ({ label: c.label, unit: c.unit === "unitless" ? "" : c.unit })),
+    rows: (chart.rows || []).map((row) => ({ label: row.label, values: row.values || [] })),
+    videoUrl: chart.videoUrl || "",
+  };
+};
+
+// GET /shop/products/:slug: one active product with its variants and size chart
 exports.product = asynchandeler(async (req, res) => {
   requireStore();
   const slug = String(req.params.slug || "").toLowerCase();
-  const cacheKey = await buildCacheKey(NS, `storefront:slug:${slug}`);
+  // A size chart edit bumps its own namespace, not the product one
+  const chartVersion = await getNsVersion("sizechart");
+  const cacheKey = await buildCacheKey(NS, `storefront:slug:${slug}:chart${chartVersion}`);
   let product = await getCache(cacheKey);
 
   if (!product) {
     const [found] = await findProducts({ slug }).limit(1);
     if (!found) throw new customError("Product not found", statusCodes.NOT_FOUND);
-    product = toStorefront(found);
+    product = { ...toStorefront(found), sizeChart: await resolveSizeChart(found) };
     await setCache(cacheKey, product, CACHE_TTL);
   }
 
