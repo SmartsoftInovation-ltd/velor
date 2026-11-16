@@ -149,13 +149,15 @@ export function buildTaxonomy(products: ApiProduct[]): Taxonomy {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Products added in the last `days` days, newest first (the API lists newest first). */
+/**
+ * New arrivals, newest first (the API lists newest first): products added in
+ * the last `days` days, or the latest `count` when nothing is that recent, so
+ * a shop that has not added anything lately still shows its newest products.
+ */
 export const recentProducts = (products: ApiProduct[], days: number, count: number) => {
   const since = Date.now() - days * DAY_MS;
-  return products
-    .filter((p) => new Date(p.createdAt).getTime() >= since)
-    .slice(0, count)
-    .map(toCatalogProduct);
+  const recent = products.filter((p) => new Date(p.createdAt).getTime() >= since);
+  return (recent.length ? recent : products).slice(0, count).map(toCatalogProduct);
 };
 
 /** The most sold products; a store with no sales yet gets none, not a random pick. */

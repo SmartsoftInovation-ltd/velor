@@ -1,6 +1,13 @@
+export type FooterLink = {
+  label: string;
+  href: string;
+  /** Drawn as a brand pill button instead of a text link */
+  button?: boolean;
+};
+
 export type FooterLinkGroup = {
   title: string;
-  links: { label: string; href: string }[];
+  links: FooterLink[];
 };
 
 export const FOOTER_LINK_GROUPS: FooterLinkGroup[] = [
@@ -16,14 +23,13 @@ export const FOOTER_LINK_GROUPS: FooterLinkGroup[] = [
   {
     title: "Help",
     links: [
-      { label: "Track Order", href: "/track-order" },
       { label: "About", href: "/about" },
       { label: "Contact Us", href: "/contact" },
-      { label: "Outlets", href: "/outlets" },
+      { label: "Outlets", href: "/outlets", button: true },
     ],
   },
   {
-    title: "Information",
+    title: "Informations",
     links: [
       { label: "Shipping Info", href: "/shipping" },
       { label: "Return Policy", href: "/returns" },

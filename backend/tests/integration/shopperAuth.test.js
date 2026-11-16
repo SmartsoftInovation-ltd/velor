@@ -89,7 +89,7 @@ describe("storefront shopper accounts", () => {
       const fromPizza = await request(app.server).get("/api/v1/shop/store").set(PIZZA).expect(200);
 
       expect(fromVelor.body.data).toMatchObject({ bannerLayout: "full", cardLayout: "overlay", gridColumns: "5" });
-      expect(fromPizza.body.data).toMatchObject({ bannerLayout: "split", cardLayout: "standard", gridColumns: "4" });
+      expect(fromPizza.body.data).toMatchObject({ bannerLayout: "split", cardLayout: "buy", gridColumns: "4" });
     });
 
     it("accepts the Buy Now product card and sends it to the storefront", async () => {

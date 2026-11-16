@@ -198,7 +198,7 @@ describe("the tabs drive the preview before anything is saved", () => {
     const onSave = vi.fn();
     render(<DesignStudio saved={DEFAULT_DESIGN} color="#dc2626" previewUrl={URL_} canEdit saving={false} onSave={onSave} />);
     expect(brandOf()).toBe("#dc2626");
-    expect(part('[data-card="standard"]')).toBeTruthy();
+    expect(part('[data-card="buy"]')).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /card.*: Overlay$/i }));
 

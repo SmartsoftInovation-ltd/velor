@@ -35,7 +35,7 @@ export const STOREFRONT_DEFAULT_COLOR = "#fc630a";
 
 export const DEFAULT_DESIGN = {
   bannerLayout: "split",
-  cardLayout: "standard",
+  cardLayout: "buy",
   gridColumns: "4",
   categoryLayout: "image",
   galleryPosition: "left",

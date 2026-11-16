@@ -7,7 +7,7 @@ import { Section } from "./section";
 import { SectionHeading } from "./section-heading";
 
 export async function NewArrivals() {
-  // Automatic: whatever was added in the last 7 days. Nothing new, no section.
+  // Automatic: added in the last 7 days, else the latest products. No products, no section.
   const products = recentProducts(await getStoreProducts(storeHostFrom(await headers())), 7, 8);
   if (!products.length) return null;
 
@@ -17,7 +17,7 @@ export async function NewArrivals() {
         eyebrow="Just landed"
         icon={<SparkleIcon />}
         title="New arrivals"
-        description="Added to the shop this week."
+        description="The latest additions to the shop."
         viewAllHref="/shop"
       />
 
