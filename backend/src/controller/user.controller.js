@@ -27,6 +27,7 @@ const {
 } = require("../constant/constant");
 const { imageQueue } = require("@/queues/image.queue");
 const { logAudit } = require("@/service/audit.service");
+const { STAFF, accountTypeOf, isStaff, STAFF_ACCOUNT_FILTER } = require("@/utils/accountType.util");
 const {
   getCache,
   setCache,
@@ -79,6 +80,8 @@ exports.registerUser = asynchandeler(async (req, res) => {
     password,
     phone,
     image: image || null,
+    // A dashboard account from the start, even before it is given a role
+    accountType: STAFF,
     roles: [],
     permissions: [],
   });
@@ -151,6 +154,12 @@ exports.login = asynchandeler(async (req, res) => {
   if (!user) {
     throw new customError("Invalid credentials", statusCodes.BAD_REQUEST);
   }
+  // Storefront credentials do not work here. A shopper's account answers like
+  // one that does not exist, so the dashboard never confirms who shops here.
+  const account = await User.findById(user._id).select("accountType roles").lean();
+  if (accountTypeOf(account) !== STAFF) {
+    throw new customError("Invalid credentials", statusCodes.BAD_REQUEST);
+  }
   //check password
   const isPasswordMatch = await user.comparePassword(password);
   if (!isPasswordMatch) {
@@ -179,8 +188,8 @@ exports.login = asynchandeler(async (req, res) => {
     );
   }
 
-  // Dashboard sign-in (workspace given) is for staff accounts only
-  if (req.workspace && !(await User.exists({ _id: user._id, "roles.0": { $exists: true } }))) {
+  // A dashboard account that was never given a role has nothing to open
+  if (!isStaff(account)) {
     throw new customError(
       "This account cannot sign in to the dashboard",
       statusCodes.FORBIDDEN,
@@ -238,7 +247,8 @@ exports.refreshToken = asynchandeler(async (req, res) => {
   // check refresh token in database — ensures token was not revoked on logout.
   // The token itself is the secret, so the lookup is not tenant-scoped.
   const user = await runAsPlatform(() => User.findOne({ refreshToken }));
-  if (!user) {
+  // Only a dashboard session is renewed here; shoppers use /shop/auth/refresh
+  if (!user || !isStaff(user)) {
     throw new customError("Invalid refresh token", statusCodes.UNAUTHORIZED);
   }
 
@@ -368,6 +378,12 @@ exports.verifyEmail = asynchandeler(async (req, res) => {
 // The code itself is handled in service/passwordReset.service.js.
 const RESET_CODE_SENT_MESSAGE = "A reset code has been sent by SMS to the phone number on the account";
 
+// The dashboard resets dashboard accounts only; a shopper's reads as no account
+const staffByEmailOrPhone = async (body) => {
+  const user = await findByEmailOrPhone(body);
+  return user && accountTypeOf(user) === STAFF ? user : null;
+};
+
 exports.forgotPassword = asynchandeler(async (req, res) => {
   const tenantId = getTenantId();
   if (!tenantId || !(await getFeatures(tenantId)).sms) {
@@ -378,7 +394,7 @@ exports.forgotPassword = asynchandeler(async (req, res) => {
     );
   }
 
-  const user = await findByEmailOrPhone(req.body);
+  const user = await staffByEmailOrPhone(req.body);
 
   // Same response whether or not the account exists — otherwise this endpoint
   // reports which accounts are registered.
@@ -430,7 +446,7 @@ exports.resetPassword = asynchandeler(async (req, res) => {
     throw new customError(PASSWORD_MIN_MESSAGE, statusCodes.BAD_REQUEST);
   }
 
-  const user = await findByEmailOrPhone(req.body);
+  const user = await staffByEmailOrPhone(req.body);
   if (!(await checkResetCode(user, code, { consume: true }))) {
     throw new customError("Invalid or expired code", statusCodes.BAD_REQUEST);
   }
@@ -477,7 +493,8 @@ exports.changePassword = asynchandeler(async (req, res) => {
 
 // get all user
 exports.getAllUser = asynchandeler(async (_, res) => {
-  const users = await User.find()
+  // Dashboard accounts only: storefront shoppers are not dashboard users
+  const users = await User.find(STAFF_ACCOUNT_FILTER)
     .select(
       `-__v ${SECRET_FIELDS_SELECT} -createdAt -twoFactorEnabled -newsLetterSubscribe`,
     )
@@ -715,6 +732,7 @@ exports.addUser = asynchandeler(async (req, res) => {
           localPath: imageFile.path,
         }
       : undefined,
+    accountType: STAFF,
     roles: value.role ? [value.role] : [],
     createdBy: req.user?._id || null,
   });

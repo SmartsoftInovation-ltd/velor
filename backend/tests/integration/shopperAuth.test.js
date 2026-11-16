@@ -253,6 +253,81 @@ describe("storefront shopper accounts", () => {
     });
   });
 
+  /**
+   * Dashboard and storefront accounts live in one collection but are two
+   * separate sets of credentials: neither works on the other side, whether or
+   * not the dashboard account holds a role.
+   */
+  describe("dashboard and storefront credentials are separate", () => {
+    const dashboard = (path, body) => request(app.server).post(`/api/v1/auth/${path}`).send({ workspace: "velor", ...body });
+    const ROLELESS = { name: "No Role", email: "norole@velor-staff.com", password: "NoRole-Pass1", phone: "01711111111" };
+
+    it("stamps each account with the side it was created on", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      await dashboard("registeruser", ROLELESS).expect(201);
+
+      const typeOf = (email) => runForTenant(velor.tenant._id, () => User.findOne({ email }).lean()).then((user) => user.accountType);
+      expect(await typeOf(SHOPPER.email)).toBe("shopper");
+      expect(await typeOf(ROLELESS.email)).toBe("staff");
+    });
+
+    it("refuses a dashboard account with no role on the storefront", async () => {
+      await dashboard("registeruser", ROLELESS).expect(201);
+      await login(VELOR, { email: ROLELESS.email, password: ROLELESS.password }).expect(400);
+    });
+
+    it("refuses a shopper on the dashboard sign-in, with or without a workspace in the body", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      const credentials = { email: SHOPPER.email, password: SHOPPER.password };
+
+      const res = await dashboard("login", credentials).expect(400);
+      expect(res.body.message).toBe("Invalid credentials");
+      await request(app.server).post("/api/v1/auth/login").set({ "x-tenant": "velor" }).send(credentials).expect(400);
+    });
+
+    it("still signs staff in to the dashboard", async () => {
+      await dashboard("login", { email: "staff@velor.test", password: "Velor-Pass1" }).expect(200);
+    });
+
+    it("does not renew a shopper session on the dashboard", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      const session = (await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200)).body.data;
+      // Even if a shopper's refresh token were ever stored like a staff one
+      await runForTenant(velor.tenant._id, () => User.updateOne({ email: SHOPPER.email }, { refreshToken: session.refreshToken }));
+
+      await request(app.server).post("/api/v1/auth/refresh-token").set("Cookie", `refreshToken=${session.refreshToken}`).expect(401);
+    });
+
+    it("does not reset a shopper's password from the dashboard", async () => {
+      await register(VELOR, { ...SHOPPER, phone: "01722222222" }).expect(201);
+      await dashboard("reset-password", { phone: "01722222222", otp: "123456", newPassword: "Changed-Pass1" }).expect(400);
+      await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200);
+    });
+
+    it("reads accounts saved before the type existed by their roles", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      await runForTenant(velor.tenant._id, () => User.collection.updateMany({}, { $unset: { accountType: "" } }));
+
+      await login(VELOR, { email: SHOPPER.email, password: SHOPPER.password }).expect(200);
+      await login(VELOR, { email: "staff@velor.test", password: "Velor-Pass1" }).expect(400);
+      await dashboard("login", { email: "staff@velor.test", password: "Velor-Pass1" }).expect(200);
+      await dashboard("login", { email: SHOPPER.email, password: SHOPPER.password }).expect(400);
+    });
+
+    it("migration 019 stamps old accounts: roles or a staff creator mean staff", async () => {
+      await register(VELOR, SHOPPER).expect(201);
+      await runForTenant(velor.tenant._id, () =>
+        User.create({ name: "Added", email: "added@velor.test", password: "Added-Pass1", phone: "01733333333", roles: [], createdBy: velor.user._id }),
+      );
+      await User.collection.updateMany({}, { $unset: { accountType: "" } });
+
+      await require("../../src/migrations/019-user-account-type").up();
+
+      const types = Object.fromEntries((await User.collection.find({}).toArray()).map((user) => [user.email, user.accountType]));
+      expect(types).toMatchObject({ "staff@velor.test": "staff", "added@velor.test": "staff", [SHOPPER.email]: "shopper" });
+    });
+  });
+
   describe("the two session types cannot be swapped", () => {
     let shopperToken;
     let staffToken;

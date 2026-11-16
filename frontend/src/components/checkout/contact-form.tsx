@@ -15,42 +15,20 @@ export function ContactForm({ errors = {}, draft }: { errors?: Errors; draft?: C
       description="We send order updates here."
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Email (optional)" htmlFor="checkout-email" className="sm:col-span-2">
+        <Field label="Full name" htmlFor="checkout-full-name" className="sm:col-span-2">
           <Input
-            id="checkout-email"
-            name="email"
-            type="email"
-            defaultValue={draft?.email}
-            aria-invalid={Boolean(errors.email)}
-            autoComplete="email"
-            placeholder="you@example.com"
-          />
-          <FieldError message={errors.email} />
-        </Field>
-
-        <Field label="First name" htmlFor="checkout-first-name">
-          <Input
-            id="checkout-first-name"
-            name="firstName"
-            defaultValue={draft?.firstName}
+            id="checkout-full-name"
+            name="fullName"
+            defaultValue={draft?.fullName}
             required
-            autoComplete="given-name"
-            placeholder="Taufik"
-            aria-invalid={Boolean(errors.firstName)}
+            autoComplete="name"
+            placeholder="Taufik Islam"
+            aria-invalid={Boolean(errors.fullName)}
           />
-          <FieldError message={errors.firstName} />
+          <FieldError message={errors.fullName} />
         </Field>
 
-        <Field label="Last name" htmlFor="checkout-last-name">
-          <Input id="checkout-last-name" name="lastName" defaultValue={draft?.lastName} autoComplete="family-name" placeholder="Islam" />
-        </Field>
-
-        <Field
-          label="Phone"
-          htmlFor="checkout-phone"
-          hint="The courier calls this number before delivery."
-          className="sm:col-span-2"
-        >
+        <Field label="Phone" htmlFor="checkout-phone" hint="The courier calls this number before delivery.">
           <Input
             id="checkout-phone"
             name="phone"
@@ -62,6 +40,19 @@ export function ContactForm({ errors = {}, draft }: { errors?: Errors; draft?: C
             placeholder="01XXXXXXXXX"
           />
           <FieldError message={errors.phone} />
+        </Field>
+
+        <Field label="Email (optional)" htmlFor="checkout-email">
+          <Input
+            id="checkout-email"
+            name="email"
+            type="email"
+            defaultValue={draft?.email}
+            aria-invalid={Boolean(errors.email)}
+            autoComplete="email"
+            placeholder="you@example.com"
+          />
+          <FieldError message={errors.email} />
         </Field>
       </div>
     </CheckoutSection>

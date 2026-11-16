@@ -11,6 +11,7 @@ const { apiResponse } = require("../utils/apiResponse");
 const { signInIdentifier } = require("../utils/signInIdentifier.util");
 const { statusCodes, PASSWORD_MIN_LENGTH, PASSWORD_MIN_MESSAGE } = require("../constant/constant");
 const { getTenantId } = require("../tenancy/context");
+const { SHOPPER, isShopper } = require("../utils/accountType.util");
 const { getSettings, getFeatures } = require("../settings/settings.service");
 const { RESET_CODE_TTL_SECONDS, findByEmailOrPhone, sendResetCode, checkResetCode } = require("../service/passwordReset.service");
 
@@ -174,8 +175,8 @@ exports.register = asynchandeler(async (req, res) => {
     throw new customError("An account with these details already exists", statusCodes.CONFLICT);
   }
 
-  // roles is left empty: that is what makes this a shopper rather than staff
-  const user = await User.create({ name, email, phone, password, roles: [] });
+  // A shopper: these credentials work on the storefront only, never the dashboard
+  const user = await User.create({ name, email, phone, password, accountType: SHOPPER, roles: [] });
 
   return apiResponse.sendSuccess(res, statusCodes.CREATED, "Account created", {
     user: shopperSummary(user),
@@ -208,11 +209,12 @@ exports.login = asynchandeler(async (req, res) => {
   }
 
   /**
-   * Staff accounts are refused here even with the right password. Their tokens
-   * would carry `aud: "staff"`, so signing in on the storefront would hand a
-   * dashboard session to whatever page the shopper is on.
+   * Dashboard accounts are refused here even with the right password, role or
+   * no role: dashboard credentials do not work on the storefront. Their tokens
+   * would also carry `aud: "staff"`, handing a dashboard session to whatever
+   * page the shopper is on.
    */
-  if (user.roles?.length) {
+  if (!isShopper(user)) {
     throw invalid;
   }
 
@@ -253,7 +255,7 @@ exports.refresh = asynchandeler(async (req, res) => {
 
   // Scoped to this store by the tenancy plugin
   const user = await User.findById(claims.sub).populate("roles");
-  if (!user || user.roles?.length || user.isBlocked || !user.isActive) throw refused;
+  if (!isShopper(user) || user.isBlocked || !user.isActive) throw refused;
   if ((claims.tv ?? 0) !== (user.tokenVersion ?? 0)) throw refused;
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Session renewed", issueSession(user));
@@ -281,7 +283,7 @@ const resetPhoneOf = (body) => {
 // The shopper who may reset with this number, or null
 const resettableShopper = async (phone) => {
   const user = await findByEmailOrPhone({ phone })?.populate("roles");
-  if (!user || user.roles?.length || user.isBlocked || !user.isActive) return null;
+  if (!isShopper(user) || user.isBlocked || !user.isActive) return null;
   return user;
 };
 

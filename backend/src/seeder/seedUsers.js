@@ -45,6 +45,7 @@ async function seedUsers() {
         email: u.email,
         password: u.password,
         phone: u.phone,
+        accountType: "staff",
         roles: [role._id],
         permissions: userPermissions,
         isActive: true,

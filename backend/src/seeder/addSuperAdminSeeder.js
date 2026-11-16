@@ -50,6 +50,7 @@ async function seedSuperAdmin({ email, password, name = "superadmin" } = {}) {
     name,
     password,
     image: null,
+    accountType: "staff",
     roles: roles.map((role) => role._id),
     permissions: allPermissions.map((permission) => ({
       permission: permission._id,

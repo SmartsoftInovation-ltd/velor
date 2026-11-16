@@ -12,29 +12,25 @@ export type DeliveryOption = { _id: string; name: string; charge: number; descri
 export type PaymentMethod = "cod" | "sslcommerz";
 
 export type CheckoutInput = {
-  email: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   phone: string;
-  address: string;
-  apartment: string;
+  email: string;
   city: string;
-  postalCode: string;
-  note: string;
+  address: string;
   deliveryChargeId: string;
   paymentMethod: PaymentMethod;
   couponCode: string;
 };
 
-export type CheckoutField = "email" | "firstName" | "phone" | "address" | "city" | "deliveryChargeId";
+export type CheckoutField = "email" | "fullName" | "phone" | "address" | "city" | "deliveryChargeId";
 
 /** What is wrong with the form, keyed by field; empty when it can be sent */
 export function checkoutProblems(input: CheckoutInput, deliveryRequired: boolean) {
   const problems: Partial<Record<CheckoutField, string>> = {};
-  if (input.firstName.trim().length < 2) problems.firstName = "Enter your name.";
+  if (input.fullName.trim().length < 2) problems.fullName = "Enter your full name.";
   if (!isPhone(input.phone)) problems.phone = "Enter an 11-digit mobile number, like 01712345678.";
   if (input.email.trim() && !isEmail(input.email)) problems.email = "Enter a valid email address.";
-  if (input.address.trim().length < 5) problems.address = "Enter the street address.";
+  if (input.address.trim().length < 5) problems.address = "Enter your address.";
   if (!input.city.trim()) problems.city = "Choose a city.";
   if (deliveryRequired && !input.deliveryChargeId) problems.deliveryChargeId = "Choose a delivery option.";
   return problems;
@@ -42,13 +38,11 @@ export function checkoutProblems(input: CheckoutInput, deliveryRequired: boolean
 
 /** The `shippingInfo` the API keeps on the order */
 export const shippingInfoOf = (input: CheckoutInput) => ({
-  fullName: `${input.firstName.trim()} ${input.lastName.trim()}`.trim(),
+  fullName: input.fullName.trim(),
   phone: normalizePhone(input.phone),
   email: input.email.trim() || undefined,
-  address: [input.address.trim(), input.apartment.trim()].filter(Boolean).join(", "),
+  address: input.address.trim(),
   city: input.city.trim(),
-  postalCode: input.postalCode.trim() || undefined,
-  note: input.note.trim() || undefined,
 });
 
 // The only places the shopper may be sent to pay

@@ -36,6 +36,7 @@ const provisionTenant = async ({ owner, ...tenantFields }, { createdBy = null } 
             email: owner.email,
             phone: owner.phone,
             password,
+            accountType: "staff",
             roles: [roles.owner._id],
             isActive: true,
           }],

@@ -111,6 +111,7 @@ describe("Velor migration", () => {
         ["016-backfill-invoice-serial", "applied"],
         ["017-split-module-permissions", "applied"],
         ["018-optional-user-email", "applied"],
+        ["019-user-account-type", "applied"],
       ]);
     });
 

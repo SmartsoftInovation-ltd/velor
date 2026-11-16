@@ -23,6 +23,7 @@ const MIGRATIONS = [
   require("./016-backfill-invoice-serial"),
   require("./017-split-module-permissions"),
   require("./018-optional-user-email"),
+  require("./019-user-account-type"),
 ];
 
 const records = () => mongoose.connection.collection("migrations");

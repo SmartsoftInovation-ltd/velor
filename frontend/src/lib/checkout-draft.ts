@@ -15,7 +15,7 @@ export type CheckoutDraft = Omit<CheckoutInput, "couponCode"> & { savedAt: strin
 
 export const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-const TEXT_FIELDS = ["email", "firstName", "lastName", "phone", "address", "apartment", "city", "postalCode", "note", "deliveryChargeId"] as const;
+const TEXT_FIELDS = ["fullName", "phone", "email", "city", "address", "deliveryChargeId"] as const;
 const METHODS: PaymentMethod[] = ["sslcommerz", "cod"];
 // Fields that only ever hold a default or a choice: a draft of these alone holds nothing typed
 const CHOICE_FIELDS = new Set<string>(["city", "deliveryChargeId"]);
@@ -34,15 +34,11 @@ export function isCheckoutDraft(value: unknown): value is CheckoutDraft {
 export function draftFromForm(form: FormData, now = new Date()): CheckoutDraft {
   const text = (name: string) => String(form.get(name) ?? "");
   return {
-    email: text("email"),
-    firstName: text("firstName"),
-    lastName: text("lastName"),
+    fullName: text("fullName"),
     phone: text("phone"),
-    address: text("address"),
-    apartment: text("apartment"),
+    email: text("email"),
     city: text("city"),
-    postalCode: text("postalCode"),
-    note: text("note"),
+    address: text("address"),
     deliveryChargeId: text("deliveryChargeId"),
     paymentMethod: text("paymentMethod") === "cod" ? "cod" : "sslcommerz",
     savedAt: now.toISOString(),

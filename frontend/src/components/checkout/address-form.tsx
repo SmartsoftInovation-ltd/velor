@@ -18,28 +18,7 @@ export function AddressForm({ errors = {}, draft }: Props) {
       title="Shipping address"
       description="Where the order should arrive."
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Street address" htmlFor="checkout-street" className="sm:col-span-2">
-          <Input
-            id="checkout-street"
-            name="address"
-            defaultValue={draft?.address}
-            required
-            autoComplete="street-address"
-            placeholder="House 12, Road 4"
-            aria-invalid={Boolean(errors.address)}
-          />
-          <FieldError message={errors.address} />
-        </Field>
-
-        <Field
-          label="Apartment, floor (optional)"
-          htmlFor="checkout-apartment"
-          className="sm:col-span-2"
-        >
-          <Input id="checkout-apartment" name="apartment" defaultValue={draft?.apartment} autoComplete="address-line2" placeholder="Apt 5B" />
-        </Field>
-
+      <div className="grid gap-4">
         <Field label="City" htmlFor="checkout-city">
           {/* Native select: the browser owns the choice; the form reads it on submit */}
           <div className="relative">
@@ -55,18 +34,20 @@ export function AddressForm({ errors = {}, draft }: Props) {
               ▾
             </span>
           </div>
+          <FieldError message={errors.city} />
         </Field>
 
-        <Field label="Postal code" htmlFor="checkout-postal">
-          <Input id="checkout-postal" name="postalCode" defaultValue={draft?.postalCode} autoComplete="postal-code" placeholder="1207" />
-        </Field>
-
-        <Field
-          label="Delivery note (optional)"
-          htmlFor="checkout-note"
-          className="sm:col-span-2"
-        >
-          <Input id="checkout-note" name="note" defaultValue={draft?.note} maxLength={300} placeholder="Leave at reception" />
+        <Field label="Address" htmlFor="checkout-address">
+          <Input
+            id="checkout-address"
+            name="address"
+            defaultValue={draft?.address}
+            required
+            autoComplete="street-address"
+            placeholder="House 12, Road 4, Dhanmondi"
+            aria-invalid={Boolean(errors.address)}
+          />
+          <FieldError message={errors.address} />
         </Field>
       </div>
     </CheckoutSection>

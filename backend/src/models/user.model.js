@@ -1,5 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const { isShopper, isStaff } = require("../utils/accountType.util");
 const { tenantPlugin } = require("../tenancy/tenantPlugin");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -43,6 +44,12 @@ const userSchema = new mongoose.Schema(
     },
     isEmailVerified: { type: Boolean, default: false },
     isPhoneVerified: { type: Boolean, default: false },
+    /**
+     * "staff" signs in to the dashboard, "shopper" on the storefront; never
+     * both. Set where the account is created. No default: an account saved
+     * before the field existed is read by the old rule (utils/accountType.util.js).
+     */
+    accountType: { type: String, enum: ["staff", "shopper"] },
     roles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
     permissions: [
       {
@@ -159,9 +166,11 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
  * token is indistinguishable from a staff token, so it would open the whole
  * dashboard API — every order, customer and report in the store.
  *
- * Staff are the users holding at least one role; a shopper holds none.
+ * The audience follows the account's type (utils/accountType.util.js). An
+ * account that is neither a shopper nor staff with a role gets "none", which
+ * no guard accepts.
  */
-const audienceOf = (user) => (user.roles?.length ? "staff" : "shopper");
+const audienceOf = (user) => (isShopper(user) ? "shopper" : isStaff(user) ? "staff" : "none");
 
 const sessionClaims = (user) => ({
   id: user._id,

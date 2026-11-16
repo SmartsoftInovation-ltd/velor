@@ -74,7 +74,13 @@ describe("tenant-aware staff auth", () => {
 
     it("does not let a shopper account into the dashboard", async () => {
       await runForTenant(pizza.tenant._id, () => User.create({ name: "Shopper", email: "shopper@shop.test", password: "Shop-Pass1", roles: [] }));
-      await login({ workspace: "pizzashop", email: "shopper@shop.test", password: "Shop-Pass1" }).expect(403);
+      // Answered like an unknown account: the dashboard does not confirm who shops here
+      await login({ workspace: "pizzashop", email: "shopper@shop.test", password: "Shop-Pass1" }).expect(400);
+    });
+
+    it("refuses a dashboard account that holds no role", async () => {
+      await runForTenant(pizza.tenant._id, () => User.create({ name: "No Role", email: "norole@shop.test", password: "Role-Pass1", accountType: "staff", roles: [] }));
+      await login({ workspace: "pizzashop", email: "norole@shop.test", password: "Role-Pass1" }).expect(403);
     });
 
     it("requires a workspace in strict mode: there is no default store", async () => {
