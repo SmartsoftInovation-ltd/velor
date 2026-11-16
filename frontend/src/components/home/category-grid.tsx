@@ -6,8 +6,11 @@ import { CategoryCard } from "./category-card";
 import { Section } from "./section";
 import { SectionHeading } from "./section-heading";
 
+// One row on a large screen; "View all" leads to the rest
+const MAX_CATEGORIES = 6;
+
 export async function CategoryGrid() {
-  const categories = await getShopCategories(storeHostFrom(await headers()));
+  const categories = (await getShopCategories(storeHostFrom(await headers()))).slice(0, MAX_CATEGORIES);
   // A store with no active categories (or an unreachable API) shows no section
   if (!categories.length) return null;
 
