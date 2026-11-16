@@ -27,6 +27,9 @@ export type CatalogProduct = Product & {
 export type ProductVariant = {
   id: string;
   label: string;
+  /** As typed in the dashboard; empty when the option has none */
+  color: string;
+  size: string;
   price: number;
   /** Retail price while this option is in a flash sale */
   compareAtPrice?: number;

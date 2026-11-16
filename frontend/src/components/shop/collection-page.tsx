@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ProductCard } from "@/components/home/product-card";
 import type { CatalogProduct } from "@/lib/catalog/types";
 import { Breadcrumb } from "./breadcrumb";
+import { InfiniteList } from "./infinite-list";
 
 type Props = {
   title: string;
@@ -15,7 +16,8 @@ type Props = {
 
 /**
  * A fixed collection of the store's products (New arrivals, Offers): heading,
- * then every product as a card. No filters; the collection is the filter.
+ * then its products as cards, more of them as the shopper scrolls. No filters;
+ * the collection is the filter.
  */
 export function CollectionPage({ title, description, action, products, empty }: Props) {
   return (
@@ -36,13 +38,13 @@ export function CollectionPage({ title, description, action, products, empty }: 
       </div>
 
       {products.length ? (
-        <ul className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+        <InfiniteList className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
           {products.map((product) => (
             <li key={`${product.id}:${product.href}`}>
               <ProductCard product={product} />
             </li>
           ))}
-        </ul>
+        </InfiniteList>
       ) : (
         <div className="rounded-lg border border-dashed border-border-default bg-bg-surface p-12 text-center">
           <p className="text-body font-semibold text-text-primary">{empty.title}</p>

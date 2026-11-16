@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { useCart } from "@/components/cart/use-cart";
 import { Button } from "@/components/ui/button";
+import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { PhoneIcon, WhatsAppIcon } from "@/components/ui/icons-footer";
 import type { ItemSnapshot } from "@/lib/cart/types";
 
@@ -45,27 +46,7 @@ export function BuyActions({
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <span className="text-small font-medium text-text-secondary">Quantity</span>
-        <div className="flex h-11 items-center rounded-md border border-border-default">
-          <button
-            type="button"
-            onClick={() => setQty(Math.max(1, qty - 1))}
-            disabled={qty <= 1}
-            aria-label="Decrease quantity"
-            className="flex size-11 items-center justify-center rounded-l-md text-text-secondary transition-colors duration-150 hover:bg-bg-hover hover:text-text-primary disabled:text-text-disabled disabled:hover:bg-transparent"
-          >
-            −
-          </button>
-          <span className="w-10 text-center text-body font-medium tabular">{qty}</span>
-          <button
-            type="button"
-            onClick={() => setQty(Math.min(max, qty + 1))}
-            disabled={qty >= max}
-            aria-label="Increase quantity"
-            className="flex size-11 items-center justify-center rounded-r-md text-text-secondary transition-colors duration-150 hover:bg-bg-hover hover:text-text-primary disabled:text-text-disabled disabled:hover:bg-transparent"
-          >
-            +
-          </button>
-        </div>
+        <QuantityStepper value={qty} max={max} onChange={setQty} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

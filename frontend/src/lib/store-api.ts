@@ -94,6 +94,25 @@ export type Store = {
   menuAlign: string;
   announcementEnabled: string;
   announcementText: string;
+} & Partial<StoreContact>;
+
+/**
+ * What the seller filled in under Settings → Store Information. Optional: a
+ * field the API does not send, or the seller left empty, is simply not shown.
+ */
+export type StoreContact = {
+  slogan: string;
+  businessType: string;
+  address: string;
+  phone: string;
+  secondaryPhone: string;
+  email: string;
+  businessHours: string;
+  googleMapLink: string;
+  facebookLink: string;
+  instagramLink: string;
+  whatsappLink: string;
+  messengerLink: string;
 };
 
 /**

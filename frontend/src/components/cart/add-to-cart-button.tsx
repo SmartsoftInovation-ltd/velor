@@ -28,7 +28,14 @@ export function AddToCartButton({
   size = "md",
   fullWidth = false,
   className,
-}: { item: ItemSnapshot; quantity?: number; label?: string } & ButtonProps) {
+  onDone,
+}: {
+  item: ItemSnapshot;
+  quantity?: number;
+  label?: string;
+  /** Runs after a click has been answered with a toast, whatever the outcome */
+  onDone?: () => void;
+} & ButtonProps) {
   const { add } = useCart();
   const toast = useToast();
 
@@ -56,6 +63,7 @@ export function AddToCartButton({
     } else {
       toast({ tone: "danger", title: "Out of stock", description: `${item.name} can't be added right now.` });
     }
+    onDone?.();
   };
 
   return (

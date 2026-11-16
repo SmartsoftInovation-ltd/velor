@@ -18,7 +18,7 @@ export async function LimitedOffers() {
         icon={<TagIcon />}
         title="Limited offers"
         description="Picked by the shop, while stock lasts."
-        viewAllHref="/shop"
+        viewAllHref="/shop/limited-offers"
       />
 
       <ul className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">

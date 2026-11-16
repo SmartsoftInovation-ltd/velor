@@ -6,7 +6,7 @@ import { storeHostFrom } from "@/lib/store-api";
 
 // The same rule as the home page section: added in the last 7 days, else the latest
 const DAYS = 7;
-const LATEST = 24;
+const LATEST = 120;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/shop/new-arrivals" },

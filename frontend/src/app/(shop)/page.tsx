@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { BestSellers } from "@/components/home/best-sellers";
+import { ChatWidget } from "@/components/home/chat-widget";
 import { CategoryGrid } from "@/components/home/category-grid";
 import { FlashSale } from "@/components/home/flash-sale";
 import { HeroCarousel } from "@/components/home/hero-carousel";
@@ -39,6 +40,7 @@ export default async function Home() {
       <PromoBanner />
       <LimitedOffers />
       <FlashSale />
+      <ChatWidget />
     </main>
   );
 }

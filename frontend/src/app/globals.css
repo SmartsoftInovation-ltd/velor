@@ -446,6 +446,68 @@ select:focus-visible {
   }
 }
 
+/* Modal (components/ui/modal.tsx): the panel rises in over a fading backdrop,
+   and the page behind it stops scrolling while it is open. */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal[open] {
+  animation: modal-in 220ms var(--ease-out);
+}
+
+.modal[open]::backdrop {
+  animation: backdrop-in 200ms var(--ease-out);
+}
+
+/* Drawer (components/ui/drawer.tsx): slides in from the right edge. */
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer[open] {
+  animation: drawer-in 280ms var(--ease-out);
+}
+
+.drawer[open]::backdrop {
+  animation: backdrop-in 200ms var(--ease-out);
+}
+
+html:has(.modal[open]),
+html:has(.drawer[open]) {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal[open],
+  .modal[open]::backdrop,
+  .drawer[open],
+  .drawer[open]::backdrop {
+    animation: none;
+  }
+}
+
 /* Toasts slide up from the corner they stack in. */
 @keyframes toast-in {
   from {

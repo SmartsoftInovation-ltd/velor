@@ -105,6 +105,8 @@ export function toVariant(v: ApiVariant): ProductVariant {
     id: v._id,
     // Size and colour name a variant best; a variant without them goes by its name
     label: variantLabel(v),
+    color: v.color ?? "",
+    size: v.size ?? "",
     price: v.price,
     compareAtPrice: v.compareAtPrice ?? undefined,
     stock: v.stock,

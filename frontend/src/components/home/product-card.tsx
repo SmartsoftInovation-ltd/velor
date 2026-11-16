@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
 import { Badge, StatusDot } from "@/components/ui/badge";
-import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { BuyNowButton } from "@/components/cart/buy-now-button";
 import { WishlistToggle } from "@/components/cart/wishlist-toggle";
+import { QuickViewButton } from "@/components/product/quick-view-button";
 import { Button } from "@/components/ui/button";
 import { EyeIcon } from "@/components/ui/icons";
 import { Stars } from "@/components/ui/stars";
@@ -113,10 +113,9 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
           <div className="card-minimal:hidden card-overlay:hidden card-buy:hidden">{stockLine}</div>
 
           <div className="flex gap-2 card-buy:@container">
-            <AddToCartButton
-              item={product.item}
-              fullWidth
-              className="card-buy:w-auto! card-buy:min-w-0 card-buy:flex-1 card-buy:gap-1.5 card-buy:rounded-full card-buy:bg-bg-inverse! card-buy:px-2.5 card-buy:text-small card-buy:font-semibold card-buy:text-text-inverse! card-buy:shadow-md! card-buy:hover:opacity-90 card-buy:@max-[13rem]:flex-none card-buy:@max-[13rem]:w-10! card-buy:@max-[13rem]:px-0 card-buy:@max-[13rem]:[&>span:not(:has(svg))]:hidden card-buy:@min-[13rem]:[&:is(a)>span:has(svg)]:hidden"
+            <QuickViewButton
+              product={product}
+              className="card-buy:w-auto! card-buy:min-w-0 card-buy:flex-1 card-buy:gap-1.5 card-buy:rounded-full card-buy:bg-bg-inverse! card-buy:px-2.5 card-buy:text-small card-buy:font-semibold card-buy:text-text-inverse! card-buy:shadow-md! card-buy:hover:opacity-90 card-buy:@max-[13rem]:flex-none card-buy:@max-[13rem]:w-10! card-buy:@max-[13rem]:px-0 card-buy:@max-[13rem]:[&>span:not(:has(svg))]:hidden"
             />
             <BuyNowButton
               item={product.buyNowItem ?? product.item}

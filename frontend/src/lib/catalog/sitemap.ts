@@ -1,7 +1,19 @@
 import { buildShopHref } from "./query-params";
 import { buildTaxonomy, type ApiProduct } from "./storefront";
 
-const STATIC_PATHS = ["/", "/shop", "/shop/new-arrivals", "/shop/offers", "/track-order"];
+const STATIC_PATHS = [
+  "/",
+  "/shop",
+  "/shop/new-arrivals",
+  "/shop/best-sellers",
+  "/shop/offers",
+  "/shop/limited-offers",
+  "/track-order",
+  "/about",
+  "/contact",
+  "/shipping",
+  "/returns",
+];
 
 // Next writes these into the XML unescaped, and one bare "&" invalidates the whole file
 const xmlSafe = (url: string) => url.replace(/&/g, "&amp;");

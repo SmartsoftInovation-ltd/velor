@@ -18,7 +18,7 @@ export async function NewArrivals() {
         icon={<SparkleIcon />}
         title="New arrivals"
         description="The latest additions to the shop."
-        viewAllHref="/shop"
+        viewAllHref="/shop/new-arrivals"
       />
 
       <ul className="product-grid grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
