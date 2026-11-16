@@ -2,13 +2,14 @@ import { CheckoutSection } from "@/components/checkout/checkout-section";
 import { ShieldCheckIcon } from "@/components/ui/icons";
 import type { PaymentMethod } from "@/lib/checkout";
 
+// Cash on delivery first: it is the default choice
 const METHODS = [
+  { id: "cod", name: "Cash on delivery", note: "Pay the courier when it arrives" },
   {
     id: "sslcommerz",
     name: "Pay online",
     note: "Card, bKash, Nagad, Rocket or net banking on the secure SSLCommerz page",
   },
-  { id: "cod", name: "Cash on delivery", note: "Pay the courier when it arrives" },
 ] as const satisfies readonly { id: PaymentMethod; name: string; note: string }[];
 
 /* Card details are never typed here: online payment happens on the gateway's

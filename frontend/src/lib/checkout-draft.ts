@@ -40,7 +40,7 @@ export function draftFromForm(form: FormData, now = new Date()): CheckoutDraft {
     city: text("city"),
     address: text("address"),
     deliveryChargeId: text("deliveryChargeId"),
-    paymentMethod: text("paymentMethod") === "cod" ? "cod" : "sslcommerz",
+    paymentMethod: text("paymentMethod") === "sslcommerz" ? "sslcommerz" : "cod",
     savedAt: now.toISOString(),
   };
 }

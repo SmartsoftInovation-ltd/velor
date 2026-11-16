@@ -200,6 +200,12 @@ layer(base);
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  /* The page scrollbar's space is always kept. A modal locks scrolling with
+     body overflow:hidden, which removes the scrollbar; without a reserved
+     gutter the whole page widened and jumped on open, and back on close. */
+  html {
+    scrollbar-gutter: stable;
+  }
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50;
     scrollbar-gutter: stable;

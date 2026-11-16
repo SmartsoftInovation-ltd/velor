@@ -47,7 +47,7 @@ function CheckoutFormBody({ deliveryOptions }: Props) {
     if (deliveryOptions.some((option) => option._id === draft?.deliveryChargeId)) return draft?.deliveryChargeId ?? "";
     return deliveryOptions.length === 1 ? deliveryOptions[0]._id : "";
   });
-  const [payment, setPayment] = useState<PaymentMethod>(draft?.paymentMethod ?? "sslcommerz");
+  const [payment, setPayment] = useState<PaymentMethod>(draft?.paymentMethod ?? "cod");
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [result, setResult] = useState<PlaceOrderResult>({});
   const [pending, startTransition] = useTransition();

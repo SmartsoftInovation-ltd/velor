@@ -5,7 +5,7 @@ import moment from "moment";
 import toast from "react-hot-toast";
 import { MdDelete } from "react-icons/md";
 import { IoIosPrint } from "react-icons/io";
-import { TbShieldSearch, TbStatusChange, TbSticker2 } from "react-icons/tb";
+import { TbChevronDown, TbShieldSearch, TbSticker2 } from "react-icons/tb";
 import { FaEye, FaSearch, FaSync, FaTimes } from "react-icons/fa";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../ui/table";
 import Button from "../../ui/button/Button";
@@ -131,15 +131,32 @@ const InvoiceCell = ({ order, index }: { order: Order; index: number }) => (
   </div>
 );
 
-// Read-only here: the status changes from Options
-const StatusPill = ({ status }: { status: OrderStatusType }) => (
-  <span className={statusPillClass(status)}>
-    <span className={`size-1.5 rounded-full ${toneOf(status).dot}`} aria-hidden="true" />
-    {STATUS_LABELS[status] ?? status}
-  </span>
-);
+// The status changes from the list: the pill opens the status picker. Staff
+// who cannot edit orders see the same pill, read-only.
+const StatusPill = ({ order, onStatus }: { order: Order; onStatus?: (order: Order) => void }) => {
+  const status = order.orderStatus;
+  const content = (
+    <>
+      <span className={`size-1.5 rounded-full ${toneOf(status).dot}`} aria-hidden="true" />
+      {STATUS_LABELS[status] ?? status}
+    </>
+  );
+  if (!onStatus) return <span className={statusPillClass(status)}>{content}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onStatus(order)}
+      title="Change status"
+      aria-label={`Change status of ${order.invoiceId ?? "order"}, now ${STATUS_LABELS[status] ?? status}`}
+      className={`${statusPillClass(status)} no-shine cursor-pointer transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40`}
+    >
+      {content}
+      <TbChevronDown className="size-3 opacity-70" aria-hidden="true" />
+    </button>
+  );
+};
 
-const Actions = ({ order, canDelete, onDelete, onSticker, onStatus, onFraud }: { order: Order; canDelete: boolean; onDelete: (id: string) => void; onSticker: (id: string) => void; onStatus: (order: Order) => void; onFraud: (order: Order) => void }) => {
+const Actions = ({ order, canDelete, onDelete, onSticker, onFraud }: { order: Order; canDelete: boolean; onDelete: (id: string) => void; onSticker: (id: string) => void; onFraud: (order: Order) => void }) => {
   const navigate = useNavigate();
   return (
     <div className="flex items-center justify-end gap-1.5">
@@ -148,9 +165,6 @@ const Actions = ({ order, canDelete, onDelete, onSticker, onStatus, onFraud }: {
           <>
             <OptionsMenuItem tone="view" icon={<FaEye className="size-3.5" />} onClick={run(() => navigate(`/orderdetails/${order._id}`))}>
               View Details
-            </OptionsMenuItem>
-            <OptionsMenuItem tone="edit" icon={<TbStatusChange className="size-4" />} onClick={run(() => onStatus(order))}>
-              Change Status
             </OptionsMenuItem>
             <OptionsMenuItem icon={<TbShieldSearch className="size-4" />} onClick={run(() => onFraud(order))}>
               Fraud Check
@@ -190,6 +204,7 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
   onDataChanged?: () => void;
 }) {
   const canDelete = usePermission("order", "delete");
+  const canEdit = usePermission("order", "edit");
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [channel, setChannel] = useState<Segment>("all");
@@ -339,12 +354,12 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
               <OrderItemStack items={order.items} expanded={expanded.has(order._id)} onToggle={() => toggle(order._id)} />
               {expanded.has(order._id) ? <OrderItemDetails items={order.items} /> : null}
               <div className="flex flex-wrap items-center gap-2">
-                <StatusPill status={order.orderStatus} />
+                <StatusPill order={order} onStatus={canEdit ? setStatusOrder : undefined} />
                 <PaymentPill method={order.paymentMethod} status={order.paymentStatus} />
                 <ChannelTag channel={order.channel} source={order.orderFrom} />
               </div>
               <div className="border-t border-gray-100 pt-3 dark:border-white/[0.05]">
-                <Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onStatus={setStatusOrder} onFraud={setFraudOrder} />
+                <Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onFraud={setFraudOrder} />
               </div>
             </div>
           )}
@@ -391,8 +406,8 @@ export default function OrderTable({ statusFilter, onDataChanged }: {
                         <TableCell className={CELL}><Amounts order={order} /></TableCell>
                         <TableCell className={CELL}><PaymentPill method={order.paymentMethod} status={order.paymentStatus} /></TableCell>
                         <TableCell className={CELL}><ChannelTag channel={order.channel} source={order.orderFrom} /></TableCell>
-                        <TableCell className={CELL}><StatusPill status={order.orderStatus} /></TableCell>
-                        <TableCell className={`${CELL} ${STICKY_ACTIONS} !overflow-visible`}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onStatus={setStatusOrder} onFraud={setFraudOrder} /></TableCell>
+                        <TableCell className={CELL}><StatusPill order={order} onStatus={canEdit ? setStatusOrder : undefined} /></TableCell>
+                        <TableCell className={`${CELL} ${STICKY_ACTIONS} !overflow-visible`}><Actions order={order} canDelete={canDelete} onDelete={setDeleteId} onSticker={setStickerId} onFraud={setFraudOrder} /></TableCell>
                       </TableRow>
                       {expanded.has(order._id) ? (
                         <TableRow className="bg-gray-50/70 dark:bg-white/[0.02]">

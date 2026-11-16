@@ -47,19 +47,19 @@ describe("OrderTable", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Actions for order INV-77" }));
     const menu = within(screen.getByRole("menu"));
-    ["View Details", "Change Status", "Fraud Check", "Print Sticker", "Print Invoice"].forEach((name) =>
+    ["View Details", "Fraud Check", "Print Sticker", "Print Invoice"].forEach((name) =>
       expect(menu.getByRole("menuitem", { name })).toBeTruthy(),
     );
+    // The status changes from the list, not from Options
+    expect(menu.queryByRole("menuitem", { name: "Change Status" })).toBeNull();
   });
 
-  it("shows the status as a colored pill that opens nothing, and changes it from Options", async () => {
+  it("changes the status from the colored pill in the list", async () => {
     show();
-    const pill = await screen.findByText("Confirmed");
-    expect(pill.className).toContain("bg-blue-light-50");
-    expect(pill.closest("button")).toBeNull();
+    const pill = (await screen.findByText("Confirmed")).closest("button");
+    expect(pill?.className).toContain("bg-blue-light-50");
 
-    fireEvent.click(screen.getByRole("button", { name: "Actions for order INV-77" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Change Status" }));
+    fireEvent.click(pill!);
     expect(screen.getByText("Change order status")).toBeTruthy();
   });
 });
