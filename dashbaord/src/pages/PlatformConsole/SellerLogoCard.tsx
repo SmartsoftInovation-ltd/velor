@@ -11,7 +11,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const BUSY = new Set(["pending", "processing"]);
 
 /**
- * The seller's logo, the same image their own Store Information page sets. It is
+ * The seller's logo, the same image their own Site Information page sets. It is
  * uploaded to the seller's Cloudinary in the background, so the card keeps
  * checking until the upload has finished and then refreshes the preview.
  */
@@ -88,17 +88,17 @@ const SellerLogoCard = ({ tenantId, canEdit }: { tenantId: string; canEdit: bool
       <div className="min-w-0 flex-1">
         <h3 className="text-base font-semibold text-gray-900 dark:text-white/90">Logo</h3>
         <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-          {!logo.data.hasStoreInformation
-            ? "This seller has no Store Information yet. Create it from the seller's dashboard, then upload the logo here."
+          {!logo.data.hasSiteInformation
+            ? "This seller has no Site Information yet. Create it from the seller's dashboard, then upload the logo here."
             : busy
               ? "Uploading to the seller's image storage. It goes live when this finishes."
               : status === "failed"
                 ? `The last upload failed${logo.data.lastError ? `: ${logo.data.lastError}` : ""}. Try again.`
-                : "Shown in the website header, the seller's dashboard and printed invoices. JPG, PNG or WEBP, up to 10 MB."}
+                : "Shown in the website header, footer and browser tab. JPG, PNG or WEBP, up to 10 MB."}
         </p>
       </div>
 
-      {canEdit && logo.data.hasStoreInformation && (
+      {canEdit && logo.data.hasSiteInformation && (
         <div className="flex shrink-0 gap-2">
           <input
             ref={input}

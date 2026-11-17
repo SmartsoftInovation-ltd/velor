@@ -406,8 +406,6 @@ select:focus-visible {
   color: var(--nav-fg);
 }
 
-[data-nav-tone="brand"] nav :is(a, button):not([role="menu"] *):hover,
-[data-nav-tone="inverse"] nav :is(a, button):not([role="menu"] *):hover,
 [data-nav-tone="brand"] nav a[aria-current="page"]:not([role="menu"] *),
 [data-nav-tone="inverse"] nav a[aria-current="page"]:not([role="menu"] *) {
   color: var(--nav-fg-strong);
@@ -802,7 +800,6 @@ html:has(.drawer[open]) {
   color: color-mix(in srgb, var(--menu-ink) 80%, transparent);
 }
 
-:is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav :is(a, button):not([role="menu"] *):hover,
 :is([data-menu="brand"], [data-menu="inverse"]) [data-nav-bar] nav a[aria-current="page"]:not([role="menu"] *) {
   color: var(--menu-strong);
 }

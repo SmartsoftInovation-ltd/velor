@@ -33,8 +33,8 @@ export function CategoryDropdown({ link }: { link: NavLink }) {
         data-nav-item
         className={cn(
           "flex items-center gap-2 rounded-full px-4 py-2 text-small font-medium whitespace-nowrap transition-colors duration-200 ease-[var(--ease-hover)]",
-          "relative z-1",
-          open ? "text-white" : "text-text-secondary hover:text-white",
+          "relative z-1 outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40",
+          open ? "text-text-primary" : "text-text-secondary",
         )}
       >
         <NavIcon href={link.href} className="size-[18px] shrink-0" />

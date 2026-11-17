@@ -97,7 +97,7 @@ export type Store = {
 } & Partial<StoreContact>;
 
 /**
- * What the seller filled in under Settings → Store Information. Optional: a
+ * What the seller filled in under Settings → Site Information. Optional: a
  * field the API does not send, or the seller left empty, is simply not shown.
  */
 export type StoreContact = {
@@ -116,6 +116,8 @@ export type StoreContact = {
   youtubeLink: string;
   twitterLink: string;
   linkedinLink: string;
+  /** Site Information's "Footer Text", for the copyright line */
+  footerText: string;
 };
 
 /**

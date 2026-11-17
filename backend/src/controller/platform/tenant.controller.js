@@ -8,7 +8,7 @@ const { invalidateTenantCache } = require("../../tenancy/tenantResolver");
 const { provisionTenant } = require("../../tenancy/provisioning");
 const PlatformAuditLog = require("../../models/platform/platformAuditLog.model");
 const User = require("../../models/user.model");
-const StoreInformation = require("../../models/storeInformation.model");
+const SiteInformation = require("../../models/siteInformation.model");
 const { runForTenant } = require("../../tenancy/context");
 const { sendOwnerCredentials } = require("../../service/ownerCredentials.service");
 
@@ -48,7 +48,7 @@ const withOwners = async (tenants) => {
 const withLogos = async (tenants) => {
   const ids = tenants.map((t) => t._id);
   const stores = ids.length
-    ? await StoreInformation.find({ tenantId: { $in: ids } }).select("tenantId image.url").lean()
+    ? await SiteInformation.find({ tenantId: { $in: ids } }).select("tenantId image.url").lean()
     : [];
   const byTenant = Object.fromEntries(stores.map((s) => [String(s.tenantId), s.image?.url || ""]));
   return tenants.map((t) => ({ ...t, logoUrl: byTenant[String(t._id)] || "" }));

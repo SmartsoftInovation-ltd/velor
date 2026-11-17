@@ -181,16 +181,14 @@ const SiteInfoTable = () => {
         />
       ) : !loading && filtered.length > 0 ? (
         <div className="rounded-xl border border-gray-200 dark:border-white/[0.05] bg-white dark:bg-white/[0.03]">
-          <div className="no-scrollbar w-full overflow-y-auto max-h-[560px]">
-            <table className="w-full" style={{ tableLayout: "fixed", borderCollapse: "collapse" }}>
+          <div className="no-scrollbar w-full overflow-auto max-h-[560px]">
+            {/* Seven equal columns. The min width keeps 1/7 wide enough for the
+                three 40px action buttons; narrower screens scroll sideways. */}
+            <table className="w-full min-w-[1120px]" style={{ tableLayout: "fixed", borderCollapse: "collapse" }}>
               <colgroup>
-                <col style={{ width: "40px" }} />
-                <col style={{ width: "56px" }} />
-                <col style={{ width: "20%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "20%" }} />
-                <col style={{ width: "24%" }} />
-                <col style={{ width: "124px" }} />
+                {Array.from({ length: 7 }, (_, i) => (
+                  <col key={i} style={{ width: `${100 / 7}%` }} />
+                ))}
               </colgroup>
               <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                 <tr className="border-b border-gray-100 dark:border-white/[0.05]">

@@ -16,7 +16,7 @@ import { getStore, storeHostFrom } from "@/lib/store-api";
  */
 export default async function ShopLayout({ children }: LayoutProps<"/">) {
   const store = await getStore(storeHostFrom(await headers()));
-  // Store Information's chat and social links; no button until one is filled in
+  // Site Information's chat and social links; no button until one is filled in
   const channels = chatChannels(store);
 
   return (

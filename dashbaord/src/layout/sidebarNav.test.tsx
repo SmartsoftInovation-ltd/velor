@@ -89,6 +89,7 @@ describe("sidebar order", () => {
       "Return Policy",
       "Create Outlet Info",
       "Outlet Info List",
+      "Contact Messages",
       "Create Web Banner",
       "Web Banner List",
       "Create Discount Banner",

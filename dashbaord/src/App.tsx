@@ -412,6 +412,9 @@ const SiteInfoView = lazy(
 const OutletView = lazy(
   () => import("./pages/Settings/outletinformation/OutletView.tsx"),
 );
+const ContactMessageList = lazy(
+  () => import("./pages/Settings/contactmessage/ContactMessageList.tsx"),
+);
 const OutletInfoList = lazy(
   () => import("./pages/Settings/outletinformation/OutletList.tsx"),
 );
@@ -958,6 +961,7 @@ export default function App() {
                 {/* outlet information */}
                 <Route path="/add-outlet" element={<ProtectedRoute module="outlet-information" action="add"><AddOutletInfo /></ProtectedRoute>} />
                 <Route path="/outlet-list" element={<ProtectedRoute module="outlet-information" action="view"><OutletInfoList /></ProtectedRoute>} />
+                <Route path="/contact-messages" element={<ProtectedRoute module="site-information" action="view"><ContactMessageList /></ProtectedRoute>} />
                 <Route
                   path="/update-outlet-info/:slug"
                   element={<OutletInformationUpdate />}

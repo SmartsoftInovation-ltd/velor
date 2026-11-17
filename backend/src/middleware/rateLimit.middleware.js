@@ -267,7 +267,36 @@ const trackOrderLimiter = [
   trackLimiter("invoice", (body) => body?.invoice),
 ];
 
+// Storefront Contact page. Calls arrive from the shop's server (one shared IP),
+// so the caps are per store: a few messages per sender email, and a ceiling
+// for the whole store so a flood cannot bury real messages.
+const contactStore = (req) => String(req.tenant?._id || clientIp(req));
+const contactLimiter = [
+  rateLimit({
+    store: newStore(),
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    statusCode: statusCodes.TOO_MANY_REQUESTS,
+    keyGenerator: (req) =>
+      `contact-email:${contactStore(req)}:${String(req.body?.email || "").trim().toLowerCase().slice(0, 254) || "-"}`,
+    handler: tooMany("You have sent several messages already. Please try again in an hour."),
+  }),
+  rateLimit({
+    store: newStore(),
+    windowMs: 60 * 60 * 1000,
+    limit: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    statusCode: statusCodes.TOO_MANY_REQUESTS,
+    keyGenerator: (req) => `contact-store:${contactStore(req)}`,
+    handler: tooMany("We are receiving a lot of messages right now. Please try again later."),
+  }),
+];
+
 module.exports = {
+  contactLimiter,
   trackOrderLimiter,
   couponLimiter,
   searchLimiter,

@@ -1,5 +1,5 @@
 const Tenant = require("../../models/platform/tenant.model");
-const StoreInformation = require("../../models/storeInformation.model");
+const SiteInformation = require("../../models/siteInformation.model");
 const { customError } = require("../../lib/CustomError");
 const { asynchandeler } = require("../../lib/asyncHandeler");
 const { apiResponse } = require("../../utils/apiResponse");
@@ -10,21 +10,21 @@ const { bumpNsVersion } = require("../../utils/cache.util");
 const { imageQueue } = require("../../queues/image.queue");
 
 /**
- * A seller's logo is the image on their Store Information record, the same one
- * the seller uploads from their own dashboard. The storefront header, the
- * dashboard shell and printed invoices all read it from there, so the Platform
- * Console writes the same field instead of keeping a copy of its own.
+ * A seller's logo is the image on their Site Information record, the same one
+ * the seller uploads from Settings → Site Information. The storefront reads it
+ * from there, so the Platform Console writes the same field instead of keeping
+ * a copy of its own.
  */
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
-// Store Information caches under this namespace (see storeInformation.controller)
-const STORE_INFO_NS = "storeinformation";
+// Site Information caches under this namespace (see siteinformation.controller)
+const SITE_INFO_NS = "siteinformation";
 
 const logoOf = (store) => ({
   url: store?.image?.url || "",
   status: store?.image?.status || "",
   lastError: store?.image?.lastError || "",
-  hasStoreInformation: Boolean(store),
+  hasSiteInformation: Boolean(store),
 });
 
 /**
@@ -45,17 +45,17 @@ exports.forTenant = async (req, res, next) => {
 };
 
 exports.getLogo = asynchandeler(async (req, res) => {
-  const store = await StoreInformation.findOne().select("image").lean();
+  const store = await SiteInformation.findOne().select("image").lean();
   return apiResponse.sendSuccess(res, statusCodes.OK, "Store logo", logoOf(store));
 });
 
 exports.updateLogo = asynchandeler(async (req, res) => {
   if (!req.file) throw new customError("Please choose a logo image", statusCodes.BAD_REQUEST);
 
-  const store = await StoreInformation.findOne();
+  const store = await SiteInformation.findOne();
   if (!store) {
     throw new customError(
-      "This seller has no Store Information yet. Create it from the seller's dashboard first.",
+      "This seller has no Site Information yet. Create it from the seller's dashboard first.",
       statusCodes.CONFLICT,
     );
   }
@@ -68,14 +68,14 @@ exports.updateLogo = asynchandeler(async (req, res) => {
   store.image.lastError = "";
   await store.save();
 
-  await imageQueue.add("update-storeinformation-image", {
-    modelName: "storeinformation",
+  await imageQueue.add("update-siteinformation-image", {
+    modelName: "siteinformation",
     documentId: store._id,
     localPath: req.file.path,
     oldPublicId,
     oldCloudName,
   });
-  await bumpNsVersion(STORE_INFO_NS);
+  await bumpNsVersion(SITE_INFO_NS);
 
   await recordPlatformAudit({
     req,

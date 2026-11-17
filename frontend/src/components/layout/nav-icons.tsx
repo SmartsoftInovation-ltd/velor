@@ -1,4 +1,5 @@
 import { HeadsetIcon } from "@/components/ui/icons";
+import { ClockIcon } from "@/components/ui/icons-footer";
 import {
   BagIcon,
   BoxIcon,
@@ -18,6 +19,7 @@ const ICONS = {
   "/category": GridIcon,
   "/shop/new-arrivals": SparkleIcon,
   "/shop/offers": TagIcon,
+  "/shop/limited-offers": ClockIcon,
   "/track-order": BoxIcon,
   "/contact": HeadsetIcon,
 } as const;

@@ -5,7 +5,7 @@ const { setSettingsEnv } = require("../helpers/settings");
 const { PNG, tempUploadTracker, enableCloudinary } = require("../helpers/uploads");
 const { signPlatformAccessToken } = require("../../src/utils/platformTokens");
 const Tenant = require("../../src/models/platform/tenant.model");
-const StoreInformation = require("../../src/models/storeInformation.model");
+const SiteInformation = require("../../src/models/siteInformation.model");
 const PlatformAuditLog = require("../../src/models/platform/platformAuditLog.model");
 const { runForTenant } = require("../../src/tenancy/context");
 const service = require("../../src/settings/settings.service");
@@ -13,7 +13,7 @@ const { closeAppRedis } = require("../helpers/redis");
 
 /**
  * The Platform Console replaces a seller's logo: the image on that seller's
- * Store Information record, uploaded in their tenant scope.
+ * Site Information record, uploaded in their tenant scope.
  */
 describe("platform tenant logo API", () => {
   const uploads = tempUploadTracker();
@@ -54,7 +54,7 @@ describe("platform tenant logo API", () => {
   const url = () => `/api/v1/platform/tenants/${tenant._id}/logo`;
   const createStore = () =>
     runForTenant(tenant._id, () =>
-      StoreInformation.create({
+      SiteInformation.create({
         storeName: "Pizza Shop",
         adress: "Dhaka",
         phone: "01700000000",
@@ -67,7 +67,7 @@ describe("platform tenant logo API", () => {
   it("reads the seller's current logo", async () => {
     await createStore();
     const res = await request(app).get(url()).set(supportAuth).expect(200);
-    expect(res.body.data).toMatchObject({ url: "https://res.cloudinary.com/x/old.png", status: "uploaded", hasStoreInformation: true });
+    expect(res.body.data).toMatchObject({ url: "https://res.cloudinary.com/x/old.png", status: "uploaded", hasSiteInformation: true });
   });
 
   it("adds each seller's logo URL to the seller list, empty when they have none", async () => {
@@ -78,9 +78,9 @@ describe("platform tenant logo API", () => {
     expect(bySlug).toEqual({ pizzashop: "https://res.cloudinary.com/x/old.png", [other.slug]: "" });
   });
 
-  it("reports a seller with no Store Information", async () => {
+  it("reports a seller with no Site Information", async () => {
     const res = await request(app).get(url()).set(supportAuth).expect(200);
-    expect(res.body.data).toMatchObject({ url: "", hasStoreInformation: false });
+    expect(res.body.data).toMatchObject({ url: "", hasSiteInformation: false });
   });
 
   it("queues the new logo for the seller and keeps the old one until it uploads", async () => {
@@ -89,14 +89,14 @@ describe("platform tenant logo API", () => {
 
     await upload().expect(200);
 
-    const saved = await runForTenant(tenant._id, () => StoreInformation.findById(store._id).lean());
+    const saved = await runForTenant(tenant._id, () => SiteInformation.findById(store._id).lean());
     expect(saved.image).toMatchObject({ status: "pending", url: "https://res.cloudinary.com/x/old.png" });
     expect(saved.image.localPath).toMatch(/logo-/);
 
     const { imageQueue } = require("../../src/queues/image.queue");
     const jobs = await imageQueue.getJobs(["waiting"]);
     const mine = jobs.filter((j) => String(j.data.documentId) === store._id.toString());
-    expect(mine.map((j) => j.name)).toEqual(["update-storeinformation-image"]);
+    expect(mine.map((j) => j.name)).toEqual(["update-siteinformation-image"]);
     expect(mine[0].data).toMatchObject({ tenantId: tenant._id.toString(), oldPublicId: "old" });
     await Promise.all(mine.map((j) => j.remove()));
 
@@ -108,7 +108,7 @@ describe("platform tenant logo API", () => {
     await upload(supportAuth).expect(403);
   });
 
-  it("409 when the seller has no Store Information, and the file is removed", async () => {
+  it("409 when the seller has no Site Information, and the file is removed", async () => {
     await enableCloudinary(tenant);
     await upload().expect(409);
     await new Promise((resolve) => setTimeout(resolve, 50));

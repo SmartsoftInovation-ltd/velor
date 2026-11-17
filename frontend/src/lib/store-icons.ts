@@ -1,7 +1,7 @@
 import { cloudinaryVariant } from "./cloudinary-image";
 
 /**
- * A store's browser icons, made from the logo set in Store Information.
+ * A store's browser icons, made from the logo set in Site Information.
  *
  * A logo is rarely square, and a browser tab squeezes what it is given, so a
  * logo on Cloudinary is asked for padded to a square at the size needed. iOS

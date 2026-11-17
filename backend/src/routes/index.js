@@ -73,6 +73,7 @@ _.use("/banner", require("./api/banner.api"));
 _.use("/limited-offer", require("./api/limitedOffer.api"));
 _.use("/flash-sale", require("./api/flashSale.api"));
 _.use("/outletinformation", require("./api/outletinformation.api"));
+_.use("/contact-messages", require("./api/contactmessage.api"));
 _.use("/discount-banner", require("./api/discountbanner.api"));
 _.use("/courier-return", require("./api/courierReturn.api"));
 _.use("/employee", require("./api/employee.api"));

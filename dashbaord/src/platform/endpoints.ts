@@ -150,10 +150,10 @@ export interface SellerLogo {
   url: string;
   status: "" | "pending" | "processing" | "uploaded" | "failed";
   lastError: string;
-  hasStoreInformation: boolean;
+  hasSiteInformation: boolean;
 }
 
-// The seller's logo is the image on their Store Information record
+// The seller's logo is the image on their Site Information record
 export const logoApi = {
   get: (tenantId: string) => data<SellerLogo>(api.get(`/tenants/${tenantId}/logo`)),
   upload: (tenantId: string, file: File) => {

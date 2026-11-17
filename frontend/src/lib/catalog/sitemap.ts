@@ -11,6 +11,7 @@ const STATIC_PATHS = [
   "/track-order",
   "/about",
   "/contact",
+  "/outlets",
   "/shipping",
   "/returns",
 ];

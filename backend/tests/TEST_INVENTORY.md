@@ -560,7 +560,7 @@ Legend — auth: `staff` (authGuard, staff audience), `shopper` (shopperGuard), 
 | GET | `/api/v1/shop/products/:slug` | public | — | — | shopCatalogController.product (shopCatalog.controller.js) | cache |
 | GET | `/api/v1/shop/promo-banner` | public | — | — | shopController.promoBanner (shop.controller.js) | cache; models: DiscountBanner |
 | GET | `/api/v1/shop/return-policy` | public | — | — | returnPolicyController.shopReturnPolicy (returnPolicy.controller.js) | cache; models: ReturnPolicy |
-| GET | `/api/v1/shop/store` | public | — | — | shopController.store (shop.controller.js) | models: StoreInformation |
+| GET | `/api/v1/shop/store` | public | — | — | shopController.store (shop.controller.js) | models: SiteInformation |
 | GET | `/api/v1/shop/track/:invoiceId` | public | — | — | shopOrderController.trackOrder (order.controller.js) | models: Order |
 
 ## api/siteinformation.api.js

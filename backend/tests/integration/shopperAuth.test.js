@@ -12,6 +12,8 @@ const Order = require("../../src/models/order.model");
 const Banner = require("../../src/models/banner.model");
 const DiscountBanner = require("../../src/models/discountbanner.model");
 const StoreInformation = require("../../src/models/storeInformation.model");
+const SiteInformation = require("../../src/models/siteInformation.model");
+const OutletInformation = require("../../src/models/outletInformationModel");
 const { PNG, tempUploadTracker, enableCloudinary } = require("../helpers/uploads");
 const service = require("../../src/settings/settings.service");
 
@@ -96,7 +98,7 @@ describe("storefront shopper accounts", () => {
 
     it("sends the store's contact details and social links, empty until saved", async () => {
       await runForTenant(velor.tenant._id, () =>
-        StoreInformation.create({
+        SiteInformation.create({
           storeName: "Velor",
           adress: "Dhaka",
           phone: "01700000000",
@@ -129,6 +131,86 @@ describe("storefront shopper accounts", () => {
         email: "",
       });
       expect(fromPizza.body.data).toMatchObject({ phone: "", messengerLink: "", facebookLink: "" });
+    });
+
+    it("shows only Site Information, never Store Information", async () => {
+      await runForTenant(velor.tenant._id, async () => {
+        await StoreInformation.create({
+          storeName: "Old Velor",
+          adress: "Old address",
+          phone: "01800000000",
+          email: "old@velor.com",
+          businessHours: "Sat-Thu 10-8",
+          image: { url: "https://img/old-logo.png" },
+        });
+        await SiteInformation.create({
+          storeName: "Velor Site",
+          adress: "Gulshan, Dhaka",
+          phone: "01711111111",
+          propiterSlogan: "Wear the city",
+          footer: "Velor Ltd.",
+          whatsappLink: "8801711111111",
+          image: { url: "https://img/site-logo.png" },
+        });
+      });
+
+      const { body } = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+
+      expect(body.data).toMatchObject({
+        name: "Velor Site",
+        logo: "https://img/site-logo.png",
+        address: "Gulshan, Dhaka",
+        phone: "01711111111",
+        slogan: "Wear the city",
+        footerText: "Velor Ltd.",
+        whatsappLink: "8801711111111",
+        // Empty in Site Information, and Store Information's value is not used
+        email: "",
+        businessHours: "",
+      });
+    });
+
+    it("ignores Store Information when there is no Site Information", async () => {
+      await runForTenant(velor.tenant._id, () =>
+        StoreInformation.create({ storeName: "Old Velor", adress: "Old", phone: "01800000000", image: { url: "https://img/old.png" } }),
+      );
+
+      const { body } = await request(app.server).get("/api/v1/shop/store").set(VELOR).expect(200);
+
+      expect(body.data).toMatchObject({ name: velor.tenant.name, logo: "", phone: "", address: "" });
+    });
+
+    it("lists this store's active outlets, oldest first", async () => {
+      const outlet = (name, extra = {}) => ({
+        locationName: name,
+        address: `${name} address`,
+        managerName: "Naim",
+        managerMobile: "01999878862",
+        email: "naim@velor.com",
+        ...extra,
+      });
+      await runForTenant(velor.tenant._id, async () => {
+        await OutletInformation.create(outlet("Gausia", { image: "https://img/gausia.jpg", offDay: "Sunday" }));
+        await OutletInformation.create(outlet("Closed Branch", { isActive: false }));
+        await OutletInformation.create(outlet("Chashara"));
+      });
+
+      const fromVelor = await request(app.server).get("/api/v1/shop/outlets").set(VELOR).expect(200);
+      const fromPizza = await request(app.server).get("/api/v1/shop/outlets").set(PIZZA).expect(200);
+
+      expect(fromVelor.body.data.outlets.map((o) => o.name)).toEqual(["Gausia", "Chashara"]);
+      expect(fromVelor.body.data.outlets[0]).toMatchObject({
+        name: "Gausia",
+        address: "Gausia address",
+        managerName: "Naim",
+        managerMobile: "01999878862",
+        email: "naim@velor.com",
+        businessHour: "10:00 AM - 08:00 PM",
+        offDay: "Sunday",
+        image: "https://img/gausia.jpg",
+      });
+      expect(fromVelor.body.data.outlets[1].image).toBe("");
+      expect(fromPizza.body.data.outlets).toEqual([]);
     });
 
     it("accepts the Buy Now product card and sends it to the storefront", async () => {

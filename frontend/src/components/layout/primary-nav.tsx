@@ -10,19 +10,14 @@ import { NavLinkItem } from "./nav-link";
 type Rect = { left: number; width: number };
 
 /**
- * One brand pill slides between the items rather than each item painting its
- * own. It follows hover and keyboard focus and settles back on the current
- * route, so moving through the nav reads as a single object travelling — the
- * per-item version cross-faded two grounds and looked like a flicker.
+ * One brand pill sits behind the current route's item and slides to the next
+ * one when the shopper clicks it. Hover and focus do not move it: only the
+ * page you are on is marked.
  */
 export function PrimaryNav({ className }: { className?: string }) {
   const listRef = useRef<HTMLUListElement>(null);
   const [rect, setRect] = useState<Rect | null>(null);
   const pathname = usePathname();
-
-  const moveTo = (el: HTMLElement | null) => {
-    if (el) setRect({ left: el.offsetLeft, width: el.offsetWidth });
-  };
 
   const settle = useCallback(() => {
     const current = listRef.current?.querySelector<HTMLElement>(
@@ -40,20 +35,6 @@ export function PrimaryNav({ className }: { className?: string }) {
     <nav aria-label="Primary" className={className}>
       <ul
         ref={listRef}
-        onMouseLeave={settle}
-        onMouseOver={(event) =>
-          moveTo(
-            (event.target as HTMLElement).closest<HTMLElement>("[data-nav-item]"),
-          )
-        }
-        onFocus={(event) =>
-          moveTo(
-            (event.target as HTMLElement).closest<HTMLElement>("[data-nav-item]"),
-          )
-        }
-        onBlur={(event) => {
-          if (!listRef.current?.contains(event.relatedTarget as Node)) settle();
-        }}
         className="relative flex items-center gap-1 menu-center:justify-center"
       >
         <span

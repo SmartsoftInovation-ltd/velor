@@ -1089,6 +1089,54 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  "/contact-messages":
+    get:
+      operationId: "get__contact_messages"
+      tags: ["contact-messages"]
+      security: [{ staffBearer: [] }]
+      x-permission: "site-information:view"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "page", in: query, required: false, schema: { type: integer } }
+        - { name: "status", in: query, required: false, schema: { type: string, enum: ["unread", "read"] } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/contact-messages/{id}":
+    delete:
+      operationId: "delete__contact_messages_id_"
+      tags: ["contact-messages"]
+      security: [{ staffBearer: [] }]
+      x-permission: "site-information:delete"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/contact-messages/{id}/read":
+    patch:
+      operationId: "patch__contact_messages_id_read"
+      tags: ["contact-messages"]
+      security: [{ staffBearer: [] }]
+      x-permission: "site-information:edit"
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - { name: "id", in: path, required: true, schema: { type: string } }
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { isRead: { type: boolean } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   "/coupon/delete-coupon/{slug}":
     delete:
       operationId: "delete__coupon_delete_coupon_slug_"
@@ -6496,6 +6544,32 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Tenant"
         - { name: "slug", in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  "/shop/contact":
+    post:
+      operationId: "post__shop_contact"
+      tags: ["shop"]
+      security: []
+      x-rate-limit: ["contactLimiter"]
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { name: { type: string }, email: { type: string }, subject: { type: string }, message: { type: string } } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  "/shop/outlets":
+    get:
+      operationId: "get__shop_outlets"
+      tags: ["shop"]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "400": { $ref: "#/components/responses/Error" }

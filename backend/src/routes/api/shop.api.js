@@ -6,9 +6,10 @@ const shopOrderController = require("../../controller/shopOrder.controller");
 const shopCatalogController = require("../../controller/shopCatalog.controller");
 const shopCartController = require("../../controller/shopCart.controller");
 const shopTrackController = require("../../controller/shopTrack.controller");
+const contactMessageController = require("../../controller/contactMessage.controller");
 const { guestOrAuth } = require("../../middleware/guestOrAuth");
 const { singleFileUpload } = require("../../middleware/multer.middleware");
-const { trackOrderLimiter, loginLimiter, registerLimiter, couponLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
+const { contactLimiter, trackOrderLimiter, loginLimiter, registerLimiter, couponLimiter, passwordResetLimiter, shopResetSubmitLimiter } = require("../../middleware/rateLimit.middleware");
 
 /**
  * Storefront customer accounts.
@@ -23,6 +24,7 @@ const _ = express.Router();
 _.get("/store", shopController.store);
 _.get("/banners", shopController.banners);
 _.get("/promo-banner", shopController.promoBanner);
+_.get("/outlets", shopController.outlets);
 _.get("/return-policy", returnPolicyController.shopReturnPolicy);
 _.get("/products", shopCatalogController.products);
 _.get("/limited-offers", shopCatalogController.limitedOffers);
@@ -30,6 +32,8 @@ _.get("/flash-sale", shopCatalogController.flashSale);
 _.get("/products/:slug", shopCatalogController.product);
 // Order tracking for anyone holding the invoice number and checkout phone
 _.post("/track", trackOrderLimiter, shopTrackController.track);
+// The Contact page form; staff read these under Website Settings → Contact Messages
+_.post("/contact", contactLimiter, contactMessageController.create);
 _.post("/auth/register", registerLimiter, shopController.register);
 _.post("/auth/login", loginLimiter, shopController.login);
 _.post("/auth/refresh", shopController.refresh);

@@ -83,7 +83,7 @@ const SectionTitle = ({
   </div>
 );
 
-// The seller's own logo (from their Store Information), or their initials
+// The seller's own logo (from their Site Information), or their initials
 const SellerHeaderLogo = ({ tenantId, name }: { tenantId: string; name: string }) => {
   const logo = useQuery({
     queryKey: ["platform", "logo", tenantId],

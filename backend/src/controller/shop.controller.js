@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
-const StoreInformation = require("../models/storeInformation.model");
+const SiteInformation = require("../models/siteInformation.model");
+const OutletInformation = require("../models/outletInformationModel");
 const Banner = require("../models/banner.model");
 const DiscountBanner = require("../models/discountbanner.model");
 const { buildCacheKey, getCache, setCache } = require("../utils/cache.util");
@@ -62,7 +63,7 @@ const issueSession = (user) => ({
 
 /**
  * Who this storefront belongs to: the store resolved from the hostname, with
- * the name and logo the seller set in Store Information. Public, because the
+ * the name and logo the seller set in Site Information. Public, because the
  * shop header needs it before anyone signs in, and limited to branding.
  */
 // The look a seller picked in the Platform Console; the storefront reads it here
@@ -83,7 +84,7 @@ const STOREFRONT_DESIGN_FIELDS = [
 ];
 
 /**
- * Store Information fields the storefront shows, as it names them. Public by
+ * Site Information fields the storefront shows, as it names them. Public by
  * nature: the seller enters them to be found (footer, contact page, chat).
  */
 const CONTACT_FIELDS = {
@@ -102,24 +103,28 @@ const CONTACT_FIELDS = {
   youtubeLink: "youtubeLink",
   twitterLink: "twitterLink",
   linkedinLink: "linkedinLink",
+  footerText: "footer",
 };
 
 exports.store = asynchandeler(async (req, res) => {
   requireStore();
-  const [info, settings] = await Promise.all([
-    StoreInformation.findOne().select(`storeName image ${Object.values(CONTACT_FIELDS).join(" ")}`).lean(),
+  // Site Information (Settings → Site Information) is the only source of what
+  // the storefront shows. Store Information is never read here.
+  const [site, settings] = await Promise.all([
+    SiteInformation.findOne().select(`storeName image ${Object.values(CONTACT_FIELDS).join(" ")}`).lean(),
     getSettings(getTenantId()),
   ]);
+  const pick = (field) => site?.[field] || "";
   return apiResponse.sendSuccess(res, statusCodes.OK, "Store", {
     // The storefront keys the browser's cart and wishlist by it. Safe to show:
     // no storefront endpoint accepts it, the store always comes from the domain.
     id: String(getTenantId()),
-    name: info?.storeName || req.tenant?.name || "",
-    logo: info?.image?.url || "",
+    name: pick("storeName") || req.tenant?.name || "",
+    logo: site?.image?.url || "",
     primaryColor: settings.general.primaryColor || "",
     ...Object.fromEntries(STOREFRONT_DESIGN_FIELDS.map((field) => [field, settings.general[field]])),
     // Contact details and social links, for the footer and the chat button
-    ...Object.fromEntries(Object.entries(CONTACT_FIELDS).map(([out, field]) => [out, info?.[field] || ""])),
+    ...Object.fromEntries(Object.entries(CONTACT_FIELDS).map(([out, field]) => [out, pick(field)])),
   });
 });
 
@@ -177,6 +182,32 @@ exports.promoBanner = asynchandeler(async (req, res) => {
   }
 
   return apiResponse.sendSuccess(res, statusCodes.OK, "Promo banner", { banner: banner || null });
+});
+
+/**
+ * The store's branches for the Outlets page: active outlets from the
+ * dashboard's Outlet Information, oldest first. Only what a shopper needs to
+ * find and reach a branch; the seller enters these details to be shown.
+ */
+exports.outlets = asynchandeler(async (req, res) => {
+  requireStore();
+  const rows = await OutletInformation.find({ isActive: true })
+    .sort({ createdAt: 1 })
+    .select("locationName slug address managerName managerMobile email businessHour offDay image")
+    .lean();
+  const outlets = rows.map((o) => ({
+    _id: o._id,
+    slug: o.slug,
+    name: o.locationName,
+    address: o.address || "",
+    managerName: o.managerName || "",
+    managerMobile: o.managerMobile || "",
+    email: o.email || "",
+    businessHour: o.businessHour || "",
+    offDay: o.offDay || "",
+    image: o.image || "",
+  }));
+  return apiResponse.sendSuccess(res, statusCodes.OK, "Outlets", { outlets });
 });
 
 exports.register = asynchandeler(async (req, res) => {

@@ -28,8 +28,8 @@ const settings = {
 };
 
 const logo = {
-  get: vi.fn(async () => ({ url: "https://x/old.png", status: "uploaded", lastError: "", hasStoreInformation: true })),
-  upload: vi.fn(async () => ({ url: "https://x/old.png", status: "pending", lastError: "", hasStoreInformation: true })),
+  get: vi.fn(async () => ({ url: "https://x/old.png", status: "uploaded", lastError: "", hasSiteInformation: true })),
+  upload: vi.fn(async () => ({ url: "https://x/old.png", status: "pending", lastError: "", hasSiteInformation: true })),
 };
 
 vi.mock("../../platform/endpoints", () => {

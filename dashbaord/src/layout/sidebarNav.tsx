@@ -327,6 +327,8 @@ const navItems: NavItem[] = [
         module: PERMISSIONS.OUTLET_INFORMATION,
         pro: false,
       },
+      // Messages shoppers send from the website's Contact page
+      { name: "Contact Messages", path: "/contact-messages", module: PERMISSIONS.SITE_INFORMATION, pro: false },
       {
         name: "Create Web Banner",
         path: "/add-banner",
